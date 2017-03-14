@@ -1,0 +1,11 @@
+#define init_rng lfg_init_rng
+#define get_rn_int lfg_get_rn_int
+#define get_rn_flt lfg_get_rn_flt
+#define get_rn_dbl lfg_get_rn_dbl
+#define spawn_rng lfg_spawn_rng
+#define get_seed_rng lfg_get_seed_rng
+#define free_rng lfg_free_rng
+#define pack_rng lfg_pack_rng
+#define unpack_rng lfg_unpack_rng
+#define print_rng lfg_print_rng
+
