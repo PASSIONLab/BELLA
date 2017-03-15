@@ -33,19 +33,59 @@
 #include <cassert>
 #include <ios>
 #include <unordered_map>
+#include <sys/stat.h>
 
 #include "kmercode/hash_funcs.h"
 #include "kmercode/Kmer.hpp"
+#include "kmercode/Buffer.h"
+#include "kmercode/common.h"
+#include "kmercode/fq_reader.h"
+#include "kmercode/ParallelFASTQ.h"
 
 #define LSIZE 16000
+#define KMER_LENGTH 15
 
 using namespace std;
 
+struct filedata {
+
+    char filename[MAX_FILE_PATH];
+    size_t filesize;
+};
+
+std::vector<filedata>  GetFiles(char *filename)
+{
+    int64_t totalsize = 0;
+    int numfiles = 0;
+    vector< filedata > filesview;
+    
+    filedata fdata;
+    ifstream allfiles(filename);
+    if(!allfiles.is_open()) {
+        cerr << "Could not open " << filename << endl;
+        exit(1);
+    }
+    allfiles.getline(fdata.filename,MAX_FILE_PATH);
+    while(!allfiles.eof())
+    {
+        struct stat st;
+        stat(fdata.filename, &st);
+        fdata.filesize = st.st_size;
+        
+        filesview.push_back(fdata);
+        cout << filesview.back().filename << " : " << filesview.back().filesize / (1024*1024) << " MB" << endl;
+        allfiles.getline(fdata.filename,MAX_FILE_PATH);
+        totalsize += fdata.filesize;
+        numfiles++;
+    }
+    return filesview;
+}
+
 struct states {
 
-	int a; /* number of kmer with occurence 0 */
-	int b; /* number of kmer with occurence 1 */
-	int c; /* number of kmer with occurence bigger than 1 */
+	int a; // number of kmer with occurence 0 
+	int b; // number of kmer with occurence 1 
+	int c; // number of kmer with occurence bigger than 1 
 	
 	states(): a(0), b(0), c(0) {
 	}
@@ -58,16 +98,17 @@ struct node {
 	node *G;
 	node *T;
 	unsigned int count;
-	unsigned int groupID; /* groupID: occurrence after reads generation (pbsim) and kmer generation (jellyfish) */
+	unsigned int groupID; // groupID: occurrence after reads generation (pbsim) and kmer generation (jellyfish) 
 
 	node(): A(NULL), C(NULL), G(NULL), T(NULL), count(0), groupID(0) {
 	}
 };
 
-typedef std::tuple<int, string, int> finalDataset;	 /* <groupID, kmer, #matches> */
-typedef std::unordered_map<string, int> dictionary;	 /* <k-mer, #kmers> */
+typedef std::tuple<int, string, int> finalDataset;	 // <groupID, kmer, #matches> 
+typedef std::unordered_map<Kmer, int> dictionary;	 //  <k-mer, #kmers> 
+typedef std::vector<Kmer> Kmers;
 
-/* Function to add a kmer to build the trie */
+// Function to add a kmer to build the trie 
 void addKmer(node *trieTree, const char *kmer, int length, int groupNum) {
 
 	node *traverse = trieTree;
@@ -103,7 +144,7 @@ void addKmer(node *trieTree, const char *kmer, int length, int groupNum) {
 	traverse->groupID = groupNum;
 }
 
-/* Function to build the trie */
+// Function to build the trie 
 void buildTrie(node *trieTree, vector<pair <int, string>> dataset, int length) {
 
 	node *trie = trieTree;
@@ -118,30 +159,30 @@ void buildTrie(node *trieTree, vector<pair <int, string>> dataset, int length) {
 	std::cout << "Trie built" << endl;
 }
 
-/* Function to search matches */
+// Function to search matches 
 void matchesSearching(FILE *fastafile, node *root, int kmerLength) {
 	
-	/* long lsize = number of char to be read */
+	// long lsize = number of char to be read 
 	char buffer[LSIZE];
 	size_t length = 0; 
 	
 	while(!feof(fastafile)) {
 		size_t bytes = fread(buffer+length, 1, LSIZE-length, fastafile); 
-		length += bytes; /* length of the matching, used when the end of the buffer occurs during a possible matching */
+		length += bytes; // length of the matching, used when the end of the buffer occurs during a possible matching 
 		size_t offset;
 
-		/* offset = position in the buffer */
+		// offset = position in the buffer
 		for(offset = 0; offset < bytes; offset++) {
 
 			if(buffer[offset] == '\n' && buffer[offset] != 'A' && buffer[offset] != 'C' && buffer[offset] != 'G' && buffer[offset] != 'T')
 				continue; 
 			
-			/* root iniziatization */
+			// root iniziatization 
 			node *nodeTrie = root;
 			int pos;
 			int level;
 			
-			/* level = depth position of correct value, pos = depth position, it takes care of non-valid value, e.g. '\n' */
+			// level = depth position of correct value, pos = depth position, it takes care of non-valid value, e.g. '\n'
 			for(level = 0, pos = 0; (level<kmerLength) && (nodeTrie != NULL) && ((offset+pos)<length); pos++) {
 			
 				if(buffer[offset+pos] == '\n' && buffer[offset+pos] != 'A' && buffer[offset+pos] != 'C' && buffer[offset+pos] != 'G' && buffer[offset+pos] != 'T')
@@ -164,23 +205,23 @@ void matchesSearching(FILE *fastafile, node *root, int kmerLength) {
 			}
 			
 			if(nodeTrie != NULL && level == kmerLength) {	
-				/* MATCH */
+				// MATCH 
 				nodeTrie->count++;
 			}
 			
 			if(offset+pos >= length) {
-				/* END OF THE BUFFER BEFORE THE EVALUATION OF A MATCH */
+				// END OF THE BUFFER BEFORE THE EVALUATION OF A MATCH 
 				break;
 			}
 		}
 		
-		memcpy(buffer, buffer+offset, sizeof(char)*(length-offset)); /* memcpy(destination, origin, #bytes) */
+		memcpy(buffer, buffer+offset, sizeof(char)*(length-offset)); // memcpy(destination, origin, #bytes) 
 		length = length-offset;
 	}
 	std::cout << "Search finished" << endl;
 }
 
-/* Recursive function to save <kmer groupID, kmer string, kmer count> */
+// Recursive function to save <kmer groupID, kmer string, kmer count> 
 void newDatasetGeneration(node *trieTree, int kmerLength, int level, char *buffer, vector<finalDataset> &kmerData) {
 
 	if(level == kmerLength) {
@@ -208,7 +249,7 @@ void newDatasetGeneration(node *trieTree, int kmerLength, int level, char *buffe
 		newDatasetGeneration(trieTree->T, kmerLength, level+1, buffer, kmerData);
 	} 
 }
-/* Function to sort the dataset based on groupID --> NOT NECESSARY */
+// Function to sort the dataset based on groupID --> NOT NECESSARY
 void sortDataset(vector<finalDataset> &kmerData) {
 	
 	std::sort(kmerData.begin(), kmerData.end());
@@ -216,8 +257,8 @@ void sortDataset(vector<finalDataset> &kmerData) {
 
 }
 
-/* Function to create the dictionary */
-void dictionaryCreation(dictionary &kmerDictionary, std::vector<pair <int, string>> &data, std::ofstream &fileout) {
+// Function to create the dictionary 
+void dictionaryCreation(dictionary &kmerDictionary, std::vector<pair <int, Kmer>> &data, std::ofstream &fileout) {
 
 	dictionary::iterator it;
 	unsigned int count = 0;
@@ -229,22 +270,31 @@ void dictionaryCreation(dictionary &kmerDictionary, std::vector<pair <int, strin
 			it = kmerDictionary.find(data.at(i).second);
 
 			if(it == kmerDictionary.end()) {
-				it = kmerDictionary.insert(std::pair<string, int> (data.at(i).second, count)).first;
+				it = kmerDictionary.insert(std::pair<Kmer, int> (data.at(i).second, count)).first;
 				count++;
 			}
+
+			/* it = kmerDictionary.find(data.at(i).second.twin());
+
+			if(it == kmerDictionary.end()) {
+				it = kmerDictionary.insert(std::pair<string, int> (data.at(i).second.twin(), count)).first;
+				count++;
+			} */
+
 	}
 	
 	std::cout << "Dictionary created" << endl;
-	/*std::cout << "Dictionary created and saved in Dictionary.csv" << endl;
+
+	/* std::cout << "Dictionary created and saved in Dictionary.csv" << endl;
 	
 	fileout << "k-mer," << "#kmer" << endl;
 	for(auto it = kmerDictionary.begin(); it != kmerDictionary.end(); it++) {
 			
 		fileout << it->first << "," << it->second << endl;
-	}*/
+	} */
 }
 
-/* De-allocation of the tree */
+// De-allocation of the tree 
 void freeTrie(node *trieTree) {
 
 	if(trieTree->A != NULL) {	
@@ -270,21 +320,27 @@ int main (int argc, char* argv[]) {
 
 	ifstream filein (argv[1]);
 	FILE *fastafile;
-	ofstream fileout ("Dictionary.csv");
+	ofstream fileout ("dictionary.txt");
 	int length;
 	int elem;
 	size_t i;
 	char *buffer;
-	std::string kmer;
+	std::string marco;
 	std::string line;
-	std::vector<pair <int, string>> data;
+	Kmer::set_k(KMER_LENGTH);
+	std::vector<pair <int, Kmer>> data;
 	std::vector<pair <int, int>> group;
-	//struct node *trieTree;
-	//std::vector<finalDataset> kmerData;
-	//statesMap statesData;	
-	std::unordered_map <string, int> kmerDictionary;
+	std::unordered_map <Kmer, int> kmerDictionary;
+	std::vector<filedata> allfiles = GetFiles(argv[4]);
+    size_t upperlimit = 1000; // 1 thousand reads at a time
+    std::vector<string> seqs;
+    std::vector<string> quals; // NOT NECESSARY I GUESS
+    Kmers kmers;
+	// struct node *trieTree;
+	// std::vector<finalDataset> kmerData;
+	// statesMap statesData;	
 
-	if(argc == 4){
+	if(argc == 5){
 	
 		length = atoi(argv[3]);
 		
@@ -300,7 +356,8 @@ int main (int argc, char* argv[]) {
 	cout << "The reference genome is: Escherichia coli, " << argv[2] <<endl;
 	cout << "\n";
 
-	/* Creating tuple <occurrence, kmer> */
+	// Creating tuple <occurrence, kmer>
+
 	if(filein.is_open()) {
 			while(getline(filein, line)) {
 		
@@ -309,45 +366,78 @@ int main (int argc, char* argv[]) {
 
 				string substring = line.substr(1);
 				elem = stoi(substring);
-				getline(filein, kmer);
-				if(elem != 1) {	
-					data.push_back(pair <int, string> (elem, kmer));
+				getline(filein, marco);
+				if(elem > 3 && elem < 9) {	
+					data.push_back(pair <int, Kmer> (elem, marco); // TO FIX
 			
 				}										
 			}
 	} else cout << "Unable to open the input file.\n\n";
 	
 	filein.close();
-	cout << "Initial dataset created" << endl;
+	std::cout << "Initial dataset created" << endl;
+    
+    for(auto itr= allfiles.begin(); itr != allfiles.end(); itr++)
+    {
+        ParallelFASTQ *pfq = new ParallelFASTQ();
+        pfq->open(itr->filename, false, itr->filesize);
+        
+        size_t fillstatus = 1;
+        while(fillstatus)
+        {
+            fillstatus = pfq->fill_block(seqs, quals, upperlimit); // CHECK quals
+            size_t nreads = seqs.size();
+            
+            for(size_t i=0; i<nreads; ++i)
+            {
+                size_t found;
+                found = seqs[i].length();
+                
+                // Skip this sequence if the length is too short
+                if (seqs[i].length() <= KMER_LENGTH) {
+                    continue;
+                }
 
-	/* Trie tree allocation */
-	//trieTree = (struct node*)calloc(1, sizeof(struct node));
+                int nkmers = (seqs[i].length()-KMER_LENGTH+1);
 
-	/* Trie tree building */
-	//buildTrie(trieTree, data, length);
+                kmers = Kmer::getKmers(seqs[i]); // Calculate all the kmers
+                assert(kmers.size() == nkmers);
+               
+                // Debugging
 
-	/* Search matches in trie tree 
-	fastafile = fopen(argv[2], "r");
-	if(fastafile != NULL) {
-		matchesSearching(fastafile, trieTree, length);
-	} else cout << "Unable to open the fasta file\n";
+				std::cout << "Printing the first k-mer and its reverse complement from this read: ";
+ 		  	    std::cout << kmers[0].toString() << " " << kmers[0].twin().toString() << endl;
+            }
+            
+        }
+    }
+
+	// Trie tree allocation 
+	// trieTree = (struct node*)calloc(1, sizeof(struct node));
+
+	// Trie tree building 
+	// buildTrie(trieTree, data, length);
+
+	// Search matches in trie tree 
+	// fastafile = fopen(argv[2], "r");
+	// if(fastafile != NULL) {
+	//	matchesSearching(fastafile, trieTree, length);
+	// } else cout << "Unable to open the fasta file\n";
 	
-	fclose(fastafile);	
+	// fclose(fastafile);	
+    // Generation of the final dataset 
+	// buffer = (char*)malloc(sizeof(char)*(length+1));
+	// buffer[length] = '\0';
+	// newDatasetGeneration(trieTree, length, 0, buffer, kmerData);
+	// free(buffer); 
+	// cout << "Final dataset created" << endl; 	
 
-	/* Generation of the final dataset 
-	buffer = (char*)malloc(sizeof(char)*(length+1));
-	buffer[length] = '\0';
-	newDatasetGeneration(trieTree, length, 0, buffer, kmerData);
-	free(buffer); 
-	cout << "Final dataset created" << endl; 	
+	// Trie tree de-allocation
+	// freeTrie(trieTree);
 
-	/* Trie tree de-allocation */
-	//freeTrie(trieTree);
-
-	/* Final dataset sorted */
+	// Final dataset sorted 
 	//sortDataset(kmerData);
 
-	/* TO DO: division in states */
 	if(fileout.is_open()) {
 		dictionaryCreation(kmerDictionary, data, fileout);
 	} else std::cout << "Unable to open the output file\n";

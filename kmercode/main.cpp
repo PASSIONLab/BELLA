@@ -17,8 +17,6 @@ struct filedata
     size_t filesize;
 };
 
-
-
 vector< filedata >  GetFiles(char * filename)
 {
     int64_t totalsize = 0;
