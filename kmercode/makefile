@@ -11,8 +11,8 @@ Kmer.o:	Kmer.cpp
 	g++ -std=c++11 -O3 -c -o Kmer.o Kmer.cpp
 
 parse: main.cpp hash_funcs.o fq_reader.o Buffer.o Kmer.o
-	g++ -std=c++11 -O3 hash_funcs.o Kmer.o Buffer.o fq_reader.o main.cpp
+	g++ -std=c++11 -O3 -o parse hash_funcs.o Kmer.o Buffer.o fq_reader.o main.cpp
 
 clean:
 	rm -f *.o
-	rm -f a.out
+	rm -f parse
