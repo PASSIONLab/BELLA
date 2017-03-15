@@ -12,6 +12,7 @@
 #include <cstdint>
 
 #include "hash_funcs.h"
+#include "common.h"
 
 
 
