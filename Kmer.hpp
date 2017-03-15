@@ -55,6 +55,7 @@ class Kmer {
   void set_kmer(const char *s);
   uint64_t hash() const;
 
+  //Kmer set_kmerFromString(const std::string *str); 
   Kmer twin() const;
   Kmer rep() const; // ABAB: return the smaller of itself (lexicographically) or its reversed-complement (i.e. twin)
   Kmer getLink(const size_t index) const;

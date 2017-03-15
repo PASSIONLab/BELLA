@@ -325,7 +325,8 @@ int main (int argc, char* argv[]) {
 	int elem;
 	size_t i;
 	char *buffer;
-	std::string marco;
+	const char *strtoChar;
+	std::string kmerstr;
 	std::string line;
 	Kmer::set_k(KMER_LENGTH);
 	std::vector<pair <int, Kmer>> data;
@@ -336,6 +337,7 @@ int main (int argc, char* argv[]) {
     std::vector<string> seqs;
     std::vector<string> quals; // NOT NECESSARY I GUESS
     Kmers kmers;
+    Kmer kmerfromstr;
 	// struct node *trieTree;
 	// std::vector<finalDataset> kmerData;
 	// statesMap statesData;	
@@ -366,9 +368,11 @@ int main (int argc, char* argv[]) {
 
 				string substring = line.substr(1);
 				elem = stoi(substring);
-				getline(filein, marco);
+				getline(filein, kmerstr); // BUG TO FIX mismatch between a string and a Kmer type
 				if(elem > 3 && elem < 9) {	
-					data.push_back(pair <int, Kmer> (elem, marco); // TO FIX
+					strtoChar = kmerstr.c_str();
+					kmerfromstr.set_kmer(strtoChar);
+					data.push_back(pair <int, Kmer> (elem, kmerfromstr)); 
 			
 				}										
 			}

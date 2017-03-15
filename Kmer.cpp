@@ -216,13 +216,12 @@ void Kmer::set_kmer(const char *s)  {
       case 'G': longs[l] |= (0x02 << (2*j)); break;
       case 'T': longs[l] |= (0x03 << (2*j)); break;
       }*/
-    
     s++; 
   }
 }
 
 // This returns a vector of kmers from a long sequence
-// This does ot check for Ns or choose the lesser representation
+// This does not check for Ns or choose the lesser representation
 std::vector<Kmer> Kmer::getKmers(std::string seq) {
    for (auto & c: seq) c = toupper(c); // ensure uppercase
    if (seq.size() < k) return std::vector<Kmer>();
@@ -300,7 +299,6 @@ uint64_t Kmer::hash() const {
   assert(k_bytes>0);
   return MurmurHash3_x64_64((const void*)bytes.data(),k_bytes);
 }
-
 
 // use:  rep = km.rep();
 // pre:   
