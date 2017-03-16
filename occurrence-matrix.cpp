@@ -105,7 +105,7 @@ struct node {
 };
 
 typedef std::tuple<int, string, int> finalDataset;	 // <groupID, kmer, #matches> 
-typedef std::unordered_map<Kmer, int> dictionary;	 //  <k-mer, #kmers> 
+typedef std::unordered_map<Kmer, int> dictionary;	 // <k-mer && reverse-complement, #kmers> 
 typedef std::vector<Kmer> Kmers;
 
 // Function to add a kmer to build the trie 
@@ -258,40 +258,39 @@ void sortDataset(vector<finalDataset> &kmerData) {
 }
 
 // Function to create the dictionary 
-void dictionaryCreation(dictionary &kmerDictionary, std::vector<pair <int, Kmer>> &data, std::ofstream &fileout) {
+void dictionaryCreation(dictionary &kmerdict, std::vector<Kmer> &kmervect) {
 
 	dictionary::iterator it;
 	unsigned int count = 0;
 
-	for(int i = 0; i<data.size()-1; i++) {
+	for(int i = 0; i<kmervect.size()-1; i++) { // TO FIX: DOESN'T EXIT 1ST LOOP
+		it = kmerdict.find(kmervect[i]);
 
-		if(data.at(i).first < 9 && data.at(i).first > 3)
-
-			it = kmerDictionary.find(data.at(i).second);
-
-			if(it == kmerDictionary.end()) {
-				it = kmerDictionary.insert(std::pair<Kmer, int> (data.at(i).second, count)).first;
-				count++;
-			}
-
-			/* it = kmerDictionary.find(data.at(i).second.twin());
-
-			if(it == kmerDictionary.end()) {
-				it = kmerDictionary.insert(std::pair<string, int> (data.at(i).second.twin(), count)).first;
-				count++;
-			} */
-
+		if(it == kmerdict.end()) {
+			it = kmerdict.insert(std::pair<Kmer, int> (kmervect[i], count)).first;
+			//std::cout << kmervect[i] << endl;
+			count++;
+		}
+		//std::cout << kmervect[i] << " " << count <<endl;
 	}
-	
-	std::cout << "Dictionary created" << endl;
 
-	/* std::cout << "Dictionary created and saved in Dictionary.csv" << endl;
-	
-	fileout << "k-mer," << "#kmer" << endl;
+	std::cout << "kmervect in the dict" << endl;
+
+	for(int i = 0; i<kmervect.size()-1; i++) {
+
+		it = kmerdict.find(kmervect[i].twin());
+
+		if(it == kmerdict.end()) {
+			it = kmerdict.insert(std::pair<Kmer, int> (kmervect[i].twin(), count)).first;
+			count++;
+		}
+	}
+
+	std::cout << "kmervect.twin() in the dict" << endl;
+	/*fileout << "k-mer && reverse-complement," << "#kmer" << endl;
 	for(auto it = kmerDictionary.begin(); it != kmerDictionary.end(); it++) {
-			
-		fileout << it->first << "," << it->second << endl;
-	} */
+			fileout << it->first.toString() << "," << it->second << endl;
+	}*/
 }
 
 // De-allocation of the tree 
@@ -320,27 +319,26 @@ int main (int argc, char* argv[]) {
 
 	ifstream filein (argv[1]);
 	FILE *fastafile;
-	ofstream fileout ("dictionary.txt");
+	//ofstream fileout ("dictionary.txt");
 	int length;
 	int elem;
 	size_t i;
 	char *buffer;
-	const char *strtoChar;
 	std::string kmerstr;
 	std::string line;
 	Kmer::set_k(KMER_LENGTH);
-	std::vector<pair <int, Kmer>> data;
-	std::vector<pair <int, int>> group;
-	std::unordered_map <Kmer, int> kmerDictionary;
+	std::unordered_map <Kmer, int> kmerdict;
 	std::vector<filedata> allfiles = GetFiles(argv[4]);
     size_t upperlimit = 1000; // 1 thousand reads at a time
-    std::vector<string> seqs;
-    std::vector<string> quals; // NOT NECESSARY I GUESS
-    Kmers kmers;
     Kmer kmerfromstr;
-	// struct node *trieTree;
-	// std::vector<finalDataset> kmerData;
-	// statesMap statesData;	
+    Kmers kmervect;
+    //std::vector<string> seqs;
+    //std::vector<string> quals; // NOT NECESSARY I GUESS
+    //Kmers kmers;
+    //const char *strtoChar; 
+	//struct node *trieTree;
+	//std::vector<finalDataset> kmerData;
+	//statesMap statesData;	
 
 	if(argc == 5){
 	
@@ -358,30 +356,29 @@ int main (int argc, char* argv[]) {
 	cout << "The reference genome is: Escherichia coli, " << argv[2] <<endl;
 	cout << "\n";
 
-	// Creating tuple <occurrence, kmer>
-
+	// filtering on kmers --> I want kmers which occur between 4 and 8 times 
 	if(filein.is_open()) {
 			while(getline(filein, line)) {
-		
 				if(line.length() == 0)
 					break;
 
 				string substring = line.substr(1);
 				elem = stoi(substring);
-				getline(filein, kmerstr); // BUG TO FIX mismatch between a string and a Kmer type
-				if(elem > 3 && elem < 9) {	
-					strtoChar = kmerstr.c_str();
-					kmerfromstr.set_kmer(strtoChar);
-					data.push_back(pair <int, Kmer> (elem, kmerfromstr)); 
-			
-				}										
+				getline(filein, kmerstr); 
+				if(elem>3 && elem<9) {	
+					//strtoChar = kmerstr.c_str();
+					kmerfromstr.set_kmer(kmerstr.c_str());
+					kmervect.push_back(kmerfromstr);
+				}									
 			}
 	} else cout << "Unable to open the input file.\n\n";
-	
 	filein.close();
-	std::cout << "Initial dataset created" << endl;
-    
-    for(auto itr= allfiles.begin(); itr != allfiles.end(); itr++)
+
+	std::cout << "Filtered dataset parsed" << endl;
+
+	dictionaryCreation(kmerdict, kmervect);
+
+    /*for(auto itr= allfiles.begin(); itr != allfiles.end(); itr++)
     {
         ParallelFASTQ *pfq = new ParallelFASTQ();
         pfq->open(itr->filename, false, itr->filesize);
@@ -389,7 +386,7 @@ int main (int argc, char* argv[]) {
         size_t fillstatus = 1;
         while(fillstatus)
         {
-            fillstatus = pfq->fill_block(seqs, quals, upperlimit); // CHECK quals
+            fillstatus = pfq->fill_block(seqs, quals, upperlimit);
             size_t nreads = seqs.size();
             
             for(size_t i=0; i<nreads; ++i)
@@ -397,24 +394,20 @@ int main (int argc, char* argv[]) {
                 size_t found;
                 found = seqs[i].length();
                 
-                // Skip this sequence if the length is too short
+                // skip this sequence if the length is too short
                 if (seqs[i].length() <= KMER_LENGTH) {
                     continue;
                 }
 
                 int nkmers = (seqs[i].length()-KMER_LENGTH+1);
 
-                kmers = Kmer::getKmers(seqs[i]); // Calculate all the kmers
+                kmers = Kmer::getKmers(seqs[i]); // calculate all the kmers
                 assert(kmers.size() == nkmers);
-               
-                // Debugging
-
-				std::cout << "Printing the first k-mer and its reverse complement from this read: ";
- 		  	    std::cout << kmers[0].toString() << " " << kmers[0].twin().toString() << endl;
             }
-            
         }
     }
+
+    std::cout << "FASTQ file parsed" << endl;*/
 
 	// Trie tree allocation 
 	// trieTree = (struct node*)calloc(1, sizeof(struct node));
@@ -442,13 +435,11 @@ int main (int argc, char* argv[]) {
 	// Final dataset sorted 
 	//sortDataset(kmerData);
 
-	if(fileout.is_open()) {
-		dictionaryCreation(kmerDictionary, data, fileout);
-	} else std::cout << "Unable to open the output file\n";
+	//if(fileout.is_open()) {
+	//} else std::cout << "Unable to open the output file\n";
 	
-	fileout.close();
-	cout << "\n";
-	
+	//	fileout.close();
+std::cout << "\n";
+   
 return 0;
-
 }
