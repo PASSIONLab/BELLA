@@ -263,7 +263,7 @@ void dictionaryCreation(dictionary &kmerdict, std::vector<Kmer> &kmervect) {
 	dictionary::iterator it;
 	unsigned int count = 0;
 
-	for(int i = 0; i<kmervect.size()-1; i++) { // TO FIX: DOESN'T EXIT 1ST LOOP
+	for(int i = 0; i<kmervect.size()-1; i++) { // TO FIX: EXIT THE LOOP BUT TAKE A LOT OF TIME
 		it = kmerdict.find(kmervect[i]);
 
 		if(it == kmerdict.end()) {
