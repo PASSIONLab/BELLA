@@ -82,41 +82,30 @@ std::vector<filedata>  GetFiles(char *filename)
     return filesview;
 }
 
-struct states {
-
-	int a; // number of kmer with occurence 0 
-	int b; // number of kmer with occurence 1 
-	int c; // number of kmer with occurence bigger than 1 
-	
-	states(): a(0), b(0), c(0) {
-	}
-};
-
 struct node {
 
 	node *A;
 	node *C;
 	node *G;
 	node *T;
-	unsigned int count;
-	unsigned int groupID; // groupID: occurrence after reads generation (pbsim) and kmer generation (jellyfish) 
+	unsigned int kmerindex;
 
-	node(): A(NULL), C(NULL), G(NULL), T(NULL), count(0), groupID(0) {
+	node(): A(NULL), C(NULL), G(NULL), T(NULL), kmerindex(0) {
 	}
 };
 
 typedef std::tuple<int, string, int> finalDataset;	 // <groupID, kmer, #matches> 
-typedef std::map<Kmer, int> dictionary;	 // <k-mer && reverse-complement, #kmers> 
-typedef std::map<int, Kmer> rvs_dict;
+typedef std::map<Kmer, int> dictionary;	 			 // <k-mer && reverse-complement, #kmers> 
 typedef std::vector<Kmer> Kmers;
+typedef std::vector<pair<int,unsigned int>> occurrences;
 
 // Function to add a kmer to build the trie 
-void addKmer(node *trieTree, const char *kmer, int length, int groupNum) {
+void addKmer(node *trieTree, const char *kmer, int count) {
 
 	node *traverse = trieTree;
 	int i;
 
-	for(i=0; i<length; i++) {
+	for(i=0; i<KMER_LENGTH; i++) {
 	
 		if(kmer[i] == 'A') {
 			if(traverse->A == NULL) {
@@ -143,87 +132,69 @@ void addKmer(node *trieTree, const char *kmer, int length, int groupNum) {
 			traverse = traverse->T;
 		}
 	}
-	traverse->groupID = groupNum;
+	traverse->kmerindex = count;
 }
 
 // Function to build the trie 
-void buildTrie(node *trieTree, vector<pair <int, string>> dataset, int length) {
+void buildTrie(node *trieTree, dictionary &src) {
 
 	node *trie = trieTree;
-	size_t i;
+	dictionary::iterator it;
 
-	for(i=0; i<dataset.size(); i++) {
+	for(it=src.begin(); it!=src.end(); it++) {
 		
-		addKmer(trie, dataset.at(i).second.c_str(), length, dataset.at(i).first);
+		addKmer(trie, it->first.toString().c_str(), it->second);
 
 	}
-	
-	std::cout << "Trie built" << endl;
 }
 
-// Function to search matches 
-void matchesSearching(FILE *fastafile, node *root, int kmerLength) {
-	
-	// long lsize = number of char to be read 
-	char buffer[LSIZE];
-	size_t length = 0; 
-	
-	while(!feof(fastafile)) {
-		size_t bytes = fread(buffer+length, 1, LSIZE-length, fastafile); 
-		length += bytes; // length of the matching, used when the end of the buffer occurs during a possible matching 
-		size_t offset;
+//Function to search matches between reads and dictionary
+occurrences matchingFoo(vector<string> &seqs, node *root) {
 
-		// offset = position in the buffer
-		for(offset = 0; offset < bytes; offset++) {
+	occurrences indices;
 
-			if(buffer[offset] == '\n' && buffer[offset] != 'A' && buffer[offset] != 'C' && buffer[offset] != 'G' && buffer[offset] != 'T')
-				continue; 
-			
-			// root iniziatization 
-			node *nodeTrie = root;
-			int pos;
+	for (int i=0; i<seqs.size(); ++i) {
+
+		//Kmers twin_kmersfromreads; 					   // auxiliary variable
+        Kmers kmersfromreads = Kmer::getKmers(seqs[i]);    // calculate all the kmers
+        //twin_kmersfromreads = kmersfromreads.twin();     // calculate all the kmers reverse complement, not sure if I need reverse complement of the reads
+        //kmersfromreads.insert(kmersfromreads.end(), twin_kmersfromreads.begin(), twin_kmersfromreads.end()); // append the 2nd vct to the 1st
+        int nkmers = (seqs[i].length()-KMER_LENGTH+1);
+        assert(kmersfromreads.size() == nkmers);
+
+        for(int j=0; j<nkmers; j++) {
+
+        	node *nodeTrie = root;
 			int level;
 			
-			// level = depth position of correct value, pos = depth position, it takes care of non-valid value, e.g. '\n'
-			for(level = 0, pos = 0; (level<kmerLength) && (nodeTrie != NULL) && ((offset+pos)<length); pos++) {
-			
-				if(buffer[offset+pos] == '\n' && buffer[offset+pos] != 'A' && buffer[offset+pos] != 'C' && buffer[offset+pos] != 'G' && buffer[offset+pos] != 'T')
-					continue;
-			
-				level++;
+			// level = depth position of correct value
+			for(level = 0; (level<KMER_LENGTH) && (nodeTrie != NULL); level++) {
 				
-				char base = buffer[offset+pos];
+				const char *base = kmersfromreads[j].toString().c_str();
 				
-				if(base == 'A')
+				if(base[level] == 'A')
 					nodeTrie = nodeTrie->A;
-				else if(base == 'C')
+				else if(base[level] == 'C')
 					nodeTrie = nodeTrie->C;
-				else if(base == 'G')
+				else if(base[level] == 'G')
 					nodeTrie = nodeTrie->G;
-				else if(base == 'T')
+				else if(base[level] == 'T')
 					nodeTrie = nodeTrie->T;
 				else break;
 
 			}
-			
-			if(nodeTrie != NULL && level == kmerLength) {	
-				// MATCH 
-				nodeTrie->count++;
-			}
-			
-			if(offset+pos >= length) {
-				// END OF THE BUFFER BEFORE THE EVALUATION OF A MATCH 
-				break;
-			}
+			// MATCH 
+			if(nodeTrie != NULL && level == KMER_LENGTH)	
+				indices.push_back(pair<int,unsigned int> (i, nodeTrie->kmerindex));	
+				// here I'm saving the index of the read and the index ok the kmer in dictionary
+				// not sure if it's correct --> alternative case: indices.push_back(indexof(i), indexof(kmersfromstring))
 		}
-		
-		memcpy(buffer, buffer+offset, sizeof(char)*(length-offset)); // memcpy(destination, origin, #bytes) 
-		length = length-offset;
 	}
-	std::cout << "Search finished" << endl;
+
+	return indices;
 }
 
-// Recursive function to save <kmer groupID, kmer string, kmer count> 
+/* Recursive function to save <kmer groupID, kmer string, kmer count> 
 void newDatasetGeneration(node *trieTree, int kmerLength, int level, char *buffer, vector<finalDataset> &kmerData) {
 
 	if(level == kmerLength) {
@@ -250,7 +221,7 @@ void newDatasetGeneration(node *trieTree, int kmerLength, int level, char *buffe
 		buffer[level] = 'T';
 		newDatasetGeneration(trieTree->T, kmerLength, level+1, buffer, kmerData);
 	} 
-}
+} */
 
 // Function to create the dictionary 
 void dictionaryCreation(dictionary &kmerdict, Kmers &kmervect) {
@@ -282,24 +253,7 @@ void dictionaryCreation(dictionary &kmerdict, Kmers &kmervect) {
 	}
 
 	std::cout << "kmervect.twin() in the dict" << endl;
-
-	/*fileout << "k-mer && reverse-complement," << "#kmer" << endl;
-	for(auto it = kmerdict.begin(); it != kmerdict.end(); it++) {
-			fileout << it->first.toString() << "," << it->second << endl;
-	}*/
 }
-
-// Funtion to swap key and value map to sort the map by the initial value (count)
-rvs_dict swapPairs(dictionary &src) {
-    
-    rvs_dict rvsmap;
-
-    for (auto&& item : src) {
-        rvsmap.emplace(item.second, item.first);
-    }
-
-    return rvsmap;
-};
 
 // De-allocation of the tree 
 void freeTrie(node *trieTree) {
@@ -340,15 +294,12 @@ int main (int argc, char* argv[]) {
     size_t upperlimit = 1000; // 1 thousand reads at a time
     Kmer kmerfromstr;
     Kmers kmervect;
-    //std::vector<string> seqs;
-    //std::vector<string> quals; // NOT NECESSARY I GUESS
-    //Kmers kmers;
-    //const char *strtoChar; 
-	//struct node *trieTree;
-	//std::vector<finalDataset> kmerData;
-	//statesMap statesData;	
+    std::vector<string> seqs;
+    std::vector<string> quals; // not necessary I guess
+    Kmers kmersfromreads;
+	struct node *trieTree;
 
-	if(argc == 5){
+	if(argc == 5){ // this can be deleted : length --> KMER_LENGTH
 	
 		length = atoi(argv[3]);
 		
@@ -382,16 +333,6 @@ int main (int argc, char* argv[]) {
 
 	std::cout << "filtered dataset parsed of size: " << kmervect.size() << " elem" << endl;
 	dictionaryCreation(kmerdict, kmervect);
-	rvs_dict swp_kmerdict = swapPairs(kmerdict);
-	std::cout << "map ordered by value\n" << endl;
-	
-	/*if(fileout.is_open()) {	
-		fileout << "#kmer," << "k-mer && reverse-complement" << endl;
-		for(auto it = swp_kmerdict.begin(); it != swp_kmerdict.end(); it++) {
-			fileout << it->first << "," << it->second.toString() << endl;
-		}
-	} else std::cout << "Unable to open the output file\n";
-	fileout.close();
 
     for(auto itr= allfiles.begin(); itr != allfiles.end(); itr++)
     {
@@ -404,32 +345,40 @@ int main (int argc, char* argv[]) {
             fillstatus = pfq->fill_block(seqs, quals, upperlimit);
             size_t nreads = seqs.size();
             
-            for(size_t i=0; i<nreads; ++i)
+            for(size_t i=0; i<nreads; ++i) // coulb be not necessary
             {
                 size_t found;
                 found = seqs[i].length();
                 
                 // skip this sequence if the length is too short
-                if (seqs[i].length() <= KMER_LENGTH) {
+                if (seqs[i].length() <= KMER_LENGTH)
                     continue;
-                }
-
-                int nkmers = (seqs[i].length()-KMER_LENGTH+1);
-
-                kmers = Kmer::getKmers(seqs[i]); // calculate all the kmers
-                assert(kmers.size() == nkmers);
             }
         }
     }
+    std::cout << "fastq file parsed" << endl;
 
-    std::cout << "FASTQ file parsed" << endl;*/
+    /* TO DO: vector< pair<int,int> > occurrences;
+	For each read R
+     	For each k-mer km in R
+            if (km exists in Dictionary)
+                occurrences.push_back(indexof(R),indexof(km));
 
-	// Trie tree allocation 
-	// trieTree = (struct node*)calloc(1, sizeof(struct node));
+	Here, I am assuming that the dictionary is of type std::unordered_map<k-mer, int> so the indexof() 
+	call returns the integer that represents that k-mer. I also assume that k-mers are indexed in [0, ...., total_num_kmers-1] 
+	so the range is gap-free.
+	Reads are easier to map to integer indices, you can increment a counter every time you move to the next read (i.e. the 
+	outer loop iteration). Please also store these read-to-index mapping somewhere.*/
 
-	// Trie tree building 
-	// buildTrie(trieTree, data, length);
+	//trie tree allocation 
+	trieTree = (struct node*)calloc(1, sizeof(struct node));
+	//trie tree building 
+	buildTrie(trieTree, kmerdict);
+	std::cout << "kmers trie built" << endl;
 
+	//search matching
+	occurrences matches = matchingFoo(seqs, trieTree);
+	std::cout << "search ended" << endl;
 	// Search matches in trie tree 
 	// fastafile = fopen(argv[2], "r");
 	// if(fastafile != NULL) {
