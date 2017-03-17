@@ -34,6 +34,7 @@
 #include <ios>
 #include <unordered_map>
 #include <sys/stat.h>
+#include <map>
 
 #include "kmercode/hash_funcs.h"
 #include "kmercode/Kmer.hpp"
@@ -105,7 +106,7 @@ struct node {
 };
 
 typedef std::tuple<int, string, int> finalDataset;	 // <groupID, kmer, #matches> 
-typedef std::unordered_map<Kmer, int> dictionary;	 // <k-mer && reverse-complement, #kmers> 
+typedef std::map<Kmer, int> dictionary;	 // <k-mer && reverse-complement, #kmers> 
 typedef std::vector<Kmer> Kmers;
 
 // Function to add a kmer to build the trie 
@@ -249,16 +250,9 @@ void newDatasetGeneration(node *trieTree, int kmerLength, int level, char *buffe
 		newDatasetGeneration(trieTree->T, kmerLength, level+1, buffer, kmerData);
 	} 
 }
-// Function to sort the dataset based on groupID --> NOT NECESSARY
-void sortDataset(vector<finalDataset> &kmerData) {
-	
-	std::sort(kmerData.begin(), kmerData.end());
-	std::cout << "Final dataset sorted (based on groupID)" << endl;
-
-}
 
 // Function to create the dictionary 
-void dictionaryCreation(dictionary &kmerdict, std::vector<Kmer> &kmervect) {
+void dictionaryCreation(dictionary &kmerdict, Kmers &kmervect) {
 
 	dictionary::iterator it;
 	unsigned int count = 0;
@@ -287,8 +281,9 @@ void dictionaryCreation(dictionary &kmerdict, std::vector<Kmer> &kmervect) {
 	}
 
 	std::cout << "kmervect.twin() in the dict" << endl;
+
 	/*fileout << "k-mer && reverse-complement," << "#kmer" << endl;
-	for(auto it = kmerDictionary.begin(); it != kmerDictionary.end(); it++) {
+	for(auto it = kmerdict.begin(); it != kmerdict.end(); it++) {
 			fileout << it->first.toString() << "," << it->second << endl;
 	}*/
 }
@@ -319,7 +314,7 @@ int main (int argc, char* argv[]) {
 
 	ifstream filein (argv[1]);
 	FILE *fastafile;
-	//ofstream fileout ("dictionary.txt");
+	//ofstream fileout ("dict.csv");
 	int length;
 	int elem;
 	size_t i;
@@ -327,7 +322,7 @@ int main (int argc, char* argv[]) {
 	std::string kmerstr;
 	std::string line;
 	Kmer::set_k(KMER_LENGTH);
-	std::unordered_map <Kmer, int> kmerdict;
+	dictionary kmerdict;
 	std::vector<filedata> allfiles = GetFiles(argv[4]);
     size_t upperlimit = 1000; // 1 thousand reads at a time
     Kmer kmerfromstr;
@@ -374,9 +369,12 @@ int main (int argc, char* argv[]) {
 	} else cout << "Unable to open the input file.\n\n";
 	filein.close();
 
-	std::cout << "Filtered dataset parsed" << endl;
-
+	std::cout << "filtered dataset parsed of size: " << kmervect.size() << " elem" << endl;
 	dictionaryCreation(kmerdict, kmervect);
+	
+	/*if(fileout.is_open()) {	
+	} else std::cout << "Unable to open the output file\n";
+	fileout.close();*/
 
     /*for(auto itr= allfiles.begin(); itr != allfiles.end(); itr++)
     {
@@ -434,11 +432,6 @@ int main (int argc, char* argv[]) {
 
 	// Final dataset sorted 
 	//sortDataset(kmerData);
-
-	//if(fileout.is_open()) {
-	//} else std::cout << "Unable to open the output file\n";
-	
-	//	fileout.close();
 std::cout << "\n";
    
 return 0;
