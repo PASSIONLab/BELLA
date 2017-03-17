@@ -98,6 +98,7 @@ typedef std::tuple<int, string, int> finalDataset;	 // <groupID, kmer, #matches>
 typedef std::map<Kmer, int> dictionary;	 			 // <k-mer && reverse-complement, #kmers> 
 typedef std::vector<Kmer> Kmers;
 typedef std::vector<pair<int,unsigned int>> occurrences;
+typedef std::map<string,int> readtoindex_map;
 
 // Function to add a kmer to build the trie 
 void addKmer(node *trieTree, const char *kmer, int count) {
@@ -148,17 +149,20 @@ void buildTrie(node *trieTree, dictionary &src) {
 	}
 }
 
-//Function to search matches between reads and dictionary
-occurrences matchingFoo(vector<string> &seqs, node *root) {
+//Function to search matches between reads and dictionary 
+occurrences matchingFoo(vector<string> &seqs, node *root, readtoindex_map &readtoindex) { // TO FIX
 
 	occurrences indices;
+	readtoindex_map::iterator it = readtoindex.begin();
 
 	for (int i=0; i<seqs.size(); ++i) {
 
-		//Kmers twin_kmersfromreads; 					   // auxiliary variable
-        Kmers kmersfromreads = Kmer::getKmers(seqs[i]);    // calculate all the kmers
-        //twin_kmersfromreads = kmersfromreads.twin();     // calculate all the kmers reverse complement, not sure if I need reverse complement of the reads
-        //kmersfromreads.insert(kmersfromreads.end(), twin_kmersfromreads.begin(), twin_kmersfromreads.end()); // append the 2nd vct to the 1st
+        Kmers kmersfromreads = Kmer::getKmers(seqs[i]);        // calculate all the kmers
+        Kmers twin_kmersfromreads;   
+        for(int k = 0; k<kmersfromreads.size(); k++) {	 	   
+    	    twin_kmersfromreads[k] = kmersfromreads[k].twin(); // calculate all the kmers reverse complement, not sure if I need reverse complement of the reads
+        }      
+        kmersfromreads.insert(kmersfromreads.end(), twin_kmersfromreads.begin(), twin_kmersfromreads.end()); // append the 2nd vct to the 1st
         int nkmers = (seqs[i].length()-KMER_LENGTH+1);
         assert(kmersfromreads.size() == nkmers);
 
@@ -184,44 +188,17 @@ occurrences matchingFoo(vector<string> &seqs, node *root) {
 
 			}
 			// MATCH 
-			if(nodeTrie != NULL && level == KMER_LENGTH)	
+			if(nodeTrie != NULL && level == KMER_LENGTH)
 				indices.push_back(pair<int,unsigned int> (i, nodeTrie->kmerindex));	
 				// here I'm saving the index of the read and the index ok the kmer in dictionary
 				// not sure if it's correct --> alternative case: indices.push_back(indexof(i), indexof(kmersfromstring))
 		}
+		it = readtoindex.find(seqs[i]);
+		if(it == readtoindex.end())
+			it = readtoindex.insert(std::pair<string, int> (seqs[i], i)).first;
 	}
-
 	return indices;
 }
-
-/* Recursive function to save <kmer groupID, kmer string, kmer count> 
-void newDatasetGeneration(node *trieTree, int kmerLength, int level, char *buffer, vector<finalDataset> &kmerData) {
-
-	if(level == kmerLength) {
-		kmerData.push_back(finalDataset (trieTree->groupID, string(buffer), trieTree->count));
-		return;
-	}
-
-	if(trieTree->A != NULL) {	
-		buffer[level] = 'A';
-		newDatasetGeneration(trieTree->A, kmerLength, level+1, buffer, kmerData);
-	} 
-	
-	if(trieTree->C != NULL) {
-		buffer[level] = 'C';
-		newDatasetGeneration(trieTree->C, kmerLength, level+1, buffer, kmerData);
-	}
-
-	if(trieTree->G != NULL) {
-		buffer[level] = 'G';
-		newDatasetGeneration(trieTree->G, kmerLength, level+1, buffer, kmerData);
-	}
-	
-	if(trieTree->T != NULL) {
-		buffer[level] = 'T';
-		newDatasetGeneration(trieTree->T, kmerLength, level+1, buffer, kmerData);
-	} 
-} */
 
 // Function to create the dictionary 
 void dictionaryCreation(dictionary &kmerdict, Kmers &kmervect) {
@@ -239,7 +216,6 @@ void dictionaryCreation(dictionary &kmerdict, Kmers &kmervect) {
 		}
 		//std::cout << kmervect[i] << " " << count <<endl;
 	}
-
 	std::cout << "kmervect in the dict" << endl;
 
 	for(int i = 0; i<kmervect.size()-1; i++) {
@@ -251,7 +227,6 @@ void dictionaryCreation(dictionary &kmerdict, Kmers &kmervect) {
 			count++;
 		}
 	}
-
 	std::cout << "kmervect.twin() in the dict" << endl;
 }
 
@@ -281,7 +256,7 @@ int main (int argc, char* argv[]) {
 
 	ifstream filein (argv[1]);
 	FILE *fastafile;
-	ofstream fileout ("swpdict.csv");
+	ofstream fileout ("out.csv");
 	int length;
 	int elem;
 	size_t i;
@@ -358,18 +333,6 @@ int main (int argc, char* argv[]) {
     }
     std::cout << "fastq file parsed" << endl;
 
-    /* TO DO: vector< pair<int,int> > occurrences;
-	For each read R
-     	For each k-mer km in R
-            if (km exists in Dictionary)
-                occurrences.push_back(indexof(R),indexof(km));
-
-	Here, I am assuming that the dictionary is of type std::unordered_map<k-mer, int> so the indexof() 
-	call returns the integer that represents that k-mer. I also assume that k-mers are indexed in [0, ...., total_num_kmers-1] 
-	so the range is gap-free.
-	Reads are easier to map to integer indices, you can increment a counter every time you move to the next read (i.e. the 
-	outer loop iteration). Please also store these read-to-index mapping somewhere.*/
-
 	//trie tree allocation 
 	trieTree = (struct node*)calloc(1, sizeof(struct node));
 	//trie tree building 
@@ -377,26 +340,15 @@ int main (int argc, char* argv[]) {
 	std::cout << "kmers trie built" << endl;
 
 	//search matching
-	occurrences matches = matchingFoo(seqs, trieTree);
-	std::cout << "search ended" << endl;
-	// Search matches in trie tree 
-	// fastafile = fopen(argv[2], "r");
-	// if(fastafile != NULL) {
-	//	matchesSearching(fastafile, trieTree, length);
-	// } else cout << "Unable to open the fasta file\n";
-	
-	// fclose(fastafile);	
-    // Generation of the final dataset 
-	// buffer = (char*)malloc(sizeof(char)*(length+1));
-	// buffer[length] = '\0';
-	// newDatasetGeneration(trieTree, length, 0, buffer, kmerData);
-	// free(buffer); 
-	// cout << "Final dataset created" << endl; 	
+	readtoindex_map readtoindex;
+	occurrences matches = matchingFoo(seqs, trieTree, readtoindex);
+	std::cout << "search ended : occurrences vector and read-to-index map created" << endl;
 
-	// Trie tree de-allocation
-	// freeTrie(trieTree);
+	if(fileout.is_open()) {
+		for(int s = 0; s<matches.size(); s++) {
+			fileout << matches[s].first << "," << matches[s].second << endl; // doesn't work, TO FIX
+		}
+	}
 
-	// Final dataset sorted 
-	// sortDataset(kmerData);
 return 0;
 }
