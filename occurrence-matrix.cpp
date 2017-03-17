@@ -107,6 +107,7 @@ struct node {
 
 typedef std::tuple<int, string, int> finalDataset;	 // <groupID, kmer, #matches> 
 typedef std::map<Kmer, int> dictionary;	 // <k-mer && reverse-complement, #kmers> 
+typedef std::map<int, Kmer> rvs_dict;
 typedef std::vector<Kmer> Kmers;
 
 // Function to add a kmer to build the trie 
@@ -288,6 +289,18 @@ void dictionaryCreation(dictionary &kmerdict, Kmers &kmervect) {
 	}*/
 }
 
+// Funtion to swap key and value map to sort the map by the initial value (count)
+rvs_dict swapPairs(dictionary &src) {
+    
+    rvs_dict rvsmap;
+
+    for (auto&& item : src) {
+        rvsmap.emplace(item.second, item.first);
+    }
+
+    return rvsmap;
+};
+
 // De-allocation of the tree 
 void freeTrie(node *trieTree) {
 
@@ -314,7 +327,7 @@ int main (int argc, char* argv[]) {
 
 	ifstream filein (argv[1]);
 	FILE *fastafile;
-	//ofstream fileout ("dict.csv");
+	ofstream fileout ("swpdict.csv");
 	int length;
 	int elem;
 	size_t i;
@@ -345,12 +358,10 @@ int main (int argc, char* argv[]) {
 		exit(1);
 	}
 
-	cout << "\nThe input file is: " << argv[1] <<endl;
-	cout << "The psbsim depth is: 30" << endl;
-	cout << "The k-mer length is: " << length <<endl;
-	cout << "The reference genome is: Escherichia coli, " << argv[2] <<endl;
-	cout << "\n";
-
+	cout << "\ninput file : " << argv[1] <<endl;
+	cout << "psbsim depth : 30" << endl;
+	cout << "k-mer length : " << KMER_LENGTH <<endl;
+	cout << "reference genome : escherichia coli, " << argv[2] <<endl;
 	// filtering on kmers --> I want kmers which occur between 4 and 8 times 
 	if(filein.is_open()) {
 			while(getline(filein, line)) {
@@ -371,12 +382,18 @@ int main (int argc, char* argv[]) {
 
 	std::cout << "filtered dataset parsed of size: " << kmervect.size() << " elem" << endl;
 	dictionaryCreation(kmerdict, kmervect);
+	rvs_dict swp_kmerdict = swapPairs(kmerdict);
+	std::cout << "map ordered by value\n" << endl;
 	
 	/*if(fileout.is_open()) {	
+		fileout << "#kmer," << "k-mer && reverse-complement" << endl;
+		for(auto it = swp_kmerdict.begin(); it != swp_kmerdict.end(); it++) {
+			fileout << it->first << "," << it->second.toString() << endl;
+		}
 	} else std::cout << "Unable to open the output file\n";
-	fileout.close();*/
+	fileout.close();
 
-    /*for(auto itr= allfiles.begin(); itr != allfiles.end(); itr++)
+    for(auto itr= allfiles.begin(); itr != allfiles.end(); itr++)
     {
         ParallelFASTQ *pfq = new ParallelFASTQ();
         pfq->open(itr->filename, false, itr->filesize);
@@ -431,8 +448,6 @@ int main (int argc, char* argv[]) {
 	// freeTrie(trieTree);
 
 	// Final dataset sorted 
-	//sortDataset(kmerData);
-std::cout << "\n";
-   
+	// sortDataset(kmerData);
 return 0;
 }
