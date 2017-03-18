@@ -150,7 +150,7 @@ void buildTrie(node *trieTree, dictionary &src) {
 }
 
 //Function to search matches between reads and dictionary 
-occurrences matchingFoo(std::vector<string> &reads, node *root, readtoindex_map &readtoindex) { // TO FIX
+occurrences matchingFoo(std::vector<string> &reads, node *root, readtoindex_map &readtoindex) {
 
 	occurrences indices;
 	readtoindex_map::iterator it = readtoindex.begin();
@@ -195,7 +195,7 @@ occurrences matchingFoo(std::vector<string> &reads, node *root, readtoindex_map 
 		}
 		it = readtoindex.find(reads[i]);
 		if(it == readtoindex.end())
-			it = readtoindex.insert(std::pair<string, int> (reads[i], i)).first;
+			it = readtoindex.insert(std::pair<string, int> (reads[i], i)).first; // here I'm saving read-to-index map
 	}
 	return indices;
 }
@@ -211,10 +211,8 @@ void dictionaryCreation(dictionary &kmerdict, Kmers &kmervect) {
 
 		if(it == kmerdict.end()) {
 			it = kmerdict.insert(std::pair<Kmer, int> (kmervect[i], count)).first;
-			//std::cout << kmervect[i] << endl;
 			count++;
 		}
-		//std::cout << kmervect[i] << " " << count <<endl;
 	}
 	std::cout << "kmervect in the dict" << endl;
 
@@ -257,7 +255,6 @@ int main (int argc, char* argv[]) {
 	ifstream filein (argv[1]);
 	FILE *fastafile;
 	ofstream fileout ("out.csv");
-	int length;
 	int elem;
 	size_t i;
 	char *buffer;
@@ -265,30 +262,20 @@ int main (int argc, char* argv[]) {
 	std::string line;
 	Kmer::set_k(KMER_LENGTH);
 	dictionary kmerdict;
-	std::vector<filedata> allfiles = GetFiles(argv[4]);
+	std::vector<filedata> allfiles = GetFiles(argv[3]);
     size_t upperlimit = 1000; // 1 thousand reads at a time
     Kmer kmerfromstr;
     Kmers kmervect;
     std::vector<string> seqs;
-    std::vector<string> quals; // not necessary I guess
+    std::vector<string> quals;
     Kmers kmersfromreads;
-	struct node *trieTree;
-
-	if(argc == 5){ // this can be deleted : length --> KMER_LENGTH
-	
-		length = atoi(argv[3]);
-		
-	}
-	else{
-		perror("Erroneous input.");
-		exit(1);
-	}
+	struct node *trieTree; 
 
 	cout << "\ninput file : " << argv[1] <<endl;
 	cout << "psbsim depth : 30" << endl;
 	cout << "k-mer length : " << KMER_LENGTH <<endl;
 	cout << "reference genome : escherichia coli, " << argv[2] <<endl;
-	// filtering on kmers --> I want kmers which occur between 4 and 8 times 
+	// filtering on kmers --> kmers which occur between 4 and 8 times 
 	if(filein.is_open()) {
 			while(getline(filein, line)) {
 				if(line.length() == 0)
@@ -327,14 +314,17 @@ int main (int argc, char* argv[]) {
                 // skip this sequence if the length is too short
                 if (seqs[i].length() <= KMER_LENGTH)
                     continue;
+
+                // debugging
+    			// std::cout << seqs.size() << endl; // always 1
             }
+            // std::cout << seqs.size() << endl; always 1 until the last iteration which is equal to 0 
         } 
     }
-
     std::cout << "fastq file parsed" << endl;
-
+    // debugging
     if(seqs.empty()) 
-    	std::cout << "seqs vector is empty" << endl; // IT IS AN EMPTY VECTOR
+    	std::cout << "seqs vector is empty" << endl; // it's an empty vector
 
 	//trie tree allocation 
 	trieTree = (struct node*)calloc(1, sizeof(struct node));
@@ -350,9 +340,11 @@ int main (int argc, char* argv[]) {
 
 	/*if(fileout.is_open()) {
 		for(int s = 0; s<matches.size(); s++) {
-			fileout << matches[s].first << "," << matches[s].second << endl; // doesn't work, TO FIX
+			fileout << matches[s].first << "," << matches[s].second << endl; // doesn't work --> seqs is an empty vector
 		}
 	}*/
+
+	freeTrie(trieTree);
 
 return 0;
 }
