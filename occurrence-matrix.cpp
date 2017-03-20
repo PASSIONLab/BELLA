@@ -65,25 +65,18 @@ std::vector<filedata>  GetFiles(char *filename) {
     return filesview;
 }
 
-typedef std::map<Kmer,size_t> dictionary;	 								 // <k-mer && reverse-complement, #kmers> 
+typedef std::map<Kmer,size_t> dictionary;	 	// <k-mer && reverse-complement, #kmers>
 typedef std::vector<Kmer> Kmers;
 
-// Function to create the dictionary 
-void dictionaryCreation(dictionary &kmerdict, Kmers &kmervect) {
-
-	dictionary::iterator it;
-	size_t count = 0;
-
-	for(size_t i = 0; i<kmervect.size()-1; i++) {
-
-		it = kmerdict.find(kmervect[i].rep());
-
-		if(it == kmerdict.end()) {
-			it = kmerdict.insert(std::pair<Kmer,size_t> (kmervect[i].rep(), count)).first;
-			count++;
-		}
+// Function to create the dictionary
+// assumption: kmervect has unique entries
+void dictionaryCreation(dictionary &kmerdict, Kmers &kmervect)
+{
+	for(size_t i = 0; i<kmervect.size(); i++)
+    {
+        kmerdict.insert(make_pair(kmervect[i].rep(), i));
 	}
-	std::cout << "kmervect.rep() in the dict" << endl;
+	cout << "kmervect.rep() in the dict" << endl;
 }
 
 int main (int argc, char* argv[]) {

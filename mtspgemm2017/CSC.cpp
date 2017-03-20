@@ -191,6 +191,54 @@ CSC<IT,NT>::CSC(Triple<IT,NT> * triples, IT mynnz, IT m, IT n):nnz(mynnz),rows(m
 }
 
 
+template <class IT, class NT>
+template <typename AddOperation>
+CSC (vector< tuple<IT,IT,NT> > & tuple, IT m, IT n, AddOperation addop)
+{
+    nnz = tuple.size(); // not yet correct
+    
+    colptr = new IT[cols+1]();
+    rowids = new IT[nnz];
+    values = new NT[nnz];
+    vector< pair<IT,NT> > tosort (nnz);
+    
+    IT * work = new IT[cols];	// workspace
+    std::fill(work, work+cols, (IT) 0);
+    
+    for (IT k = 0 ; k < nnz ; ++k)
+    {
+        IT tmp =  get<1>(tuple[k]);
+        work [ tmp ]++ ;		// column counts (i.e, w holds the "col difference array")
+    }
+    
+    if(nnz > 0)
+    {
+        colptr[cols] = CumulativeSum (work, cols) ;		// cumulative sum of w
+        copy(work, work+cols, colptr);
+        IT last;
+        for (IT k = 0 ; k < nnz ; ++k)
+        {
+            tosort[ work[get<1>(tuple[k])]++] = make_pair( get<0>(tuple[k]), get<2>(tuple[k]));
+        }
+#pragma omp parallel for
+        for(int i=0; i< cols; ++i)
+        {
+            sort(tosort.begin() + colptr[i], tosort.begin() + colptr[i+1]);
+            
+            typename vector<pair<IT,NT> >::iterator itr;	// iterator is a dependent name
+            IT ind;
+            for(itr = tosort.begin() + colptr[i], ind = colptr[i]; itr != tosort.begin() + colptr[i+1]; ++itr, ++ind)
+            {
+                rowids[ind] = itr->first;
+                values[ind] = itr->second;
+            }
+        }
+    }
+    delete [] work;
+    
+}
+
+
 // Construct a Csc object from parallel arrays
 template <class IT, class NT>
 CSC<IT,NT>::CSC(IT * ri, IT * ci, NT * val, IT mynnz, IT m, IT n):nnz(mynnz),rows(m),cols(n)

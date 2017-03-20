@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <algorithm>
 #include <cassert>
+#include <tuple>
 #include "Deleter.h"
 #include "HeapEntry.h"
 
@@ -31,6 +32,10 @@ public:
         values = new NT[nnz];
     }
     CSC (Triple<IT,NT> * triples, IT mynnz, IT m, IT n);
+    
+    template <typename AddOperation>
+    CSC (std::tuple<IT,IT,NT> & tuple, IT m, IT n, AddOperation addop);
+
     CSC(graph & G);
     CSC (IT * ri, IT * ci, NT * val, IT mynnz, IT m, IT n);
     CSC (const CSC<IT,NT> & rhs);		// copy constructor
