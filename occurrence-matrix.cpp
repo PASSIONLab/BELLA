@@ -1,19 +1,3 @@
-/*
- * Copyright 2017 Giulia Guidi
- * 
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- * 
- *  http://www.apache.org/licenses/LICENSE-2.0
- * 
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
-*/
-
 #include <iostream>
 #include <cstdio>
 #include <cstdlib>
@@ -54,16 +38,15 @@ struct filedata {
     size_t filesize;
 };
 
-std::vector<filedata>  GetFiles(char *filename)
-{
+std::vector<filedata>  GetFiles(char *filename) {
     int64_t totalsize = 0;
     int numfiles = 0;
-    vector< filedata > filesview;
+    std::vector<filedata> filesview;
     
     filedata fdata;
     ifstream allfiles(filename);
     if(!allfiles.is_open()) {
-        cerr << "Could not open " << filename << endl;
+        cerr << "could not open " << filename << endl;
         exit(1);
     }
     allfiles.getline(fdata.filename,MAX_FILE_PATH);
@@ -82,181 +65,33 @@ std::vector<filedata>  GetFiles(char *filename)
     return filesview;
 }
 
-struct node {
-
-	node *A;
-	node *C;
-	node *G;
-	node *T;
-	unsigned int kmerindex;
-
-	node(): A(NULL), C(NULL), G(NULL), T(NULL), kmerindex(0) {
-	}
-};
-
-typedef std::tuple<int, string, int> finalDataset;	 // <groupID, kmer, #matches> 
-typedef std::map<Kmer, int> dictionary;	 			 // <k-mer && reverse-complement, #kmers> 
+typedef std::map<Kmer,size_t> dictionary;	 								 // <k-mer && reverse-complement, #kmers> 
 typedef std::vector<Kmer> Kmers;
-typedef std::vector<pair<int,unsigned int>> occurrences;
-typedef std::map<string,int> readtoindex_map;
-
-// Function to add a kmer to build the trie 
-void addKmer(node *trieTree, const char *kmer, int count) {
-
-	node *traverse = trieTree;
-	int i;
-
-	for(i=0; i<KMER_LENGTH; i++) {
-	
-		if(kmer[i] == 'A') {
-			if(traverse->A == NULL) {
-				traverse->A = (struct node*)calloc(1, sizeof(struct node));
-			}
-			traverse = traverse->A;
-		}	
-		else if(kmer[i] == 'C') {
-			if(traverse->C == NULL) {
-				traverse->C = (struct node*)calloc(1, sizeof(struct node));
-			}
-			traverse = traverse->C;
-		}
-		else if(kmer[i] == 'G') {
-			if(traverse->G == NULL) {
-				traverse->G = (struct node*)calloc(1, sizeof(struct node));
-			}
-			traverse = traverse->G;
-		}
-		else if(kmer[i] == 'T') {
-			if(traverse->T == NULL) {
-				traverse->T = (struct node*)calloc(1, sizeof(struct node));
-			}
-			traverse = traverse->T;
-		}
-	}
-	traverse->kmerindex = count;
-}
-
-// Function to build the trie 
-void buildTrie(node *trieTree, dictionary &src) {
-
-	node *trie = trieTree;
-	dictionary::iterator it;
-
-	for(it=src.begin(); it!=src.end(); it++) {
-		
-		addKmer(trie, it->first.toString().c_str(), it->second);
-
-	}
-}
-
-//Function to search matches between reads and dictionary 
-occurrences matchingFoo(std::vector<string> &reads, node *root, readtoindex_map &readtoindex) {
-
-	occurrences indices;
-	readtoindex_map::iterator it = readtoindex.begin();
-
-	for (int i=0; i<reads.size(); ++i) {
-
-        Kmers kmersfromreads = Kmer::getKmers(reads[i]);        // calculate all the kmers
-        Kmers twin_kmersfromreads;   
-        for(int k = 0; k<kmersfromreads.size(); k++) {	 	   
-    	    twin_kmersfromreads[k] = kmersfromreads[k].twin(); // calculate all the kmers reverse complement, not sure if I need reverse complement of the reads
-        }      
-        kmersfromreads.insert(kmersfromreads.end(), twin_kmersfromreads.begin(), twin_kmersfromreads.end()); // append the 2nd vct to the 1st
-        int nkmers = (reads[i].length()-KMER_LENGTH+1);
-        assert(kmersfromreads.size() == nkmers);
-
-        for(int j=0; j<nkmers; j++) {
-
-        	node *nodeTrie = root;
-			int level;
-			
-			// level = depth position of correct value
-			for(level = 0; (level<KMER_LENGTH) && (nodeTrie != NULL); level++) {
-				
-				const char *base = kmersfromreads[j].toString().c_str();
-				
-				if(base[level] == 'A')
-					nodeTrie = nodeTrie->A;
-				else if(base[level] == 'C')
-					nodeTrie = nodeTrie->C;
-				else if(base[level] == 'G')
-					nodeTrie = nodeTrie->G;
-				else if(base[level] == 'T')
-					nodeTrie = nodeTrie->T;
-				else break;
-
-			}
-			// MATCH 
-			if(nodeTrie != NULL && level == KMER_LENGTH)
-				indices.push_back(pair<int,unsigned int> (i, nodeTrie->kmerindex));	
-				// here I'm saving the index of the read and the index ok the kmer in dictionary
-				// not sure if it's correct --> alternative case: indices.push_back(indexof(i), indexof(kmersfromstring))
-		}
-		it = readtoindex.find(reads[i]);
-		if(it == readtoindex.end())
-			it = readtoindex.insert(std::pair<string, int> (reads[i], i)).first; // here I'm saving read-to-index map
-	}
-	return indices;
-}
 
 // Function to create the dictionary 
 void dictionaryCreation(dictionary &kmerdict, Kmers &kmervect) {
 
 	dictionary::iterator it;
-	unsigned int count = 0;
+	size_t count = 0;
 
-	for(int i = 0; i<kmervect.size()-1; i++) { // TO FIX: EXIT THE LOOP BUT TAKE A LOT OF TIME
-		it = kmerdict.find(kmervect[i]);
+	for(size_t i = 0; i<kmervect.size()-1; i++) {
+
+		it = kmerdict.find(kmervect[i].rep());
 
 		if(it == kmerdict.end()) {
-			it = kmerdict.insert(std::pair<Kmer, int> (kmervect[i], count)).first;
+			it = kmerdict.insert(std::pair<Kmer,size_t> (kmervect[i].rep(), count)).first;
 			count++;
 		}
 	}
-	std::cout << "kmervect in the dict" << endl;
-
-	for(int i = 0; i<kmervect.size()-1; i++) {
-
-		it = kmerdict.find(kmervect[i].twin());
-
-		if(it == kmerdict.end()) {
-			it = kmerdict.insert(std::pair<Kmer, int> (kmervect[i].twin(), count)).first;
-			count++;
-		}
-	}
-	std::cout << "kmervect.twin() in the dict" << endl;
-}
-
-// De-allocation of the tree 
-void freeTrie(node *trieTree) {
-
-	if(trieTree->A != NULL) {	
-		freeTrie(trieTree->A);
-	} 
-	
-	if(trieTree->C != NULL) {
-		freeTrie(trieTree->C);
-	}
-
-	if(trieTree->G != NULL) {
-		freeTrie(trieTree->G);
-	}
-	
-	if(trieTree->T != NULL) {
-		freeTrie(trieTree->T);
-	} 
-
-	free(trieTree);
+	std::cout << "kmervect.rep() in the dict" << endl;
 }
 
 int main (int argc, char* argv[]) {
 
 	ifstream filein (argv[1]);
 	FILE *fastafile;
-	ofstream fileout ("out.csv");
+	//ofstream fileout ("occurrences.csv");
 	int elem;
-	size_t i;
 	char *buffer;
 	std::string kmerstr;
 	std::string line;
@@ -269,12 +104,14 @@ int main (int argc, char* argv[]) {
     std::vector<string> seqs;
     std::vector<string> quals;
     Kmers kmersfromreads;
-	struct node *trieTree; 
+    std::vector<tuple<size_t,size_t,size_t>> occurrences; 
+	//struct node *trieTree; 
 
 	cout << "\ninput file : " << argv[1] <<endl;
 	cout << "psbsim depth : 30" << endl;
 	cout << "k-mer length : " << KMER_LENGTH <<endl;
 	cout << "reference genome : escherichia coli, " << argv[2] <<endl;
+
 	// filtering on kmers --> kmers which occur between 4 and 8 times 
 	if(filein.is_open()) {
 			while(getline(filein, line)) {
@@ -285,66 +122,60 @@ int main (int argc, char* argv[]) {
 				elem = stoi(substring);
 				getline(filein, kmerstr); 
 				if(elem>3 && elem<9) {	
-					//strtoChar = kmerstr.c_str();
 					kmerfromstr.set_kmer(kmerstr.c_str());
 					kmervect.push_back(kmerfromstr);
 				}									
 			}
-	} else cout << "Unable to open the input file.\n\n";
+	} else std::cout << "unable to open the input file\n";
 	filein.close();
 
 	std::cout << "filtered dataset parsed of size: " << kmervect.size() << " elem" << endl;
 	dictionaryCreation(kmerdict, kmervect);
 
-    for(auto itr= allfiles.begin(); itr != allfiles.end(); itr++) {
+    for(auto itr=allfiles.begin(); itr!=allfiles.end(); itr++) {
 
         ParallelFASTQ *pfq = new ParallelFASTQ();
         pfq->open(itr->filename, false, itr->filesize);
+
+        size_t read_id = 0;
         
         size_t fillstatus = 1;
         while(fillstatus) {
 
             fillstatus = pfq->fill_block(seqs, quals, upperlimit);
             size_t nreads = seqs.size();
+            read_id++;
             
-            for(size_t i=0; i<nreads; ++i) {
-                size_t found;
-                found = seqs[i].length();
+            for(size_t i=0; i<nreads; i++) {
+            	// remember that the last valid position is length()-1
+                size_t len = seqs[i].length();
                 
                 // skip this sequence if the length is too short
-                if (seqs[i].length() <= KMER_LENGTH)
+                if (len <= KMER_LENGTH)
                     continue;
 
-                // debugging
-    			// std::cout << seqs.size() << endl; // always 1
+                for(size_t j=0; j<=len-KMER_LENGTH; j++)  {
+
+                    std::string kmerstrfromfastq = seqs[i].substr(j, KMER_LENGTH);
+                    Kmer mykmer(kmerstrfromfastq.c_str());
+                    // remember to use only ::rep() when building kmerdict as well
+                    Kmer lexsmall = mykmer.rep();      
+
+                    auto found = kmerdict.find(lexsmall);
+                    if(found != kmerdict.end()) {
+                    	occurrences.push_back(std::make_tuple(read_id, found->second, j)); //vector<tuple<read_id,kmer_id,pos_in_read>
+                    }
+                }
             }
-            // std::cout << seqs.size() << endl; always 1 until the last iteration which is equal to 0 
-        } 
+        }
     }
-    std::cout << "fastq file parsed" << endl;
-    // debugging
-    if(seqs.empty()) 
-    	std::cout << "seqs vector is empty" << endl; // it's an empty vector
+    std::cout << "fastq file parsed\nsearch ended : vector<tuple<read_id,kmer_id,pos_in_read> created" << endl;
 
-	//trie tree allocation 
-	trieTree = (struct node*)calloc(1, sizeof(struct node));
-
-	//trie tree building 
-	buildTrie(trieTree, kmerdict);
-	std::cout << "kmers trie built" << endl;
-
-	//search matching
-	readtoindex_map readtoindex;
-	occurrences matches = matchingFoo(seqs, trieTree, readtoindex);
-	std::cout << "search ended : occurrences vector and read-to-index map created" << endl;
-
-	/*if(fileout.is_open()) {
-		for(int s = 0; s<matches.size(); s++) {
-			fileout << matches[s].first << "," << matches[s].second << endl; // doesn't work --> seqs is an empty vector
+    /*if(fileout.is_open()) {
+    	for(size_t a = 0; a < occurrences.size(); a++) {
+		fileout << std::get<0>(occurrences[a]) << " " << std::get<1>(occurrences[a]) << " " << std::get<2>(occurrences[a]) << endl;
 		}
-	}*/
+	} else std::cout << "unable to open the output file\n";*/
 
-	freeTrie(trieTree);
-
-return 0;
-}
+	return 0;
+} 
