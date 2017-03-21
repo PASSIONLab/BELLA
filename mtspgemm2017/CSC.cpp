@@ -193,9 +193,57 @@ CSC<IT,NT>::CSC(Triple<IT,NT> * triples, IT mynnz, IT m, IT n):nnz(mynnz),rows(m
 
 template <class IT, class NT>
 template <typename AddOperation>
-CSC (vector< tuple<IT,IT,NT> > & tuple, IT m, IT n, AddOperation addop)
+void CSC<IT,NT>::MergeDuplicates (AddOperation addop)
 {
-    nnz = tuple.size(); // not yet correct
+    vector<IT> diff(cols,0);
+    std::adjacent_difference (colptr+1, colptr+cols+1, diff.begin());
+    
+    vector< vector<IT> > v_rowids;
+    vector< vector<NT> > v_values;
+    
+    if(nnz > 0)
+    {
+        #pragma omp parallel for
+        for(int i=0; i< cols; ++i)
+        {
+            for(size_t j= colptr[i]; j < colptr[i+1]; ++j)
+            {
+                v_rowids[i].push_back(rowids[j]);
+                v_values[i].push_back(values[j]);
+                while(j < colptr[i+1]-1 && rowids[j] == rowids[j+1])
+                {
+                    v_values[i].back() = addop(v_values[i].back(), values[j+1]);
+                    j++;    // increment j
+                    diff[i]--;
+                }
+            }
+        }
+    }
+    colptr[cols] = CumulativeSum (diff.data(), cols) ;		// cumulative sum of diff
+    copy(diff.begin(), diff.end(), colptr);  // update the column pointers
+    delete [] rowids;
+    delete [] values;
+    cout << "Old number of nonzeros before merging: " << nnz << endl;
+    nnz  = colptr[cols];
+    cout << "New number of nonzeros after merging: " << nnz << endl;
+    
+    rowids = new IT[nnz];
+    values = new NT[nnz];
+    
+#pragma omp parallel for
+    for(int i=0; i< cols; ++i)
+    {
+        copy(v_rowids[i].begin(), v_rowids[i].end(), rowids+colptr[i]);
+        copy(v_values[i].begin(), v_values[i].end(), values+colptr[i]);
+    }
+}
+
+//! this version handles duplicates in the input
+template <class IT, class NT>
+template <typename AddOperation>
+CSC<IT,NT>::CSC (vector< tuple<IT,IT,NT> > & tuple, IT m, IT n, AddOperation addop)
+{
+    NT nnz = tuple.size(); // there might be duplicates
     
     colptr = new IT[cols+1]();
     rowids = new IT[nnz];
@@ -213,7 +261,7 @@ CSC (vector< tuple<IT,IT,NT> > & tuple, IT m, IT n, AddOperation addop)
     
     if(nnz > 0)
     {
-        colptr[cols] = CumulativeSum (work, cols) ;		// cumulative sum of w
+        colptr[cols] = CumulativeSum (work, cols) ;		// cumulative sum of work
         copy(work, work+cols, colptr);
         IT last;
         for (IT k = 0 ; k < nnz ; ++k)
@@ -235,7 +283,7 @@ CSC (vector< tuple<IT,IT,NT> > & tuple, IT m, IT n, AddOperation addop)
         }
     }
     delete [] work;
-    
+    MergeDuplicates(addop);
 }
 
 

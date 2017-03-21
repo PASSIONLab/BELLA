@@ -34,7 +34,10 @@ public:
     CSC (Triple<IT,NT> * triples, IT mynnz, IT m, IT n);
     
     template <typename AddOperation>
-    CSC (std::tuple<IT,IT,NT> & tuple, IT m, IT n, AddOperation addop);
+    CSC (vector< tuple<IT,IT,NT> > & tuple, IT m, IT n, AddOperation addop);
+    
+    template <typename AddOperation>
+    void MergeDuplicates (AddOperation addop);
 
     CSC(graph & G);
     CSC (IT * ri, IT * ci, NT * val, IT mynnz, IT m, IT n);

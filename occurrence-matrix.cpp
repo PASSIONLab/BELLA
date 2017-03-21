@@ -27,6 +27,12 @@
 #include "kmercode/fq_reader.h"
 #include "kmercode/ParallelFASTQ.h"
 
+#include "mtspgemm2017/utility.h"
+#include "mtspgemm2017/CSC.h"
+#include "mtspgemm2017/CSR.h"
+#include "mtspgemm2017/IO.h"
+#include "mtspgemm2017/multiply.h"
+
 #define LSIZE 16000
 #define KMER_LENGTH 15
 
@@ -125,12 +131,11 @@ int main (int argc, char* argv[]) {
 	std::cout << "filtered dataset parsed of size: " << kmervect.size() << " elem" << endl;
 	dictionaryCreation(kmerdict, kmervect);
 
+    size_t read_id = 0; // read_id needs to be global (not just per file)
     for(auto itr=allfiles.begin(); itr!=allfiles.end(); itr++) {
 
         ParallelFASTQ *pfq = new ParallelFASTQ();
         pfq->open(itr->filename, false, itr->filesize);
-
-        size_t read_id = 0;
         
         size_t fillstatus = 1;
         while(fillstatus) {
@@ -163,6 +168,7 @@ int main (int argc, char* argv[]) {
         }
     }
     std::cout << "fastq file parsed\nsearch ended : vector<tuple<read_id,kmer_id,pos_in_read> created" << endl;
+    CSC<size_t, size_t> spmat(occurrences, read_id, kmervect.size(), plus<size_t>()); // simple non-vector version (to see if it compiles)
 
     /*if(fileout.is_open()) {
     	for(size_t a = 0; a < occurrences.size(); a++) {
