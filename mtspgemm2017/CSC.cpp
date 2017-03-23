@@ -2,6 +2,7 @@
 #include "utility.h"
 #include "BitMap.h"
 #include <algorithm>
+#include <numeric>
 using namespace std;
 
 // copy constructor

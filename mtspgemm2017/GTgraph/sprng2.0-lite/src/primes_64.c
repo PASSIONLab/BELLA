@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "primes_64.h"
 #include "primelist_64.h"
 

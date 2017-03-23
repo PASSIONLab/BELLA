@@ -2,7 +2,7 @@
 # Common variables
 #################### 
 #CC = icc
-CC = gcc-4.9
+CC = gcc
 #CC = cc
 MAKE = make
 #MAKE = gmake
