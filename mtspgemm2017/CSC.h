@@ -17,36 +17,36 @@ extern "C" {
 
 using namespace std;
 
-template <class IT, class NT>
+template <class IT, class NT> // IT, NT li dichiaro runtime (polimorfismo parametrico)
 class CSC
 {
 public:
     CSC():nnz(0), rows(0), cols(0) {}
-    CSC(IT mynnz, IT m, IT n, int nt):nnz(mynnz),rows(m),cols(n)
+    CSC(IT mynnz, IT m, IT n, int nt):nnz(mynnz),rows(m),cols(n) // costruttore di default 
     {
         // Constructing empty Csc objects (size = 0) are not allowed.
         assert(nnz != 0 && cols != 0);
         
-        colptr = new IT[cols+1];
+        colptr = new IT[cols+1]; 
         rowids = new IT[nnz];
         values = new NT[nnz];
     }
-    CSC (Triple<IT,NT> * triples, IT mynnz, IT m, IT n);
+    CSC (Triple<IT,NT> * triples, IT mynnz, IT m, IT n); // altro costruttore di default
+    
+    template <typename AddOperation> 
+    CSC (vector<tuple<IT,IT,NT> > & tuple, IT m, IT n, AddOperation addop); // costruttore
     
     template <typename AddOperation>
-    CSC (vector< tuple<IT,IT,NT> > & tuple, IT m, IT n, AddOperation addop);
-    
-    template <typename AddOperation>
-    void MergeDuplicates (AddOperation addop);
+    void MergeDuplicates (AddOperation addop); // 1st method
 
     CSC(graph & G);
     CSC (IT * ri, IT * ci, NT * val, IT mynnz, IT m, IT n);
     CSC (const CSC<IT,NT> & rhs);		// copy constructor
     CSC<IT,NT> & operator=(const CSC<IT,NT> & rhs);	// assignment operator
-    bool operator==(const CSC<IT,NT> & rhs);
+    bool operator==(const CSC<IT,NT> & rhs); // ridefinizione ==
     
     
-    ~CSC()
+    ~CSC() // distruttore
     {
         if( nnz > 0 )
             DeleteAll(rowids, values);

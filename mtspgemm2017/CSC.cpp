@@ -6,13 +6,13 @@
 using namespace std;
 
 // copy constructor
-template <class IT, class NT>
+template <class IT, class NT> 
 CSC<IT,NT>::CSC (const CSC<IT,NT> & rhs): nnz(rhs.nnz), rows(rhs.rows), cols(rhs.cols)
 {
 	if(nnz > 0)
 	{
-		values = new NT[nnz];
-		rowids = new IT[nnz];
+		values = new NT[nnz]; // contiene i non zeri
+		rowids = new IT[nnz]; // ti dice in che righe  
         copy(rhs.values, rhs.values + nnz, values);
         copy(rhs.rowids, rhs.rowids + nnz, rowids);
 	}
@@ -24,7 +24,7 @@ CSC<IT,NT>::CSC (const CSC<IT,NT> & rhs): nnz(rhs.nnz), rows(rhs.rows), cols(rhs
 }
 
 template <class IT, class NT>
-CSC<IT,NT> & CSC<IT,NT>::operator= (const CSC<IT,NT> & rhs)
+CSC<IT,NT> & CSC<IT,NT>::operator= (const CSC<IT,NT> & rhs) // ridefinisce operatore = di assegnazione
 {
 	if(this != &rhs)		
 	{
@@ -147,7 +147,7 @@ CSC<IT,NT>::CSC(graph & G):nnz(G.m), rows(G.n), cols(G.n)
 	delete [] work;
 }
 
-// Construct a Csc object from an array of "triple"s
+// Construct a Csc object from an array of "triple"s 
 template <class IT, class NT>
 CSC<IT,NT>::CSC(Triple<IT,NT> * triples, IT mynnz, IT m, IT n):nnz(mynnz),rows(m),cols(n)
 {
@@ -242,38 +242,38 @@ void CSC<IT,NT>::MergeDuplicates (AddOperation addop)
 //! this version handles duplicates in the input
 template <class IT, class NT>
 template <typename AddOperation>
-CSC<IT,NT>::CSC (vector< tuple<IT,IT,NT> > & tuple, IT m, IT n, AddOperation addop)
+// n = kmerdict.size(), m = read_id, nnz = tuple.size()
+CSC<IT,NT>::CSC (vector< tuple<IT,IT,NT> > & tuple, IT m, IT n, AddOperation addop): rows(m), cols(n)
 {
     NT nnz = tuple.size(); // there might be duplicates
-    
+
     colptr = new IT[cols+1]();
     rowids = new IT[nnz];
     values = new NT[nnz];
     vector< pair<IT,NT> > tosort (nnz);
     
     IT * work = new IT[cols];	// workspace
-    std::fill(work, work+cols, (IT) 0);
-    
+    std::fill(work, work+cols, (IT) 0); // riempi di 0 tutto
+
     for (IT k = 0 ; k < nnz ; ++k)
     {
-        IT tmp =  get<1>(tuple[k]);
-        work [ tmp ]++ ;		// column counts (i.e, w holds the "col difference array")
+        IT tmp =  get<1>(tuple[k]); // temp = read_id
+        work [ tmp ]++ ;	       	// column counts (i.e, w holds the "col difference array") 
     }
-    
+
     if(nnz > 0)
     {
-        colptr[cols] = CumulativeSum (work, cols) ;		// cumulative sum of work
+        colptr[cols] = CumulativeSum (work, cols) ;		// cumulative sum of work, puntatore all'ultima posizione contiene 
         copy(work, work+cols, colptr);
         IT last;
         for (IT k = 0 ; k < nnz ; ++k)
         {
-            tosort[ work[get<1>(tuple[k])]++] = make_pair( get<0>(tuple[k]), get<2>(tuple[k]));
+            tosort[work[get<1>(tuple[k])]++] = make_pair( get<0>(tuple[k]), get<2>(tuple[k]));
         }
 #pragma omp parallel for
         for(int i=0; i< cols; ++i)
         {
             sort(tosort.begin() + colptr[i], tosort.begin() + colptr[i+1]);
-            
             typename vector<pair<IT,NT> >::iterator itr;	// iterator is a dependent name
             IT ind;
             for(itr = tosort.begin() + colptr[i], ind = colptr[i]; itr != tosort.begin() + colptr[i+1]; ++itr, ++ind)
@@ -283,8 +283,16 @@ CSC<IT,NT>::CSC (vector< tuple<IT,IT,NT> > & tuple, IT m, IT n, AddOperation add
             }
         }
     }
+        for(IT j = 0; j<nnz; ++j){
+
+            std::cout << " read_id : " << rowids[j] << " kmer_id : " << get<1>(tuple[j]) << " pos_in_read : " << values[j] << endl;
+            // TO DO: as value I want a pair<kmer_id, vector<posix_in_read>>
+
+        }
+
+
     delete [] work;
-    MergeDuplicates(addop);
+    //MergeDuplicates(addop);
 }
 
 
@@ -382,10 +390,6 @@ bool CSC<IT,NT>::operator==(const CSC<IT,NT> & rhs)
   return same;
 }
 
-
-
-
-
 template <class IT, class NT>
 void CSC<IT,NT>::intersect (const IT* rowids_in, const NT* values_in, const IT len_in,
                             const IT* ri, const IT len_ri,
@@ -416,9 +420,6 @@ void CSC<IT,NT>::intersect (const IT* rowids_in, const NT* values_in, const IT l
     }
     
 }
-
-
-
 
 template <class IT, class NT>
 CSC<IT,NT> CSC<IT,NT>::SpRef2 (const IT* ri, const IT rilen, const IT* ci, const IT cilen)

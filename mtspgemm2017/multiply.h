@@ -4,9 +4,6 @@
 
 #define PERCORECACHE (1024 * 1024)
 
-
-
-
 template <typename IT, typename NT, typename MultiplyOperation, typename AddOperation>
 void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, vector<IT> * RowIdsofC, vector<NT> * ValuesofC)
 {

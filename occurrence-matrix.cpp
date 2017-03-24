@@ -87,9 +87,9 @@ void dictionaryCreation(dictionary &kmerdict, Kmers &kmervect)
 
 int main (int argc, char* argv[]) {
 
-	ifstream filein (argv[1]);
+	/*ifstream filein (argv[1]);
 	FILE *fastafile;
-	//ofstream fileout ("occurrences.csv");
+	ofstream fileout ("occurrences.csv");
 	int elem;
 	char *buffer;
 	std::string kmerstr;
@@ -168,13 +168,41 @@ int main (int argc, char* argv[]) {
         }
     }
     std::cout << "fastq file parsed\nsearch ended : vector<tuple<read_id,kmer_id,pos_in_read> created" << endl;
-    CSC<size_t, size_t> spmat(occurrences, read_id, kmervect.size(), plus<size_t>()); // simple non-vector version (to see if it compiles)
 
-    /*if(fileout.is_open()) {
+    // occurrences = n. of nonzero elems, read_id = n. rows, kmer.size() = n.cols, plus<size_t>() should be my value 
+    std::cout << read_id << " " << kmerdict.size() << endl;
+    //CSC<size_t, size_t> *spmat = new CSC<size_t, size_t>(occurrences, read_id, kmerdict.size(), plus<size_t>()); // simple non-vector version (to see if it compiles)
+
+    if(fileout.is_open()) {
     	for(size_t a = 0; a < occurrences.size(); a++) {
 		fileout << std::get<0>(occurrences[a]) << " " << std::get<1>(occurrences[a]) << " " << std::get<2>(occurrences[a]) << endl;
 		}
 	} else std::cout << "unable to open the output file\n";*/
 
+    std::vector<tuple<size_t, size_t, size_t>> CSCtest;
+
+    CSCtest.push_back(std::make_tuple(1,0,1));
+    CSCtest.push_back(std::make_tuple(1,2,2));
+    CSCtest.push_back(std::make_tuple(2,4,43));
+    CSCtest.push_back(std::make_tuple(2,6,12));
+
+    CSC<size_t, size_t> *spmat = new CSC<size_t, size_t>(CSCtest, 3, 50, plus<size_t>()); 
+
 	return 0;
 } 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

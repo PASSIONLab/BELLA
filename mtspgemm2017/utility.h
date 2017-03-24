@@ -61,9 +61,9 @@ ITYPE CumulativeSum (ITYPE * arr, ITYPE size)
     ITYPE tempnz = 0 ;
     for (ITYPE i = 0 ; i < size ; ++i)
     {
-		prev = arr[i];
-		arr[i] = tempnz;
-		tempnz += prev ;
+		prev = arr[i];  
+		arr[i] = tempnz; 
+		tempnz += prev ; 
     }
     return (tempnz) ;		    // return sum
 }
