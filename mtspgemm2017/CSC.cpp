@@ -1,4 +1,4 @@
-#include "CSC.h"
+#include "longCSC.h"
 #include "utility.h"
 #include "BitMap.h"
 #include <algorithm>
@@ -243,6 +243,7 @@ void CSC<IT,NT>::MergeDuplicates (AddOperation addop)
 template <class IT, class NT>
 template <typename AddOperation>
 // n = kmerdict.size(), m = read_id, nnz = tuple.size()
+// CSC<size_t, size_t> *spmat = new CSC<size_t, size_t>(occurrences, read_id, kmerdict.size(), plus<size_t>());
 CSC<IT,NT>::CSC (vector< tuple<IT,IT,NT> > & tuple, IT m, IT n, AddOperation addop): rows(m), cols(n)
 {
     NT nnz = tuple.size(); // there might be duplicates

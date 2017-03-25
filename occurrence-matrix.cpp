@@ -28,7 +28,7 @@
 #include "kmercode/ParallelFASTQ.h"
 
 #include "mtspgemm2017/utility.h"
-#include "mtspgemm2017/CSC.h"
+#include "mtspgemm2017/longCSC.h"
 #include "mtspgemm2017/CSR.h"
 #include "mtspgemm2017/IO.h"
 #include "mtspgemm2017/multiply.h"
@@ -71,8 +71,9 @@ std::vector<filedata>  GetFiles(char *filename) {
     return filesview;
 }
 
-typedef std::map<Kmer,size_t> dictionary;	 	// <k-mer && reverse-complement, #kmers>
+typedef std::map<Kmer,size_t> dictionary;	      // <k-mer && reverse-complement, #kmers>
 typedef std::vector<Kmer> Kmers;
+typedef std::pair<size_t, vector<size_t>> cellspmat;   // pair<kmer_id_j, vector<posix_in_read_i>> 
 
 // Function to create the dictionary
 // assumption: kmervect has unique entries
@@ -87,7 +88,7 @@ void dictionaryCreation(dictionary &kmerdict, Kmers &kmervect)
 
 int main (int argc, char* argv[]) {
 
-	/*ifstream filein (argv[1]);
+	ifstream filein (argv[1]);
 	FILE *fastafile;
 	ofstream fileout ("occurrences.csv");
 	int elem;
@@ -169,17 +170,15 @@ int main (int argc, char* argv[]) {
     }
     std::cout << "fastq file parsed\nsearch ended : vector<tuple<read_id,kmer_id,pos_in_read> created" << endl;
 
-    // occurrences = n. of nonzero elems, read_id = n. rows, kmer.size() = n.cols, plus<size_t>() should be my value 
-    std::cout << read_id << " " << kmerdict.size() << endl;
-    //CSC<size_t, size_t> *spmat = new CSC<size_t, size_t>(occurrences, read_id, kmerdict.size(), plus<size_t>()); // simple non-vector version (to see if it compiles)
+    longCSC<size_t, cellspmat> *spmat = new longCSC<size_t, cellspmat>(occurrences, read_id, kmerdict.size()); 
 
-    if(fileout.is_open()) {
+    /* if(fileout.is_open()) {
     	for(size_t a = 0; a < occurrences.size(); a++) {
 		fileout << std::get<0>(occurrences[a]) << " " << std::get<1>(occurrences[a]) << " " << std::get<2>(occurrences[a]) << endl;
 		}
-	} else std::cout << "unable to open the output file\n";*/
+	} else std::cout << "unable to open the output file\n";
 
-    std::vector<tuple<size_t, size_t, size_t>> CSCtest;
+        std::vector<tuple<size_t, size_t, size_t>> CSCtest;
 
     CSCtest.push_back(std::make_tuple(1,0,1));
     CSCtest.push_back(std::make_tuple(1,2,2));
@@ -187,6 +186,10 @@ int main (int argc, char* argv[]) {
     CSCtest.push_back(std::make_tuple(2,6,12));
 
     CSC<size_t, size_t> *spmat = new CSC<size_t, size_t>(CSCtest, 3, 50, plus<size_t>()); 
+
+    For the initial matrix read (i) vs kmer_id (j), we would save in (i,j) a pair<kmer_id_j, vector<posix_in_read_i>> 
+    Then we compute its transpose and multiply to obtain a matrix read_i vs read_j where the (i,j) element has the form: 
+    map<kmer_id, vector<posix_in_read_i, posix_in_read_j>> */
 
 	return 0;
 } 
