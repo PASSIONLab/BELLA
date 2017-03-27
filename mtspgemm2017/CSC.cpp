@@ -1,4 +1,4 @@
-#include "longCSC.h"
+#include "CSC.h"
 #include "utility.h"
 #include "BitMap.h"
 #include <algorithm>
@@ -246,7 +246,7 @@ template <typename AddOperation>
 // CSC<size_t, size_t> *spmat = new CSC<size_t, size_t>(occurrences, read_id, kmerdict.size(), plus<size_t>());
 CSC<IT,NT>::CSC (vector< tuple<IT,IT,NT> > & tuple, IT m, IT n, AddOperation addop): rows(m), cols(n)
 {
-    NT nnz = tuple.size(); // there might be duplicates
+    IT nnz = tuple.size(); // there might be duplicates
 
     colptr = new IT[cols+1]();
     rowids = new IT[nnz];
@@ -271,7 +271,7 @@ CSC<IT,NT>::CSC (vector< tuple<IT,IT,NT> > & tuple, IT m, IT n, AddOperation add
         {
             tosort[work[get<1>(tuple[k])]++] = make_pair( get<0>(tuple[k]), get<2>(tuple[k]));
         }
-#pragma omp parallel for
+//#pragma omp parallel for
         for(int i=0; i< cols; ++i)
         {
             sort(tosort.begin() + colptr[i], tosort.begin() + colptr[i+1]);
@@ -284,16 +284,10 @@ CSC<IT,NT>::CSC (vector< tuple<IT,IT,NT> > & tuple, IT m, IT n, AddOperation add
             }
         }
     }
-        for(IT j = 0; j<nnz; ++j){
-
-            std::cout << " read_id : " << rowids[j] << " kmer_id : " << get<1>(tuple[j]) << " pos_in_read : " << values[j] << endl;
-            // TO DO: as value I want a pair<kmer_id, vector<posix_in_read>>
-
-        }
-
 
     delete [] work;
-    //MergeDuplicates(addop);
+    cerr << "Before MergeDuplicates()" << endl;
+    MergeDuplicates(addop);
 }
 
 

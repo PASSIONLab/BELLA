@@ -28,7 +28,7 @@
 #include "kmercode/ParallelFASTQ.h"
 
 #include "mtspgemm2017/utility.h"
-#include "mtspgemm2017/longCSC.h"
+#include "mtspgemm2017/CSC.h"
 #include "mtspgemm2017/CSR.h"
 #include "mtspgemm2017/IO.h"
 #include "mtspgemm2017/multiply.h"
@@ -75,6 +75,8 @@ typedef std::map<Kmer,size_t> dictionary;	      // <k-mer && reverse-complement,
 typedef std::vector<Kmer> Kmers;
 typedef std::pair<size_t, vector<size_t>> cellspmat;   // pair<kmer_id_j, vector<posix_in_read_i>> 
 
+
+
 // Function to create the dictionary
 // assumption: kmervect has unique entries
 void dictionaryCreation(dictionary &kmerdict, Kmers &kmervect)
@@ -104,7 +106,7 @@ int main (int argc, char* argv[]) {
     std::vector<string> seqs;
     std::vector<string> quals;
     Kmers kmersfromreads;
-    std::vector<tuple<size_t,size_t,size_t>> occurrences; 
+    std::vector<tuple<size_t,size_t,cellspmat>> occurrences; 
 	//struct node *trieTree; 
 
 	cout << "\ninput file : " << argv[1] <<endl;
@@ -143,9 +145,9 @@ int main (int argc, char* argv[]) {
 
             fillstatus = pfq->fill_block(seqs, quals, upperlimit);
             size_t nreads = seqs.size();
-            read_id++;
             
-            for(size_t i=0; i<nreads; i++) {
+            for(size_t i=0; i<nreads; i++) 
+            {
             	// remember that the last valid position is length()-1
                 size_t len = seqs[i].length();
                 
@@ -153,7 +155,8 @@ int main (int argc, char* argv[]) {
                 if (len <= KMER_LENGTH)
                     continue;
 
-                for(size_t j=0; j<=len-KMER_LENGTH; j++)  {
+                for(size_t j=0; j<=len-KMER_LENGTH; j++)  
+                {
 
                     std::string kmerstrfromfastq = seqs[i].substr(j, KMER_LENGTH);
                     Kmer mykmer(kmerstrfromfastq.c_str());
@@ -162,15 +165,23 @@ int main (int argc, char* argv[]) {
 
                     auto found = kmerdict.find(lexsmall);
                     if(found != kmerdict.end()) {
-                    	occurrences.push_back(std::make_tuple(read_id, found->second, j)); //vector<tuple<read_id,kmer_id,pos_in_read>
+                    	occurrences.push_back(std::make_tuple(read_id, found->second, make_pair(found->second, vector<size_t>(1,j)))); //vector<tuple<read_id,kmer_id,pos_in_read>
                     }
                 }
+                read_id++;
             }
         }
     }
     std::cout << "fastq file parsed\nsearch ended : vector<tuple<read_id,kmer_id,pos_in_read> created" << endl;
+    cout << "total number of reads is "<< read_id << endl;
 
-    longCSC<size_t, cellspmat> *spmat = new longCSC<size_t, cellspmat>(occurrences, read_id, kmerdict.size()); 
+    CSC<size_t, cellspmat> spmat(occurrences, read_id, kmerdict.size(), 
+                            [] (cellspmat & c1, cellspmat & c2) 
+                            {   if(c1.first != c2.first) cout << "error in Merge duplicates" << endl;
+                                vector<size_t> merged;
+                                merge(c1.second.begin(), c1.second.end(), c2.second.begin(), c2.second.end(), back_inserter(merged));
+                                return make_pair(c1.first,merged);
+                            }); 
 
     /* if(fileout.is_open()) {
     	for(size_t a = 0; a < occurrences.size(); a++) {
