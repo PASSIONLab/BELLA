@@ -106,8 +106,7 @@ int main (int argc, char* argv[]) {
     std::vector<string> seqs;
     std::vector<string> quals;
     Kmers kmersfromreads;
-    std::vector<tuple<size_t,size_t,cellspmat>> occurrences; 
-	//struct node *trieTree; 
+    std::vector<tuple<size_t,size_t,cellspmat>> occurrences;  
 
 	cout << "\ninput file : " << argv[1] <<endl;
 	cout << "psbsim depth : 30" << endl;
@@ -165,16 +164,17 @@ int main (int argc, char* argv[]) {
 
                     auto found = kmerdict.find(lexsmall);
                     if(found != kmerdict.end()) {
-                    	occurrences.push_back(std::make_tuple(read_id, found->second, make_pair(found->second, vector<size_t>(1,j)))); //vector<tuple<read_id,kmer_id,pos_in_read>
+                    	occurrences.push_back(std::make_tuple(read_id, found->second, make_pair(found->second, vector<size_t>(1,j)))); //vector<tuple<read_id,kmer_id,pair<kmer_id,pos_in_read>>
                     }
                 }
                 read_id++;
             }
         }
     }
-    std::cout << "fastq file parsed\nsearch ended : vector<tuple<read_id,kmer_id,pos_in_read> created" << endl;
-    cout << "total number of reads is "<< read_id << endl;
-
+    std::cout << "fastq file parsed\nsearch ended : vector<tuple<read_id,kmer_id,pair<kmer_id,pos_in_read>> created" << endl;
+    // cout << "total number of reads is "<< read_id << endl; 1909
+    // cout << "tuple size is "<< occurrences.size() << endl; 281528
+    // cout << "kmerdict.size() is "<< kmerdict.size() << endl;
     CSC<size_t, cellspmat> spmat(occurrences, read_id, kmerdict.size(), 
                             [] (cellspmat & c1, cellspmat & c2) 
                             {   if(c1.first != c2.first) cout << "error in Merge duplicates" << endl;

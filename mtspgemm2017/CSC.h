@@ -34,7 +34,7 @@ public:
     CSC (Triple<IT,NT> * triples, IT mynnz, IT m, IT n); // altro costruttore di default
     
     template <typename AddOperation>
-    CSC (vector<tuple<IT,IT,NT> > & tuple, IT m, IT n, AddOperation addop); // costruttore
+    CSC (vector<tuple<IT,IT,NT>> & tuple, IT m, IT n, AddOperation addop); // costruttore
     
     template <typename AddOperation>
     void MergeDuplicates (AddOperation addop); // 1st method

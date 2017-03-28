@@ -11,8 +11,8 @@ CSC<IT,NT>::CSC (const CSC<IT,NT> & rhs): nnz(rhs.nnz), rows(rhs.rows), cols(rhs
 {
 	if(nnz > 0)
 	{
-		values = new NT[nnz]; // contiene i non zeri
-		rowids = new IT[nnz]; // ti dice in che righe  
+		values = new NT[nnz]; 
+		rowids = new IT[nnz];   
         copy(rhs.values, rhs.values + nnz, values);
         copy(rhs.rowids, rhs.rowids + nnz, rowids);
 	}
@@ -24,7 +24,7 @@ CSC<IT,NT>::CSC (const CSC<IT,NT> & rhs): nnz(rhs.nnz), rows(rhs.rows), cols(rhs
 }
 
 template <class IT, class NT>
-CSC<IT,NT> & CSC<IT,NT>::operator= (const CSC<IT,NT> & rhs) // ridefinisce operatore = di assegnazione
+CSC<IT,NT> & CSC<IT,NT>::operator= (const CSC<IT,NT> & rhs) 
 {
 	if(this != &rhs)		
 	{
@@ -242,34 +242,34 @@ void CSC<IT,NT>::MergeDuplicates (AddOperation addop)
 //! this version handles duplicates in the input
 template <class IT, class NT>
 template <typename AddOperation>
-// n = kmerdict.size(), m = read_id, nnz = tuple.size()
-// CSC<size_t, size_t> *spmat = new CSC<size_t, size_t>(occurrences, read_id, kmerdict.size(), plus<size_t>());
 CSC<IT,NT>::CSC (vector< tuple<IT,IT,NT> > & tuple, IT m, IT n, AddOperation addop): rows(m), cols(n)
 {
     IT nnz = tuple.size(); // there might be duplicates
-
-    colptr = new IT[cols+1]();
+    // cout << nnz << endl; 281528
+    // cout << cols << endl; 1636281
+    colptr = new IT[cols]();
     rowids = new IT[nnz];
     values = new NT[nnz];
     vector< pair<IT,NT> > tosort (nnz);
-    
-    IT * work = new IT[cols];	// workspace
-    std::fill(work, work+cols, (IT) 0); // riempi di 0 tutto
 
-    for (IT k = 0 ; k < nnz ; ++k)
+    IT *work = new IT[cols];	// workspace
+    std::fill(work, work+cols, (IT) 0); 
+
+    for (IT k = 0; k < nnz; ++k)
     {
-        IT tmp =  get<1>(tuple[k]); // temp = read_id
-        work [ tmp ]++ ;	       	// column counts (i.e, w holds the "col difference array") 
+        IT tmp = get<1>(tuple[k]);  // 18 cycles and then SEGMENTATION FAULT
+        //cout << tmp << endl;
+        work[tmp]++;	        	// column counts (i.e, work holds the "col difference array") 
     }
-
+cout << "hola" << endl;
     if(nnz > 0)
     {
-        colptr[cols] = CumulativeSum (work, cols) ;		// cumulative sum of work, puntatore all'ultima posizione contiene 
+        colptr[cols] = CumulativeSum (work, cols) ;		// cumulative sum of work
         copy(work, work+cols, colptr);
         IT last;
         for (IT k = 0 ; k < nnz ; ++k)
         {
-            tosort[work[get<1>(tuple[k])]++] = make_pair( get<0>(tuple[k]), get<2>(tuple[k]));
+            tosort[work[get<1>(tuple[k])]++] = make_pair(get<0>(tuple[k]), get<2>(tuple[k]));
         }
 //#pragma omp parallel for
         for(int i=0; i< cols; ++i)
@@ -481,8 +481,6 @@ CSC<IT,NT> CSC<IT,NT>::SpRef2 (const IT* ri, const IT rilen, const IT* ci, const
 }
 
 
-
-
 // write genereal purpose set-intersect
 // binary search is faster is one of the vectors is very large
 
@@ -557,8 +555,6 @@ CSC<IT,NT> CSC<IT,NT>::SpRef (const vector<IT> & ri, const vector<IT> & ci)
 }
 
 
-
-
 // write genereal purpose set-intersect
 // binary search is faster is one of the vectors is very large
 
@@ -581,7 +577,6 @@ CSC<IT,NT> CSC<IT,NT>::SpRef1 (const vector<IT> & ri, const vector<IT> & ci)
         cerr << "Row indices out of bounds" << endl;
         abort();
     }
-    
     
     BitMap bmap(ri.size()); // space requirement n bits
     bmap.reset(); // this is time consuming .....
@@ -624,10 +619,3 @@ CSC<IT,NT> CSC<IT,NT>::SpRef1 (const vector<IT> & ri, const vector<IT> & ci)
     
     return refmat;
 }
-
-
-
-
-
-
-
