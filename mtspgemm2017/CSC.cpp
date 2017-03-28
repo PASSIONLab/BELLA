@@ -238,7 +238,6 @@ void CSC<IT,NT>::MergeDuplicates (AddOperation addop)
         copy(v_values[i].begin(), v_values[i].end(), values+colptr[i]);
     }
 }
-
 //! this version handles duplicates in the input
 template <class IT, class NT>
 template <typename AddOperation>
@@ -252,19 +251,18 @@ CSC<IT,NT>::CSC (vector< tuple<IT,IT,NT> > & tuple, IT m, IT n, AddOperation add
     values = new NT[nnz];
     vector< pair<IT,NT> > tosort (nnz);
 
-    IT *work = new IT[cols];	// workspace
+    IT *work = new IT[cols](); // workspace
     std::fill(work, work+cols, (IT) 0); 
 
+    cout << "End of debugging" << endl;
     for (IT k = 0; k < nnz; ++k)
     {
         IT tmp = get<1>(tuple[k]);  // 18 cycles and then SEGMENTATION FAULT
-        //cout << tmp << endl;
         work[tmp]++;	        	// column counts (i.e, work holds the "col difference array") 
     }
-cout << "hola" << endl;
     if(nnz > 0)
     {
-        colptr[cols] = CumulativeSum (work, cols) ;		// cumulative sum of work
+        colptr[cols] = CumulativeSum (work, cols);		// cumulative sum of work
         copy(work, work+cols, colptr);
         IT last;
         for (IT k = 0 ; k < nnz ; ++k)

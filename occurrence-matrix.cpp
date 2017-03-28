@@ -172,10 +172,11 @@ int main (int argc, char* argv[]) {
         }
     }
     std::cout << "fastq file parsed\nsearch ended : vector<tuple<read_id,kmer_id,pair<kmer_id,pos_in_read>> created" << endl;
-    // cout << "total number of reads is "<< read_id << endl; 1909
-    // cout << "tuple size is "<< occurrences.size() << endl; 281528
-    // cout << "kmerdict.size() is "<< kmerdict.size() << endl;
-    CSC<size_t, cellspmat> spmat(occurrences, read_id, kmerdict.size(), 
+    cout << "total number of reads is "<< read_id << endl;
+    cout << "tuple size is "<< occurrences.size() << endl;
+    cout << "kmerdict.size() is "<< kmerdict.size() << endl;
+    cout << "kmervect.size() is "<< kmervect.size() << endl;
+    CSC<size_t, cellspmat> spmat(occurrences, read_id, kmervect.size(), 
                             [] (cellspmat & c1, cellspmat & c2) 
                             {   if(c1.first != c2.first) cout << "error in Merge duplicates" << endl;
                                 vector<size_t> merged;
