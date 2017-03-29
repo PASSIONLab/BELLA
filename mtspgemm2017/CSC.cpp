@@ -199,20 +199,17 @@ void CSC<IT,NT>::MergeDuplicates (AddOperation addop)
     vector<IT> diff(cols,0);
     std::adjacent_difference(colptr+1, colptr+cols+1, diff.begin());
     
-    vector< vector<IT> > v_rowids;
-    vector< vector<NT> > v_values;
-
-    cout << "nnz : " << nnz << endl;
-    cout << "cols : " << cols << endl;
+    vector<vector<IT>> v_rowids;
+    vector<vector<NT>> v_values;
 
     if(nnz > 0)
     {
-        #pragma omp parallel for
+        //#pragma omp parallel for
         for(int i=0; i<cols; ++i)
         {
-            for(size_t j= colptr[i]; j<colptr[i+1]; ++j)
+            for(size_t j=colptr[i]; j<colptr[i+1]; ++j)
             {
-                v_rowids[i].push_back(rowids[j]);
+                v_rowids[i].push_back(rowids[j]); // SEG FAULT
                 v_values[i].push_back(values[j]);
                 while(j < colptr[i+1]-1 && rowids[j] == rowids[j+1])
                 {
@@ -228,14 +225,14 @@ void CSC<IT,NT>::MergeDuplicates (AddOperation addop)
     copy(diff.begin(), diff.end(), colptr);  // update the column pointers
     delete [] rowids;
     delete [] values;
-    cout << "old number of nonzeros before merging : " << nnz << endl;
+    cout << "old number of nonzeros before merging : " << nnz << endl; 
     nnz  = colptr[cols];
-    cout << "new number of nonzeros after merging : " << nnz << endl;
+    cout << "new number of nonzeros after merging : " << nnz << endl; 
     
     rowids = new IT[nnz];
     values = new NT[nnz];
     
-#pragma omp parallel for
+//#pragma omp parallel for
     for(int i=0; i<cols; ++i)
     {
         copy(v_rowids[i].begin(), v_rowids[i].end(), rowids+colptr[i]);
@@ -247,7 +244,7 @@ template <class IT, class NT>
 template <typename AddOperation>
 CSC<IT,NT>::CSC (vector< tuple<IT,IT,NT> > & tuple, IT m, IT n, AddOperation addop): rows(m), cols(n)
 {
-    IT nnz = tuple.size(); // there might be duplicates
+    nnz = tuple.size(); // there might be duplicates
     // cout << nnz << endl; 281528
     // cout << cols << endl; 1636281
     colptr = new IT[cols]();
@@ -287,7 +284,7 @@ CSC<IT,NT>::CSC (vector< tuple<IT,IT,NT> > & tuple, IT m, IT n, AddOperation add
     }
 
     delete [] work;
-    // cerr << "Before MergeDuplicates()" << endl;
+    cerr << "Before MergeDuplicates()" << endl;
     MergeDuplicates(addop);
 }
 
