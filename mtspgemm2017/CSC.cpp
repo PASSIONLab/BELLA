@@ -197,17 +197,20 @@ template <typename AddOperation>
 void CSC<IT,NT>::MergeDuplicates (AddOperation addop)
 {
     vector<IT> diff(cols,0);
-    std::adjacent_difference (colptr+1, colptr+cols+1, diff.begin());
+    std::adjacent_difference(colptr+1, colptr+cols+1, diff.begin());
     
     vector< vector<IT> > v_rowids;
     vector< vector<NT> > v_values;
-    
+
+    cout << "nnz : " << nnz << endl;
+    cout << "cols : " << cols << endl;
+
     if(nnz > 0)
     {
         #pragma omp parallel for
-        for(int i=0; i< cols; ++i)
+        for(int i=0; i<cols; ++i)
         {
-            for(size_t j= colptr[i]; j < colptr[i+1]; ++j)
+            for(size_t j= colptr[i]; j<colptr[i+1]; ++j)
             {
                 v_rowids[i].push_back(rowids[j]);
                 v_values[i].push_back(values[j]);
@@ -220,19 +223,20 @@ void CSC<IT,NT>::MergeDuplicates (AddOperation addop)
             }
         }
     }
-    colptr[cols] = CumulativeSum (diff.data(), cols) ;		// cumulative sum of diff
+
+    colptr[cols] = CumulativeSum (diff.data(), cols) ;	// cumulative sum of diff
     copy(diff.begin(), diff.end(), colptr);  // update the column pointers
     delete [] rowids;
     delete [] values;
-    cout << "Old number of nonzeros before merging: " << nnz << endl;
+    cout << "old number of nonzeros before merging : " << nnz << endl;
     nnz  = colptr[cols];
-    cout << "New number of nonzeros after merging: " << nnz << endl;
+    cout << "new number of nonzeros after merging : " << nnz << endl;
     
     rowids = new IT[nnz];
     values = new NT[nnz];
     
 #pragma omp parallel for
-    for(int i=0; i< cols; ++i)
+    for(int i=0; i<cols; ++i)
     {
         copy(v_rowids[i].begin(), v_rowids[i].end(), rowids+colptr[i]);
         copy(v_values[i].begin(), v_values[i].end(), values+colptr[i]);
@@ -254,10 +258,9 @@ CSC<IT,NT>::CSC (vector< tuple<IT,IT,NT> > & tuple, IT m, IT n, AddOperation add
     IT *work = new IT[cols](); // workspace
     std::fill(work, work+cols, (IT) 0); 
 
-    cout << "End of debugging" << endl;
     for (IT k = 0; k < nnz; ++k)
     {
-        IT tmp = get<1>(tuple[k]);  // 18 cycles and then SEGMENTATION FAULT
+        IT tmp = get<1>(tuple[k]); 
         work[tmp]++;	        	// column counts (i.e, work holds the "col difference array") 
     }
     if(nnz > 0)
@@ -284,7 +287,7 @@ CSC<IT,NT>::CSC (vector< tuple<IT,IT,NT> > & tuple, IT m, IT n, AddOperation add
     }
 
     delete [] work;
-    cerr << "Before MergeDuplicates()" << endl;
+    // cerr << "Before MergeDuplicates()" << endl;
     MergeDuplicates(addop);
 }
 

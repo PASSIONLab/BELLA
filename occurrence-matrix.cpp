@@ -92,7 +92,7 @@ int main (int argc, char* argv[]) {
 
 	ifstream filein (argv[1]);
 	FILE *fastafile;
-	ofstream fileout ("occurrences.csv");
+	//ofstream fileout ("occurrences.csv");
 	int elem;
 	char *buffer;
 	std::string kmerstr;
@@ -122,10 +122,9 @@ int main (int argc, char* argv[]) {
 				string substring = line.substr(1);
 				elem = stoi(substring);
 				getline(filein, kmerstr); 
-				if(elem>3 && elem<9) {	
-					kmerfromstr.set_kmer(kmerstr.c_str());
-					kmervect.push_back(kmerfromstr);
-				}									
+				//if(elem>3 && elem<9) {	
+				kmerfromstr.set_kmer(kmerstr.c_str());
+				kmervect.push_back(kmerfromstr);								
 			}
 	} else std::cout << "unable to open the input file\n";
 	filein.close();
@@ -172,16 +171,16 @@ int main (int argc, char* argv[]) {
         }
     }
     std::cout << "fastq file parsed\nsearch ended : vector<tuple<read_id,kmer_id,pair<kmer_id,pos_in_read>> created" << endl;
-    cout << "total number of reads is "<< read_id << endl;
-    cout << "tuple size is "<< occurrences.size() << endl;
-    cout << "kmerdict.size() is "<< kmerdict.size() << endl;
-    cout << "kmervect.size() is "<< kmervect.size() << endl;
+    // cout << "total number of reads is "<< read_id << endl;
+    // cout << "tuple size is "<< occurrences.size() << endl;
+    // cout << "kmerdict.size() is "<< kmerdict.size() << endl;
+    // cout << "kmervect.size() is "<< kmervect.size() << endl;
     CSC<size_t, cellspmat> spmat(occurrences, read_id, kmervect.size(), 
                             [] (cellspmat & c1, cellspmat & c2) 
-                            {   if(c1.first != c2.first) cout << "error in Merge duplicates" << endl;
+                            {   if(c1.first != c2.first) cout << "error in MergeDuplicates()" << endl;
                                 vector<size_t> merged;
                                 merge(c1.second.begin(), c1.second.end(), c2.second.begin(), c2.second.end(), back_inserter(merged));
-                                return make_pair(c1.first,merged);
+                                return make_pair(c1.first, merged);
                             }); 
 
     /* if(fileout.is_open()) {
