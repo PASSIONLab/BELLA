@@ -320,7 +320,7 @@ void open_fq(fq_reader_t fqr, const char *fname, int cached_io) {
     }
     fqr->fpos = fqr->start_read;
     assert(fqr->fpos == ftell(fqr->f));
-    serial_printf("Reading FASTQ file %s %s\n", fname, cached_io ? " (cached)" : "");
+    serial_printf("reading FASTQ file %s %s\n", fname, cached_io ? " (cached)" : "");
 #ifndef __APPLE__
     if (fqr->f) {
         posix_fadvise(fileno(fqr->f), fqr->start_read, fqr->end_read - fqr->start_read, 

@@ -198,9 +198,9 @@ void CSC<IT,NT>::MergeDuplicates (AddOperation addop)
 {
     vector<IT> diff(cols,0);
     std::adjacent_difference(colptr+1, colptr+cols+1, diff.begin());
-    
-    vector<vector<IT>> v_rowids;
-    vector<vector<NT>> v_values;
+
+    vector<vector<IT>> v_rowids(cols);
+    vector<vector<NT>> v_values(cols);
 
     if(nnz > 0)
     {
@@ -209,7 +209,7 @@ void CSC<IT,NT>::MergeDuplicates (AddOperation addop)
         {
             for(size_t j=colptr[i]; j<colptr[i+1]; ++j)
             {
-                v_rowids[i].push_back(rowids[j]); // SEG FAULT
+                v_rowids[i].push_back(rowids[j]); 
                 v_values[i].push_back(values[j]);
                 while(j < colptr[i+1]-1 && rowids[j] == rowids[j+1])
                 {
@@ -250,7 +250,8 @@ CSC<IT,NT>::CSC (vector< tuple<IT,IT,NT> > & tuple, IT m, IT n, AddOperation add
     colptr = new IT[cols]();
     rowids = new IT[nnz];
     values = new NT[nnz];
-    vector< pair<IT,NT> > tosort (nnz);
+    vector<pair<IT,NT>> tosort (nnz);
+
 
     IT *work = new IT[cols](); // workspace
     std::fill(work, work+cols, (IT) 0); 
@@ -284,7 +285,7 @@ CSC<IT,NT>::CSC (vector< tuple<IT,IT,NT> > & tuple, IT m, IT n, AddOperation add
     }
 
     delete [] work;
-    cerr << "Before MergeDuplicates()" << endl;
+    // cerr << "Before MergeDuplicates()" << endl;
     MergeDuplicates(addop);
 }
 

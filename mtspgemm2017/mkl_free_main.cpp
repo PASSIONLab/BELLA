@@ -95,7 +95,7 @@ int main(int argc, char* argv[])
 		}
 	}
 
-	longCSC<INDEXTYPE,VALUETYPE> * A_csc, * B_csc, * C_csc_verify;
+	CSC<INDEXTYPE,VALUETYPE> * A_csc, * B_csc, * C_csc_verify;
 	if(gen)
 	{
 		double a, b, c, d;
@@ -156,7 +156,7 @@ int main(int argc, char* argv[])
 	
   	A_csc->Sorted();
   	B_csc->Sorted();
-    longCSC<INDEXTYPE,VALUETYPE> C_csc;
+    CSC<INDEXTYPE,VALUETYPE> C_csc;
     
     double start = omp_get_wtime( );
 

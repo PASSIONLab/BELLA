@@ -8,7 +8,7 @@ template <typename IT, typename NT, typename MultiplyOperation, typename AddOper
 void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, vector<IT> * RowIdsofC, vector<NT> * ValuesofC)
 {
     #pragma omp parallel for
-    for(int i=0; i < B.cols; ++i)        // for all columns of B
+    for(int i=0; i < B.cols; ++i) // for all columns of B
     {
         IT hsize = B.colptr[i+1]-B.colptr[i];
         HeapEntry<IT,NT> * mergeheap = new HeapEntry<IT,NT>[hsize];
