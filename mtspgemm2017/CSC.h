@@ -39,6 +39,8 @@ public:
     template <typename AddOperation>
     void MergeDuplicates (AddOperation addop); // 1st method
 
+    CSC<IT,NT> SpTraspose(CSC<IT,NT> &spmat);
+
     CSC(graph & G);
     CSC (IT * ri, IT * ci, NT * val, IT mynnz, IT m, IT n);
     CSC (const CSC<IT,NT> & rhs);		// copy constructor

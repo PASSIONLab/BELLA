@@ -35,6 +35,7 @@
 
 #define LSIZE 16000
 #define KMER_LENGTH 15
+#define ITERS 10
 
 using namespace std;
 
@@ -71,11 +72,10 @@ std::vector<filedata>  GetFiles(char *filename) {
     return filesview;
 }
 
-typedef std::map<Kmer,size_t> dictionary;	      // <k-mer && reverse-complement, #kmers>
+typedef std::map<Kmer,size_t> dictionary; // <k-mer && reverse-complement, #kmers>
 typedef std::vector<Kmer> Kmers;
-typedef std::pair<size_t, vector<size_t>> cellspmat;   // pair<kmer_id_j, vector<posix_in_read_i>> 
-
-
+typedef std::pair<size_t, vector<size_t>> cellspmat; // pair<kmer_id_j, vector<posix_in_read_i>>
+typedef std::map<size_t, std::vector<std::pair<size_t,size_t>>> multcell; // map<kmer_id, vector<posix_in_read_i, posix_in_read_j>>
 
 // Function to create the dictionary
 // assumption: kmervect has unique entries
@@ -85,14 +85,13 @@ void dictionaryCreation(dictionary &kmerdict, Kmers &kmervect)
     {
         kmerdict.insert(make_pair(kmervect[i].rep(), i));
 	}
-	cout << "kmervect.rep() in the dict" << endl;
+	// cout << "kmervect.rep() in the dict" << endl;
 }
 
 int main (int argc, char* argv[]) {
 
 	ifstream filein (argv[1]);
 	FILE *fastafile;
-	//ofstream fileout ("occurrences.csv");
 	int elem;
 	char *buffer;
 	std::string kmerstr;
@@ -106,9 +105,10 @@ int main (int argc, char* argv[]) {
     std::vector<string> seqs;
     std::vector<string> quals;
     Kmers kmersfromreads;
-    std::vector<tuple<size_t,size_t,cellspmat>> occurrences;  
+    std::vector<tuple<size_t,size_t,cellspmat>> occurrences;
+    std::vector<tuple<size_t,size_t,cellspmat>> transtuples;
 
-	cout << "\ninput file : " << argv[1] <<endl;
+	cout << "input file : " << argv[1] <<endl;
 	cout << "psbsim depth : 30" << endl;
 	cout << "k-mer length : " << KMER_LENGTH <<endl;
 	cout << "reference genome : escherichia coli, " << argv[2] <<endl;
@@ -129,7 +129,6 @@ int main (int argc, char* argv[]) {
 	} else std::cout << "unable to open the input file\n";
 	filein.close();
 
-	std::cout << "filtered dataset parsed of size: " << kmervect.size() << " elem" << endl;
 	dictionaryCreation(kmerdict, kmervect);
 
     size_t read_id = 0; // read_id needs to be global (not just per file)
@@ -163,44 +162,53 @@ int main (int argc, char* argv[]) {
 
                     auto found = kmerdict.find(lexsmall);
                     if(found != kmerdict.end()) {
-                    	occurrences.push_back(std::make_tuple(read_id, found->second, make_pair(found->second, vector<size_t>(1,j)))); //vector<tuple<read_id,kmer_id,pair<kmer_id,pos_in_read>>
+                    	occurrences.push_back(std::make_tuple(read_id, found->second, make_pair(found->second, vector<size_t>(1,j)))); // vector<tuple<read_id,kmer_id,pair<kmer_id,pos_in_read>>
+                        transtuples.push_back(std::make_tuple(found->second, read_id, make_pair(found->second, vector<size_t>(1,j)))); // transtuples.push_back(col_id, row_id, value)
                     }
                 }
                 read_id++;
             }
         }
     }
-    std::cout << "fastq file parsed\nsearch ended : vector<tuple<read_id,kmer_id,pair<kmer_id,pos_in_read>> created" << endl;
-    // cout << "total number of reads is "<< read_id << endl;
-    // cout << "tuple size is "<< occurrences.size() << endl;
-    // cout << "kmerdict.size() is "<< kmerdict.size() << endl;
-    // cout << "kmervect.size() is "<< kmervect.size() << endl;
+    // cout << "fastq file parsed\nsearch ended : vector<tuple<read_id,kmer_id,pair<kmer_id,pos_in_read>> created" << endl;
+
     CSC<size_t, cellspmat> spmat(occurrences, read_id, kmervect.size(), 
                             [] (cellspmat & c1, cellspmat & c2) 
                             {   if(c1.first != c2.first) cout << "error in MergeDuplicates()" << endl;
                                 vector<size_t> merged;
                                 merge(c1.second.begin(), c1.second.end(), c2.second.begin(), c2.second.end(), back_inserter(merged));
                                 return make_pair(c1.first, merged);
-                            }); 
+                            });
+    std::cout << "spmat created" << endl;
 
-    /* if(fileout.is_open()) {
-    	for(size_t a = 0; a < occurrences.size(); a++) {
-		fileout << std::get<0>(occurrences[a]) << " " << std::get<1>(occurrences[a]) << " " << std::get<2>(occurrences[a]) << endl;
-		}
-	} else std::cout << "unable to open the output file\n";
+    CSC<size_t, cellspmat> transpmat(transtuples, kmervect.size(), read_id, 
+                            [] (cellspmat & c1, cellspmat & c2) 
+                            {   if(c1.first != c2.first) cout << "error in MergeDuplicates()" << endl;
+                                vector<size_t> merged;
+                                merge(c1.second.begin(), c1.second.end(), c2.second.begin(), c2.second.end(), back_inserter(merged));
+                                return make_pair(c1.first, merged);
+                            });
+    std::cout << "transpmat created" << endl;
 
-        std::vector<tuple<size_t, size_t, size_t>> CSCtest;
+    // TO DO: define mult and add operation 
+   
+    spmat.Sorted();
+    transpmat.Sorted();
+    std::cout << "spmat and transpmat sorted" << endl;
 
-    CSCtest.push_back(std::make_tuple(1,0,1));
-    CSCtest.push_back(std::make_tuple(1,2,2));
-    CSCtest.push_back(std::make_tuple(2,4,43));
-    CSCtest.push_back(std::make_tuple(2,6,12));
+    /*CSC<size_t, multcell> multspmat;
+    
+    double start = omp_get_wtime();
 
-    CSC<size_t, size_t> *spmat = new CSC<size_t, size_t>(CSCtest, 3, 50, plus<size_t>()); 
+    for(int i=0; i<ITERS; ++i) {
+        HeapSpGEMM_gmalloc(spmat, transpmat, multiplies<cellspmat>(), plus<cellspmat>(), myidentity<cellspmat>(), mulspmat);
+    }
+    
+    cout << "HeapSpGEMM returned with " << mulspmat.nnz << " nonzeros" << endl;
+    double end = omp_get_wtime();
+    printf("HeapSpGEMM, start = %.16g, nend = %.16g, diff = %.16g\n", start, end, (end - start)/ITERS);
 
-    For the initial matrix read (i) vs kmer_id (j), we would save in (i,j) a pair<kmer_id_j, vector<posix_in_read_i>> 
-    Then we compute its transpose and multiply to obtain a matrix read_i vs read_j where the (i,j) element has the form: 
-    map<kmer_id, vector<posix_in_read_i, posix_in_read_j>> */
+    mulspmat.Sorted();*/
 
 	return 0;
 } 

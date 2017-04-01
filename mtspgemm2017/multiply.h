@@ -226,9 +226,6 @@ void HeapSpGEMM_gmalloc(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOper
     
     // ************************ End Creating global heap space *************************************
     
-
-    
-    
 #pragma omp parallel
     {
         int thisThread = omp_get_thread_num();
@@ -253,7 +250,6 @@ void HeapSpGEMM_gmalloc(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOper
             }
             IT hsize = k;      // if any of A's "significant" columns is empty, k will be less than hsize
             make_heap(mergeheap, mergeheap + hsize);
-            
             
             // reserve changes the capacity of the vector, so that future push_back's won't cause reallocation
             // but it does not change the size, you can still use v.size() to get the number of valid elements

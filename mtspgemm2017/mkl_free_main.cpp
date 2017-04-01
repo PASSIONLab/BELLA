@@ -10,9 +10,9 @@
 #include <cmath>
 #include <string>
 
-//#include "overridenew.h"
+#include "overridenew.h"
 #include "utility.h"
-#include "longCSC.h"
+#include "CSC.h"
 #include "CSR.h"
 #include "IO.h"
 #include "multiply.h"
@@ -115,7 +115,7 @@ int main(int argc, char* argv[])
 		graph G1;
         	graphGen(&G1);
 		cerr << "Generator returned" << endl;
-		A_csc = new longCSC<INDEXTYPE,VALUETYPE> (G1);	// convert to CSC
+		A_csc = new CSC<INDEXTYPE,VALUETYPE> (G1);	// convert to CSC
 		if (STORE_IN_MEMORY) {
                 	free(G1.start);
                 	free(G1.end);
@@ -125,7 +125,7 @@ int main(int argc, char* argv[])
 		graph G2;
         	graphGen(&G2);
 		cerr << "Generator returned" << endl;
-		B_csc = new longCSC<INDEXTYPE,VALUETYPE> (G2);	// convert to CSC
+		B_csc = new CSC<INDEXTYPE,VALUETYPE> (G2);	// convert to CSC
 
 		if (STORE_IN_MEMORY) {
                 	free(G2.start);

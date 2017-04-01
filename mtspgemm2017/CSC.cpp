@@ -242,16 +242,14 @@ void CSC<IT,NT>::MergeDuplicates (AddOperation addop)
 //! this version handles duplicates in the input
 template <class IT, class NT>
 template <typename AddOperation>
-CSC<IT,NT>::CSC (vector< tuple<IT,IT,NT> > & tuple, IT m, IT n, AddOperation addop): rows(m), cols(n)
+CSC<IT,NT>::CSC(vector<tuple<IT,IT,NT>> & tuple, IT m, IT n, AddOperation addop): rows(m), cols(n)
 {
     nnz = tuple.size(); // there might be duplicates
-    // cout << nnz << endl; 281528
-    // cout << cols << endl; 1636281
+
     colptr = new IT[cols]();
     rowids = new IT[nnz];
     values = new NT[nnz];
     vector<pair<IT,NT>> tosort (nnz);
-
 
     IT *work = new IT[cols](); // workspace
     std::fill(work, work+cols, (IT) 0); 
@@ -266,12 +264,12 @@ CSC<IT,NT>::CSC (vector< tuple<IT,IT,NT> > & tuple, IT m, IT n, AddOperation add
         colptr[cols] = CumulativeSum (work, cols);		// cumulative sum of work
         copy(work, work+cols, colptr);
         IT last;
-        for (IT k = 0 ; k < nnz ; ++k)
+        for (IT k = 0 ; k < nnz; ++k)
         {
             tosort[work[get<1>(tuple[k])]++] = make_pair(get<0>(tuple[k]), get<2>(tuple[k]));
         }
 //#pragma omp parallel for
-        for(int i=0; i< cols; ++i)
+        for(int i=0; i<cols; ++i)
         {
             sort(tosort.begin() + colptr[i], tosort.begin() + colptr[i+1]);
             typename vector<pair<IT,NT> >::iterator itr;	// iterator is a dependent name
@@ -285,10 +283,9 @@ CSC<IT,NT>::CSC (vector< tuple<IT,IT,NT> > & tuple, IT m, IT n, AddOperation add
     }
 
     delete [] work;
-    // cerr << "Before MergeDuplicates()" << endl;
+    //cerr << "Before MergeDuplicates()" << endl;
     MergeDuplicates(addop);
 }
-
 
 // Construct a Csc object from parallel arrays
 template <class IT, class NT>
@@ -344,7 +341,7 @@ void CSC<IT,NT>::Sorted()
 	{
 		sorted &= my_is_sorted (rowids + colptr[i], rowids + colptr[i+1], std::less<IT>());
 	}
-	cout << "Sorted ? " << sorted << endl;
+	cout << "Sorted? " << sorted << endl;
 }
 
 template <class IT, class NT>
