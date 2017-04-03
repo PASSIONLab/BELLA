@@ -74,8 +74,8 @@ std::vector<filedata>  GetFiles(char *filename) {
 
 typedef std::map<Kmer,size_t> dictionary; // <k-mer && reverse-complement, #kmers>
 typedef std::vector<Kmer> Kmers;
-typedef std::pair<size_t, vector<size_t>> cellspmat; // pair<kmer_id_j, vector<posix_in_read_i>>
-typedef std::map<size_t, std::vector<std::pair<size_t,size_t>>> multcell; // map<kmer_id, vector<posix_in_read_i, posix_in_read_j>>
+typedef std::pair<size_t, vector<size_t> > cellspmat; // pair<kmer_id_j, vector<posix_in_read_i>>
+typedef std::map<size_t, std::pair< std::vector<size_t>, std::vector<size_t> > > multcell; // map<kmer_id, vector<posix_in_read_i, posix_in_read_j>>
 
 // Function to create the dictionary
 // assumption: kmervect has unique entries
@@ -194,27 +194,33 @@ int main (int argc, char* argv[]) {
    
     spmat.Sorted();
     transpmat.Sorted();
-    std::cout << "spmat and transpmat sorted" << endl;
+    // std::cout << "spmat and transpmat sorted" << endl;
 
-    /*CSC<size_t, multcell> multspmat;
-    
+    std::vector<size_t> *rowsofC;
+    std::vector<multcell> *valuesofC;
+
     double start = omp_get_wtime();
 
-    for(int i=0; i<ITERS; ++i) {
-        HeapSpGEMM_gmalloc(spmat, transpmat, multiplies<cellspmat>(), plus<cellspmat>(), myidentity<cellspmat>(), mulspmat);
-    }
-    
-    cout << "HeapSpGEMM returned with " << mulspmat.nnz << " nonzeros" << endl;
-    double end = omp_get_wtime();
-    printf("HeapSpGEMM, start = %.16g, nend = %.16g, diff = %.16g\n", start, end, (end - start)/ITERS);
-
-    mulspmat.Sorted();*/
+    HeapSpGEMM(spmat, transpmat,
+        [] (cellspmat & c1, cellspmat & c2) 
+        {   if(c1.first != c2.first) cout << "error in multop()" << endl;
+            multcell value;
+            pair<vector<size_t>, vector<size_t>> vectemp = make_pair(c1.second, c2.second);
+            value.insert(make_pair(c1.first, vectemp));
+            return value;
+        },
+        [] (multcell & h, multcell & m)
+        {   m.insert(h.begin(), h.end());;
+            return m;
+        }, 
+        rowsofC, valuesofC);
+    std::cout << "HeapSpGEMM ok!" << endl;
 
 	return 0;
 } 
-
-
-
+    /* Ottimizzazione: sfruttare celle diagonali
+    Due putnatori che partono dalla cella in alto a sinistra, uno avanza sulla riga e uno avanza sulla colonna 
+    Prendo la prima riga */
 
 
 

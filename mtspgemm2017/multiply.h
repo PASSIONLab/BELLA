@@ -4,32 +4,33 @@
 
 #define PERCORECACHE (1024 * 1024)
 
-template <typename IT, typename NT, typename MultiplyOperation, typename AddOperation>
-void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, vector<IT> * RowIdsofC, vector<NT> * ValuesofC)
+template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation>
+void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, vector<IT> * RowIdsofC, vector<FT> * ValuesofC)
 {
     #pragma omp parallel for
     for(int i=0; i < B.cols; ++i) // for all columns of B
     {
         IT hsize = B.colptr[i+1]-B.colptr[i];
-        HeapEntry<IT,NT> * mergeheap = new HeapEntry<IT,NT>[hsize];
+        HeapEntry<IT,FT> *mergeheap = new HeapEntry<IT,FT>[hsize];
         IT maxnnzc = 0;      // max number of nonzeros in C(:,i)
         
         IT k = 0;   // Make initial heap
-        for(IT j=B.colptr[i]; j < B.colptr[i+1]; ++j)    // For all the nonzeros of the ith column
+        for(IT j=B.colptr[i]; j < B.colptr[i+1]; ++j) // For all the nonzeros of the ith column
         {
-            IT inner = B.rowids[j];				// get the row id of B (or column id of A)
+            cout << "\nB.rowids[j] " << B.rowids[j] << "\n" << endl;
+            IT inner = B.rowids[j];	// get the row id of B (or column id of A)
             IT npins = A.colptr[inner+1] - A.colptr[inner];	// get the number of nonzeros in A's corresponding column
             
             if(npins > 0)
             {
                 mergeheap[k].loc = 1;
-                mergeheap[k].runr = j;    			// the pointer to B.rowid's is the run-rank
+                mergeheap[k].runr = j; // the pointer to B.rowid's is the run-rank
                 mergeheap[k].value = multop(A.values[A.colptr[inner]],B.values[j]);
                 mergeheap[k++].key = A.rowids[A.colptr[inner]];	// A's first rowid is the first key
                 maxnnzc += npins;
             }
         }
-        hsize = k;      // if any of A's "significant" columns is empty, k will be less than hsize
+        hsize = k; // if any of A's "significant" columns is empty, k will be less than hsize
         make_heap(mergeheap, mergeheap + hsize);
         
         // reserve changes the capacity of the vector, so that future push_back's won't cause reallocation
@@ -40,7 +41,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         while(hsize > 0)
         {
             pop_heap(mergeheap, mergeheap + hsize);         // result is stored in mergeheap[hsize-1]
-            HeapEntry<IT,NT> hentry = mergeheap[hsize-1];
+            HeapEntry<IT,FT> hentry = mergeheap[hsize-1];
             
             // Use short circuiting
             if( (!RowIdsofC[i].empty()) && RowIdsofC[i].back() == hentry.key)

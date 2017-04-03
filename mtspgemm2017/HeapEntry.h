@@ -1,14 +1,14 @@
 #ifndef _HEAP_ENTRY_H
 #define _HEAP_ENTRY_H
 
-template <class IT, class NT>
+template <class IT, class FT>
 class HeapEntry
 {
 public:
 	IT key;	
 	IT runr;	 
 	IT loc;	// location of the next nonzero that column of A
-    NT value;
+    FT value;
 
 	// Operators are swapped for performance
 	// If you want/need to convert them back to their normal definitions, don't forget to add
