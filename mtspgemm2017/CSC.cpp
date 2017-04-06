@@ -238,6 +238,7 @@ void CSC<IT,NT>::MergeDuplicates (AddOperation addop)
         copy(v_rowids[i].begin(), v_rowids[i].end(), rowids+colptr[i]);
         copy(v_values[i].begin(), v_values[i].end(), values+colptr[i]);
     }
+
 }
 //! this version handles duplicates in the input
 template <class IT, class NT>
@@ -246,22 +247,23 @@ CSC<IT,NT>::CSC(vector<tuple<IT,IT,NT>> & tuple, IT m, IT n, AddOperation addop)
 {
     nnz = tuple.size(); // there might be duplicates
 
-    colptr = new IT[cols]();
+    colptr = new IT[cols+1]();
     rowids = new IT[nnz];
     values = new NT[nnz];
     vector<pair<IT,NT>> tosort (nnz);
 
     IT *work = new IT[cols](); // workspace
-    std::fill(work, work+cols, (IT) 0); 
+    std::fill(work, work+cols, (IT) 0);
 
     for (IT k = 0; k < nnz; ++k)
     {
         IT tmp = get<1>(tuple[k]); 
         work[tmp]++;	        	// column counts (i.e, work holds the "col difference array") 
     }
+
     if(nnz > 0)
     {
-        colptr[cols] = CumulativeSum (work, cols);		// cumulative sum of work
+        colptr[cols] = CumulativeSum (work, cols);		// cumulative sum of work [invalid write of size 8]
         copy(work, work+cols, colptr);
         IT last;
         for (IT k = 0 ; k < nnz; ++k)
@@ -281,9 +283,7 @@ CSC<IT,NT>::CSC(vector<tuple<IT,IT,NT>> & tuple, IT m, IT n, AddOperation addop)
             }
         }
     }
-
     delete [] work;
-    //cerr << "Before MergeDuplicates()" << endl;
     MergeDuplicates(addop);
 }
 

@@ -19,7 +19,7 @@
 #include <unordered_map>
 #include <sys/stat.h>
 #include <map>
-
+#include <omp.h>
 #include "kmercode/hash_funcs.h"
 #include "kmercode/Kmer.hpp"
 #include "kmercode/Buffer.h"
@@ -196,8 +196,8 @@ int main (int argc, char* argv[]) {
     transpmat.Sorted();
     // std::cout << "spmat and transpmat sorted" << endl;
 
-    std::vector<size_t> *rowsofC;
-    std::vector<multcell> *valuesofC;
+    std::vector<size_t>	*RowIdsofC = new vector<size_t>[read_id]; // rowidsofc.size() should be correspond to read_id
+    std::vector<multcell> *ValuesofC = new vector<multcell>[read_id]; // check valuesofc.size() 
 
     double start = omp_get_wtime();
 
@@ -213,7 +213,7 @@ int main (int argc, char* argv[]) {
         {   m.insert(h.begin(), h.end());;
             return m;
         }, 
-        rowsofC, valuesofC);
+        RowIdsofC, ValuesofC);
     std::cout << "HeapSpGEMM ok!" << endl;
 
 	return 0;

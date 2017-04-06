@@ -7,6 +7,7 @@
 template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation>
 void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, vector<IT> * RowIdsofC, vector<FT> * ValuesofC)
 {
+
     #pragma omp parallel for
     for(int i=0; i < B.cols; ++i) // for all columns of B
     {
@@ -17,7 +18,6 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         IT k = 0;   // Make initial heap
         for(IT j=B.colptr[i]; j < B.colptr[i+1]; ++j) // For all the nonzeros of the ith column
         {
-            cout << "\nB.rowids[j] " << B.rowids[j] << "\n" << endl;
             IT inner = B.rowids[j];	// get the row id of B (or column id of A)
             IT npins = A.colptr[inner+1] - A.colptr[inner];	// get the number of nonzeros in A's corresponding column
             
@@ -35,7 +35,8 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         
         // reserve changes the capacity of the vector, so that future push_back's won't cause reallocation
         // but it does not change the size, you can still use v.size() to get the number of valid elements
-        RowIdsofC[i].reserve(maxnnzc);
+
+	RowIdsofC[i].reserve(maxnnzc); 
         ValuesofC[i].reserve(maxnnzc);
         
         while(hsize > 0)
@@ -71,8 +72,10 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
             {
                 --hsize;
             }
-        }
-        
+	 // cout << "ValuesofC[i].size() " << ValuesofC[i].size() << endl;
+         // cout << "RowIdsofC[i].size() " << RowIdsofC[i].size() << endl;      
+ 	 }
+      
         delete [] mergeheap;
     }
 

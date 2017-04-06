@@ -15,20 +15,20 @@ rmat:	sprng
 TOCOMPILE = $(RMATPATH)/graph.o $(RMATPATH)/utils.o $(RMATPATH)/init.o $(RMATPATH)/globals.o 
 
 Buffer.o: kmercode/Buffer.c
-	gcc -O3 -c -o Buffer.o Buffer.c
+	gcc -g -c -o Buffer.o Buffer.c
 
 fq_reader.o: kmercode/fq_reader.c
-	gcc -O3 -c -o fq_reader.o fq_reader.c
+	gcc -std=gnu99 -g -c -o fq_reader.o fq_reader.c
 
 hash_funcs.o: kmercode/hash_funcs.c
-	gcc -O3 -c -o hash_funcs.o hash_funcs.c
+	gcc -g -c -o hash_funcs.o hash_funcs.c
 
 Kmer.o:	kmercode/Kmer.cpp
-	g++ -std=c++11 -O3 -c -o Kmer.o Kmer.cpp
+	g++ -std=c++11 -g -c -o Kmer.o Kmer.cpp
 
 # flags defined in mtspgemm2017/GTgraph/Makefile.var
 parse: occurrence-matrix.cpp hash_funcs.o fq_reader.o Buffer.o Kmer.o rmat
-	g++ -std=c++11 $(INCLUDE) -O3 -fopenmp -fpermissive -o parse hash_funcs.o Kmer.o Buffer.o fq_reader.o occurrence-matrix.cpp ${TOCOMPILE} ${LIBS}
+	g++ -std=c++11 $(INCLUDE) -g -fopenmp -fpermissive -o parse hash_funcs.o Kmer.o Buffer.o fq_reader.o occurrence-matrix.cpp ${TOCOMPILE} ${LIBS}
 
 clean:
 	(cd mtspgemm2017/GTgraph; make clean; cd ../..)
