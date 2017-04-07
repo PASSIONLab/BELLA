@@ -168,7 +168,8 @@ int main (int argc, char* argv[]) {
                 }
                 read_id++;
             }
-        }
+        } 
+	delete pfq;
     }
     // cout << "fastq file parsed\nsearch ended : vector<tuple<read_id,kmer_id,pair<kmer_id,pos_in_read>> created" << endl;
 
@@ -215,6 +216,9 @@ int main (int argc, char* argv[]) {
         }, 
         RowIdsofC, ValuesofC);
     std::cout << "HeapSpGEMM ok!" << endl;
+
+	delete [] RowIdsofC;
+	delete [] ValuesofC;
 
 	return 0;
 } 
