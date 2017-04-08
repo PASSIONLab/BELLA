@@ -51,8 +51,8 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
             }
             else
             {
-                ValuesofC[i].push_back( hentry.value );
-                RowIdsofC[i].push_back( hentry.key );
+                ValuesofC[i].push_back(hentry.value);
+                RowIdsofC[i].push_back(hentry.key);
             }
             
             IT inner = B.rowids[hentry.runr];

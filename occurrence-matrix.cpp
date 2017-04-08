@@ -75,17 +75,61 @@ std::vector<filedata>  GetFiles(char *filename) {
 typedef std::map<Kmer,size_t> dictionary; // <k-mer && reverse-complement, #kmers>
 typedef std::vector<Kmer> Kmers;
 typedef std::pair<size_t, vector<size_t> > cellspmat; // pair<kmer_id_j, vector<posix_in_read_i>>
-typedef std::map<size_t, std::pair< std::vector<size_t>, std::vector<size_t> > > multcell; // map<kmer_id, vector<posix_in_read_i, posix_in_read_j>>
+typedef std::map< size_t, pair< vector<size_t>, vector<size_t> > > multcell; // map<kmer_id, vector<posix_in_read_i, posix_in_read_j>>
+typedef std::map< pair <size_t, size_t>, pair< vector<size_t>, vector<size_t> > > deltacell; // map< pair<kmer_id_1, kmer_id_2>, pair< vector<delta_pos_i>, vector<delta_pos_j> > >
 
 // Function to create the dictionary
 // assumption: kmervect has unique entries
 void dictionaryCreation(dictionary &kmerdict, Kmers &kmervect)
 {
 	for(size_t i = 0; i<kmervect.size(); i++)
-    {
+  	{
         kmerdict.insert(make_pair(kmervect[i].rep(), i));
 	}
-	// cout << "kmervect.rep() in the dict" << endl;
+	
+}
+
+// function computing just delta(pos) between two vectors
+vector<size_t> computeDelta(vector<size_t> &k1, vector<size_t> &k2) {
+
+	vector<size_t> delta;
+	
+	for(size_t i = 0; i < k1.size(); ++i) 
+	{ 
+		for(size_t j = 0; j < k2.size(); ++j)
+		{
+			delta.push_back(k2[j]-k1[i]); // delta(pos)
+		}
+	}
+
+	return delta;
+}			
+
+void computeNewMat(vector<multcell> *ValuesofC, vector<deltacell> *newValuesofC) {
+
+	vector<multcell>::iterator vit;
+	multcell::iterator outer;
+	multcell::iterator inner;
+	pair<vector<size_t>,vector<size_t>> temp;
+	deltacell newcell;
+	
+	for(vit = ValuesofC->begin(); vit != ValuesofC->end(); ++vit)
+	{
+		for(outer = vit->begin(); outer != vit->end(); ++outer) 	
+		{
+			for(inner = vit->begin(); inner != vit->end(); ++inner)
+			{
+				if(inner->first != outer->first) 
+				{
+					temp = make_pair(computeDelta(outer->second.first, inner->second.first), 
+							computeDelta(outer->second.second, inner->second.second));
+
+					newcell.insert(make_pair(make_pair(outer->first, inner->first), temp)); 
+				} else continue;			
+			}
+		}
+		newValuesofC->push_back(newcell);
+	}
 }
 
 int main (int argc, char* argv[]) {
@@ -113,7 +157,6 @@ int main (int argc, char* argv[]) {
 	cout << "k-mer length : " << KMER_LENGTH <<endl;
 	cout << "reference genome : escherichia coli, " << argv[2] <<endl;
 
-	// filtering on kmers --> kmers which occur between 4 and 8 times 
 	if(filein.is_open()) {
 			while(getline(filein, line)) {
 				if(line.length() == 0)
@@ -121,8 +164,7 @@ int main (int argc, char* argv[]) {
 
 				string substring = line.substr(1);
 				elem = stoi(substring);
-				getline(filein, kmerstr); 
-				//if(elem>3 && elem<9) {	
+				getline(filein, kmerstr); 	
 				kmerfromstr.set_kmer(kmerstr.c_str());
 				kmervect.push_back(kmerfromstr);								
 			}
@@ -189,10 +231,8 @@ int main (int argc, char* argv[]) {
                                 merge(c1.second.begin(), c1.second.end(), c2.second.begin(), c2.second.end(), back_inserter(merged));
                                 return make_pair(c1.first, merged);
                             });
-    std::cout << "transpmat created" << endl;
+    std::cout << "transpose(spmat) created" << endl;
 
-    // TO DO: define mult and add operation 
-   
     spmat.Sorted();
     transpmat.Sorted();
     // std::cout << "spmat and transpmat sorted" << endl;
@@ -215,26 +255,19 @@ int main (int argc, char* argv[]) {
             return m;
         }, 
         RowIdsofC, ValuesofC);
-    std::cout << "HeapSpGEMM ok!" << endl;
+    std::cout << "RowIdsofC and ValuesofC created through HeapSpGEMM" << endl;
+
+	/* The next step should be transforming the (i,j) cell of the resulted matrix in order to keep track of the 		   		∆pos on read i and ∆pos on read j for each couple of kmer_id in the map of that (i,j) cell (DONE).
+	Then, filtering it to keep saved in the (i,j) cell just the kmer_id pair that shared ∆pos on i and j similar above 		a certain threshold. */
+
+	vector<deltacell> *newValuesofC = new vector<deltacell>[read_id]; 
+	computeNewMat(ValuesofC, newValuesofC); 
+	cout << "newValuesofC created" << endl;
 
 	delete [] RowIdsofC;
 	delete [] ValuesofC;
+	delete [] newValuesofC;
 
 	return 0;
 } 
-    /* Ottimizzazione: sfruttare celle diagonali
-    Due putnatori che partono dalla cella in alto a sinistra, uno avanza sulla riga e uno avanza sulla colonna 
-    Prendo la prima riga */
-
-
-
-
-
-
-
-
-
-
-
-
 
