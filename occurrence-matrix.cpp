@@ -12,6 +12,7 @@
 #include <tuple>
 #include <queue>
 #include <stack>
+#include <functional>
 #include <cstring>
 #include <string.h>
 #include <cassert>
@@ -78,6 +79,43 @@ typedef std::pair<size_t, vector<size_t> > cellspmat; // pair<kmer_id_j, vector<
 typedef std::map< size_t, pair< vector<size_t>, vector<size_t> > > multcell; // map<kmer_id, vector<posix_in_read_i, posix_in_read_j>>
 typedef std::map< pair <size_t, size_t>, pair< vector<size_t>, vector<size_t> > > deltacell; // map< pair<kmer_id_1, kmer_id_2>, pair< vector<delta_pos_i>, vector<delta_pos_j> > >
 
+struct unop : std::unary_function<multcell, deltacell>  {
+    deltacell operator() (multcell &values) {
+
+	multcell::iterator outer;
+	multcell::iterator inner;
+	pair<vector<size_t>,vector<size_t>> temp;
+	deltacell nvalues;
+	vector<size_t> deltareadi;
+	vector<size_t> deltareadj;
+
+	for(outer = values.begin(); outer != values.end(); ++outer) 	
+	{
+		for(inner = values.begin(); inner != values.end(); ++inner)
+		{
+			if(inner->first != outer->first) 
+			{
+				for(size_t i = 0; i < outer->second.first.size(); ++i) { 
+					for(size_t j = 0; j < inner->second.first.size(); ++j) {
+						deltareadi.push_back(outer->second.first[j]-inner->second.first[i]);
+					}
+				}
+
+				for(size_t i = 0; i < outer->second.second.size(); ++i) { 
+					for(size_t j = 0; j < inner->second.second.size(); ++j) {
+						deltareadj.push_back(outer->second.second[j]-inner->second.second[i]);
+					}
+				}
+
+				temp = make_pair(deltareadi, deltareadj);
+				nvalues.insert(make_pair(make_pair(outer->first, inner->first), temp)); 
+			}			
+		}
+	}
+	return nvalues;
+    }
+};
+
 // Function to create the dictionary
 // assumption: kmervect has unique entries
 void dictionaryCreation(dictionary &kmerdict, Kmers &kmervect)
@@ -87,49 +125,6 @@ void dictionaryCreation(dictionary &kmerdict, Kmers &kmervect)
         kmerdict.insert(make_pair(kmervect[i].rep(), i));
 	}
 	
-}
-
-// function computing just delta(pos) between two vectors
-vector<size_t> computeDelta(vector<size_t> &k1, vector<size_t> &k2) {
-
-	vector<size_t> delta;
-	
-	for(size_t i = 0; i < k1.size(); ++i) 
-	{ 
-		for(size_t j = 0; j < k2.size(); ++j)
-		{
-			delta.push_back(k2[j]-k1[i]); // delta(pos)
-		}
-	}
-
-	return delta;
-}			
-
-void computeNewMat(vector<multcell> *ValuesofC, vector<deltacell> *newValuesofC) {
-
-	vector<multcell>::iterator vit;
-	multcell::iterator outer;
-	multcell::iterator inner;
-	pair<vector<size_t>,vector<size_t>> temp;
-	deltacell newcell;
-	
-	for(vit = ValuesofC->begin(); vit != ValuesofC->end(); ++vit)
-	{
-		for(outer = vit->begin(); outer != vit->end(); ++outer) 	
-		{
-			for(inner = vit->begin(); inner != vit->end(); ++inner)
-			{
-				if(inner->first != outer->first) 
-				{
-					temp = make_pair(computeDelta(outer->second.first, inner->second.first), 
-							computeDelta(outer->second.second, inner->second.second));
-
-					newcell.insert(make_pair(make_pair(outer->first, inner->first), temp)); 
-				} else continue;			
-			}
-		}
-		newValuesofC->push_back(newcell);
-	}
 }
 
 int main (int argc, char* argv[]) {
@@ -235,38 +230,32 @@ int main (int argc, char* argv[]) {
 
     spmat.Sorted();
     transpmat.Sorted();
-    // std::cout << "spmat and transpmat sorted" << endl;
-
-    std::vector<size_t>	*RowIdsofC = new vector<size_t>[read_id]; // rowidsofc.size() should be correspond to read_id
-    std::vector<multcell> *ValuesofC = new vector<multcell>[read_id]; // check valuesofc.size() 
 
     double start = omp_get_wtime();
+    CSC<size_t, multcell> tempspmat;
 
-    HeapSpGEMM(spmat, transpmat,
-        [] (cellspmat & c1, cellspmat & c2) 
-        {   if(c1.first != c2.first) cout << "error in multop()" << endl;
-            multcell value;
-            pair<vector<size_t>, vector<size_t>> vectemp = make_pair(c1.second, c2.second);
-            value.insert(make_pair(c1.first, vectemp));
-            return value;
-        },
-        [] (multcell & h, multcell & m)
-        {   m.insert(h.begin(), h.end());;
-            return m;
-        }, 
-        RowIdsofC, ValuesofC);
-    std::cout << "RowIdsofC and ValuesofC created through HeapSpGEMM" << endl;
+    HeapSpGEMM_gmalloc(spmat, transpmat, 
+	    [] (cellspmat & c1, cellspmat & c2)
+	    {	if(c1.first != c2.first) cout << "error in multop()" << endl;
+            	multcell value;
+            	pair<vector<size_t>, vector<size_t>> vectemp = make_pair(c1.second, c2.second);
+            	value.insert(make_pair(c1.first, vectemp));
+            	return value;
+	    }, 
+	    [] (multcell & h, multcell & m)
+       	    {   m.insert(h.begin(), h.end());
+           	return m;
+       	    }, tempspmat);
+    cout << "multiply computed and tempspmat generated" << endl;
 
-	/* The next step should be transforming the (i,j) cell of the resulted matrix in order to keep track of the 		   		∆pos on read i and ∆pos on read j for each couple of kmer_id in the map of that (i,j) cell (DONE).
-	Then, filtering it to keep saved in the (i,j) cell just the kmer_id pair that shared ∆pos on i and j similar above 		a certain threshold. */
+	CSC<size_t, deltacell> nspmat;
+	nspmat = tempspmat.Apply(unop(), nspmat);
+cout << "nspamat created" << endl;
 
-	vector<deltacell> *newValuesofC = new vector<deltacell>[read_id]; 
-	computeNewMat(ValuesofC, newValuesofC); 
-	cout << "newValuesofC created" << endl;
-
-	delete [] RowIdsofC;
-	delete [] ValuesofC;
-	delete [] newValuesofC;
+	/* The next step should be transforming the (i,j) cell of the resulted matrix in order to keep track of the ∆pos on read i 
+	and ∆pos on read j for each couple of kmer_id in the map of that (i,j) cell (DONE).
+	Then, filtering it to keep saved in the (i,j) cell just the kmer_id pair that shared ∆pos on i and j similar above a
+	certain threshold. */
 
 	return 0;
 } 

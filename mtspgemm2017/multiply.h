@@ -131,8 +131,8 @@ void LocalSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation m
 /**
  ** with global memory allocation
  **/
-template <typename IT, typename NT, typename MultiplyOperation, typename AddOperation, typename AlphaOperation>
-void HeapSpGEMM_gmalloc(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, AlphaOperation alphaop, CSC<IT,NT> & C )
+template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation>
+void HeapSpGEMM_gmalloc(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, CSC<IT,FT> & C )
 {
     
     int numThreads;
@@ -140,8 +140,6 @@ void HeapSpGEMM_gmalloc(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOper
     {
         numThreads = omp_get_num_threads();
     }
-    
-    
     
     // *************** Creating global space to store result, used by all threads *********************
     IT* maxnnzc = new IT[B.cols]; // maximum number of nnz in each column of C
@@ -155,19 +153,21 @@ void HeapSpGEMM_gmalloc(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOper
             IT locmax = 0;
             for(IT j=B.colptr[i]; j < B.colptr[i+1]; ++j)    // For all the nonzeros of the ith column
             {
+		//cout << B.colptr[i] << " B.colptr[i]" << endl;
                 IT inner = B.rowids[j];				// get the row id of B (or column id of A)
                 IT npins = A.colptr[inner+1] - A.colptr[inner];	// get the number of nonzeros in A's corresponding column
+		//cout << npins << " npins" << endl;
                 locmax += npins;
             }
+
             maxnnzc[i] = locmax;
-            tflops += locmax;
+            tflops += locmax; 
         }
 #pragma omp critical
         {
             flops += tflops;
         }
-    }
-    
+    } 
     IT flopsPerThread = flops/numThreads; // amount of work that will be assigned to each thread
     IT colPerThread [numThreads + 1]; // thread i will process columns from colPerThread[i] to colPerThread[i+1]-1
     
@@ -201,7 +201,7 @@ void HeapSpGEMM_gmalloc(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOper
     
     IT size = colEnd[B.cols-1] + maxnnzc[B.cols-1];
     IT * RowIdsofC = new IT[size];
-    NT * ValuesofC = new NT[size];
+    FT * ValuesofC = new FT[size];
     delete [] maxnnzc;
     // ************************ End Creating global space *************************************
     
@@ -212,28 +212,30 @@ void HeapSpGEMM_gmalloc(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOper
 #pragma omp parallel
     {
         int thisThread = omp_get_thread_num();
-        IT localmax = -1;
+        IT localmax = 0; // change -1 to 0 as our IT is size_t
         for(int i=colPerThread[thisThread]; i < colPerThread[thisThread+1]; ++i)
         {
             IT colnnz = B.colptr[i+1]-B.colptr[i];
-            if(colnnz > localmax) localmax = colnnz;
+            if(colnnz > localmax) 
+		localmax = colnnz;
         }
         threadHeapSize[thisThread] = localmax;
     }
     
     IT threadHeapStart[numThreads+1];
     threadHeapStart[0] = 0;
-    for(int i=0; i<numThreads; i++)
+    for(int i=0; i<numThreads; i++) {
         threadHeapStart[i+1] = threadHeapStart[i] + threadHeapSize[i];
+	}
     
-    HeapEntry<IT,NT> * globalheap = new HeapEntry<IT,NT>[threadHeapStart[numThreads]];
+    HeapEntry<IT,FT> * globalheap = new HeapEntry<IT,FT>[threadHeapStart[numThreads]];
     
     // ************************ End Creating global heap space *************************************
     
 #pragma omp parallel
     {
         int thisThread = omp_get_thread_num();
-        HeapEntry<IT,NT> * mergeheap = globalheap + threadHeapStart[thisThread]; // thread private heap space
+        HeapEntry<IT,FT> * mergeheap = globalheap + threadHeapStart[thisThread]; // thread private heap space
         
         
         for(int i=colPerThread[thisThread]; i < colPerThread[thisThread+1]; ++i)
@@ -257,13 +259,13 @@ void HeapSpGEMM_gmalloc(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOper
             
             // reserve changes the capacity of the vector, so that future push_back's won't cause reallocation
             // but it does not change the size, you can still use v.size() to get the number of valid elements
-            //RowIdsofC[i].reserve(maxnnzc);
-            //ValuesofC[i].reserve(maxnnzc);
+            // RowIdsofC[i].reserve(maxnnzc);
+            // ValuesofC[i].reserve(maxnnzc);
             
             while(hsize > 0)
             {
                 pop_heap(mergeheap, mergeheap + hsize);         // result is stored in mergeheap[hsize-1]
-                HeapEntry<IT,NT> hentry = mergeheap[hsize-1];
+                HeapEntry<IT,FT> hentry = mergeheap[hsize-1];
                 
                 // Use short circuiting
                 if( (colEnd[i] > colStart[i]) && RowIdsofC[colEnd[i]-1] == hentry.key)
@@ -284,10 +286,10 @@ void HeapSpGEMM_gmalloc(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOper
                 if( (A.colptr[inner + 1] - A.colptr[inner]) > hentry.loc)
                 {
                     IT index = A.colptr[inner] + hentry.loc;
-                    mergeheap[hsize-1].loc	 = hentry.loc +1;
-                    mergeheap[hsize-1].runr  = hentry.runr;
+                    mergeheap[hsize-1].loc = hentry.loc +1;
+                    mergeheap[hsize-1].runr = hentry.runr;
                     mergeheap[hsize-1].value = multop(A.values[index], B.values[hentry.runr]);
-                    mergeheap[hsize-1].key	 = A.rowids[index];
+                    mergeheap[hsize-1].key = A.rowids[index];
                     
                     push_heap(mergeheap, mergeheap + hsize);
                 }
@@ -314,12 +316,12 @@ void HeapSpGEMM_gmalloc(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOper
         }
         C.nnz = C.colptr[C.cols];
         C.rowids = new IT[C.nnz];
-        C.values = new NT[C.nnz];
+        C.values = new FT[C.nnz];
         
 #pragma omp parallel for
         for(int i=0; i< C.cols; ++i)         // combine step
         {
-            transform(&ValuesofC[colStart[i]], &ValuesofC[colEnd[i]], &ValuesofC[colStart[i]], alphaop);
+           // transform(&ValuesofC[colStart[i]], &ValuesofC[colEnd[i]], &ValuesofC[colStart[i]], alphaop);
             copy(&RowIdsofC[colStart[i]], &RowIdsofC[colEnd[i]], C.rowids + C.colptr[i]);
             copy(&ValuesofC[colStart[i]], &ValuesofC[colEnd[i]], C.values + C.colptr[i]);
         }

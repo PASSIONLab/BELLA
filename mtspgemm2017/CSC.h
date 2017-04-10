@@ -17,7 +17,7 @@ extern "C" {
 
 using namespace std;
 
-template <class IT, class NT> // IT, NT li dichiaro runtime (polimorfismo parametrico)
+template <class IT, class NT> // IT, NT li dichiaro runtime (polimorfismo parametrico)s
 class CSC
 {
 public:
@@ -37,16 +37,21 @@ public:
     CSC (vector<tuple<IT,IT,NT>> & tuple, IT m, IT n, AddOperation addop); // costruttore
     
     template <typename AddOperation>
-    void MergeDuplicates (AddOperation addop); // 1st method
+    void MergeDuplicates (AddOperation addop); // method
 
-    CSC<IT,NT> SpTraspose(CSC<IT,NT> &spmat);
+    template <typename FT> operator CSC<IT,FT>() const; // expasion of class type
+    template <typename FT, typename UnaryOp>
+    CSC<IT,FT> Apply(UnaryOp unop, CSC<IT,FT> & ncsc); // method
 
     CSC(graph & G);
     CSC (IT * ri, IT * ci, NT * val, IT mynnz, IT m, IT n);
     CSC (const CSC<IT,NT> & rhs);		// copy constructor
     CSC<IT,NT> & operator=(const CSC<IT,NT> & rhs);	// assignment operator
     bool operator==(const CSC<IT,NT> & rhs); // ridefinizione ==
+    template <typename FT> CSC<IT,FT> & operator=(const CSC<IT,FT> & rhs);	// assignment operator
+    template <typename FT> bool operator==(const CSC<IT,FT> & rhs); // ridefinizione ==
     
+
     
     ~CSC() // distruttore
     {
@@ -55,6 +60,7 @@ public:
         if( cols > 0 )
             delete [] colptr;
     }
+  
     bool isEmpty()
     {
         return ( nnz == 0 );
@@ -67,8 +73,6 @@ public:
                                 const IT* ri, const IT len_ri,
                     IT* rowids_out, NT* values_out, IT* len_out);
 
-
-    
     IT rows;
     IT cols;
     IT nnz; // number of nonzeros

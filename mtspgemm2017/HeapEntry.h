@@ -8,7 +8,7 @@ public:
 	IT key;	
 	IT runr;	 
 	IT loc;	// location of the next nonzero that column of A
-    FT value;
+        FT value;
 
 	// Operators are swapped for performance
 	// If you want/need to convert them back to their normal definitions, don't forget to add

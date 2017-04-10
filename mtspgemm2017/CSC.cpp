@@ -191,8 +191,24 @@ CSC<IT,NT>::CSC(Triple<IT,NT> * triples, IT mynnz, IT m, IT n):nnz(mynnz),rows(m
 	delete [] work;
 }
 
+template <class IT, class NT>
+template <typename FT, typename UnaryOp>
+CSC<IT,FT> CSC<IT,NT>::Apply(UnaryOp unop, CSC<IT,FT> &ncsc)
+{
+
+	ncsc.colptr = new IT[cols+1]();
+	copy(colptr, colptr+cols+1, ncsc.colptr);
+	ncsc.rowids = new IT[nnz];
+	copy(rowids, rowids+nnz, ncsc.rowids);
+
+	ncsc.values = new FT[nnz];
+	transform(values, values+nnz, ncsc.values, unop);
+
+	return ncsc;
+}
 
 template <class IT, class NT>
+
 template <typename AddOperation>
 void CSC<IT,NT>::MergeDuplicates (AddOperation addop)
 {
