@@ -196,12 +196,17 @@ template <typename FT, typename UnaryOp>
 CSC<IT,FT> CSC<IT,NT>::Apply(UnaryOp unop, CSC<IT,FT> &ncsc)
 {
 
+	for ()	
+	
 	ncsc.colptr = new IT[cols+1]();
 	copy(colptr, colptr+cols+1, ncsc.colptr);
 	ncsc.rowids = new IT[nnz];
 	copy(rowids, rowids+nnz, ncsc.rowids);
 
 	ncsc.values = new FT[nnz];
+
+	// Cartesian product of shared k-mers only for pairs that share < shared_limit(i.len(),j.len()) k-mers (we need read length)
+
 	transform(values, values+nnz, ncsc.values, unop);
 
 	return ncsc;

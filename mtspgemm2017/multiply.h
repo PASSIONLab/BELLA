@@ -1,5 +1,6 @@
 #include "CSC.h"
 #include <omp.h>
+#include <fstream>
 //#include <tbb/scalable_allocator.h>
 
 #define PERCORECACHE (1024 * 1024)
@@ -305,6 +306,7 @@ void HeapSpGEMM_gmalloc(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOper
     
     if(C.isEmpty())
     {
+	std::ofstream ofs ("histo.csv");
         C.rows = A.rows;
         C.cols = B.cols;
         C.colptr = new IT[C.cols+1];
@@ -314,6 +316,7 @@ void HeapSpGEMM_gmalloc(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOper
         {
             C.colptr[i+1] = C.colptr[i] + colEnd[i]-colStart[i];
         }
+
         C.nnz = C.colptr[C.cols];
         C.rowids = new IT[C.nnz];
         C.values = new FT[C.nnz];
@@ -325,7 +328,43 @@ void HeapSpGEMM_gmalloc(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOper
             copy(&RowIdsofC[colStart[i]], &RowIdsofC[colEnd[i]], C.rowids + C.colptr[i]);
             copy(&ValuesofC[colStart[i]], &ValuesofC[colEnd[i]], C.values + C.colptr[i]);
         }
-        
+
+	std::map<size_t, size_t> histogram;
+	std::map<size_t, size_t>::iterator it;
+
+	for(int i=0; i< C.cols; ++i) {
+		if(C.values[i].size() > 34) {
+			it = histogram.find(C.values[i].size());
+			if(it == histogram.end()) {
+				histogram.insert(make_pair(C.values[i].size(), 1));
+			}
+			it->second++;
+		}
+	}
+
+	double totnumPairs = 0;
+	double normalizedSum = 0;
+
+	for(it = histogram.begin(); it != histogram.end(); ++it) {
+	
+		totnumPairs += it->second;
+		
+	}
+
+	for(it = histogram.begin(); it != histogram.end(); ++it) {
+	
+		normalizedSum += (it->second)/totnumPairs;
+	}	
+	
+	if(ofs.is_open()) {
+		ofs << "NORMALIZED HISTOGRAM per number of PairsofReads (%) with totnumPairs: " << totnumPairs << endl;
+		ofs << "SharedKmers, PairsOfReads/totnumPairs" << endl;
+	}
+        for(it = histogram.begin(); it != histogram.end(); ++it) {
+		if(ofs.is_open())
+			ofs << it->first << "," << ((it->second)/totnumPairs)*100 << endl; 
+	}
+	ofs.close();
     }
     
     delete [] RowIdsofC;

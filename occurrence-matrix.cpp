@@ -93,7 +93,7 @@ struct unop : std::unary_function<multcell, deltacell>  {
 	{
 		for(inner = values.begin(); inner != values.end(); ++inner)
 		{
-			if(inner->first != outer->first) 
+			if((inner->first != outer->first) && (inner->size() > shared_limit) && (outer->size() > shared_limit)) // TO DO: define shared_limit function
 			{
 				for(size_t i = 0; i < outer->second.first.size(); ++i) { 
 					for(size_t j = 0; j < inner->second.first.size(); ++j) {
@@ -248,9 +248,9 @@ int main (int argc, char* argv[]) {
        	    }, tempspmat);
     cout << "multiply computed and tempspmat generated" << endl;
 
-	CSC<size_t, deltacell> nspmat;
+	/*CSC<size_t, deltacell> nspmat;
 	nspmat = tempspmat.Apply(unop(), nspmat);
-cout << "nspamat created" << endl;
+	cout << "nspamat created" << endl;*/
 
 	/* The next step should be transforming the (i,j) cell of the resulted matrix in order to keep track of the ∆pos on read i 
 	and ∆pos on read j for each couple of kmer_id in the map of that (i,j) cell (DONE).
