@@ -196,10 +196,12 @@ template <typename FT, typename UnaryOp>
 CSC<IT,FT> CSC<IT,NT>::Apply(UnaryOp unop, CSC<IT,FT> &ncsc)
 {
 
-	ncsc.colptr = new IT[cols+1]();
+    ncsc.colptr = colptr;
+    ncsc.rowids = rowids;
+	/* ncsc.colptr = new IT[cols+1]();
 	copy(colptr, colptr+cols+1, ncsc.colptr);
 	ncsc.rowids = new IT[nnz];
-	copy(rowids, rowids+nnz, ncsc.rowids);
+	copy(rowids, rowids+nnz, ncsc.rowids);*/
 
 	ncsc.values = new FT[nnz];
 	transform(values, values+nnz, ncsc.values, unop);
