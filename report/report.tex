@@ -1,10 +1,9 @@
-\title{Long Read Assembly\\
-\large Existence and Unique existence of k-mers in the genome}
+\title{Long Reads Alignment}
 \author{
-        Giulia Guidi\\
-        \small giulia.guidi@mail.polimi.it\\
-        \small Dipartimento di Elettronica, Informazione e Bioingegneria\\
-        \small Politecnico di Milano, Milan, Italy
+        Giulia Guidi$^{1,2}$, Ayd{\i}n Bulu\c{c}$^1$\\
+        \small \{gguidi, abuluc\}@lbl.gov\\
+        \small $^1$Computational Research Division, Lawrence Berkeley National Laboratory, Berkeley, USA\\
+        \small $^2$Dipartimento di Elettronica, Informazione e Bioingegneria, Politecnico di Milano, Milan, Italy\\
    	   }
 \date{\today}
 
@@ -31,6 +30,8 @@
 \usepackage{graphicx}
 \usepackage{float}
 \usepackage{setspace}
+\usepackage{xcolor}
+\newcommand\myworries[1]{\textcolor{red}{#1}}
 
 
 \begin{document}
@@ -39,46 +40,56 @@
 \section{Problem Statement}
 
 Sequencing technologies produce a large amount of redundant data with respect to the real genomic sequence to be assembled.
-Furthermore, the Pacific Bioscience techonology, considered in this work, is prone to an error rate equal to 10\%.\\
+Furthermore, the Pacific Bioscience techonology, considered in this work, is prone to an error rate equal to 15\%.\\
 The ultimate goal is to efficiently exploit long reads produced by Pacific Bioscience technology to \emph{de novo} assemble a genome.
 To achieve this scope, the first problem to be addressed is the determination of a reliable kmer sub-set to be used as a vector during the alignment phase of the genome assembly.
-This report includes a brief explaination of the proposed approach to compute the analysis in Section \ref{code}, while in Section \ref{results} the obtained results are shown.
-In Appendix \ref{append} the raw data used for the final results are reported. 
+This report briefly explains the preliminaries analysis computed to identify the correct approach to the problem.
+%proposed approach to compute the analysis in Section \ref{code}, while in Section \ref{results} the obtained results are shown.
+%In Appendix \ref{append} the raw data used for the final results are reported.
+\section{Reliable k-mers}\label{rks}
 
-\section{Algorithm Approach}\label{code}
+The first computed analysis regards the identification of a reliable set of k-mers.
+The reads were generated starting from the Escherichia Coli genome, using the PacBio reads simulator. 
+Then, using Jellyfish software, we generated different k-mers dataset from these reads, varying the value of \emph{k}, we took into account values from 15 to 29.\\
+\myworries{Import the plots from the first report}.\\
+Given the results reported in the previous plots, we decided to take into account for the following statistics \emph{k} values equal to 15, 17 an 19.
+%\section{Algorithm Approach}\label{code}
+%
+%The proposed algorithm exploits a trie tree approach to find matches between %k-mers and the genome \cite{bodon2003trie}.
+%This approach makes the algorithm much more efficient with respect to its %previous version.
+%It takes as inputs the reference genome, the k-mer set generated from it and %the k-mer length (k). 
+%The trie is a particular tree datastructure which associates an alphabet to %each node. 
+%In a nutshell, the advantage of a trie-based structure is that during the %matching phase the algorithm follows a single path down along the tree, %without matching against each single k-mer.\\
+%In our context, the alphabet corresponds to the nucleotides, as shown in %Figure \ref{fig:node}.
+%In addition to the four pointers to nucleotides, in this implementation, the %datastruct \emph{node} includes also two integer values: \emph{Count} and \emph%{GroupID}.
+%The first one is used during the string matching phase in order to track the %occurence of a match.
+%It is incremented only in leaf nodes when a matching is found.
+%The second one is used during the building phase; it is associated with each %leaf node and it represents the occurrence in the initial k-mer set of a %specific k-mer.
+%Figure \ref{fig:trie} shows an example of trie tree structure based on a 4-mer %set.\\
+%Currently, the trie is built based on kmer set.
+%However, given that the size of the genome file is smaller than one of the %kmer set, it may make sense to build the trie based on the first one.
+%
+%\begin{figure}
+%    \centering
+%    \includegraphics[scale=0.35]{image/TrieNode.png}
+%    \caption{Graphical representation of the trie node}
+%    \label{fig:node}
+%\end{figure}
+%\begin{figure}
+%    \centering
+%    \includegraphics[scale=0.435]{image/TrieStruct.png}
+%    \caption{Graphical representation of the trie tree structure for a 4-mer %set}
+%    \label{fig:trie}
+%\end{figure} 
 
-The proposed algorithm exploits a trie tree approach to find matches between k-mers and the genome \cite{bodon2003trie}.
-This approach makes the algorithm much more efficient with respect to its previous version.
-It takes as inputs the reference genome, the k-mer set generated from it and the k-mer length (k). 
-The trie is a particular tree datastructure which associates an alphabet to each node. 
-In a nutshell, the advantage of a trie-based structure is that during the matching phase the algorithm follows a single path down along the tree, without matching against each single k-mer.\\
-In our context, the alphabet corresponds to the nucleotides, as shown in Figure \ref{fig:node}.
-In addition to the four pointers to nucleotides, in this implementation, the datastruct \emph{node} includes also two integer values: \emph{Count} and \emph{GroupID}.
-The first one is used during the string matching phase in order to track the occurence of a match.
-It is incremented only in leaf nodes when a matching is found.
-The second one is used during the building phase; it is associated with each leaf node and it represents the occurrence in the initial k-mer set of a specific k-mer.
-Figure \ref{fig:trie} shows an example of trie tree structure based on a 4-mer set.\\
-Currently, the trie is built based on kmer set.
-However, given that the size of the genome file is smaller than one of the kmer set, it may make sense to build the trie based on the first one.
+\section{Existence and unique existence of k-mers in the genome}\label{existence}
 
-\begin{figure}
-    \centering
-    \includegraphics[scale=0.35]{image/TrieNode.png}
-    \caption{Graphical representation of the trie node}
-    \label{fig:node}
-\end{figure}
-\begin{figure}
-    \centering
-    \includegraphics[scale=0.435]{image/TrieStruct.png}
-    \caption{Graphical representation of the trie tree structure for a 4-mer set}
-    \label{fig:trie}
-\end{figure} 
-
-\section{Results}\label{results}
-
-As said in Section \ref{code}, the \emph{GroupID} variable represents the occurrence of a k-mer in the initial k-mer set. 
+Here, we computed some statistics con the previously selected dataset of k-mer.
+The goal was to identify which groups of k-mers, based on their occurrences in the initial dataset (that means the occurrence in the reads generated from the PacBio simulator), presented the highest percentages of unique existence in the genome.
+To do that, we found the matches between each k-mers of the dataset and the genome sequence.\\
+The \emph{GroupID} variable represents the occurrence of a k-mer in the initial dataset. 
 \emph{State A}, \emph{State B} and \emph{State C} indicate the number of k-mers (within a group, that means with the same occurence in the initial dataset) with \emph{real} occurence in the genome equal to 0, equal to 1 and greater than 1, respectively.
-Regarding the presented plots, for all of them the x-axis is based on the \emph{GroupID}, while the y-axis represents the percetage of k-mers existence (Figure \ref{fig:E}), unique existence (Figure \ref{fig:U}) in the genome or both (Figure \ref{fig:15}, \ref{fig:17} and \ref{fig:19}).\\
+Regarding the presented plots, for all of them the x-axis is based on the \emph{GroupID}, while the y-axis represents the percetage of k-mers unique existence (Figure \ref{fig:U}) in the genome or both the percentage of k-mers existence and unique existence (Figure \ref{fig:15}, \ref{fig:17} and \ref{fig:19}).\\
 The percentage of existence (Eq.\ref{eq:first}) and unique existence (Eq.\ref{eq:second}) are defined as:
 \vspace{5mm}
 
@@ -94,19 +105,14 @@ Unique\, existence = \frac{StateB}{StateA + StateB + StateC}\cdot 100
 \vspace{6mm}
 \noindent
 Figure \ref{fig:15} shows the obtained results with the k-mer length equal to 15, the \emph{GroupID} goes up to 268.
-The greater unique existence percentages, drawn with red dashed line, are associated with \emph{GroupID} equal to 5, 6 and 7 (with a maximux of 47.84\% for \emph{GroupID} equal to 6).
-A stable 100\% existence can be find starting from \emph{GroupID} equal to 56.\\
+The greater unique existence percentages, drawn with red dashed line, are associated with \emph{GroupID} equal to 5, 6 and 7 (with a maximux of 47.84\% for \emph{GroupID} equal to 6).\\
 Figure \ref{fig:17} shows the obtained results with the k-mer length equal to 17, in this case the \emph{GroupID} goes up to 166.
-The greater unique existence percentages, drawn with red dashed line, are associated with \emph{GroupID} equal to 4 and 5 (with a maximux of 48.01\% for \emph{GroupID} equal to 4).
-A stable 100\% existence can be find starting from \emph{GroupID} equal to 40.\\
+The greater unique existence percentages, drawn with red dashed line, are associated with \emph{GroupID} equal to 4 and 5 (with a maximux of 48.01\% for \emph{GroupID} equal to 4).\\
 Figure \ref{fig:19} shows the obtained results with the k-mer length equal to 19, in this case the \emph{GroupID} goes up to 118.
-The greater unique existence percentages, drawn with red dashed line, are associated with \emph{GroupID} equal to 3 and 4 (with a maximux of 46.69\% for \emph{GroupID} equal to 4).
-A stable 100\% existence can be find starting from \emph{GroupID} equal to 34.\\
+The greater unique existence percentages, drawn with red dashed line, are associated with \emph{GroupID} equal to 3 and 4 (with a maximux of 46.69\% for \emph{GroupID} equal to 4).\\
 In order to compare results with different k-mer length, a maximum \emph{GroupID} equal to 90 is considered for all the x-axis\footnote{The depth is equal to 30.}.
-In Figure \ref{fig:E} and \ref{fig:U}, percentages of existence and unique existence with the three different k-mer length are compared, respectively.\\
-Furthermore, I extracted the matches position in the genome for each group to see if there was evidence of association between a groups set and a portion of the genome.
-However, the obtained results show an almost uniform distribution of the matches throughout the genome for all the groups.
-%The distribution is shown in Figure \ref{fig:distribution}, the x-axis %represents all the Escherichia Coli genome positions, while the y-axis is %composed by a set of group samples and the matches drawn as circles.
+In Figure \ref{fig:U}, percentages of unique existence with the three different k-mer length are compared.\\
+
 \begin{figure}
     \centering
     \includegraphics[scale=0.275]{image/15Plot.png}
@@ -123,12 +129,13 @@ However, the obtained results show an almost uniform distribution of the matches
     \includegraphics[scale=0.275]{image/19Plot.png}
     \caption{Existence and Unique existence of 19-mers}
     \label{fig:19}
-\end{figure}\begin{figure}
-    \centering
-    \includegraphics[scale=0.275]{image/ExistencePlot.png}
-    \caption{Existence of k-mers (k = 15, 17, 19)}
-    \label{fig:E}
 \end{figure}
+%\begin{figure}
+%    \centering
+%    \includegraphics[scale=0.275]{image/ExistencePlot.png}
+%    \caption{Existence of k-mers (k = 15, 17, 19)}
+%    \label{fig:E}
+%\end{figure}
 \begin{figure}
     \centering
     \includegraphics[scale=0.275]{image/UniqueExistencePlot.png}
@@ -141,6 +148,10 @@ However, the obtained results show an almost uniform distribution of the matches
 %    \caption{Distribution of the matches in the genome of a set of \emph{%GroupID} samples}
 %    \label{fig:distribution}
 %\end{figure}
+
+\section{Proposed approach}\label{approach}
+
+\section{Statistics about reads pairs}\label{pairs}
 
 \clearpage
 

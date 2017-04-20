@@ -350,6 +350,8 @@ void HeapSpGEMM_gmalloc(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOper
 		totnumPairs += it->second;
 		
 	}
+ 
+	cout << totnumPairs << " totnumPairs" << endl;
 
 	for(it = histogram.begin(); it != histogram.end(); ++it) {
 	

@@ -79,7 +79,7 @@ typedef std::pair<size_t, vector<size_t> > cellspmat; // pair<kmer_id_j, vector<
 typedef std::map< size_t, pair< vector<size_t>, vector<size_t> > > multcell; // map<kmer_id, vector<posix_in_read_i, posix_in_read_j>>
 typedef std::map< pair <size_t, size_t>, pair< vector<size_t>, vector<size_t> > > deltacell; // map< pair<kmer_id_1, kmer_id_2>, pair< vector<delta_pos_i>, vector<delta_pos_j> > >
 
-struct unop : std::unary_function<multcell, deltacell>  {
+/*struct unop : std::unary_function<multcell, deltacell>  {
     deltacell operator() (multcell &values) {
 
 	multcell::iterator outer;
@@ -114,7 +114,7 @@ struct unop : std::unary_function<multcell, deltacell>  {
 	}
 	return nvalues;
     }
-};
+};*/
 
 // Function to create the dictionary
 // assumption: kmervect has unique entries
@@ -208,6 +208,7 @@ int main (int argc, char* argv[]) {
         } 
 	delete pfq;
     }
+    cout << read_id << " total numeber of reads" << endl;
     // cout << "fastq file parsed\nsearch ended : vector<tuple<read_id,kmer_id,pair<kmer_id,pos_in_read>> created" << endl;
 
     CSC<size_t, cellspmat> spmat(occurrences, read_id, kmervect.size(), 
