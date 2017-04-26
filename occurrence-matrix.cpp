@@ -35,7 +35,7 @@
 #include "mtspgemm2017/multiply.h"
 
 #define LSIZE 16000
-#define KMER_LENGTH 15
+#define KMER_LENGTH 17
 #define ITERS 10
 
 using namespace std;
@@ -208,7 +208,7 @@ int main (int argc, char* argv[]) {
         } 
 	delete pfq;
     }
-    cout << read_id << " total numeber of reads" << endl;
+    cout << read_id << " total number of reads" << endl;
     // cout << "fastq file parsed\nsearch ended : vector<tuple<read_id,kmer_id,pair<kmer_id,pos_in_read>> created" << endl;
 
     CSC<size_t, cellspmat> spmat(occurrences, read_id, kmervect.size(), 

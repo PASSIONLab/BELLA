@@ -18,7 +18,7 @@
 #include "fq_reader.h"
 
 #ifndef DEFAULT_READ_LEN
-#define DEFAULT_READ_LEN 10000
+#define DEFAULT_READ_LEN 50000
 #endif
 
 #ifndef MAX_READ_NAME_LEN

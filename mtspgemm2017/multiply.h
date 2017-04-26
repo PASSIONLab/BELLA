@@ -1,9 +1,14 @@
 #include "CSC.h"
 #include <omp.h>
 #include <fstream>
+#include <iostream>
+#include <string>
+#include <cstdlib>
+#include <algorithm>
 //#include <tbb/scalable_allocator.h>
 
 #define PERCORECACHE (1024 * 1024)
+#define KMER_LENGTH 17
 
 template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation>
 void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, vector<IT> * RowIdsofC, vector<FT> * ValuesofC)
@@ -306,7 +311,8 @@ void HeapSpGEMM_gmalloc(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOper
     
     if(C.isEmpty())
     {
-	std::ofstream ofs ("histo.csv");
+	std::ofstream ofs ("shared_kmers_sampled_from_same_region.csv");
+    std::ifstream ifs("sd_0001.axt");
         C.rows = A.rows;
         C.cols = B.cols;
         C.colptr = new IT[C.cols+1];
@@ -329,45 +335,94 @@ void HeapSpGEMM_gmalloc(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOper
             copy(&ValuesofC[colStart[i]], &ValuesofC[colEnd[i]], C.values + C.colptr[i]);
         }
 
-	std::map<size_t, size_t> histogram;
-	std::map<size_t, size_t>::iterator it;
+	std::map<size_t, size_t> histogram_prec;
+    std::map<size_t, size_t>::iterator it_prec;
+    std::map<size_t, size_t> histogram;
+    std::map<size_t, size_t>::iterator it;
+    std::map<size_t, pair<size_t, size_t>> ifsmap;
+    std::map<size_t, pair<size_t, size_t>>::iterator j;
+    std::map<size_t, pair<size_t, size_t>>::iterator k;
 
-	for(int i=0; i< C.cols; ++i) {
-		if(C.values[i].size() > 34) {
-			it = histogram.find(C.values[i].size());
-			if(it == histogram.end()) {
-				histogram.insert(make_pair(C.values[i].size(), 1));
-			}
-			it->second++;
-		}
-	}
+    std::cout << "before ifs importing" << endl;
+    if(ifs.is_open()) {
+        cout << "ifs opened" << endl;
+        int id;
+        int st;
+        int en;
+        std::pair<size_t, size_t> values;
+        while(ifs >> id >> st >> en){
+            size_t key = {id};
+            size_t start = {st};
+            size_t end = {en};
+            values = make_pair(start, end);
+            ifsmap[key] = values;
+        }
+    } else std::cout << "error opening the ifs" << endl;
+    std::cout << "map created from ifs" << endl;
 
-	double totnumPairs = 0;
-	double normalizedSum = 0;
+    std::cout << "creating histogram with pairs_of_reads sampled_from_same_region" << endl;
+    for(size_t i=0; i< C.cols; ++i) {
+        if(C.values[i].size() > 0) {
 
-	for(it = histogram.begin(); it != histogram.end(); ++it) {
-	
-		totnumPairs += it->second;
-		
-	}
- 
-	cout << totnumPairs << " totnumPairs" << endl;
+            it_prec = histogram_prec.find(C.values[i].size());
+            if(it_prec == histogram_prec.end()) {
+                histogram_prec.insert(make_pair(C.values[i].size(), 1));
+            } else it_prec->second++;
 
-	for(it = histogram.begin(); it != histogram.end(); ++it) {
-	
-		normalizedSum += (it->second)/totnumPairs;
-	}	
-	
-	if(ofs.is_open()) {
-		ofs << "NORMALIZED HISTOGRAM per number of PairsofReads (%) with totnumPairs: " << totnumPairs << endl;
-		ofs << "SharedKmers, PairsOfReads/totnumPairs" << endl;
-	}
-        for(it = histogram.begin(); it != histogram.end(); ++it) {
-		if(ofs.is_open())
-			ofs << it->first << "," << ((it->second)/totnumPairs)*100 << endl; 
-	}
-	ofs.close();
+            size_t alignment_length = 0; // if none of the conditions below are satisfied, then they don't align
+            k = ifsmap.find(C.rowids[i]); // read i
+            j = ifsmap.find(i); // read j
+
+            if(k->second.first < j->second.first) {
+                if(k->second.second > j->second.first)
+                    alignment_length = min((k->second.second - j->second.first), (j->second.second - j->second.first));
+            }
+            else if (k->second.first > j->second.first) {
+                if(j->second.second > k->second.first) 
+                    alignment_length = min((j->second.second - k->second.first), (k->second.second - k->second.first));
+            }
+            else alignment_length = min((j->second.second - k->second.first), (k->second.second - k->second.first)); // they start at the same place
+
+            if(alignment_length >= KMER_LENGTH) {
+                it = histogram.find(C.values[i].size());
+                if(it == histogram.end()) {
+                    histogram.insert(make_pair(C.values[i].size(), 1));
+                } else it->second++;
+            }
+        }
     }
+
+    double tot_num_pairs_sampled_from_same_region = 0;
+    double tot_num_pairs = 0;
+    double normalized_sum = 0;
+
+    for(it_prec = histogram_prec.begin(); it_prec != histogram_prec.end(); ++it_prec) {
+        tot_num_pairs += it_prec->second;
+    }
+
+    for(it = histogram.begin(); it != histogram.end(); ++it) {
+        tot_num_pairs_sampled_from_same_region += it->second;
+    }
+
+    cout << tot_num_pairs << " tot_num_pairs" << endl;
+    cout << tot_num_pairs_sampled_from_same_region << " tot_num_pairs_sampled_from_same_region" << endl;
+
+    for(it = histogram.begin(); it != histogram.end(); ++it) {
+        normalized_sum += (it->second)/tot_num_pairs_sampled_from_same_region;
+    }   
+    
+    if(ofs.is_open()) {
+        ofs << "# normalized histogram per number of pairs_of_reads sampled_from_same_region" << endl;
+        ofs << "# tot_num_pairs sampled_from_same_region: " << tot_num_pairs_sampled_from_same_region << endl;
+        ofs << "# shared_kmers, pairs_of_reads/tot_num_pairs" << endl;
+        for(it = histogram.begin(); it != histogram.end(); ++it) {
+        if(ofs.is_open())
+            ofs << it->first << "," << ((it->second)/tot_num_pairs_sampled_from_same_region)*100 << endl; 
+        }
+    }
+    ofs.close();
+
+  }
     
     delete [] RowIdsofC;
     delete [] ValuesofC;

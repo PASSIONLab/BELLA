@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015) (preloaded format=pdflatex 2015.5.24)  20 APR 2017 12:37
+This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015) (preloaded format=pdflatex 2015.5.24)  21 APR 2017 10:06
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -551,33 +551,33 @@ File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 ) [1
 
 {/usr/local/texlive/2015/texmf-var/fonts/map/pdftex/updmap/pdftex.map}]
-Underfull \hbox (badness 10000) in paragraph at lines 106--115
+Underfull \hbox (badness 10000) in paragraph at lines 107--116
 
  []
 
 <image/15Plot.png, id=15, 1694.0088pt x 923.6106pt>
 File: image/15Plot.png Graphic file (type png)
  <use image/15Plot.png>
-Package pdftex.def Info: image/15Plot.png used on input line 118.
+Package pdftex.def Info: image/15Plot.png used on input line 119.
 (pdftex.def)             Requested size: 465.84094pt x 253.98665pt.
 
 <image/17Plot.png, id=17, 1694.0088pt x 923.6106pt>
 File: image/17Plot.png Graphic file (type png)
  <use image/17Plot.png>
-Package pdftex.def Info: image/17Plot.png used on input line 124.
+Package pdftex.def Info: image/17Plot.png used on input line 125.
 (pdftex.def)             Requested size: 465.84094pt x 253.98665pt.
 
 <image/19Plot.png, id=18, 1694.0088pt x 923.6106pt>
 File: image/19Plot.png Graphic file (type png)
  <use image/19Plot.png>
-Package pdftex.def Info: image/19Plot.png used on input line 129.
+Package pdftex.def Info: image/19Plot.png used on input line 130.
 (pdftex.def)             Requested size: 465.84094pt x 253.98665pt.
 
 <image/UniqueExistencePlot.png, id=19, 1694.0088pt x 923.6106pt>
 File: image/UniqueExistencePlot.png Graphic file (type png)
 
 <use image/UniqueExistencePlot.png>
-Package pdftex.def Info: image/UniqueExistencePlot.png used on input line 141.
+Package pdftex.def Info: image/UniqueExistencePlot.png used on input line 142.
 (pdftex.def)             Requested size: 465.84094pt x 253.98665pt.
  [2 <./image/15Plot.png>] [3 <./image/17Plot.png> <./image/19Plot.png>] [4 <./i
 mage/UniqueExistencePlot.png>] [5
@@ -611,7 +611,7 @@ sr/local/texlive/2015/texmf-dist/fonts/type1/public/cm-super/sfrm1000.pfb></usr
 ocal/texlive/2015/texmf-dist/fonts/type1/public/cm-super/sfrm1200.pfb></usr/loc
 al/texlive/2015/texmf-dist/fonts/type1/public/cm-super/sfrm1728.pfb></usr/local
 /texlive/2015/texmf-dist/fonts/type1/public/cm-super/sfti1095.pfb>
-Output written on report.pdf (12 pages, 925089 bytes).
+Output written on report.pdf (12 pages, 925164 bytes).
 PDF statistics:
  117 PDF objects out of 1000 (max. 8388607)
  78 compressed objects within 1 object stream
