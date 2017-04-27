@@ -110,13 +110,12 @@ For the following analysis, we decided to take into account \emph{k} values equa
 
 \section{Existence and unique existence of k-mers in the genome}\label{existence}
 
-\myworries{To do: convert these plots into histograms}.\\
 Here, we computed some statistics con the previously selected dataset of k-mer.
 The goal was to identify which groups of k-mers, based on their occurrences in the initial dataset (that means the occurrence in the reads generated from the PacBio simulator), presented the highest percentages of unique existence in the genome.
 To do that, we found the matches between each k-mers of the dataset and the genome sequence.\\
 The \emph{GroupID} variable represents the occurrence of a k-mer in the initial dataset. 
 \emph{State A}, \emph{State B} and \emph{State C} indicate the number of k-mers (within a group, that means with the same occurence in the initial dataset) with \emph{real} occurence in the genome equal to 0, equal to 1 and greater than 1, respectively.
-Regarding the presented plots, for all of them the x-axis is based on the \emph{GroupID}, while the y-axis represents the percetage of k-mers unique existence (Figure \ref{fig:U}) in the genome or both the percentage of k-mers existence and unique existence (Figure \ref{fig:15}, \ref{fig:17} and \ref{fig:19}).\\
+Regarding the presented plots, for all of them the x-axis is based on the \emph{GroupID}, while the y-axis represents both the percentage of k-mers existence and unique existence of k-mers in the genome (Figure \ref{fig:15}, \ref{fig:17} and \ref{fig:19}).\\
 The percentage of existence (Eq.\ref{eq:first}) and unique existence (Eq.\ref{eq:second}) are defined as:
 \vspace{5mm}
 
@@ -138,22 +137,21 @@ The greater unique existence percentages, drawn with red dashed line, are associ
 Figure \ref{fig:19} shows the obtained results with the k-mer length equal to 19, in this case the \emph{GroupID} goes up to 118.
 The greater unique existence percentages, drawn with red dashed line, are associated with \emph{GroupID} equal to 3 and 4 (with a maximux of 46.69\% for \emph{GroupID} equal to 4).\\
 In order to compare results with different k-mer length, a maximum \emph{GroupID} equal to 90 is considered for all the x-axis\footnote{The depth is equal to 30.}.
-In Figure \ref{fig:U}, percentages of unique existence with the three different k-mer length are compared.\\
 
 \begin{figure}
     \centering
-    \includegraphics[scale=0.275]{image/15Plot.png}
+    \includegraphics[scale=0.41]{image/15Plot.png}
     \caption{Existence and Unique existence of 15-mers}
     \label{fig:15}
 \end{figure}
 \begin{figure}
     \centering
-    \includegraphics[scale=0.275]{image/17Plot.png}
+    \includegraphics[scale=0.50]{image/17Plot.png}
     \caption{Existence and Unique existence of 17-mers}
     \label{fig:17}
 \end{figure}\begin{figure}
     \centering
-    \includegraphics[scale=0.275]{image/19Plot.png}
+    \includegraphics[scale=0.48]{image/19Plot.png}
     \caption{Existence and Unique existence of 19-mers}
     \label{fig:19}
 \end{figure}
@@ -163,12 +161,6 @@ In Figure \ref{fig:U}, percentages of unique existence with the three different 
 %    \caption{Existence of k-mers (k = 15, 17, 19)}
 %    \label{fig:E}
 %\end{figure}
-\begin{figure}
-    \centering
-    \includegraphics[scale=0.275]{image/UniqueExistencePlot.png}
-    \caption{Unique existence of k-mers (k = 15, 17, 19)}
-    \label{fig:U}
-\end{figure}
 %\begin{figure}
 %    \centering
 %    \includegraphics[scale=0.335]{image/matches-posix.png}
@@ -177,6 +169,17 @@ In Figure \ref{fig:U}, percentages of unique existence with the three different 
 %\end{figure}
 
 \section{Proposed approach}\label{approach}
+
+The ultimate goal of the previous analysis consists in obtaining a [k-mer -by- read] matrix (where $A_{ij}$ is the occurrence/absence of k-mer $i$ in read $j$).
+This matrix is used as starting point for the construction of a feature vector in finding alignments among the reads.\\
+From the previous statistics we decided to take into account the \emph{k} value equal to 15 and consider the k-mers that occur in the range [4,8] as this range provides the highest percentages of unique existence in the \emph{Escherichia Coli} genome.\\
+Firsly, our approach consists in the creation of a dictionary containing all the k-mers belonging to the defined range.
+Then, we construct a [kmer -by- read] sparse matrix, where the ${\{i,j\}}$ cell is a $pair$ data structure.
+The first value of the pair correspond to the identification number of the k-mer $i$ contained in the read $j$, while the second value is a $vector$ data structure where all the positions of that k-mer in the considered read are saved.\\
+Once creating the matrix, we compute its transpose [read -by- k-mer] in order to multiply them and obtain a [read -by- read] matrix.
+We implement the calculation to obtain as final cell ${\{i,j\}}$ a $map$ data structure organized as follow.
+The $keys$ correspond to the identification numbers of the shared k-mers between the two reads, while the $values$ are pairs of vectors containing the k-mers positions on the two reads.\\
+\myworries{To do: filter on the matrix to identify reads pairs sampled from the same region of the genome, implement an Apply() function to compute the delta-pos among k-mers belonging to the same read and compare k-mers delta-pos between reads sharing the same k-mers.}
 
 \section{Statistics about reads pairs}\label{pairs}
 

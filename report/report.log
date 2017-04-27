@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015) (preloaded format=pdflatex 2015.5.24)  26 APR 2017 17:12
+This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015) (preloaded format=pdflatex 2015.5.24)  27 APR 2017 12:53
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -576,49 +576,38 @@ Package pdftex.def Info: image/3.png used on input line 78.
 
 {/usr/local/texlive/2015/texmf-var/fonts/map/pdftex/updmap/pdftex.map}] [2 <./i
 mage/0.png> <./image/1.png>] [3 <./image/2.png> <./image/3.png>]
-Underfull \hbox (badness 10000) in paragraph at lines 133--142
-
- []
-
-<image/15Plot.png, id=33, 1694.0088pt x 923.6106pt>
+<image/15Plot.png, id=33, 1138.2525pt x 731.73375pt>
 File: image/15Plot.png Graphic file (type png)
  <use image/15Plot.png>
-Package pdftex.def Info: image/15Plot.png used on input line 145.
-(pdftex.def)             Requested size: 465.84094pt x 253.98665pt.
+Package pdftex.def Info: image/15Plot.png used on input line 143.
+(pdftex.def)             Requested size: 466.68655pt x 300.01277pt.
 
-<image/17Plot.png, id=34, 1694.0088pt x 923.6106pt>
+<image/17Plot.png, id=34, 934.49126pt x 556.0775pt>
 File: image/17Plot.png Graphic file (type png)
  <use image/17Plot.png>
-Package pdftex.def Info: image/17Plot.png used on input line 151.
-(pdftex.def)             Requested size: 465.84094pt x 253.98665pt.
+Package pdftex.def Info: image/17Plot.png used on input line 149.
+(pdftex.def)             Requested size: 467.24449pt x 278.03807pt.
 
-<image/19Plot.png, id=35, 1694.0088pt x 923.6106pt>
+<image/19Plot.png, id=35, 968.61874pt x 613.29124pt>
 File: image/19Plot.png Graphic file (type png)
  <use image/19Plot.png>
-Package pdftex.def Info: image/19Plot.png used on input line 156.
-(pdftex.def)             Requested size: 465.84094pt x 253.98665pt.
+Package pdftex.def Info: image/19Plot.png used on input line 154.
+(pdftex.def)             Requested size: 464.93172pt x 294.37645pt.
 
-<image/UniqueExistencePlot.png, id=36, 1694.0088pt x 923.6106pt>
-File: image/UniqueExistencePlot.png Graphic file (type png)
+[4] [5 <./image/15Plot.png> <./image/17Plot.png>] [6 <./image/19Plot.png>]
+[7
 
-<use image/UniqueExistencePlot.png>
-Package pdftex.def Info: image/UniqueExistencePlot.png used on input line 168.
-(pdftex.def)             Requested size: 465.84094pt x 253.98665pt.
- [4 <./image/15Plot.png>] [5 <./image/17Plot.png> <./image/19Plot.png>] [6 <./i
-mage/UniqueExistencePlot.png>] [7
-
-] [8]
-[9] [10] [11] [12] [13]
+] [8] [9] [10] [11] [12] [13]
 No file report.bbl.
 [14] (./report.aux) ) 
 Here is how much of TeX's memory you used:
- 9267 strings out of 493089
- 141604 string characters out of 6134842
+ 9260 strings out of 493089
+ 141427 string characters out of 6134842
  269538 words of memory out of 5000000
- 12553 multiletter control sequences out of 15000+600000
+ 12547 multiletter control sequences out of 15000+600000
  21451 words of font info for 63 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 40i,9n,43p,340b,297s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 40i,9n,43p,322b,297s stack positions out of 5000i,500n,10000p,200000b,80000s
 {/usr/local/texlive/2015/texmf-dist/fonts/enc/dvips/cm-sup
 er/cm-super-t1.enc}</usr/local/texlive/2015/texmf-dist/fonts/type1/public/amsfo
 nts/cm/cmmi10.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public/amsfon
@@ -636,10 +625,10 @@ sr/local/texlive/2015/texmf-dist/fonts/type1/public/cm-super/sfrm1000.pfb></usr
 ocal/texlive/2015/texmf-dist/fonts/type1/public/cm-super/sfrm1200.pfb></usr/loc
 al/texlive/2015/texmf-dist/fonts/type1/public/cm-super/sfrm1728.pfb></usr/local
 /texlive/2015/texmf-dist/fonts/type1/public/cm-super/sfti1095.pfb>
-Output written on report.pdf (14 pages, 1252998 bytes).
+Output written on report.pdf (14 pages, 887190 bytes).
 PDF statistics:
- 132 PDF objects out of 1000 (max. 8388607)
+ 130 PDF objects out of 1000 (max. 8388607)
  83 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
- 41 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 36 words of extra memory for PDF output out of 10000 (max. 10000000)
 
