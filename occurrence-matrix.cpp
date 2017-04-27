@@ -35,7 +35,7 @@
 #include "mtspgemm2017/multiply.h"
 
 #define LSIZE 16000
-#define KMER_LENGTH 17
+#define KMER_LENGTH 15
 #define ITERS 10
 
 using namespace std;
@@ -129,7 +129,7 @@ void dictionaryCreation(dictionary &kmerdict, Kmers &kmervect)
 
 int main (int argc, char* argv[]) {
 
-	ifstream filein (argv[1]);
+	std::ifstream filein(argv[1]);
 	FILE *fastafile;
 	int elem;
 	char *buffer;

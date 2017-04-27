@@ -8,7 +8,7 @@
 //#include <tbb/scalable_allocator.h>
 
 #define PERCORECACHE (1024 * 1024)
-#define KMER_LENGTH 17
+#define KMER_LENGTH 15
 
 template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation>
 void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, vector<IT> * RowIdsofC, vector<FT> * ValuesofC)

@@ -48,11 +48,37 @@ This report briefly explains the preliminaries analysis computed to identify the
 %In Appendix \ref{append} the raw data used for the final results are reported.
 \section{Reliable k-mers}\label{rks}
 
-The first computed analysis regards the identification of a reliable set of k-mers.
-The reads were generated starting from the Escherichia Coli genome, using the PacBio reads simulator. 
+The first computed analysis regards the identification of a reliable set of k-mers (RKS).
+The reads were generated starting from the Escherichia Coli genome, using the PacBio reads simulator.
 Then, using Jellyfish software, we generated different k-mers dataset from these reads, varying the value of \emph{k}, we took into account values from 15 to 29.\\
-\myworries{Import the plots from the first report}.\\
-Given the results reported in the previous plots, we decided to take into account for the following statistics \emph{k} values equal to 15, 17 an 19.
+The k-mers belonging to the RKS set are choosen looking at their occurrence among the generated reads. 
+So, from Jellyfish output, we chose k-mers that occur in the range [depth/2 and 2*depth]\footnote{The depth is equal to 30.}.\\
+The following plots (Figure \ref{fig:0}, \ref{fig:1}, \ref{fig:2} and \ref{fig:3}) show the percentage of RKS over the total number of generated k-mers per each k-mer occurrence, taking into account different k-mers length.\\
+For the following analysis, we decided to take into account \emph{k} values equal to 15, 17 an 19.
+\begin{figure}
+    \centering
+    \includegraphics[scale=0.60]{image/0}
+    \caption{Percentage of RKS over the total number of generated k-mers per each k-mer occurrence.}
+    \label{fig:0}
+\end{figure}
+\begin{figure}
+    \centering
+    \includegraphics[scale=0.60]{image/1}
+    \caption{Percentage of RKS over the total number of generated k-mers per each k-mer occurrence.}
+    \label{fig:1}
+\end{figure}
+\begin{figure}
+    \centering
+    \includegraphics[scale=0.60]{image/2}
+    \caption{Percentage of RKS over the total number of generated k-mers per each k-mer occurrence.}
+    \label{fig:2}
+\end{figure}
+\begin{figure}
+    \centering
+    \includegraphics[scale=0.60]{image/3}
+    \caption{Percentage of RKS over the total number of generated k-mers per each k-mer occurrence.}
+    \label{fig:3}
+\end{figure}
 %\section{Algorithm Approach}\label{code}
 %
 %The proposed algorithm exploits a trie tree approach to find matches between %k-mers and the genome \cite{bodon2003trie}.

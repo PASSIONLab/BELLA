@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015) (preloaded format=pdflatex 2015.5.24)  21 APR 2017 10:06
+This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015) (preloaded format=pdflatex 2015.5.24)  26 APR 2017 17:12
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -548,52 +548,77 @@ LaTeX Font Info:    Try loading font information for U+msb on input line 38.
 
 (/usr/local/texlive/2015/texmf-dist/tex/latex/amsfonts/umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
-) [1
+)
+<image/0.png, id=1, 692.5875pt x 461.725pt>
+File: image/0.png Graphic file (type png)
+ <use image/0.png>
+Package pdftex.def Info: image/0.png used on input line 60.
+(pdftex.def)             Requested size: 415.5557pt x 277.03714pt.
 
-{/usr/local/texlive/2015/texmf-var/fonts/map/pdftex/updmap/pdftex.map}]
-Underfull \hbox (badness 10000) in paragraph at lines 107--116
+<image/1.png, id=3, 679.53876pt x 424.58624pt>
+File: image/1.png Graphic file (type png)
+ <use image/1.png>
+Package pdftex.def Info: image/1.png used on input line 66.
+(pdftex.def)             Requested size: 407.72641pt x 254.75371pt.
+
+<image/2.png, id=4, 677.53125pt x 481.8pt>
+File: image/2.png Graphic file (type png)
+ <use image/2.png>
+Package pdftex.def Info: image/2.png used on input line 72.
+(pdftex.def)             Requested size: 406.52188pt x 289.08221pt.
+
+<image/3.png, id=5, 680.5425pt x 432.61626pt>
+File: image/3.png Graphic file (type png)
+ <use image/3.png>
+Package pdftex.def Info: image/3.png used on input line 78.
+(pdftex.def)             Requested size: 408.32864pt x 259.57176pt.
+ [1
+
+{/usr/local/texlive/2015/texmf-var/fonts/map/pdftex/updmap/pdftex.map}] [2 <./i
+mage/0.png> <./image/1.png>] [3 <./image/2.png> <./image/3.png>]
+Underfull \hbox (badness 10000) in paragraph at lines 133--142
 
  []
 
-<image/15Plot.png, id=15, 1694.0088pt x 923.6106pt>
+<image/15Plot.png, id=33, 1694.0088pt x 923.6106pt>
 File: image/15Plot.png Graphic file (type png)
  <use image/15Plot.png>
-Package pdftex.def Info: image/15Plot.png used on input line 119.
+Package pdftex.def Info: image/15Plot.png used on input line 145.
 (pdftex.def)             Requested size: 465.84094pt x 253.98665pt.
 
-<image/17Plot.png, id=17, 1694.0088pt x 923.6106pt>
+<image/17Plot.png, id=34, 1694.0088pt x 923.6106pt>
 File: image/17Plot.png Graphic file (type png)
  <use image/17Plot.png>
-Package pdftex.def Info: image/17Plot.png used on input line 125.
+Package pdftex.def Info: image/17Plot.png used on input line 151.
 (pdftex.def)             Requested size: 465.84094pt x 253.98665pt.
 
-<image/19Plot.png, id=18, 1694.0088pt x 923.6106pt>
+<image/19Plot.png, id=35, 1694.0088pt x 923.6106pt>
 File: image/19Plot.png Graphic file (type png)
  <use image/19Plot.png>
-Package pdftex.def Info: image/19Plot.png used on input line 130.
+Package pdftex.def Info: image/19Plot.png used on input line 156.
 (pdftex.def)             Requested size: 465.84094pt x 253.98665pt.
 
-<image/UniqueExistencePlot.png, id=19, 1694.0088pt x 923.6106pt>
+<image/UniqueExistencePlot.png, id=36, 1694.0088pt x 923.6106pt>
 File: image/UniqueExistencePlot.png Graphic file (type png)
 
 <use image/UniqueExistencePlot.png>
-Package pdftex.def Info: image/UniqueExistencePlot.png used on input line 142.
+Package pdftex.def Info: image/UniqueExistencePlot.png used on input line 168.
 (pdftex.def)             Requested size: 465.84094pt x 253.98665pt.
- [2 <./image/15Plot.png>] [3 <./image/17Plot.png> <./image/19Plot.png>] [4 <./i
-mage/UniqueExistencePlot.png>] [5
+ [4 <./image/15Plot.png>] [5 <./image/17Plot.png> <./image/19Plot.png>] [6 <./i
+mage/UniqueExistencePlot.png>] [7
 
-] [6]
-[7] [8] [9] [10] [11]
+] [8]
+[9] [10] [11] [12] [13]
 No file report.bbl.
-[12] (./report.aux) ) 
+[14] (./report.aux) ) 
 Here is how much of TeX's memory you used:
- 9239 strings out of 493089
- 141256 string characters out of 6134842
+ 9267 strings out of 493089
+ 141604 string characters out of 6134842
  269538 words of memory out of 5000000
- 12529 multiletter control sequences out of 15000+600000
+ 12553 multiletter control sequences out of 15000+600000
  21451 words of font info for 63 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 40i,9n,43p,340b,290s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 40i,9n,43p,340b,297s stack positions out of 5000i,500n,10000p,200000b,80000s
 {/usr/local/texlive/2015/texmf-dist/fonts/enc/dvips/cm-sup
 er/cm-super-t1.enc}</usr/local/texlive/2015/texmf-dist/fonts/type1/public/amsfo
 nts/cm/cmmi10.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public/amsfon
@@ -611,10 +636,10 @@ sr/local/texlive/2015/texmf-dist/fonts/type1/public/cm-super/sfrm1000.pfb></usr
 ocal/texlive/2015/texmf-dist/fonts/type1/public/cm-super/sfrm1200.pfb></usr/loc
 al/texlive/2015/texmf-dist/fonts/type1/public/cm-super/sfrm1728.pfb></usr/local
 /texlive/2015/texmf-dist/fonts/type1/public/cm-super/sfti1095.pfb>
-Output written on report.pdf (12 pages, 925164 bytes).
+Output written on report.pdf (14 pages, 1252998 bytes).
 PDF statistics:
- 117 PDF objects out of 1000 (max. 8388607)
- 78 compressed objects within 1 object stream
+ 132 PDF objects out of 1000 (max. 8388607)
+ 83 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
- 21 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 41 words of extra memory for PDF output out of 10000 (max. 10000000)
 
