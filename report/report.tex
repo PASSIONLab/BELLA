@@ -168,6 +168,15 @@ In order to compare results with different k-mer length, a maximum \emph{GroupID
 %    \label{fig:distribution}
 %\end{figure}
 
+\section{Statistics about reads pairs}\label{pairs}
+
+To figure out how many of the found reads pairs actually belong to the same region of the genome that means they represent \emph{true overlap}, we implemented a statistics using the file in MAF format genereted by PacBio simulator.
+This file contains the alignment position of each reads on the genome.
+From this analysis, we obtained that about the 50\% of the reads pairs found by our algorithm represent \emph{true overlap}.\\
+\myworries{To do: extend this paragraph and insert plot.}
+Furthermore, we generated an histogram to represent the percentage of pairs sharing a certain number of k-mers.
+Assuming that pairs sharing few k-mers do not bring significant information, we decided to delete reads pairs sharing a k-mers number lower than a \myworries{threshold} starting from the next step of the algorith.
+
 \section{Proposed approach}\label{approach}
 
 The ultimate goal of the previous analysis consists in obtaining a [k-mer -by- read] matrix (where $A_{ij}$ is the occurrence/absence of k-mer $i$ in read $j$).
@@ -180,8 +189,14 @@ Once creating the matrix, we compute its transpose [read -by- k-mer] in order to
 We implement the calculation to obtain as final cell ${\{i,j\}}$ a $map$ data structure organized as follow.
 The $keys$ correspond to the identification numbers of the shared k-mers between the two reads, while the $values$ are pairs of vectors containing the k-mers positions on the two reads.\\
 \myworries{To do: filter on the matrix to identify reads pairs sampled from the same region of the genome, implement an Apply() function to compute the delta-pos among k-mers belonging to the same read and compare k-mers delta-pos between reads sharing the same k-mers.}
-
-\section{Statistics about reads pairs}\label{pairs}
+Filter to identify \emph{true overlap} reads pair:
+\begin{itemize}
+    \item Compute the delta-pos among k-mers belonging to the same read.
+    \item Comparing k-mers delta-pos between reads sharing the same k-mers.
+    \item If at least one of the comparing is rejected by our filter, we discharge the considered pair.
+    \item The filter consist in a parametric analysis that takes into account the probability of indention and deletion (from the PacBio simulator) to calculate the minimum and maximum length of the two given delta length.
+    \item If there is not overlap between the $L_{max}$ of the shortest read and the $L_{min}$ of the longest one, the pair is rejected as considered a \emph{fake overlap}.
+\end{itemize}
 
 \clearpage
 
