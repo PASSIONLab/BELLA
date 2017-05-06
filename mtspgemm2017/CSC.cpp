@@ -1,5 +1,7 @@
 #include "CSC.h"
 #include "utility.h"
+#include "true-overlap.h"
+#include "compute-delta.h"
 #include "BitMap.h"
 #include <algorithm>
 #include <numeric>
@@ -191,12 +193,12 @@ CSC<IT,NT>::CSC(Triple<IT,NT> * triples, IT mynnz, IT m, IT n):nnz(mynnz),rows(m
 	delete [] work;
 }
 
-template <class IT, class NT>
+/*template <class IT, class NT>
 template <typename FT, typename UnaryOp>
 CSC<IT,FT> CSC<IT,NT>::Apply(UnaryOp unop, CSC<IT,FT> &ncsc)
 {
 
-        ncsc.colptr = new IT[cols+1]();
+    ncsc.colptr = new IT[cols+1]();
 	copy(colptr, colptr+cols+1, ncsc.colptr);
 	ncsc.rowids = new IT[nnz];
 	copy(rowids, rowids+nnz, ncsc.rowids);
@@ -206,12 +208,54 @@ CSC<IT,FT> CSC<IT,NT>::Apply(UnaryOp unop, CSC<IT,FT> &ncsc)
 	// Cartesian product of shared k-mers only for pairs that share < shared_limit(i.len(),j.len()) k-mers (we need read length)
 
 	transform(values, values+nnz, ncsc.values, unop);
-
 	return ncsc;
+
+    delete [] ncsc.colptr;
+    delete [] ncsc.rowids;
+    delete [] ncsc.values;
+}*/
+
+template <class IT, class NT>
+vector<tuple<IT,IT,IT>> CSC<IT,NT>::Apply()
+{
+
+    typename NT::iterator outer;
+    typename NT::iterator inner;
+    vector<IT> delta_i;
+    vector<IT> delta_j;
+    vector<tuple<IT,IT,IT>> newtuple;
+
+    #pragma omp parallel for
+    for(size_t i = 0; i < cols; ++i) { 
+        for(size_t j = rowids[i]; j < rowids[i+1]; ++j) {
+            // we consider reads pairs with shared kmers number greater than 10 (1st filter)
+            if(values[i].size() > 10) { 
+                for(outer = values[i].begin(); outer != values[i].end(); ++outer)     
+                {
+                    for(inner = values[i].begin(); inner != values[i].end(); ++inner)
+                    {
+                        if(inner->first != outer->first)
+                        {
+                            // here we compute all the delta between the two considered shared k-mers
+                            delta_i = computeDelta(outer->second.first, inner->second.first); 
+                            delta_j = computeDelta(outer->second.second, inner->second.second);
+
+                            if(trueoverlapFilter(delta_i, delta_j) == true) {
+
+                                size_t shared = {values[i].size()};
+                                newtuple.push_back(std::make_tuple(j, i, shared));
+                            } 
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return newtuple;
 }
 
 template <class IT, class NT>
-
 template <typename AddOperation>
 void CSC<IT,NT>::MergeDuplicates (AddOperation addop)
 {

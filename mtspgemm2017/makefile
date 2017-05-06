@@ -15,7 +15,7 @@ rmat:	sprng
 TOCOMPILE = $(RMATPATH)/graph.o $(RMATPATH)/utils.o $(RMATPATH)/init.o $(RMATPATH)/globals.o 
 
 # flags defined in GTgraph/Makefile.var
-mlk_free_spgemm: mkl_free_main.cpp CSC.h CSC.cpp CSR.h CSR.cpp multiply.h rmat 
+mlk_free_spgemm: mkl_free_main.cpp CSC.h CSC.cpp CSR.h CSR.cpp multiply.h rmat true-overlap.h compute-delta.h 
 	$(COMPILER) $(FLAGS) $(INCLUDE) -fopenmp -o spgemm mkl_free_main.cpp  ${TOCOMPILE} ${LIBS}
 
 clean:

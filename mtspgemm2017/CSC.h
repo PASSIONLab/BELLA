@@ -39,19 +39,19 @@ public:
     template <typename AddOperation>
     void MergeDuplicates (AddOperation addop); // method
 
-    template <typename FT> operator CSC<IT,FT>() const; // expasion of class type
-    template <typename FT, typename UnaryOp>
-    CSC<IT,FT> Apply(UnaryOp unop, CSC<IT,FT> & ncsc); // method
+    //template <typename FT> operator CSC<IT,FT>() const; // expasion of class type
+    //template <typename FT, typename UnaryOp>
+    //CSC<IT,NT> Apply(CSC<IT,NT> & rhs); // method
+    //template <class IT, class NT>
+    vector<tuple<IT,IT,IT>> Apply();
 
     CSC(graph & G);
     CSC (IT * ri, IT * ci, NT * val, IT mynnz, IT m, IT n);
     CSC (const CSC<IT,NT> & rhs);		// copy constructor
     CSC<IT,NT> & operator=(const CSC<IT,NT> & rhs);	// assignment operator
     bool operator==(const CSC<IT,NT> & rhs); // ridefinizione ==
-    template <typename FT> CSC<IT,FT> & operator=(const CSC<IT,FT> & rhs);	// assignment operator
-    template <typename FT> bool operator==(const CSC<IT,FT> & rhs); // ridefinizione ==
-    
-
+    //template <typename FT> CSC<IT,FT> & operator=(const CSC<IT,FT> & rhs);	// assignment operator
+    //template <typename FT> bool operator==(const CSC<IT,FT> & rhs); // ridefinizione ==
     
     ~CSC() // distruttore
     {

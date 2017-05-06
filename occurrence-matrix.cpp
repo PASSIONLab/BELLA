@@ -35,7 +35,7 @@
 #include "mtspgemm2017/multiply.h"
 
 #define LSIZE 16000
-#define KMER_LENGTH 15
+#define KMER_LENGTH 17
 #define ITERS 10
 
 using namespace std;
@@ -77,7 +77,6 @@ typedef std::map<Kmer,size_t> dictionary; // <k-mer && reverse-complement, #kmer
 typedef std::vector<Kmer> Kmers;
 typedef std::pair<size_t, vector<size_t> > cellspmat; // pair<kmer_id_j, vector<posix_in_read_i>>
 typedef std::map< size_t, pair< vector<size_t>, vector<size_t> > > multcell; // map<kmer_id, vector<posix_in_read_i, posix_in_read_j>>
-typedef std::map< pair <size_t, size_t>, pair< vector<size_t>, vector<size_t> > > deltacell; // map< pair<kmer_id_1, kmer_id_2>, pair< vector<delta_pos_i>, vector<delta_pos_j> > >
 
 /*struct unop : std::unary_function<multcell, deltacell>  {
     deltacell operator() (multcell &values) {
@@ -89,11 +88,12 @@ typedef std::map< pair <size_t, size_t>, pair< vector<size_t>, vector<size_t> > 
 	vector<size_t> deltareadi;
 	vector<size_t> deltareadj;
 
+    if(values.size() > 10) {
 	for(outer = values.begin(); outer != values.end(); ++outer) 	
 	{
 		for(inner = values.begin(); inner != values.end(); ++inner)
 		{
-			if((inner->first != outer->first) && (inner->size() > shared_limit) && (outer->size() > shared_limit)) // TO DO: define shared_limit function
+			if(inner->first != outer->first)
 			{
 				for(size_t i = 0; i < outer->second.first.size(); ++i) { 
 					for(size_t j = 0; j < inner->second.first.size(); ++j) {
@@ -112,6 +112,7 @@ typedef std::map< pair <size_t, size_t>, pair< vector<size_t>, vector<size_t> > 
 			}			
 		}
 	}
+}
 	return nvalues;
     }
 };*/
@@ -138,7 +139,7 @@ int main (int argc, char* argv[]) {
 	Kmer::set_k(KMER_LENGTH);
 	dictionary kmerdict;
 	std::vector<filedata> allfiles = GetFiles(argv[3]);
-    size_t upperlimit = 1000; // 1 thousand reads at a time
+    size_t upperlimit = 100000; // 1 million reads at a time
     Kmer kmerfromstr;
     Kmers kmervect;
     std::vector<string> seqs;
@@ -249,9 +250,10 @@ int main (int argc, char* argv[]) {
        	    }, tempspmat);
     cout << "multiply computed and tempspmat generated" << endl;
 
-	/*CSC<size_t, deltacell> nspmat;
-	nspmat = tempspmat.Apply(unop(), nspmat);
-	cout << "nspamat created" << endl;*/
+    std::vector<tuple<size_t,size_t,size_t>> newcell;
+
+	newcell = tempspmat.Apply();
+	cout << "map filtered" << endl;
 
 	/* The next step should be transforming the (i,j) cell of the resulted matrix in order to keep track of the ∆pos on read i 
 	and ∆pos on read j for each couple of kmer_id in the map of that (i,j) cell (DONE).
