@@ -148,10 +148,10 @@ int main (int argc, char* argv[]) {
     std::vector<tuple<size_t,size_t,cellspmat>> occurrences;
     std::vector<tuple<size_t,size_t,cellspmat>> transtuples;
 
-	cout << "input file : " << argv[1] <<endl;
-	cout << "psbsim depth : 30" << endl;
-	cout << "k-mer length : " << KMER_LENGTH <<endl;
-	cout << "reference genome : escherichia coli, " << argv[2] <<endl;
+	cout << "Input file = " << argv[1] <<endl;
+	cout << "Psbsim depth = 30" << endl;
+	cout << "k-mer length = " << KMER_LENGTH <<endl;
+	cout << "Reference genome = escherichia coli, " << argv[2] <<endl;
 
 	if(filein.is_open()) {
 			while(getline(filein, line)) {
@@ -209,7 +209,7 @@ int main (int argc, char* argv[]) {
         } 
 	delete pfq;
     }
-    cout << read_id << " total number of reads" << endl;
+    cout << "Total number of reads = "<< read_id << endl;
     // cout << "fastq file parsed\nsearch ended : vector<tuple<read_id,kmer_id,pair<kmer_id,pos_in_read>> created" << endl;
 
     CSC<size_t, cellspmat> spmat(occurrences, read_id, kmervect.size(), 
@@ -219,7 +219,7 @@ int main (int argc, char* argv[]) {
                                 merge(c1.second.begin(), c1.second.end(), c2.second.begin(), c2.second.end(), back_inserter(merged));
                                 return make_pair(c1.first, merged);
                             });
-    std::cout << "spmat created" << endl;
+    //std::cout << "spmat created" << endl;
 
     CSC<size_t, cellspmat> transpmat(transtuples, kmervect.size(), read_id, 
                             [] (cellspmat & c1, cellspmat & c2) 
@@ -228,7 +228,7 @@ int main (int argc, char* argv[]) {
                                 merge(c1.second.begin(), c1.second.end(), c2.second.begin(), c2.second.end(), back_inserter(merged));
                                 return make_pair(c1.first, merged);
                             });
-    std::cout << "transpose(spmat) created" << endl;
+    //std::cout << "transpose(spmat) created" << endl;
 
     spmat.Sorted();
     transpmat.Sorted();
@@ -248,17 +248,8 @@ int main (int argc, char* argv[]) {
        	    {   m.insert(h.begin(), h.end());
            	return m;
        	    }, tempspmat);
-    cout << "multiply computed and tempspmat generated" << endl;
 
-    std::vector<tuple<size_t,size_t,size_t>> newcell;
-
-	newcell = tempspmat.Apply();
-	cout << "map filtered" << endl;
-
-	/* The next step should be transforming the (i,j) cell of the resulted matrix in order to keep track of the ∆pos on read i 
-	and ∆pos on read j for each couple of kmer_id in the map of that (i,j) cell (DONE).
-	Then, filtering it to keep saved in the (i,j) cell just the kmer_id pair that shared ∆pos on i and j similar above a
-	certain threshold. */
+	tempspmat.Apply();
 
 	return 0;
 } 

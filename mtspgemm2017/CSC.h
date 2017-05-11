@@ -43,7 +43,7 @@ public:
     //template <typename FT, typename UnaryOp>
     //CSC<IT,NT> Apply(CSC<IT,NT> & rhs); // method
     //template <class IT, class NT>
-    vector<tuple<IT,IT,IT>> Apply();
+    void Apply();
 
     CSC(graph & G);
     CSC (IT * ri, IT * ci, NT * val, IT mynnz, IT m, IT n);
