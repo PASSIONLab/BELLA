@@ -249,6 +249,7 @@ int main (int argc, char* argv[]) {
            	return m;
        	    }, tempspmat);
 
+    cout << "Total number of reads pairs before any filters (N = 1) = " << tempspmat.nnz << endl;
 	tempspmat.Apply();
 
 	return 0;

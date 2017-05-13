@@ -24,18 +24,20 @@ vector<double> computeDelta(vector<IT> & fst, vector<IT> & snd) {
     { 
         for(IT j = 0; j < snd.size(); ++j)
         {
-            if(fst[i] < snd[j]) {
-                min = fst[i];
-                max = snd[j];
+            //cout << "i =" << fst[i] << ", j = " << snd[j] << endl;
+
+            if(fst[i] <= snd[j]) {
+                min = (double)fst[i];
+                max = (double)snd[j];
             } else {
-                max = fst[i];
-                min = snd[j];
+                max = (double)fst[i];
+                min = (double)snd[j];
             }
 
             diff = max-min;
             delta.push_back(diff); 
         }
     }
-    //cout << "delta.size() = " << delta.size() << endl;
+
     return delta;
 }            
