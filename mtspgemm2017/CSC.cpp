@@ -1,6 +1,7 @@
 #include "CSC.h"
 #include "utility.h"
 #include "true-overlap.h"
+#include "IntervalTree.h"
 #include "divergence.h"
 #include "compute-delta.h"
 #include "BitMap.h"
@@ -201,7 +202,7 @@ CSC<IT,NT>::CSC(Triple<IT,NT> * triples, IT mynnz, IT m, IT n):nnz(mynnz),rows(m
 template <class IT, class NT>
 void CSC<IT,NT>::Apply()
 {
-
+    std::ifstream ifs("chr14.axt");
     typename NT::iterator it;
     typename NT::iterator nit;
     vector<double> delta_i;
@@ -211,12 +212,8 @@ void CSC<IT,NT>::Apply()
     double prefilter = 0;
     size_t track = 0, var;
     bool same;
-    //map<double, size_t> divergence1; // <divergence, num k-mers pairs>
-    map<double, size_t> divergence2;
-    map<double, size_t> divergencetrue;
-    size_t sharedkmer = 0;
+    //map<double, size_t> divergence;
 
-    std::ifstream ifs("newset.axt");
     std::map<size_t, pair<size_t, size_t>> ifsmap;
     std::map<size_t, pair<size_t, size_t>>::iterator jit;
     std::map<size_t, pair<size_t, size_t>>::iterator iit;
@@ -226,7 +223,7 @@ void CSC<IT,NT>::Apply()
         int st;
         int en;
         std::pair<size_t, size_t> values;
-        while(ifs >> id >> st >> en){
+        while(ifs >> id >> st >> en) {
             size_t key = {id};
             size_t start = {st};
             size_t end = {en};
@@ -235,106 +232,140 @@ void CSC<IT,NT>::Apply()
         }
     } else std::cout << "error opening the ifs" << endl;
 
-    for(size_t i = 0; i < cols; ++i) { 
-        for(size_t j = colptr[i]; j < colptr[i+1]; ++j) { 
+    ifs.clear();
+    ifs.seekg(0, ios::beg);
 
-            if(values[j].size() > 1 && i != rowids[j])
-            { 
-                track = 0;
-                var = values[j].size();
+    vector<Interval<int>> intervals;
+    vector<Interval<int>> queries;
+    vector<Interval<int>>::iterator q;
 
-                for(it = values[j].begin(); it != prev(values[j].end()); ++it)     
-                {
-                    nit = next(it);
-                    same = false; 
+    if(ifs.is_open()) {
 
-                    delta_i = computeDelta(it->second.first, nit->second.first);
-                    delta_j = computeDelta(it->second.second, nit->second.second);
+        int id;
+        int st;
+        int en;
+        
+        while(ifs >> id >> st >> en) {
+            
+            intervals.push_back(Interval<int>(st, en, id));
+            queries.push_back(Interval<int>(st, en, id));
+        }
 
-                    //computeDivergence(delta_i, delta_j, divergence1);
-                    same = trueoverlapFilter(delta_i, delta_j);
+    } else std::cout << "error opening the ifs" << endl;
+    ifs.close();
 
-                    if(same == true)
-                        track++; // keep track of any trueoverlap 
-                }
+    IntervalTree<int> tree;
+    vector<size_t> treecounts;
 
-                //cout << "track = " << track << ", var-1 = " << var-1 << endl;
-                if(track == var-1) { // keep the pair
-                    overlapcount++; 
+    tree = IntervalTree<int>(intervals);
 
-                    for(it = values[j].begin(); it != prev(values[j].end()); ++it) {     
+    for (q = queries.begin(); q != queries.end(); ++q) 
+    {
+        vector<Interval<int>> results;
+        tree.findOverlapping(q->start, q->stop, results);
+        treecounts.push_back(results.size());
+    }
 
-                            nit = next(it);
-                            same = false; 
+    size_t trueoverlaps = 0;
 
-                            delta_i = computeDelta(it->second.first, nit->second.first);
-                            delta_j = computeDelta(it->second.second, nit->second.second);
+    for(size_t t = 0; t < treecounts.size(); ++t) {
+        trueoverlaps = trueoverlaps + treecounts[t];
+    }
+    cout << "True positive overlapping pairs (minimum overlap: 300 bp) = " << trueoverlaps << endl;
 
-                            computeDivergence(delta_i, delta_j, divergence2);
+    for(size_t i = 0; i < cols; ++i) 
+    { 
+        for(size_t j = colptr[i]; j < colptr[i+1]; ++j) 
+        { 
+            if(i != rowids[j]) {
+                if(values[j].size() > 1)
+                { 
+                    track = 0;
+                    var = values[j].size();
+    
+                    for(it = values[j].begin(); it != prev(values[j].end()); ++it)     
+                    {
+                        nit = next(it);
+                        same = false; 
+    
+                        delta_i = computeDelta(it->second.first, nit->second.first);
+                        delta_j = computeDelta(it->second.second, nit->second.second);
+    
+                        same = trueoverlapFilter(delta_i, delta_j);
+    
+                        if(same == true)
+                            track++; // keep track of any trueoverlap 
                     }
-    ////
-                    size_t alignment_length = 0;
-                    jit = ifsmap.find(i); // col index
-                    iit = ifsmap.find(rowids[j]); // row index
-                    
-                    if(iit->second.first < jit->second.first) {
-                        if(iit->second.second > jit->second.first) {
-                            alignment_length = min((iit->second.second - jit->second.first), (jit->second.second - jit->second.first));
+    
+                    if(track > 0) { // keep the pair
+                       
+                        overlapcount++;
+    
+                        size_t alignment_length = 0;
+                        jit = ifsmap.find(i); // col index
+                        iit = ifsmap.find(rowids[j]); // row index
+                        
+                        if(iit->second.first < jit->second.first) {
+                            if(iit->second.second > jit->second.first) {
+                                alignment_length = min((iit->second.second - jit->second.first), (jit->second.second - jit->second.first));
+                            }
+                        }
+                        else if (iit->second.first > jit->second.first) {
+                            if(jit->second.second > iit->second.first) {
+                                alignment_length = min((jit->second.second - iit->second.first), (iit->second.second - iit->second.first));
+                            }
+                        } else { 
+                            alignment_length = min((jit->second.second - iit->second.first), (iit->second.second - iit->second.first)); 
+                        } 
+                        
+                        if(alignment_length >= KMER_LENGTH) 
+                        {    
+                            truepositive++;
                         }
                     }
-                    else if (iit->second.first > jit->second.first) {
-                        if(jit->second.second > iit->second.first) {
-                            alignment_length = min((jit->second.second - iit->second.first), (iit->second.second - iit->second.first));
-                        }
-                    } else { 
-                        alignment_length = min((jit->second.second - iit->second.first), (iit->second.second - iit->second.first)); 
-                    } 
-                    
-                    if(alignment_length >= KMER_LENGTH) {    
-                        truepositive++;
-
-                        //for(it = values[j].begin(); it != prev(values[j].end()); ++it) {     
-//
-                        //    nit = next(it);
-                        //    same = false; 
-//
-                        //    delta_i = computeDelta(it->second.first, nit->second.first);
-                        //    delta_j = computeDelta(it->second.second, nit->second.second);
-//
-                        //    computeDivergence(delta_i, delta_j, divergencetrue);
-                        //}
-                    }
-                }
+                } //else if(values[j].size() == 1)
+                //{
+                //    overlapcount++;
+    //
+                //    size_t alignment_length = 0;
+                //    jit = ifsmap.find(i); // col index
+                //    iit = ifsmap.find(rowids[j]); // row index
+                //    
+                //    if(iit->second.first < jit->second.first) {
+                //        if(iit->second.second > jit->second.first) {
+                //            alignment_length = min((iit->second.second - jit->second.first), (jit->second.second - jit->second.first));
+                //        }
+                //    }
+                //    else if (iit->second.first > jit->second.first) {
+                //        if(jit->second.second > iit->second.first) {
+                //            alignment_length = min((jit->second.second - iit->second.first), (iit->second.second - iit->second.first));
+                //        }
+                //    } else { 
+                //        alignment_length = min((jit->second.second - iit->second.first), (iit->second.second - iit->second.first)); 
+                //    } 
+                //    
+                //    if(alignment_length >= KMER_LENGTH) 
+                //    {    
+                //        truepositive++;
+                //    }
+                //}
                 prefilter++;
-            } 
+            }
         }
     }
-    cumulativePlot(divergence2);
-
-    ifstream cumtemp ("cumulativetempfilter.csv");
-    ofstream cum ("cumulative.csv");
-
-    filterCSV(cumtemp,cum);
-
-    //cout << "Divergence map size = " << divergence.size() << endl;
-    //cout << "\nTotal number of shared k-mers pairs = " << sharedkmer << endl;
-    cout << "Total number of reads pairs after 1st filter (|| B ||) = " << prefilter << endl;
+    //cumulativePlot(divergence);
+    //ifstream cumtemp ("temp.csv");
+    //ofstream cum ("div-truepositive.csv");
+    //filterCSV(cumtemp,cum);
+    //cout << "Percentage reads pairs that passed the 2nd filter (|| A' || / || B ||) = " << overlapcount/firstfilter << endl;
+    //cout << "Precision (|| A and A' || / || A' ||) = " << truepositive/overlapcount << endl;
+    //cout << "Recall (|| A and A' || / || A ||) = " << truepositive/pairaligned << endl;*/
+    cout << "\nTotal number of reads pairs at the beginning (|| O ||) = " << prefilter << endl;
+    //cout << "Total number of reads pairs after 1st filter (|| B ||) = " << firstfilter << endl;
+    //cout << "Percentage reads pairs that passed the 1nd filter (|| B || / || O ||) = " << firstfilter/prefilter << endl;
     cout << "Total number of reads pairs after 2nd filter (|| A' ||) = " << overlapcount << endl;
-    cout << "Percentage reads pairs that passed the 2nd filter (|| A' || / || B ||) = " << overlapcount/prefilter << endl;
     cout << "True positive reads pairs (|| A and A' ||) = " << truepositive << endl;
-    cout << "Precision (|| A and A' || / || A' ||) = " << truepositive/overlapcount << endl;
-    //cout << "Recall (|| A and A' || / || A ||) = " << truepositive/pairaligned << endl;
-    //cout << "Sparsity (|| A' || / || R^2 ||) = " << overlapcount/(46717*46717) << endl;*/
-
-    //ofstream ofs("divmap.csv");
-//
-    //if(ofs.is_open()) {
-    //    ofs << "div, pairs" << endl;
-    //    for(auto it = divergence.begin(); it != divergence.end(); ++it) {
-    //        ofs << it->first << "," << it->second << endl; 
-    //    }
-    //}
-    //ofs.close(); 
+    
 }
 
 template <class IT, class NT>

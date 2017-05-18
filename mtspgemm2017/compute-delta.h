@@ -20,13 +20,13 @@ vector<double> computeDelta(vector<IT> & fst, vector<IT> & snd) {
     double min, max, diff;
 
     //#pragma omp parallel for
-    for(IT i = 0; i < fst.size(); ++i) 
+    for(size_t i = 0; i < fst.size(); ++i) 
     { 
-        for(IT j = 0; j < snd.size(); ++j)
+        for(size_t j = 0; j < snd.size(); ++j)
         {
             //cout << "i =" << fst[i] << ", j = " << snd[j] << endl;
 
-            if(fst[i] <= snd[j]) {
+            if(fst[i] < snd[j]) {
                 min = (double)fst[i];
                 max = (double)snd[j];
             } else {

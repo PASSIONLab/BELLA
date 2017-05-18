@@ -78,45 +78,6 @@ typedef std::vector<Kmer> Kmers;
 typedef std::pair<size_t, vector<size_t> > cellspmat; // pair<kmer_id_j, vector<posix_in_read_i>>
 typedef std::map< size_t, pair< vector<size_t>, vector<size_t> > > multcell; // map<kmer_id, vector<posix_in_read_i, posix_in_read_j>>
 
-/*struct unop : std::unary_function<multcell, deltacell>  {
-    deltacell operator() (multcell &values) {
-
-	multcell::iterator outer;
-	multcell::iterator inner;
-	pair<vector<size_t>,vector<size_t>> temp;
-	deltacell nvalues;
-	vector<size_t> deltareadi;
-	vector<size_t> deltareadj;
-
-    if(values.size() > 10) {
-	for(outer = values.begin(); outer != values.end(); ++outer) 	
-	{
-		for(inner = values.begin(); inner != values.end(); ++inner)
-		{
-			if(inner->first != outer->first)
-			{
-				for(size_t i = 0; i < outer->second.first.size(); ++i) { 
-					for(size_t j = 0; j < inner->second.first.size(); ++j) {
-						deltareadi.push_back(outer->second.first[j]-inner->second.first[i]);
-					}
-				}
-
-				for(size_t i = 0; i < outer->second.second.size(); ++i) { 
-					for(size_t j = 0; j < inner->second.second.size(); ++j) {
-						deltareadj.push_back(outer->second.second[j]-inner->second.second[i]);
-					}
-				}
-
-				temp = make_pair(deltareadi, deltareadj);
-				nvalues.insert(make_pair(make_pair(outer->first, inner->first), temp)); 
-			}			
-		}
-	}
-}
-	return nvalues;
-    }
-};*/
-
 // Function to create the dictionary
 // assumption: kmervect has unique entries
 void dictionaryCreation(dictionary &kmerdict, Kmers &kmervect)
@@ -139,11 +100,12 @@ int main (int argc, char* argv[]) {
 	Kmer::set_k(KMER_LENGTH);
 	dictionary kmerdict;
 	std::vector<filedata> allfiles = GetFiles(argv[3]);
-    size_t upperlimit = 100000; // 1 million reads at a time
+    size_t upperlimit = 1000; // 1000 reads at a time
     Kmer kmerfromstr;
     Kmers kmervect;
     std::vector<string> seqs;
     std::vector<string> quals;
+    int rangeStart;
     Kmers kmersfromreads;
     std::vector<tuple<size_t,size_t,cellspmat>> occurrences;
     std::vector<tuple<size_t,size_t,cellspmat>> transtuples;
@@ -152,6 +114,8 @@ int main (int argc, char* argv[]) {
 	cout << "Psbsim depth = 30" << endl;
 	cout << "k-mer length = " << KMER_LENGTH <<endl;
 	cout << "Reference genome = escherichia coli, " << argv[2] <<endl;
+
+    //automaticRange(filein, rangeStart);
 
 	if(filein.is_open()) {
 			while(getline(filein, line)) {
@@ -249,7 +213,6 @@ int main (int argc, char* argv[]) {
            	return m;
        	    }, tempspmat);
 
-    cout << "Total number of reads pairs before any filters (N = 1) = " << tempspmat.nnz << endl;
 	tempspmat.Apply();
 
 	return 0;
