@@ -46,7 +46,7 @@ struct filedata {
     size_t filesize;
 };
 
-std::vector<filedata>  GetFiles(char *filename) {
+std::vector<filedata> GetFiles(char *filename) {
     int64_t totalsize = 0;
     int numfiles = 0;
     std::vector<filedata> filesview;
@@ -113,7 +113,7 @@ int main (int argc, char* argv[]) {
 	cout << "Input file = " << argv[1] <<endl;
 	cout << "Psbsim depth = 30" << endl;
 	cout << "k-mer length = " << KMER_LENGTH <<endl;
-	cout << "Reference genome = escherichia coli, " << argv[2] <<endl;
+	cout << "Reference genome = " << argv[2] <<endl;
 
     //automaticRange(filein, rangeStart);
 
@@ -183,7 +183,7 @@ int main (int argc, char* argv[]) {
                                 merge(c1.second.begin(), c1.second.end(), c2.second.begin(), c2.second.end(), back_inserter(merged));
                                 return make_pair(c1.first, merged);
                             });
-    //std::cout << "spmat created" << endl;
+    std::cout << "spmat created" << endl;
 
     CSC<size_t, cellspmat> transpmat(transtuples, kmervect.size(), read_id, 
                             [] (cellspmat & c1, cellspmat & c2) 
@@ -192,7 +192,7 @@ int main (int argc, char* argv[]) {
                                 merge(c1.second.begin(), c1.second.end(), c2.second.begin(), c2.second.end(), back_inserter(merged));
                                 return make_pair(c1.first, merged);
                             });
-    //std::cout << "transpose(spmat) created" << endl;
+    std::cout << "transpose(spmat) created" << endl;
 
     spmat.Sorted();
     transpmat.Sorted();

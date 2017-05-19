@@ -1,1 +1,0 @@
-newset.fastq

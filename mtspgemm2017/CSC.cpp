@@ -202,7 +202,7 @@ CSC<IT,NT>::CSC(Triple<IT,NT> * triples, IT mynnz, IT m, IT n):nnz(mynnz),rows(m
 template <class IT, class NT>
 void CSC<IT,NT>::Apply()
 {
-    std::ifstream ifs("chr14.axt");
+    std::ifstream ifs("newset.axt");
     typename NT::iterator it;
     typename NT::iterator nit;
     vector<double> delta_i;
