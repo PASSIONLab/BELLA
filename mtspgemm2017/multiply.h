@@ -11,7 +11,7 @@
 #define KMER_LENGTH 17
 
 template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation>
-void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, vector<IT> * RowIdsofC, vector<FT> * ValuesofC)
+void LocalSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, vector<IT> * RowIdsofC, vector<FT> * ValuesofC)
 {
 
     #pragma omp parallel for
@@ -89,19 +89,16 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
 
 /**
   * Sparse multithreaded GEMM.
-  * Functionally more general than C = \alpha A*B + \beta C
-  * AlphaOperation generalizes scaling of A*B
-  *     alphaop = bind2nd(std::plus<NT>(), alpha) for constant alpha, then we have the BLAS usage
-  *     alphaop = bind2nd(std::less<NT>(), threshold)?_1:0 for constant threshold, then it works like a drop threshold
+  * Probably slower than HeapSpGEMM_gmalloc but likely to use less memory
  **/
-template <typename IT, typename NT, typename MultiplyOperation, typename AddOperation, typename AlphaOperation>
-void LocalSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, AlphaOperation alphaop, CSC<IT,NT> & C )
+template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation>
+void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop,  CSC<IT,FT> & C )
 {
     vector<IT> * RowIdsofC = new vector<IT>[B.cols];      // row ids for each column of C
-    vector<NT> * ValuesofC = new vector<NT>[B.cols];      // values for each column of C
+    vector<FT> * ValuesofC = new vector<FT>[B.cols];      // values for each column of C
 
     
-    HeapSpGEMM(A, B, multop, addop, RowIdsofC, ValuesofC);
+    LocalSpGEMM(A, B, multop, addop, RowIdsofC, ValuesofC);
     
     if(C.isEmpty())
     {
@@ -116,12 +113,11 @@ void LocalSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation m
         }
         C.nnz = C.colptr[C.cols];
         C.rowids = new IT[C.nnz];
-        C.values = new NT[C.nnz];
+        C.values = new FT[C.nnz];
 	
         #pragma omp parallel for
         for(int i=0; i< C.cols; ++i)         // combine step
         {
-            transform(ValuesofC[i].begin(), ValuesofC[i].end(), ValuesofC[i].begin(), alphaop);
             copy(RowIdsofC[i].begin(), RowIdsofC[i].end(), C.rowids + C.colptr[i]);
             copy(ValuesofC[i].begin(), ValuesofC[i].end(), C.values + C.colptr[i]);
         }
@@ -328,7 +324,6 @@ void HeapSpGEMM_gmalloc(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOper
 #pragma omp parallel for
         for(int i=0; i< C.cols; ++i)         // combine step
         {
-           // transform(&ValuesofC[colStart[i]], &ValuesofC[colEnd[i]], &ValuesofC[colStart[i]], alphaop);
             copy(&RowIdsofC[colStart[i]], &RowIdsofC[colEnd[i]], C.rowids + C.colptr[i]);
             copy(&ValuesofC[colStart[i]], &ValuesofC[colEnd[i]], C.values + C.colptr[i]);
         }

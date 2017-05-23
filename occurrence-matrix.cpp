@@ -173,6 +173,12 @@ int main (int argc, char* argv[]) {
         } 
 	delete pfq;
     }
+
+
+    std::vector<string>().swap(seqs);	// free memory of seqs
+    std::vector<string>().swap(quals); // free memory of quals
+    
+
     cout << "Total number of reads = "<< read_id << endl;
     // cout << "fastq file parsed\nsearch ended : vector<tuple<read_id,kmer_id,pair<kmer_id,pos_in_read>> created" << endl;
 
@@ -185,7 +191,7 @@ int main (int argc, char* argv[]) {
                             });
     std::cout << "spmat created" << endl;
 
-    std::vector<tuple<size_t,size_t,cellspmat>>().swap(occurrences);
+    std::vector<tuple<size_t,size_t,cellspmat>>().swap(occurrences);	// remove memory of occurences
 
     CSC<size_t, cellspmat> transpmat(transtuples, kmervect.size(), read_id, 
                             [] (cellspmat & c1, cellspmat & c2) 
@@ -196,7 +202,7 @@ int main (int argc, char* argv[]) {
                             });
     std::cout << "transpose(spmat) created" << endl;
 
-    std::vector<tuple<size_t,size_t,cellspmat>>().swap(transtuples);
+    std::vector<tuple<size_t,size_t,cellspmat>>().swap(transtuples); // remove memory of transtuples
 
     spmat.Sorted();
     transpmat.Sorted();
@@ -206,7 +212,7 @@ int main (int argc, char* argv[]) {
 
     cout << "Before multiply" <<endl;
 
-    HeapSpGEMM_gmalloc(spmat, transpmat, 
+    HeapSpGEMM(spmat, transpmat, 
 	    [] (cellspmat & c1, cellspmat & c2)
 	    {	if(c1.first != c2.first) cout << "error in multop()" << endl;
             	multcell value;

@@ -4,7 +4,7 @@ include mtspgemm2017/GTgraph/Makefile.var
 INCLUDE = -I$(SPRNPATH)/include 
 MLKINCLUDE = -I/opt/intel/composer_xe_2015.0.039/mkl/include
 LIBPATH = -L/opt/intel/composer_xe_2015.0.039/mkl/lib
-COMPILER = g++-4.9
+COMPILER = g++
 
 sprng:	
 	(cd $(SPRNPATH); $(MAKE); cd ../..)
@@ -24,11 +24,11 @@ hash_funcs.o: kmercode/hash_funcs.c
 	gcc -g -c -o hash_funcs.o hash_funcs.c
 
 Kmer.o:	kmercode/Kmer.cpp
-	g++ -std=c++11 -g -c -o Kmer.o Kmer.cpp
+	$(COMPILER) -std=c++11 -g -c -o Kmer.o Kmer.cpp
 
 # flags defined in mtspgemm2017/GTgraph/Makefile.var
 parse: occurrence-matrix.cpp hash_funcs.o fq_reader.o Buffer.o Kmer.o rmat
-	g++ -std=c++11 $(INCLUDE) -O3 -fopenmp -fpermissive -o parse hash_funcs.o Kmer.o Buffer.o fq_reader.o occurrence-matrix.cpp ${TOCOMPILE} ${LIBS}
+	$(COMPILER) -std=c++11 $(INCLUDE) -O3 -fopenmp -fpermissive -o parse hash_funcs.o Kmer.o Buffer.o fq_reader.o occurrence-matrix.cpp ${TOCOMPILE} ${LIBS}
 
 clean:
 	(cd mtspgemm2017/GTgraph; make clean; cd ../..)
