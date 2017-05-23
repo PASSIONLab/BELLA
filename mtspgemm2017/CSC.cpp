@@ -11,6 +11,7 @@
 #include <fstream>
 #include <iostream>
 using namespace std;
+
 #define KMER_LENGTH 17
 
 // copy constructor
@@ -202,7 +203,7 @@ CSC<IT,NT>::CSC(Triple<IT,NT> * triples, IT mynnz, IT m, IT n):nnz(mynnz),rows(m
 template <class IT, class NT>
 void CSC<IT,NT>::Apply()
 {
-    std::ifstream ifs("newset.axt");
+    std::ifstream ifs("test_01.axt");
     typename NT::iterator it;
     typename NT::iterator nit;
     vector<double> delta_i;
@@ -271,14 +272,14 @@ void CSC<IT,NT>::Apply()
     for(size_t t = 0; t < treecounts.size(); ++t) {
         trueoverlaps = trueoverlaps + treecounts[t];
     }
-    cout << "True positive overlapping pairs (minimum overlap: 300 bp) = " << trueoverlaps << endl;
+    cout << "True positive overlapping pairs (minimum overlap: 17 bp) = " << trueoverlaps << endl;
 
     for(size_t i = 0; i < cols; ++i) 
     { 
         for(size_t j = colptr[i]; j < colptr[i+1]; ++j) 
         { 
             if(i != rowids[j]) {
-                if(values[j].size() > 1)
+                if(values[j].size() > 12)
                 { 
                     track = 0;
                     var = values[j].size();
@@ -357,12 +358,8 @@ void CSC<IT,NT>::Apply()
     //ifstream cumtemp ("temp.csv");
     //ofstream cum ("div-truepositive.csv");
     //filterCSV(cumtemp,cum);
-    //cout << "Percentage reads pairs that passed the 2nd filter (|| A' || / || B ||) = " << overlapcount/firstfilter << endl;
-    //cout << "Precision (|| A and A' || / || A' ||) = " << truepositive/overlapcount << endl;
-    //cout << "Recall (|| A and A' || / || A ||) = " << truepositive/pairaligned << endl;*/
-    cout << "\nTotal number of reads pairs at the beginning (|| O ||) = " << prefilter << endl;
-    //cout << "Total number of reads pairs after 1st filter (|| B ||) = " << firstfilter << endl;
-    //cout << "Percentage reads pairs that passed the 1nd filter (|| B || / || O ||) = " << firstfilter/prefilter << endl;
+
+    cout << "Total number of reads pairs at the beginning (|| O ||) = " << prefilter << endl;
     cout << "Total number of reads pairs after 2nd filter (|| A' ||) = " << overlapcount << endl;
     cout << "True positive reads pairs (|| A and A' ||) = " << truepositive << endl;
     

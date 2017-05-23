@@ -311,8 +311,6 @@ void HeapSpGEMM_gmalloc(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOper
     
     if(C.isEmpty())
     {
-	    // std::ofstream ofs ("newset.csv");
-        //std::ifstream ifs("newset.axt");
         C.rows = A.rows;
         C.cols = B.cols;
         C.colptr = new IT[C.cols+1];
@@ -334,105 +332,6 @@ void HeapSpGEMM_gmalloc(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOper
             copy(&RowIdsofC[colStart[i]], &RowIdsofC[colEnd[i]], C.rowids + C.colptr[i]);
             copy(&ValuesofC[colStart[i]], &ValuesofC[colEnd[i]], C.values + C.colptr[i]);
         }
-   // std::map<size_t, size_t> histogram_prec;
-   // std::map<size_t, size_t>::iterator it_prec;
-   // std::map<size_t, size_t> histogram;
-   // std::map<size_t, size_t>::iterator it;
-   // std::map<size_t, pair<size_t, size_t>> ifsmap;
-   // std::map<size_t, pair<size_t, size_t>>::iterator j;
-   // std::map<size_t, pair<size_t, size_t>>::iterator i;
-//
-   // //std::cout << "before ifs importing" << endl;
-   // if(ifs.is_open()) {
-   //    // cout << "ifs opened" << endl;
-   //     int id;
-   //     int st;
-   //     int en;
-   //     std::pair<size_t, size_t> values;
-   //     while(ifs >> id >> st >> en){
-   //         size_t key = {id};
-   //         size_t start = {st};
-   //         size_t end = {en};
-   //         values = make_pair(start, end);
-   //         ifsmap[key] = values;
-   //     }
-   // } else std::cout << "error opening the ifs" << endl;
-   // //std::cout << "map created from ifs" << endl;
-//
-   // //std::cout << "creating histogram with pairs_of_reads sampled_from_same_region" << endl;
-   // for(size_t k = 0; k < C.cols; ++k) {
-   //     for(size_t l = C.colptr[k]; l < C.colptr[k+1]; ++l) {
-   //         if(C.values[l].size() > 1) {
-//
-   //             it_prec = histogram_prec.find(C.values[k].size());
-   //             if(it_prec == histogram_prec.end()) {
-   //                 histogram_prec.insert(make_pair(C.values[k].size(), 1));
-   //             } else it_prec->second++;
-//
-   //             size_t alignment_length = 0; // if none of the conditions below are satisfied, then they don't align
-   //             j = ifsmap.find(k); // col index
-   //             i = ifsmap.find(C.rowids[l]); // row index
-//
-   //             // cout << "read_i_index = " << l << endl;
-   //             // cout << "read_j_index = " << k << endl;
-   //             // cout << "j = C.colptr[i] = " << C.colptr[i] << endl;
-   //             // cout << k->second.first << " " << k->second.second << " " << j->second.first << " "  << j->second.second << endl;
-//
-   //             if(i->second.first < j->second.first) {
-   //                 if(i->second.second > j->second.first) {
-   //                     alignment_length = min((i->second.second - j->second.first), (j->second.second - j->second.first));
-   //                 }
-   //             }
-   //             else if (i->second.first > j->second.first) {
-   //                 if(j->second.second > i->second.first) {
-   //                     alignment_length = min((j->second.second - i->second.first), (i->second.second - i->second.first));
-   //                 }
-   //             } else { 
-   //                 alignment_length = min((j->second.second - i->second.first), (i->second.second - i->second.first)); 
-   //             } // they start at the same place
-//
-   //             if(alignment_length >= KMER_LENGTH) {
-   //                 
-   //                 it = histogram.find(C.values[k].size());
-   //                 if(it == histogram.end()) {
-   //                     histogram.insert(make_pair(C.values[k].size(), 1));
-   //                 } else it->second++;
-   //             }
-   //         }
-   //     }
-   // }
-//
-   //double tot_num_pairs_sampled_from_same_region = 0;
-   //double tot_num_pairs = 0;
-   //double normalized_sum = 0;
-//
-   //for(it_prec = histogram_prec.begin(); it_prec != histogram_prec.end(); ++it_prec) {
-   //    tot_num_pairs += it_prec->second;
-   //}
-//
-   //for(it = histogram.begin(); it != histogram.end(); ++it) {
-   //    tot_num_pairs_sampled_from_same_region += it->second;
-   //}
-//
-   //cout << tot_num_pairs << " = total pairs" << endl;
-   //cout << tot_num_pairs_sampled_from_same_region << " = true overlap from PacBio sim" << endl;
-   
-   //for(it = histogram.begin(); it != histogram.end(); ++it) {
-   //    normalized_sum += (it->second)/tot_num_pairs_sampled_from_same_region;
-   //}   
- //
-   //if(ofs.is_open()) {
-   //    ofs << "# normalized histogram per number of pairs_of_reads sampled_from_same_region" << endl;
-   //    ofs << "# tot_num_pairs sampled_from_same_region: " << tot_num_pairs_sampled_from_same_region << endl;
-   //    ofs << "# shared_kmers, pairs_of_reads/tot_num_pairs" << endl;
-   //    for(it = histogram.begin(); it != histogram.end(); ++it) {
-   //    if(ofs.is_open())
-   //        ofs << it->first << "," << ((it->second)/tot_num_pairs_sampled_from_same_region)*100 << endl; 
-   //    }
-   //}
-   //ofs.close(); 
-   //cout << "sparsity = " << tot_num_pairs/(46717*46717) << endl; // da calcolare comprendendo anche 1 kmer shared reads 
-
   }
     delete [] RowIdsofC;
     delete [] ValuesofC;

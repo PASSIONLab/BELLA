@@ -181,7 +181,7 @@ public:
                     alignment_length = min((stop - interval.start), (interval.stop - interval.start)); 
                 } 
                 
-                if(alignment_length >= THR) 
+                if(alignment_length >= KMER_LENGTH) 
                 {    
                     overlapping.push_back(interval);
                 }  //} 

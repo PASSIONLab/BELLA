@@ -46,7 +46,7 @@ struct filedata {
     size_t filesize;
 };
 
-std::vector<filedata> GetFiles(char *filename) {
+std::vector<filedata>  GetFiles(char *filename) {
     int64_t totalsize = 0;
     int numfiles = 0;
     std::vector<filedata> filesview;
@@ -100,7 +100,7 @@ int main (int argc, char* argv[]) {
 	Kmer::set_k(KMER_LENGTH);
 	dictionary kmerdict;
 	std::vector<filedata> allfiles = GetFiles(argv[3]);
-    size_t upperlimit = 1000; // 1000 reads at a time
+    size_t upperlimit = 500000; // 1000 reads at a time
     Kmer kmerfromstr;
     Kmers kmervect;
     std::vector<string> seqs;
@@ -185,6 +185,8 @@ int main (int argc, char* argv[]) {
                             });
     std::cout << "spmat created" << endl;
 
+    std::vector<tuple<size_t,size_t,cellspmat>>().swap(occurrences);
+
     CSC<size_t, cellspmat> transpmat(transtuples, kmervect.size(), read_id, 
                             [] (cellspmat & c1, cellspmat & c2) 
                             {   if(c1.first != c2.first) cout << "error in MergeDuplicates()" << endl;
@@ -194,11 +196,15 @@ int main (int argc, char* argv[]) {
                             });
     std::cout << "transpose(spmat) created" << endl;
 
+    std::vector<tuple<size_t,size_t,cellspmat>>().swap(transtuples);
+
     spmat.Sorted();
     transpmat.Sorted();
 
     double start = omp_get_wtime();
     CSC<size_t, multcell> tempspmat;
+
+    cout << "Before multiply" <<endl;
 
     HeapSpGEMM_gmalloc(spmat, transpmat, 
 	    [] (cellspmat & c1, cellspmat & c2)
@@ -213,6 +219,7 @@ int main (int argc, char* argv[]) {
            	return m;
        	    }, tempspmat);
 
+	cout << "Before Apply()" << endl;
 	tempspmat.Apply();
 
 	return 0;

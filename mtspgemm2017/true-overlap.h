@@ -18,7 +18,6 @@ bool trueoverlapFilter(vector<double> & dfst, vector<double> & dsnd) {
 	size_t count = 0;
 	double p_ins = 1.090;
 	double p_del = 0.955;
-	//double thr = 1.140;
 
 	for (int i = 0; i < dfst.size(); ++i) 
 	{	
