@@ -105,7 +105,7 @@ int main (int argc, char* argv[]) {
 	Kmer::set_k(KMER_LENGTH);
 	dictionary kmerdict;
 	std::vector<filedata> allfiles = GetFiles(argv[3]);
-    size_t upperlimit = 500000; // 1000 reads at a time
+    size_t upperlimit = 10000000; // in bytes
     Kmer kmerfromstr;
     Kmers kmervect;
     std::vector<string> seqs;
