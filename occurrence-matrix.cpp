@@ -90,6 +90,11 @@ void dictionaryCreation(dictionary &kmerdict, Kmers &kmervect)
 }
 
 int main (int argc, char* argv[]) {
+	if(argc < 4)
+	{
+		cout << "not enough parameters... usage: "<< endl;
+		cout << "./parse kmers-list reference-genome.fna listoffastqfiles.txt" << endl;
+	}
 
 	std::ifstream filein(argv[1]);
 	FILE *fastafile;
@@ -110,7 +115,7 @@ int main (int argc, char* argv[]) {
     std::vector<tuple<size_t,size_t,cellspmat>> occurrences;
     std::vector<tuple<size_t,size_t,cellspmat>> transtuples;
 
-	cout << "Input file = " << argv[1] <<endl;
+	cout << "Input k-mers file = " << argv[1] <<endl;
 	cout << "Psbsim depth = 30" << endl;
 	cout << "k-mer length = " << KMER_LENGTH <<endl;
 	cout << "Reference genome = " << argv[2] <<endl;
@@ -140,10 +145,13 @@ int main (int argc, char* argv[]) {
         pfq->open(itr->filename, false, itr->filesize);
         
         size_t fillstatus = 1;
-        while(fillstatus) {
-
+        while(fillstatus) {	
+    	    double time1 = omp_get_wtime();
             fillstatus = pfq->fill_block(seqs, quals, upperlimit);
             size_t nreads = seqs.size();
+
+    	    double time2 = omp_get_wtime();
+	    cout << "Filled " << nreads << " reads in " << time2-time1 << " seconds "<< endl; 
             
             for(size_t i=0; i<nreads; i++) 
             {
@@ -170,6 +178,8 @@ int main (int argc, char* argv[]) {
                 }
                 read_id++;
             }
+	    cout << "processed reads in " << omp_get_wtime()-time2 << " seconds "<< endl; 
+            cout << "total number of reads processed so far is " << read_id << endl;
         } 
 	delete pfq;
     }
@@ -225,7 +235,8 @@ int main (int argc, char* argv[]) {
            	return m;
        	    }, tempspmat);
 
-	cout << "Before Apply()" << endl;
+    
+	cout << "multiply took " << omp_get_wtime()-start << " seconds... Before Apply()" << endl;
 	tempspmat.Apply();
 
 	return 0;
