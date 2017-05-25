@@ -42,7 +42,7 @@ void LocalSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation m
         // reserve changes the capacity of the vector, so that future push_back's won't cause reallocation
         // but it does not change the size, you can still use v.size() to get the number of valid elements
 
-	RowIdsofC[i].reserve(maxnnzc); 
+	   RowIdsofC[i].reserve(maxnnzc); 
         ValuesofC[i].reserve(maxnnzc);
         
         while(hsize > 0)

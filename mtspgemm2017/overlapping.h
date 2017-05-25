@@ -59,65 +59,49 @@ double TrueOverlapping(ifstream & ifs) {
 
 // compute the distance between two k-mers on the same read
 template <typename IT>
-vector<double> ComputeDistance(vector<IT> & fst, vector<IT> & snd) {
+double ComputeDistance(IT & fst, IT & snd) {
 
-    vector<double> delta;
+    double delta;
     double min, max, diff;
 
     //#pragma omp parallel for
-    for(size_t i = 0; i < fst.size(); ++i) 
-    { 
-        for(size_t j = 0; j < snd.size(); ++j)
-        {
-            //cout << "i =" << fst[i] << ", j = " << snd[j] << endl;
+    //cout << "i =" << fst[i] << ", j = " << snd[j] << endl;
 
-            if(fst[i] < snd[j]) {
-                min = (double)fst[i];
-                max = (double)snd[j];
-            } else {
-                max = (double)fst[i];
-                min = (double)snd[j];
-            }
-
-            diff = max-min;
-            delta.push_back(diff); 
-        }
+    if(fst < snd) {
+        min = (double)fst;
+        max = (double)snd;
+    } else {
+        max = (double)fst;
+        min = (double)snd;
     }
+
+    diff = max-min;
+    delta = diff; 
 
     return delta;
 }    
 
 // find when a k-mers pair represents an evidence of potential overlap or not
-bool PotentialOverlap(vector<double> & dfst, vector<double> & dsnd) {
+bool PotentialOverlap(double & dfst, double & dsnd) {
 
-    double dmin, dmax, div; // to define the shortest and longest delta
+    double dmin, dmax; // to define the shortest and longest delta
     double Lmin, Lmax; // to compute the shortest length of the longest delta and the longest length of the shortes delta 
     bool region = false;
-    size_t count = 0;
     double p_ins = 1.090;
     double p_del = 0.955;
-
-    for (int i = 0; i < dfst.size(); ++i) 
-    {   
-        for (int j = 0; j < dsnd.size(); ++j) 
-        {
-            if(dfst[i] <= dsnd[j]) { 
-                dmin = dfst[i]; 
-                dmax = dsnd[j];
-            } else {
-                dmax = dfst[i];
-                dmin = dsnd[j];
-            }
     
-            Lmax = dmin/p_del; // maximum length of the shortest delta given the probability of deletion
-            Lmin = dmax/p_ins; // minimum length of the longest delta given the probability of insertion
-    
-            if(Lmax > Lmin) 
-                count++;
-        }
+    if(dfst <= dsnd) { 
+        dmin = dfst; 
+        dmax = dsnd;
+    } else {
+        dmax = dfst;
+        dmin = dsnd;
     }
-
-    if(count > 0) {
+    
+    Lmax = dmin/p_del; // maximum length of the shortest delta given the probability of deletion
+    Lmin = dmax/p_ins; // minimum length of the longest delta given the probability of insertion
+    
+    if(Lmax > Lmin) {
         region = true;
     } else region = false;
 
@@ -156,10 +140,10 @@ void DetectOverlap(const CSC<IT,NT> & A)
 {
     std::ifstream ifs("test_01.axt"); // it would be better to make this reading more general
     std::map<size_t, pair<size_t, size_t>> ifsmap;
-    typename NT::iterator nit;
-    typename NT::iterator it;
-    vector<double> di; // k-mers distances on read i
-    vector<double> dj; // k-mers distances on read j
+    std::vector<pair<size_t, pair<size_t, size_t>>>::iterator nit;
+    std::vector<pair<size_t, pair<size_t, size_t>>>::iterator it;
+    double di; // k-mers distances on read i
+    double dj; // k-mers distances on read j
     double overlapcount = 0, truepositive = 0, prefilter = 0;
     size_t track = 0, var, alignment_length;
     bool same;
@@ -192,14 +176,14 @@ void DetectOverlap(const CSC<IT,NT> & A)
         { 
             //if(i != A.rowids[j]) 
             //{
-            if(A.values[j].size() > 1)
+            if(A.values[j]->size() > 1)
             { 
                 track = 0;
-                var = A.values[j].size();
+                var = A.values[j]->size();
     
-                for(it = A.values[j].begin(); it != A.values[j].end(); ++it)     
+                for(it = A.values[j]->begin(); it != A.values[j]->end(); ++it)     
                 {
-                    for(nit = A.values[j].begin(); nit != A.values[j].end(); ++nit)     
+                    for(nit = A.values[j]->begin(); nit != A.values[j]->end(); ++nit)     
                     {
                         if(it->first != nit->first) 
                         {

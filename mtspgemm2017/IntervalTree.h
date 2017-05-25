@@ -7,7 +7,9 @@
 #include <memory>
 
 #define KMER_LENGTH 17
-#define THR 100
+#define THR 300
+
+using namespace std;
 
 template <class T, typename K = std::size_t>
 class Interval {
@@ -165,8 +167,26 @@ public:
         if (!intervals.empty() && ! (stop < intervals.front().start)) {
             for (typename intervalVector::const_iterator i = intervals.begin(); i != intervals.end(); ++i) {
                 const interval& interval = *i;
-                if (interval.stop >= start && interval.start <= stop && ((interval.start-stop >= THR) || (start-interval.stop >= THR))) {
-                    overlapping.push_back(interval);
+                size_t alignment_length = 0;
+               
+                if(interval.start < start) {
+                   if(interval.stop > start) {
+                       alignment_length = min((interval.stop - start), (stop - start));
+                   }
+                }
+                else if (interval.start > start) {
+                   if(stop > interval.start) {
+                       alignment_length = min((stop - interval.start), (interval.stop - interval.start));
+                   }
+                } else { 
+                   alignment_length = min((stop - interval.start), (interval.stop - interval.start)); 
+                } 
+               
+                if(alignment_length >= THR) 
+                {    
+                    if (interval.stop >= start && interval.start <= stop && ((interval.start-stop >= THR) || (start-interval.stop >= THR))) {
+                      overlapping.push_back(interval);
+                    }
                 }
             }
         }
