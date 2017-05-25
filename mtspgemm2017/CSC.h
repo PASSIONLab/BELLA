@@ -39,12 +39,6 @@ public:
     template <typename AddOperation>
     void MergeDuplicates (AddOperation addop); // method
 
-    //template <typename FT> operator CSC<IT,FT>() const; // expasion of class type
-    //template <typename FT, typename UnaryOp>
-    //CSC<IT,NT> Apply(CSC<IT,NT> & rhs); // method
-    //template <class IT, class NT>
-    void Apply();
-
     CSC(graph & G);
     CSC (IT * ri, IT * ci, NT * val, IT mynnz, IT m, IT n);
     CSC (const CSC<IT,NT> & rhs);		// copy constructor

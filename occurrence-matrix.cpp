@@ -32,6 +32,7 @@
 #include "mtspgemm2017/CSC.h"
 #include "mtspgemm2017/CSR.h"
 #include "mtspgemm2017/IO.h"
+#include "mtspgemm2017/overlapping.h"
 #include "mtspgemm2017/multiply.h"
 
 #define LSIZE 16000
@@ -187,11 +188,9 @@ int main (int argc, char* argv[]) {
 
     std::vector<string>().swap(seqs);	// free memory of seqs
     std::vector<string>().swap(quals); // free memory of quals
-    
 
     cout << "Total number of reads = "<< read_id << endl;
-    // cout << "fastq file parsed\nsearch ended : vector<tuple<read_id,kmer_id,pair<kmer_id,pos_in_read>> created" << endl;
-
+  
     CSC<size_t, cellspmat> spmat(occurrences, read_id, kmervect.size(), 
                             [] (cellspmat & c1, cellspmat & c2) 
                             {   if(c1.first != c2.first) cout << "error in MergeDuplicates()" << endl;
@@ -220,7 +219,7 @@ int main (int argc, char* argv[]) {
     double start = omp_get_wtime();
     CSC<size_t, multcell> tempspmat;
 
-    cout << "Before multiply" <<endl;
+    cout << "before multiply" <<endl;
 
     HeapSpGEMM(spmat, transpmat, 
 	    [] (cellspmat & c1, cellspmat & c2)
@@ -236,8 +235,8 @@ int main (int argc, char* argv[]) {
        	    }, tempspmat);
 
     
-	cout << "multiply took " << omp_get_wtime()-start << " seconds... Before Apply()" << endl;
-	tempspmat.Apply();
+	cout << "multiply took " << omp_get_wtime()-start << " seconds... before detectOverlap()" << endl;
+	DetectOverlap(tempspmat); // function to remove reads pairs that don't show evidence of potential overlap and to compute the recall 
 
 	return 0;
 } 
