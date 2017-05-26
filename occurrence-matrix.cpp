@@ -153,7 +153,7 @@ int main (int argc, char* argv[]) {
             size_t nreads = seqs.size();
 
             double time2 = omp_get_wtime();
-        cout << "Filled " << nreads << " reads in " << time2-time1 << " seconds "<< endl; 
+            cout << "Filled " << nreads << " reads in " << time2-time1 << " seconds "<< endl; 
             
             for(size_t i=0; i<nreads; i++) 
             {
@@ -181,7 +181,7 @@ int main (int argc, char* argv[]) {
                 read_id++;
             }
         cout << "processed reads in " << omp_get_wtime()-time2 << " seconds "<< endl; 
-            cout << "total number of reads processed so far is " << read_id << endl;
+        cout << "total number of reads processed so far is " << read_id << endl;
         } 
     delete pfq;
     }
@@ -214,8 +214,8 @@ int main (int argc, char* argv[]) {
 
     std::vector<tuple<size_t,size_t,cellspmat>>().swap(transtuples); // remove memory of transtuples
 
-    spmat.Sorted();
-    transpmat.Sorted();
+    //spmat.Sorted();
+    //transpmat.Sorted();
 
     double start = omp_get_wtime();
     CSC<size_t, mult_ptr> tempspmat;
@@ -240,8 +240,9 @@ int main (int argc, char* argv[]) {
             }, tempspmat);
 
     
-    cout << "multiply took " << omp_get_wtime()-start << " seconds... before DetectOverlap()" << endl;
+    cout << "multiply took " << omp_get_wtime()-start << " seconds" << endl;
+    double start2 = omp_get_wtime();
     DetectOverlap(tempspmat); // function to remove reads pairs that don't show evidence of potential overlap and to compute the recall 
-
+    cout << "DetectOverlap took " << omp_get_wtime()-start2 << " seconds" << endl;
     return 0;
 } 
