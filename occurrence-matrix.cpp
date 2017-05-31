@@ -199,7 +199,7 @@ int main (int argc, char* argv[]) {
                                 merge(c1.second.begin(), c1.second.end(), c2.second.begin(), c2.second.end(), back_inserter(merged));
                                 return make_pair(c1.first, merged);
                             });
-    std::cout << "spmat created" << endl;
+   std::cout << "spmat created with " << spmat.nnz << " nonzeros" << endl;
 
     std::vector<tuple<size_t,size_t,cellspmat>>().swap(occurrences);    // remove memory of occurences
 
@@ -216,6 +216,23 @@ int main (int argc, char* argv[]) {
 
     //spmat.Sorted();
     //transpmat.Sorted();
+
+    double start0 = omp_get_wtime();
+    CSC<size_t, int> testC;
+    cout << "before test multiply (nonzero only)" << endl;
+    
+    HeapSpGEMM(spmat, transpmat,
+        [] (cellspmat & c1, cellspmat & c2)
+        {  if(c1.first != c2.first) cout << "error in multop()" << endl;
+                return 1;
+        },
+        [] (int & h, int & m)
+            {   return h+m;
+            }, 
+    testC);
+
+    cout << "nonzero only multiply took " << omp_get_wtime()-start0 << " seconds" << endl;
+    cout << "output has " << testC.nnz << " nonzeros" << endl;
 
     double start = omp_get_wtime();
     CSC<size_t, mult_ptr> tempspmat;
