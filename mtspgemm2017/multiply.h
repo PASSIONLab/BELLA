@@ -14,7 +14,8 @@ template <typename IT, typename NT, typename FT, typename MultiplyOperation, typ
 void LocalSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, vector<IT> * RowIdsofC, vector<FT> * ValuesofC)
 {
 
-    #pragma omp parallel for
+    int colsprocessed = 0;
+    #pragma omp parallel for reduction(+:colsprocessed)
     for(int i=0; i < B.cols; ++i) // for all columns of B
     {
         IT hsize = B.colptr[i+1]-B.colptr[i];
@@ -42,7 +43,7 @@ void LocalSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation m
         // reserve changes the capacity of the vector, so that future push_back's won't cause reallocation
         // but it does not change the size, you can still use v.size() to get the number of valid elements
 
-	   RowIdsofC[i].reserve(maxnnzc); 
+	RowIdsofC[i].reserve(maxnnzc); 
         ValuesofC[i].reserve(maxnnzc);
         
         while(hsize > 0)
@@ -81,7 +82,8 @@ void LocalSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation m
 	 // cout << "ValuesofC[i].size() " << ValuesofC[i].size() << endl;
          // cout << "RowIdsofC[i].size() " << RowIdsofC[i].size() << endl;      
  	 }
-      
+        colsprocessed += 1;
+        if(colsprocessed%100 == 0) cout << "total columns processed: "<< colsprocessed << endl;
         delete [] mergeheap;
     }
 
