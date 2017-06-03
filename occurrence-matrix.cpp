@@ -11,6 +11,7 @@
 #include <array>
 #include <tuple>
 #include <queue>
+#include <memory>
 #include <stack>
 #include <functional>
 #include <cstring>
@@ -148,12 +149,12 @@ int main (int argc, char* argv[]) {
         
         size_t fillstatus = 1;
         while(fillstatus) { 
-            double time1 = omp_get_wtime();
+            //double time1 = omp_get_wtime();
             fillstatus = pfq->fill_block(seqs, quals, upperlimit);
             size_t nreads = seqs.size();
 
-            double time2 = omp_get_wtime();
-            cout << "Filled " << nreads << " reads in " << time2-time1 << " seconds "<< endl; 
+            //double time2 = omp_get_wtime();
+            //cout << "Filled " << nreads << " reads in " << time2-time1 << " seconds "<< endl; 
             
             for(size_t i=0; i<nreads; i++) 
             {
@@ -180,12 +181,11 @@ int main (int argc, char* argv[]) {
                 }
                 read_id++;
             }
-        cout << "processed reads in " << omp_get_wtime()-time2 << " seconds "<< endl; 
-        cout << "total number of reads processed so far is " << read_id << endl;
+        //cout << "processed reads in " << omp_get_wtime()-time2 << " seconds "<< endl; 
+        //cout << "total number of reads processed so far is " << read_id << endl;
         } 
     delete pfq;
     }
-
 
     std::vector<string>().swap(seqs);   // free memory of seqs
     std::vector<string>().swap(quals); // free memory of quals
@@ -217,7 +217,7 @@ int main (int argc, char* argv[]) {
     //spmat.Sorted();
     //transpmat.Sorted();
 
-    double start0 = omp_get_wtime();
+    /*double start0 = omp_get_wtime();
     CSC<size_t, int> testC;
     cout << "before test multiply (nonzero only)" << endl;
     
@@ -233,7 +233,7 @@ int main (int argc, char* argv[]) {
 
     cout << "nonzero only multiply took " << omp_get_wtime()-start0 << " seconds" << endl;
     cout << "output has " << testC.nnz << " nonzeros" << endl;
-
+*/
     double start = omp_get_wtime();
     CSC<size_t, mult_ptr> tempspmat;
 
@@ -242,7 +242,8 @@ int main (int argc, char* argv[]) {
     HeapSpGEMM(spmat, transpmat, 
         [] (cellspmat & c1, cellspmat & c2)
         {  if(c1.first != c2.first) cout << "error in multop()" << endl; 
-                mult_ptr value(new multcell());
+                mult_ptr value(make_shared<multcell>()); // only one allocation
+                //mult_ptr value(new multcell());
                 for(int i=0; i<c1.second.size(); ++i) {
                     for(int j=0; j<c2.second.size(); ++j) {
                         pair<size_t, size_t> temp = make_pair(c1.second[i], c2.second[j]);
@@ -255,7 +256,6 @@ int main (int argc, char* argv[]) {
             {   m->insert(m->end(), h->begin(), h->end());
             return m;
             }, tempspmat);
-
     
     cout << "multiply took " << omp_get_wtime()-start << " seconds" << endl;
     double start2 = omp_get_wtime();
