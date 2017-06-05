@@ -138,7 +138,7 @@ size_t ComputeLength(map<size_t, pair<size_t, size_t>> & ifsmap, IT & col, IT & 
 template <class IT, class NT>
 void DetectOverlap(const CSC<IT,NT> & A) 
 {
-    std::ifstream ifs("chr211.axt"); // it would be better to make this reading more general
+    std::ifstream ifs("chr21.axt"); // it would be better to make this reading more general
     std::map<size_t, pair<size_t, size_t>> ifsmap;
     std::vector<pair<size_t, pair<size_t, size_t>>>::iterator nit;
     std::vector<pair<size_t, pair<size_t, size_t>>>::iterator it;
