@@ -135,6 +135,34 @@ size_t ComputeLength(map<size_t, pair<size_t, size_t>> & ifsmap, IT & col, IT & 
     return alignment_length;
 }
 
+// Estimation of overlapping region length
+template <typename IT>
+double ExpectedKmers(double & i, double & j, double len_i, double len_j) { // reads length has to be included and position of the same k-mer on different reads
+
+    double left;    // to define the left margin 
+    double right;   // to define the right margin
+    double estime;  // expected overlap region length
+    double k;
+    double temp_i, temp_j;
+    double er = 0.15; // error rate
+    
+    if(i <= j)
+        left = i;
+    else left = j;
+
+    temp_i = len_i - i;
+    temp_j = len_j - j; 
+
+    if(temp_i <= temp_j)
+        right = temp_i;
+    else min = temp_j;
+
+    estime = left + right;
+    kmers = estime*(1-er)^(2*KMER_LENGTH);
+
+    return k;
+}
+
 template <class IT, class NT>
 void DetectOverlap(const CSC<IT,NT> & A) 
 {
@@ -211,16 +239,23 @@ void DetectOverlap(const CSC<IT,NT> & A)
                     }
                 }
             } 
-            /*else if(A.values[j]->size() == 1)
+            else if(A.values[j]->size() == 1)
             {
-                overlapcount++;
-                alignment_length = ComputeLength(ifsmap, i, A.rowids[j]); 
+                for(it = A.values[j]->begin(); it != A.values[j]->end(); ++it)     
+                {
+
+                    double k = ExpectedKmers(it->second.first, it->second.second, len_i, len_j); // modify the data structure to include read length
+                    
+                    if(k > 1) // I expect to see at least one shared k-mers 
+                        overlapcount++;
+
+                    alignment_length = ComputeLength(ifsmap, i, A.rowids[j]); 
                 
-                if(alignment_length >= KMER_LENGTH) 
-                {    
-                    truepositive++;
-                }
-            }*/
+                    if(alignment_length >= KMER_LENGTH) 
+                    {    
+                        truepositive++;
+                    }
+            }
             prefilter++;
             //}
         }
