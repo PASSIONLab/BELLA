@@ -1,3 +1,8 @@
 make parse
 ./parse /global/cscratch1/sd/gguidi/human/reliablechr14.fna /global/cscratch1/sd/gguidi/human/chr14.fasta  listofdata.txt
 
+mv parse /global/cscratch1/sd/gguidi/human/
+cd /global/cscratch1/sd/gguidi/human/
+./parse reliablechr21.fna chr21.fa listofdataCHR21.txt
+
+
