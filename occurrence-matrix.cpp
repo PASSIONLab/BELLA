@@ -79,7 +79,7 @@ typedef std::map<Kmer,size_t> dictionary; // <k-mer && reverse-complement, #kmer
 typedef std::vector<Kmer> Kmers;
 typedef std::pair<size_t, vector<size_t> > cellspmat; // pair<kmer_id_j, vector<posix_in_read_i>>
 typedef std::vector<pair<size_t, pair<size_t, size_t>>> multcell; // map<kmer_id, vector<posix_in_read_i, posix_in_read_j>>
-//typedef shared_ptr<multcell> mult_ptr; // pointer to multcell
+typedef shared_ptr<multcell> mult_ptr; // pointer to multcell
 
 // Function to create the dictionary
 // assumption: kmervect has unique entries
@@ -235,7 +235,7 @@ int main (int argc, char* argv[]) {
     cout << "output has " << testC.nnz << " nonzeros" << endl;
 */
     double start = omp_get_wtime();
-    CSC<size_t, shared_ptr<multcell>> tempspmat;
+    CSC<size_t, mult_ptr> tempspmat;
 
     cout << "before multiply" <<endl;
 
@@ -243,7 +243,6 @@ int main (int argc, char* argv[]) {
         [] (cellspmat & c1, cellspmat & c2)
         {  if(c1.first != c2.first) cout << "error in multop()" << endl; 
                 mult_ptr value(make_shared<multcell>()); // only one allocation
-                //mult_ptr value(new multcell());
                 for(int i=0; i<c1.second.size(); ++i) {
                     for(int j=0; j<c2.second.size(); ++j) {
                         pair<size_t, size_t> temp = make_pair(c1.second[i], c2.second[j]);
@@ -252,7 +251,7 @@ int main (int argc, char* argv[]) {
                 }
                 return value;
         }, 
-        [] (shared_ptr<multcell> & h, shared_ptr<multcell> & m)
+        [] (mult_ptr & h, mult_ptr & m)
             {   m->insert(m->end(), h->begin(), h->end());
             return m;
             }, tempspmat);
