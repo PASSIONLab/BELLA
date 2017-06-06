@@ -203,17 +203,61 @@ void DetectOverlap(const CSC<IT,NT> & A)
     { 
         for(size_t j = A.colptr[i]; j < A.colptr[i+1]; ++j) 
         { 
-            double p = ExpectedKmers(A.values[j]->begin()->second.a, A.values[j]->begin()->second.b, A.values[j]->begin()->second.c, A.values[j]->begin()->second.d); // modify the data structure to include read length
-            double thr = pow(p, A.values[j]->size());
+            //if(i != A.rowids[j]) 
+            //{
+            if(A.values[j]->size() > 1)
+            { 
+                track = 0;
+                var = A.values[j]->size();
+    
+                for(it = A.values[j]->begin(); it != A.values[j]->end(); ++it)     
+                {
+                    for(nit = A.values[j]->begin(); nit != A.values[j]->end(); ++nit)     
+                    {
+                        if(it->first != nit->first) 
+                        {
+                            same = false; 
+        
+                            di = ComputeDistance(it->second.a, nit->second.a); // distances on read i
+                            dj = ComputeDistance(it->second.b, nit->second.b); // distances on read j 
+        
+                            same = PotentialOverlap(di, dj); // compute evidence of potential overlap for each k-mers pair
+        
+                            if(same == true)
+                                track++; // keep track of any potential overlap
+                        }
+                    }
+                }
+    
+                if(track > 0) // keep the pair if it shows at least one evidence of potential overlap
+                {    
+                    overlapcount++;
+                    alignment_length = ComputeLength(ifsmap, i, A.rowids[j]); // compute the overlap length between potential overlapping reads pairs
+                    
+                    if(alignment_length >= KMER_LENGTH) 
+                    {    
+                        truepositive++;
+                    }
+                }
+            } 
+            else if(A.values[j]->size() == 1)
+            {
+                for(it = A.values[j]->begin(); it != A.values[j]->end(); ++it)     
+                {
+                    double p = ExpectedKmers(it->second.a, it->second.b, it->second.c, it->second.d); // modify the data structure to include read length
+                    if(p > 0.70) {
+                        overlapcount++;
+                        alignment_length = ComputeLength(ifsmap, i, A.rowids[j]);
 
-            if(thr > 0.50) {
-                overlapcount++;
-                alignment_length = ComputeLength(ifsmap, i, A.rowids[j]);
-                if(alignment_length >= KMER_LENGTH)    
-                    truepositive++;
+                        if(alignment_length >= KMER_LENGTH) 
+                        {    
+                            truepositive++;
+                        }
+                    }
+                }
             }
+            prefilter++;
         }
-        prefilter++;
     }
 
     cout << "Total number of reads pairs at the beginning (|| O ||) = " << prefilter << endl;
