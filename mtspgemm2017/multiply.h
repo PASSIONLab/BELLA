@@ -1,4 +1,5 @@
 #include "CSC.h"
+#include "global.h"
 #include <omp.h>
 #include <fstream>
 #include <iostream>
@@ -24,15 +25,15 @@ void LocalSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation m
         IT k = 0;   // Make initial heap
         for(IT j=B.colptr[i]; j < B.colptr[i+1]; ++j) // For all the nonzeros of the ith column
         {
-            IT inner = B.rowids[j];	// get the row id of B (or column id of A)
-            IT npins = A.colptr[inner+1] - A.colptr[inner];	// get the number of nonzeros in A's corresponding column
+            IT inner = B.rowids[j]; // get the row id of B (or column id of A)
+            IT npins = A.colptr[inner+1] - A.colptr[inner]; // get the number of nonzeros in A's corresponding column
             
             if(npins > 0)
             {
                 mergeheap[k].loc = 1;
                 mergeheap[k].runr = j; // the pointer to B.rowid's is the run-rank
                 mergeheap[k].value = multop(A.values[A.colptr[inner]],B.values[j]);
-                mergeheap[k++].key = A.rowids[A.colptr[inner]];	// A's first rowid is the first key
+                mergeheap[k++].key = A.rowids[A.colptr[inner]]; // A's first rowid is the first key
                 maxnnzc += npins;
             }
         }
@@ -42,7 +43,7 @@ void LocalSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation m
         // reserve changes the capacity of the vector, so that future push_back's won't cause reallocation
         // but it does not change the size, you can still use v.size() to get the number of valid elements
 
-	    RowIdsofC[i].reserve(maxnnzc); 
+        RowIdsofC[i].reserve(maxnnzc); 
         ValuesofC[i].reserve(maxnnzc);
         
         while(hsize > 0)
@@ -67,10 +68,10 @@ void LocalSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation m
             if( (A.colptr[inner + 1] - A.colptr[inner]) > hentry.loc)
             {
                 IT index = A.colptr[inner] + hentry.loc;
-                mergeheap[hsize-1].loc	 = hentry.loc +1;
+                mergeheap[hsize-1].loc   = hentry.loc +1;
                 mergeheap[hsize-1].runr  = hentry.runr;
                 mergeheap[hsize-1].value = multop(A.values[index], B.values[hentry.runr]);
-                mergeheap[hsize-1].key	 = A.rowids[index];
+                mergeheap[hsize-1].key   = A.rowids[index];
                 
                 push_heap(mergeheap, mergeheap + hsize);
             }
@@ -78,9 +79,9 @@ void LocalSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation m
             {
                 --hsize;
             }
-	 // cout << "ValuesofC[i].size() " << ValuesofC[i].size() << endl;
+     // cout << "ValuesofC[i].size() " << ValuesofC[i].size() << endl;
          // cout << "RowIdsofC[i].size() " << RowIdsofC[i].size() << endl;      
- 	 }
+     }
       
         delete [] mergeheap;
     }
@@ -106,7 +107,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         C.cols = B.cols;
         C.colptr = new IT[C.cols+1];
         C.colptr[0] = 0;
- 	
+    
         for(int i=0; i < C.cols; ++i)        // for all edge lists (do NOT parallelize)
         {
             C.colptr[i+1] = C.colptr[i] + RowIdsofC[i].size();
@@ -114,7 +115,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         C.nnz = C.colptr[C.cols];
         C.rowids = new IT[C.nnz];
         C.values = new FT[C.nnz];
-	
+    
         #pragma omp parallel for
         for(int i=0; i< C.cols; ++i)         // combine step
         {
@@ -155,10 +156,10 @@ void HeapSpGEMM_gmalloc(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOper
             IT locmax = 0;
             for(IT j=B.colptr[i]; j < B.colptr[i+1]; ++j)    // For all the nonzeros of the ith column
             {
-		//cout << B.colptr[i] << " B.colptr[i]" << endl;
-                IT inner = B.rowids[j];				// get the row id of B (or column id of A)
-                IT npins = A.colptr[inner+1] - A.colptr[inner];	// get the number of nonzeros in A's corresponding column
-		//cout << npins << " npins" << endl;
+        //cout << B.colptr[i] << " B.colptr[i]" << endl;
+                IT inner = B.rowids[j];             // get the row id of B (or column id of A)
+                IT npins = A.colptr[inner+1] - A.colptr[inner]; // get the number of nonzeros in A's corresponding column
+        //cout << npins << " npins" << endl;
                 locmax += npins;
             }
 
@@ -219,7 +220,7 @@ void HeapSpGEMM_gmalloc(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOper
         {
             IT colnnz = B.colptr[i+1]-B.colptr[i];
             if(colnnz > localmax) 
-		localmax = colnnz;
+        localmax = colnnz;
         }
         threadHeapSize[thisThread] = localmax;
     }
@@ -228,7 +229,7 @@ void HeapSpGEMM_gmalloc(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOper
     threadHeapStart[0] = 0;
     for(int i=0; i<numThreads; i++) {
         threadHeapStart[i+1] = threadHeapStart[i] + threadHeapSize[i];
-	}
+    }
     
     HeapEntry<IT,FT> * globalheap = new HeapEntry<IT,FT>[threadHeapStart[numThreads]];
     
@@ -245,15 +246,15 @@ void HeapSpGEMM_gmalloc(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOper
             IT k = 0;   // Make initial heap
             for(IT j=B.colptr[i]; j < B.colptr[i+1]; ++j)    // For all the nonzeros of the ith column
             {
-                IT inner = B.rowids[j];				// get the row id of B (or column id of A)
-                IT npins = A.colptr[inner+1] - A.colptr[inner];	// get the number of nonzeros in A's corresponding column
+                IT inner = B.rowids[j];             // get the row id of B (or column id of A)
+                IT npins = A.colptr[inner+1] - A.colptr[inner]; // get the number of nonzeros in A's corresponding column
                 
                 if(npins > 0)
                 {
                     mergeheap[k].loc = 1;
-                    mergeheap[k].runr = j;    			// the pointer to B.rowid's is the run-rank
+                    mergeheap[k].runr = j;              // the pointer to B.rowid's is the run-rank
                     mergeheap[k].value = multop(A.values[A.colptr[inner]],B.values[j]);
-                    mergeheap[k++].key = A.rowids[A.colptr[inner]];	// A's first rowid is the first key
+                    mergeheap[k++].key = A.rowids[A.colptr[inner]]; // A's first rowid is the first key
                 }
             }
             IT hsize = k;      // if any of A's "significant" columns is empty, k will be less than hsize
@@ -333,4 +334,3 @@ void HeapSpGEMM_gmalloc(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOper
     delete [] colEnd;
     delete [] colStart;
 }
-

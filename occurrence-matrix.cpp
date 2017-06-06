@@ -33,6 +33,7 @@
 #include "mtspgemm2017/CSC.h"
 #include "mtspgemm2017/CSR.h"
 #include "mtspgemm2017/IO.h"
+#include "mtspgemm2017/global.h"
 #include "mtspgemm2017/overlapping.h"
 #include "mtspgemm2017/multiply.h"
 
@@ -77,9 +78,9 @@ std::vector<filedata>  GetFiles(char *filename) {
 
 typedef std::map<Kmer,size_t> dictionary; // <k-mer && reverse-complement, #kmers>
 typedef std::vector<Kmer> Kmers;
-typedef std::pair<size_t, vector<size_t> > cellspmat; // pair<kmer_id_j, vector<posix_in_read_i>>
-typedef std::vector<pair<size_t, pair<size_t, size_t>>> multcell; // map<kmer_id, vector<posix_in_read_i, posix_in_read_j>>
-//typedef shared_ptr<multcell> mult_ptr; // pointer to multcell
+typedef std::pair<size_t, pair<vector<size_t>, size_t>> cellspmat; // pair<kmer_id_j, vector<posix_in_read_i>, readlength>
+typedef std::vector<pair<size_t, poslen>> multcell; // kmer_id, posix_in_read_i, posix_in_read_j>, length read i, length read j
+typedef shared_ptr<multcell> mult_ptr; // pointer to multcell
 
 // Function to create the dictionary
 // assumption: kmervect has unique entries
@@ -175,8 +176,8 @@ int main (int argc, char* argv[]) {
 
                     auto found = kmerdict.find(lexsmall);
                     if(found != kmerdict.end()) {
-                        occurrences.push_back(std::make_tuple(read_id, found->second, make_pair(found->second, vector<size_t>(1,j)))); // vector<tuple<read_id,kmer_id,pair<kmer_id,pos_in_read>>
-                        transtuples.push_back(std::make_tuple(found->second, read_id, make_pair(found->second, vector<size_t>(1,j)))); // transtuples.push_back(col_id, row_id, value)
+                        occurrences.push_back(std::make_tuple(read_id, found->second, make_pair(found->second, make_pair(vector<size_t>(1,j), len)))); // vector<tuple<read_id,kmer_id,pair<kmer_id,pos_in_read>>
+                        transtuples.push_back(std::make_tuple(found->second, read_id, make_pair(found->second, make_pair(vector<size_t>(1,j), len)))); // transtuples.push_back(col_id, row_id, value)
                     }
                 }
                 read_id++;
@@ -196,8 +197,8 @@ int main (int argc, char* argv[]) {
                             [] (cellspmat & c1, cellspmat & c2) 
                             {   if(c1.first != c2.first) cout << "error in MergeDuplicates()" << endl;
                                 vector<size_t> merged;
-                                merge(c1.second.begin(), c1.second.end(), c2.second.begin(), c2.second.end(), back_inserter(merged));
-                                return make_pair(c1.first, merged);
+                                merge(c1.second.first.begin(), c1.second.first.end(), c2.second.first.begin(), c2.second.first.end(), back_inserter(merged));
+                                return make_pair(c1.first, make_pair(merged, c1.second.second));
                             });
    std::cout << "spmat created with " << spmat.nnz << " nonzeros" << endl;
 
@@ -207,8 +208,8 @@ int main (int argc, char* argv[]) {
                             [] (cellspmat & c1, cellspmat & c2) 
                             {   if(c1.first != c2.first) cout << "error in MergeDuplicates()" << endl;
                                 vector<size_t> merged;
-                                merge(c1.second.begin(), c1.second.end(), c2.second.begin(), c2.second.end(), back_inserter(merged));
-                                return make_pair(c1.first, merged);
+                                merge(c1.second.first.begin(), c1.second.first.end(), c2.second.first.begin(), c2.second.first.end(), back_inserter(merged));
+                                return make_pair(c1.first, make_pair(merged, c1.second.second));
                             });
     std::cout << "transpose(spmat) created" << endl;
 
@@ -235,24 +236,28 @@ int main (int argc, char* argv[]) {
     cout << "output has " << testC.nnz << " nonzeros" << endl;
 */
     double start = omp_get_wtime();
-    CSC<size_t, shared_ptr<multcell>> tempspmat;
+    CSC<size_t, mult_ptr> tempspmat;
 
     cout << "before multiply" <<endl;
+    //typedef std::vector<tuple<size_t, pair<size_t, size_t>, pair<size_t, size_t>>> multcell;
 
     HeapSpGEMM(spmat, transpmat, 
         [] (cellspmat & c1, cellspmat & c2)
         {  if(c1.first != c2.first) cout << "error in multop()" << endl; 
                 mult_ptr value(make_shared<multcell>()); // only one allocation
-                //mult_ptr value(new multcell());
-                for(int i=0; i<c1.second.size(); ++i) {
-                    for(int j=0; j<c2.second.size(); ++j) {
-                        pair<size_t, size_t> temp = make_pair(c1.second[i], c2.second[j]);
+                poslen temp;
+                for(int i=0; i<c1.second.first.size(); ++i) {
+                    for(int j=0; j<c2.second.first.size(); ++j) {
+                        temp.a = c1.second.first[i]; // pos i 
+                        temp.b = c2.second.first[j]; // pos j
+                        temp.c = c1.second.second; // len i
+                        temp.d = c2.second.second; // len j 
                         value->push_back(make_pair(c1.first, temp));
                     }
                 }
                 return value;
         }, 
-        [] (shared_ptr<multcell> & h, shared_ptr<multcell> & m)
+        [] (mult_ptr & h, mult_ptr & m)
             {   m->insert(m->end(), h->begin(), h->end());
             return m;
             }, tempspmat);

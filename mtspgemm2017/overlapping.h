@@ -2,6 +2,7 @@
 #include "utility.h"
 #include "IntervalTree.h"
 #include "BitMap.h"
+#include "global.h"
 #include <omp.h>
 #include <fstream>
 #include <iostream>
@@ -137,39 +138,39 @@ size_t ComputeLength(map<size_t, pair<size_t, size_t>> & ifsmap, IT & col, IT & 
 
 // Estimation of overlapping region length
 template <typename IT>
-double ExpectedKmers(double & i, double & j, double len_i, double len_j) { // reads length has to be included and position of the same k-mer on different reads
+double ExpectedKmers(IT & i, IT & j, IT & len_i, IT & len_j) { // reads length has to be included and position of the same k-mer on different reads
 
     double left;    // to define the left margin 
     double right;   // to define the right margin
     double estime;  // expected overlap region length
-    double k;
-    double temp_i, temp_j;
+    double p;
+    size_t temp_i, temp_j;
     double er = 0.15; // error rate
     
     if(i <= j)
-        left = i;
-    else left = j;
+        left = (double)i;
+    else left = (double)j;
 
     temp_i = len_i - i;
     temp_j = len_j - j; 
 
     if(temp_i <= temp_j)
-        right = temp_i;
-    else min = temp_j;
+        right = (double)temp_i;
+    else right = (double)temp_j;
 
-    estime = left + right;
-    kmers = estime*(1-er)^(2*KMER_LENGTH);
+    estime = left + right; // estimated overlap
+    p = 1-pow((1-pow((1-er), (2*KMER_LENGTH))), estime);
 
-    return k;
+    return p;
 }
 
 template <class IT, class NT>
 void DetectOverlap(const CSC<IT,NT> & A) 
 {
-    std::ifstream ifs("chr21.axt"); // it would be better to make this reading more general
+    std::ifstream ifs("test_01.axt"); // it would be better to make this reading more general
     std::map<size_t, pair<size_t, size_t>> ifsmap;
-    std::vector<pair<size_t, pair<size_t, size_t>>>::iterator nit;
-    std::vector<pair<size_t, pair<size_t, size_t>>>::iterator it;
+    std::vector<pair<size_t, poslen>>::iterator nit;
+    std::vector<pair<size_t, poslen>>::iterator it;
     double di; // k-mers distances on read i
     double dj; // k-mers distances on read j
     double overlapcount = 0, truepositive = 0, prefilter = 0;
@@ -217,8 +218,8 @@ void DetectOverlap(const CSC<IT,NT> & A)
                         {
                             same = false; 
         
-                            di = ComputeDistance(it->second.first, nit->second.first);
-                            dj = ComputeDistance(it->second.second, nit->second.second);
+                            di = ComputeDistance(it->second.a, nit->second.a); // distances on read i
+                            dj = ComputeDistance(it->second.b, nit->second.b); // distances on read j 
         
                             same = PotentialOverlap(di, dj); // compute evidence of potential overlap for each k-mers pair
         
@@ -243,18 +244,18 @@ void DetectOverlap(const CSC<IT,NT> & A)
             {
                 for(it = A.values[j]->begin(); it != A.values[j]->end(); ++it)     
                 {
-
-                    double k = ExpectedKmers(it->second.first, it->second.second, len_i, len_j); // modify the data structure to include read length
-                    
-                    if(k > 1) // I expect to see at least one shared k-mers 
+                    double p = ExpectedKmers(it->second.a, it->second.b, it->second.c, it->second.d); // modify the data structure to include read length
+                    if(p == 1) {
                         overlapcount++;
+                    }
 
-                    alignment_length = ComputeLength(ifsmap, i, A.rowids[j]); 
-                
+                    alignment_length = ComputeLength(ifsmap, i, A.rowids[j]);
+
                     if(alignment_length >= KMER_LENGTH) 
                     {    
                         truepositive++;
                     }
+                }
             }
             prefilter++;
             //}
