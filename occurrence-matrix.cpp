@@ -120,7 +120,7 @@ int main (int argc, char* argv[]) {
     std::vector<tuple<size_t,size_t,cellspmat>> transtuples;
 
     cout << "Input k-mers file = " << argv[1] <<endl;
-    cout << "Psbsim depth = 30" << endl;
+    cout << "Psbsim depth = 40" << endl;
     cout << "k-mer length = " << KMER_LENGTH <<endl;
     cout << "Reference genome = " << argv[2] <<endl;
 

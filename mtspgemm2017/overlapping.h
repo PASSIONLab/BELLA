@@ -167,7 +167,7 @@ double ExpectedKmers(IT & i, IT & j, IT & len_i, IT & len_j) { // reads length h
 template <class IT, class NT>
 void DetectOverlap(const CSC<IT,NT> & A) 
 {
-    std::ifstream ifs("test_01.axt"); // it would be better to make this reading more general
+    std::ifstream ifs("Solibacter.axt"); // it would be better to make this reading more general
     std::map<size_t, pair<size_t, size_t>> ifsmap;
     std::vector<pair<size_t, poslen>>::iterator nit;
     std::vector<pair<size_t, poslen>>::iterator it;
