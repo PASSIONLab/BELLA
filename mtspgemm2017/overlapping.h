@@ -138,15 +138,16 @@ size_t ComputeLength(map<size_t, pair<size_t, size_t>> & ifsmap, IT & col, IT & 
 template <class IT, class NT>
 void DetectOverlap(const CSC<IT,NT> & A) 
 {
-    std::ifstream ifs("chr21.axt"); // it would be better to make this reading more general
+    std::ifstream ifs("test_01.axt"); // it would be better to make this reading more general
     std::map<size_t, pair<size_t, size_t>> ifsmap;
     std::vector<pair<size_t, pair<size_t, size_t>>>::iterator nit;
     std::vector<pair<size_t, pair<size_t, size_t>>>::iterator it;
     double di; // k-mers distances on read i
     double dj; // k-mers distances on read j
     double overlapcount = 0, truepositive = 0, prefilter = 0;
-    size_t track = 0, var, alignment_length;
+    size_t var, alignment_length;
     bool same;
+    double track = 0;
 
     // creation reads map from axt file to be used to find potential overlapping reads pairs 
     if(ifs.is_open()) {
@@ -200,7 +201,7 @@ void DetectOverlap(const CSC<IT,NT> & A)
                     }
                 }
     
-                if(track > 0) // keep the pair if it shows at least one evidence of potential overlap
+                if(track >= (double)var/2) // keep the pair if it shows at least one evidence of potential overlap
                 {    
                     overlapcount++;
                     alignment_length = ComputeLength(ifsmap, i, A.rowids[j]); // compute the overlap length between potential overlapping reads pairs
@@ -211,7 +212,7 @@ void DetectOverlap(const CSC<IT,NT> & A)
                     }
                 }
             } 
-            /*else if(A.values[j]->size() == 1)
+            else if(A.values[j]->size() == 1)
             {
                 overlapcount++;
                 alignment_length = ComputeLength(ifsmap, i, A.rowids[j]); 
@@ -220,7 +221,7 @@ void DetectOverlap(const CSC<IT,NT> & A)
                 {    
                     truepositive++;
                 }
-            }*/
+            }
             prefilter++;
             //}
         }
@@ -231,5 +232,6 @@ void DetectOverlap(const CSC<IT,NT> & A)
     cout << "Potentially overlapping read pairs (|| A' ||) = " << overlapcount << endl;
     cout << "True positive reads pairs among the potential ones (|| A and A' ||) = " << truepositive << endl;
     cout << "Recall = " << truepositive/trueoverlapping << endl;
+    cout << "\n-- A BIT LESS CONSERVATIVE --\n" << endl;
     
 }

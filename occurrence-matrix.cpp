@@ -119,11 +119,12 @@ int main (int argc, char* argv[]) {
     std::vector<tuple<size_t,size_t,cellspmat>> transtuples;
 
     cout << "Input k-mers file = " << argv[1] <<endl;
-    cout << "Psbsim depth = 30" << endl;
+    cout << "Psbsim depth = 40" << endl;
     cout << "k-mer length = " << KMER_LENGTH <<endl;
     cout << "Reference genome = " << argv[2] <<endl;
 
     //automaticRange(filein, rangeStart);
+    double all = omp_get_wtime();
 
     if(filein.is_open()) {
             while(getline(filein, line)) {
@@ -259,6 +260,7 @@ int main (int argc, char* argv[]) {
     cout << "multiply took " << omp_get_wtime()-start << " seconds" << endl;
     double start2 = omp_get_wtime();
     DetectOverlap(tempspmat); // function to remove reads pairs that don't show evidence of potential overlap and to compute the recall 
-    cout << "DetectOverlap took " << omp_get_wtime()-start2 << " seconds" << endl;
+    cout << "Filter time " << omp_get_wtime()-start2 << " seconds" << endl;
+    cout << "Total time " << omp_get_wtime()-all << " seconds" << endl;
     return 0;
 } 
