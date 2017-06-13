@@ -167,7 +167,7 @@ double ExpectedKmers(IT & i, IT & j, IT & len_i, IT & len_j) { // reads length h
 template <class IT, class NT>
 void DetectOverlap(const CSC<IT,NT> & A) 
 {
-    std::ifstream ifs("Solibacter.axt"); // it would be better to make this reading more general
+    std::ifstream ifs("test_01.axt"); // it would be better to make this reading more general
     std::map<size_t, pair<size_t, size_t>> ifsmap;
     std::vector<pair<size_t, poslen>>::iterator nit;
     std::vector<pair<size_t, poslen>>::iterator it;
@@ -203,23 +203,24 @@ void DetectOverlap(const CSC<IT,NT> & A)
     { 
         for(size_t j = A.colptr[i]; j < A.colptr[i+1]; ++j) 
         { 
-            double p = ExpectedKmers(A.values[j]->begin()->second.a, A.values[j]->begin()->second.b, A.values[j]->begin()->second.c, A.values[j]->begin()->second.d); // modify the data structure to include read length
-            double thr = pow(p, A.values[j]->size());
-
-            if(thr > 0.50) {
+            //if(A.values[j]->size() > 0) {
+                double p = ExpectedKmers(A.values[j]->begin()->second.a, A.values[j]->begin()->second.b, A.values[j]->begin()->second.c, A.values[j]->begin()->second.d); // modify the data structure to include read length
+                double thr = pow(p, A.values[j]->size());
+                //
+                if(thr > 0.7) {
                 overlapcount++;
                 alignment_length = ComputeLength(ifsmap, i, A.rowids[j]);
                 if(alignment_length >= KMER_LENGTH)    
                     truepositive++;
-            }
+                }
+            //}
         }
-        prefilter++;
     }
 
-    cout << "Total number of reads pairs at the beginning (|| O ||) = " << prefilter << endl;
-    cout << "True overlapping reads pairs (|| A ||) = " << trueoverlapping << endl;
-    cout << "Potentially overlapping read pairs (|| A' ||) = " << overlapcount << endl;
-    cout << "True positive reads pairs among the potential ones (|| A and A' ||) = " << truepositive << endl;
+    cout << "TP+FP = " << overlapcount << endl;
+    cout << "TP = " << truepositive << endl;
+    cout << "P = " << trueoverlapping << endl;
     cout << "Recall = " << truepositive/trueoverlapping << endl;
+    cout << "Precision = " << truepositive/overlapcount << endl;
     
 }
