@@ -164,6 +164,33 @@ double ExpectedKmers(IT & i, IT & j, IT & len_i, IT & len_j) { // reads length h
     return p;
 }
 
+template <typename IT>
+double MaxGap(IT & i, IT & j, IT & len_i, IT & len_j) { // reads length has to be included and position of the same k-mer on different reads
+
+    double left;    // to define the left margin 
+    double right;   // to define the right margin
+    double estime;  // expected overlap region length
+    double gap;
+    size_t temp_i, temp_j;
+    double variance_single_base = 0.12;
+    
+    if(i <= j)
+        left = (double)i;
+    else left = (double)j;
+
+    temp_i = len_i - i;
+    temp_j = len_j - j; 
+
+    if(temp_i <= temp_j)
+        right = (double)temp_i;
+    else right = (double)temp_j;
+
+    estime = left + right; // estimated overlap
+    double gap = estime*variance_single_base;
+    
+    return gap;
+}
+
 template <class IT, class NT>
 void DetectOverlap(const CSC<IT,NT> & A) 
 {
@@ -203,17 +230,40 @@ void DetectOverlap(const CSC<IT,NT> & A)
     { 
         for(size_t j = A.colptr[i]; j < A.colptr[i+1]; ++j) 
         { 
-            //if(A.values[j]->size() > 0) {
+            if(A.values[j]->size() == 1) {
                 double p = ExpectedKmers(A.values[j]->begin()->second.a, A.values[j]->begin()->second.b, A.values[j]->begin()->second.c, A.values[j]->begin()->second.d); // modify the data structure to include read length
                 double thr = pow(p, A.values[j]->size());
-                //
+                
                 if(thr > 0.7) {
-                overlapcount++;
-                alignment_length = ComputeLength(ifsmap, i, A.rowids[j]);
-                if(alignment_length >= KMER_LENGTH)    
-                    truepositive++;
+                    overlapcount++;
+                    alignment_length = ComputeLength(ifsmap, i, A.rowids[j]);
+                    if(alignment_length >= KMER_LENGTH)    
+                        truepositive++;
                 }
-            //}
+            } 
+            else
+            {     
+                for(it = A.values[j]->begin(); it != A.values[j]->end(); ++it)     
+                {
+                    for(nit = A.values[j]->begin(); nit != A.values[j]->end(); ++nit)     
+                    {
+                        if(it->first != nit->first) 
+                        {        
+                            di = ComputeDistance(it->second.first, nit->second.first);
+                            dj = ComputeDistance(it->second.second, nit->second.second);
+        
+                            double diff = di-dj;
+                            if(abs(diff) <= gap) 
+                            {
+                                overlapcount++;
+                                alignment_length = ComputeLength(ifsmap, i, A.rowids[j]); // compute the overlap length between potential overlapping reads pairs
+                                if(alignment_length >= KMER_LENGTH)    
+                                    truepositive++;
+                            } 
+                        }
+                    }
+                }
+            }
         }
     }
 
