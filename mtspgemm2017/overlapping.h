@@ -143,7 +143,7 @@ double ExpectedKmers(IT & i, IT & j, IT & len_i, IT & len_j) { // reads length h
 
     double left;    // to define the left margin 
     double right;   // to define the right margin
-    double estime, ex;  // expected overlap region length
+    double estime, p;  // expected overlap region length
     size_t temp_i, temp_j;
     double er = 0.15; // error rate
     
