@@ -40,6 +40,7 @@
 #define LSIZE 16000
 #define KMER_LENGTH 17
 #define ITERS 10
+#define DEPTH 30
 
 using namespace std;
 
@@ -78,9 +79,6 @@ std::vector<filedata>  GetFiles(char *filename) {
 
 typedef std::map<Kmer,size_t> dictionary; // <k-mer && reverse-complement, #kmers>
 typedef std::vector<Kmer> Kmers;
-typedef std::pair<size_t, pair<vector<size_t>, size_t>> cellspmat; // pair<kmer_id_j, vector<posix_in_read_i>, readlength>
-typedef std::vector<pair<size_t, poslen>> multcell; // kmer_id, posix_in_read_i, posix_in_read_j>, length read i, length read j
-typedef shared_ptr<multcell> mult_ptr; // pointer to multcell
 
 // Function to create the dictionary
 // assumption: kmervect has unique entries
@@ -116,16 +114,14 @@ int main (int argc, char* argv[]) {
     std::vector<string> quals;
     int rangeStart;
     Kmers kmersfromreads;
-    std::vector<tuple<size_t,size_t,cellspmat>> occurrences;
-    std::vector<tuple<size_t,size_t,cellspmat>> transtuples;
+    std::vector<tuple<size_t,size_t,size_t>> occurrences;
+    std::vector<tuple<size_t,size_t,size_t>> transtuples;
 
-    cout << "\n-- O5 FILTER --\n" << endl;
     cout << "Input k-mers file: " << argv[1] <<endl;
-    cout << "Psbsim depth: 30" << endl;
+    cout << "Psbsim depth: " << DEPTH << endl;
     cout << "k-mer length: " << KMER_LENGTH <<endl;
     cout << "Reference genome: " << argv[2] <<endl;
 
-    //automaticRange(filein, rangeStart);
     double all = omp_get_wtime();
     if(filein.is_open()) {
             while(getline(filein, line)) {
@@ -177,8 +173,8 @@ int main (int argc, char* argv[]) {
 
                     auto found = kmerdict.find(lexsmall);
                     if(found != kmerdict.end()) {
-                        occurrences.push_back(std::make_tuple(read_id, found->second, make_pair(found->second, make_pair(vector<size_t>(1,j), len)))); // vector<tuple<read_id,kmer_id,pair<kmer_id,pos_in_read>>
-                        transtuples.push_back(std::make_tuple(found->second, read_id, make_pair(found->second, make_pair(vector<size_t>(1,j), len)))); // transtuples.push_back(col_id, row_id, value)
+                        occurrences.push_back(std::make_tuple(read_id, found->second, found->second)); // vector<tuple<read_id,kmer_id, kmer_id>
+                        transtuples.push_back(std::make_tuple(found->second, read_id, found->second));
                     }
                 }
                 read_id++;
@@ -194,79 +190,43 @@ int main (int argc, char* argv[]) {
 
     cout << "Total number of reads: "<< read_id << endl;
   
-    CSC<size_t, cellspmat> spmat(occurrences, read_id, kmervect.size(), 
-                            [] (cellspmat & c1, cellspmat & c2) 
-                            {   if(c1.first != c2.first) cout << "error in MergeDuplicates()" << endl;
-                                vector<size_t> merged;
-                                merge(c1.second.first.begin(), c1.second.first.end(), c2.second.first.begin(), c2.second.first.end(), back_inserter(merged));
-                                return make_pair(c1.first, make_pair(merged, c1.second.second));
+    CSC<size_t, size_t> spmat(occurrences, read_id, kmervect.size(), 
+                            [] (size_t & c1, size_t & c2) 
+                            {   if(c1 != c2) cout << "error in MergeDuplicates()" << endl;
+                                return c1;
                             });
-   //std::cout << "spmat created with " << spmat.nnz << " nonzeros" << endl;
+    std::cout << "spmat created with " << spmat.nnz << " nonzeros" << endl;
+    std::vector<tuple<size_t,size_t,size_t>>().swap(occurrences);    // remove memory of occurences
 
-    std::vector<tuple<size_t,size_t,cellspmat>>().swap(occurrences);    // remove memory of occurences
-
-    CSC<size_t, cellspmat> transpmat(transtuples, kmervect.size(), read_id, 
-                            [] (cellspmat & c1, cellspmat & c2) 
-                            {   if(c1.first != c2.first) cout << "error in MergeDuplicates()" << endl;
-                                vector<size_t> merged;
-                                merge(c1.second.first.begin(), c1.second.first.end(), c2.second.first.begin(), c2.second.first.end(), back_inserter(merged));
-                                return make_pair(c1.first, make_pair(merged, c1.second.second));
+    CSC<size_t, size_t> transpmat(transtuples, kmervect.size(), read_id, 
+                            [] (size_t & c1, size_t & c2) 
+                            {   if(c1 != c2) cout << "error in MergeDuplicates()" << endl;
+                                return c1;
                             });
-    //std::cout << "transpose(spmat) created" << endl;
+    std::cout << "transpose(spmat) created" << endl;
+    std::vector<tuple<size_t,size_t,size_t>>().swap(transtuples); // remove memory of transtuples
 
-    std::vector<tuple<size_t,size_t,cellspmat>>().swap(transtuples); // remove memory of transtuples
+    spmat.Sorted();
+    transpmat.Sorted();
 
-    //spmat.Sorted();
-    //transpmat.Sorted();
-
-    /*double start0 = omp_get_wtime();
-    CSC<size_t, int> testC;
-    cout << "before test multiply (nonzero only)" << endl;
-    
-    HeapSpGEMM(spmat, transpmat,
-        [] (cellspmat & c1, cellspmat & c2)
-        {  if(c1.first != c2.first) cout << "error in multop()" << endl;
-                return 1;
-        },
-        [] (int & h, int & m)
-            {   return h+m;
-            }, 
-    testC);
-
-    cout << "nonzero only multiply took " << omp_get_wtime()-start0 << " seconds" << endl;
-    cout << "output has " << testC.nnz << " nonzeros" << endl;
-*/
     double start = omp_get_wtime();
-    CSC<size_t, mult_ptr> tempspmat;
-
-    //cout << "Before multiply" <<endl;
-    //typedef std::vector<tuple<size_t, pair<size_t, size_t>, pair<size_t, size_t>>> multcell;
+    CSC<size_t, size_t> tempspmat;
 
     HeapSpGEMM(spmat, transpmat, 
-        [] (cellspmat & c1, cellspmat & c2)
-        {  if(c1.first != c2.first) cout << "error in multop()" << endl; 
-                mult_ptr value(make_shared<multcell>()); // only one allocation
-                poslen temp;
-                for(int i=0; i<c1.second.first.size(); ++i) {
-                    for(int j=0; j<c2.second.first.size(); ++j) {
-                        temp.a = c1.second.first[i]; // pos i 
-                        temp.b = c2.second.first[j]; // pos j
-                        temp.c = c1.second.second; // len i
-                        temp.d = c2.second.second; // len j 
-                        value->push_back(make_pair(c1.first, temp));
-                    }
-                }
+            [] (size_t & c1, size_t & c2)
+            {  if(c1 != c2) 
+                cout << "error in multop()" << endl; 
+                size_t value = 1; 
                 return value;
-        }, 
-        [] (mult_ptr & h, mult_ptr & m)
-            {   m->insert(m->end(), h->begin(), h->end());
-            return m;
+            }, [] (size_t & m1, size_t & m2)
+            { 
+               return m1+m2;
             }, tempspmat);
     
     cout << "Multiply time: " << omp_get_wtime()-start << " seconds" << endl;
     double start2 = omp_get_wtime();
     DetectOverlap(tempspmat); // function to remove reads pairs that don't show evidence of potential overlap and to compute the recall 
-    cout << "O2 filter time: " << omp_get_wtime()-start2 << " seconds" << endl;
+    cout << "Filter time: " << omp_get_wtime()-start2 << " seconds" << endl;
     cout << "Total time: " << omp_get_wtime()-all << " seconds" << endl;
 
     return 0;
