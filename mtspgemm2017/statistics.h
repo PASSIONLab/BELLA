@@ -14,7 +14,7 @@
 #include <vector>
 
 #define KMER_LENGTH 17
-#define S 3 // minimum number of shard k-mers
+#define S 1 // minimum number of shard k-mers
 using namespace std;
 
 // compute the number of true overlapping reads
@@ -192,7 +192,7 @@ double MaxGap(IT & i, IT & j, IT & len_i, IT & len_j) { // reads length has to b
 }
 
 template <class IT, class NT>
-void DetectOverlap(const CSC<IT,NT> & A) 
+void GetStatistics(const CSC<IT,NT> & A) 
 {
     std::ifstream ifs("test_01.axt"); // it would be better to make this reading more general
     std::map<size_t, pair<size_t, size_t>> ifsmap;
@@ -227,7 +227,7 @@ void DetectOverlap(const CSC<IT,NT> & A)
     { 
         for(size_t j = A.colptr[i]; j < A.colptr[i+1]; ++j) 
         {
-            if(A.values[j] >= S)
+            if(A.values[j].first >= S)
             {
                 TPandFP++;
                 alignment_length = ComputeLength(ifsmap, i, A.rowids[j]); // compute the overlap length between potential overlapping reads pairs
