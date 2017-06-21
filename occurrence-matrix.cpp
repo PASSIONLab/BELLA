@@ -30,6 +30,7 @@
 #include "kmercode/ParallelFASTQ.h"
 
 #include "mtspgemm2017/utility.h"
+#include "mtspgemm2017/filter.h"
 #include "mtspgemm2017/CSC.h"
 #include "mtspgemm2017/CSR.h"
 #include "mtspgemm2017/IO.h"
@@ -112,6 +113,7 @@ int main (int argc, char* argv[]) {
     Kmer kmerfromstr;
     Kmers kmervect;
     std::vector<string> seqs;
+    std::vector<string> reads;
     std::vector<string> quals;
     int rangeStart;
     Kmers kmersfromreads;
@@ -159,6 +161,7 @@ int main (int argc, char* argv[]) {
             {
                 // remember that the last valid position is length()-1
                 size_t len = seqs[i].length();
+                reads.push_back(seqs[i]);
                 
                 // skip this sequence if the length is too short
                 if (len <= KMER_LENGTH)
@@ -166,7 +169,6 @@ int main (int argc, char* argv[]) {
 
                 for(size_t j=0; j<=len-KMER_LENGTH; j++)  
                 {
-
                     std::string kmerstrfromfastq = seqs[i].substr(j, KMER_LENGTH);
                     Kmer mykmer(kmerstrfromfastq.c_str());
                     // remember to use only ::rep() when building kmerdict as well
@@ -228,12 +230,12 @@ int main (int argc, char* argv[]) {
     
     cout << "Multiply time: " << omp_get_wtime()-start << " s" << endl;
 
-    cout << "\nPreliminary statistics:" << endl;
+    cout << "Preliminary statistics:" << endl;
     GetStatistics(tempspmat); // function to obtain preliminary statistics
 
-    // double start2 = omp_get_wtime();
-    // LocalAlignment(tempspmat, seqs);  // sparse mat, seq vector, operation
-    // cout << "Local alignment time: " << omp_get_wtime()-start2 << " s" << endl;
+    //double start2 = omp_get_wtime();
+    LocalAlignment(tempspmat, reads);  // sparse mat, seq vector
+    //cout << "Local alignment time: " << omp_get_wtime()-start2 << " s" << endl;
 
     // cout << "\nFinal statistics:\n" << endl;
     // GetStatistics(tempspmat);
