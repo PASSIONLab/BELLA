@@ -20,6 +20,7 @@
 #include <ios>
 #include <unordered_map>
 #include <sys/stat.h>
+#include "edlib/edlib/include/edlib.h"
 #include <map>
 #include <omp.h>
 #include "kmercode/hash_funcs.h"
@@ -28,6 +29,7 @@
 #include "kmercode/common.h"
 #include "kmercode/fq_reader.h"
 #include "kmercode/ParallelFASTQ.h"
+
 
 #include "mtspgemm2017/utility.h"
 #include "mtspgemm2017/filter.h"
@@ -228,19 +230,18 @@ int main (int argc, char* argv[]) {
                return make_pair(m1.first+m2.first, m1.second);
             }, tempspmat);
     
-    cout << "Multiply time: " << omp_get_wtime()-start << " s" << endl;
+    cout << "Multiply time: " << omp_get_wtime()-start << " sec" << endl;
 
     cout << "Preliminary statistics:" << endl;
     GetStatistics(tempspmat); // function to obtain preliminary statistics
 
-    //double start2 = omp_get_wtime();
+    double start2 = omp_get_wtime();
     LocalAlignment(tempspmat, reads);  // sparse mat, seq vector
-    //cout << "Local alignment time: " << omp_get_wtime()-start2 << " s" << endl;
+    cout << "Local alignment time: " << (omp_get_wtime()-start2)/60 << " min" << endl;
+    cout << "Total time: " << (omp_get_wtime()-all)/60 << " min" << endl;
 
-    // cout << "\nFinal statistics:\n" << endl;
-    // GetStatistics(tempspmat);
-
-    cout << "Total time: " << omp_get_wtime()-all << " s" << endl;
+    cout << "Final statistics:" << endl;
+    GetStatistics(tempspmat);
 
     return 0;
 } 
