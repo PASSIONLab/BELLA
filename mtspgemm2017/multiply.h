@@ -94,13 +94,40 @@ void LocalSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation m
  **/
 template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation>
 void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop,  CSC<IT,FT> & C )
-{
+{   
+    // Define number of blocks
+
+    /* int mib[2] = {CTL_HW, HW_MEMSIZE};
+    u_int namelen = sizeof(mib)/sizeof(mib[0]);
+    uint64_t size, memsize;
+    size_t len = sizeof(size);
+
+    if (sysctl(mib, namelen, &size, &len, NULL, 0) < 0)
+    {
+        perror("sysctl");
+    }
+    else
+    {
+        memsize = size/(1024*1024);
+        printf("HW.HW_MEMSIZE = %llu bytes\n", size);
+    }
+
+    size_t blocks = (B.nnz*sizeof(size_t))/size;
+    size_t bcols = B.cols/blocks;
+    cout << "# blocks: " << blocks << endl;
+    cout << "# cols per block: " << bcols << endl; 
+
+    // For each phase 
+    size_t offset = 0; // keep track of cols already processed
+    for(size_t b = 1; b < blocks+1; b++) 
+    { */
+
     vector<IT> * RowIdsofC = new vector<IT>[B.cols];      // row ids for each column of C
     vector<FT> * ValuesofC = new vector<FT>[B.cols];      // values for each column of C
 
-    
     LocalSpGEMM(A, B, multop, addop, RowIdsofC, ValuesofC);
-    
+
+
     if(C.isEmpty())
     {
         C.rows = A.rows;

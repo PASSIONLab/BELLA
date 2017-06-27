@@ -2,11 +2,6 @@
 #include "utility.h"
 #include "BitMap.h"
 #include "global.h"
-
-extern "C" {
-#include "../DALIGNER/align.h"
-}
-
 #include <cstdio> 
 #include <omp.h>
 #include <fstream>
@@ -30,12 +25,12 @@ extern "C" {
 #include <math.h>
 #include <limits.h>
 
-#define UPPER_BOUND 7
+#define UPPER_BOUND 2
 #define ERR .15 
-#define P_CORR_BOTH 0.7225
-#define CORR_FACT 1.5
+#define ID 0.7
+#define LEN 17
 
-/* Estimation of overlapping region length */
+/* Estimation of overlapping region length 
 template <typename IT>
 int FindOverlap(std::string & aseq, std::string & bseq, IT & apos, IT & bpos, int & alen, int & blen, int & left, int & right) 
 { 
@@ -64,7 +59,7 @@ int FindOverlap(std::string & aseq, std::string & bseq, IT & apos, IT & bpos, in
     }
 
     return overlap;
-}
+} */
 
 bool Filter(std::string & aseq, std::string & bseq, int & alen, int & blen) 
 {
@@ -74,19 +69,12 @@ bool Filter(std::string & aseq, std::string & bseq, int & alen, int & blen)
   strcpy(c_aseq, aseq.c_str());
   char *c_bseq = new char[blen+1];
   strcpy(c_bseq, bseq.c_str());
-  int shr;
 
-  if(alen <= blen)
-    shr = alen;
-  else shr = blen;
-
-  int ed = shr - (shr*P_CORR_BOTH - shr*P_CORR_BOTH*(1 - P_CORR_BOTH)); // binomial distribution: mean + variance = upper bound for edit distance 
-  
-  result = edlibAlign(c_aseq, alen, c_bseq, blen, edlibNewAlignConfig(ed, EDLIB_MODE_HW, EDLIB_TASK_DISTANCE));
+  result = edlibAlign(c_aseq, alen, c_bseq, blen, edlibNewAlignConfig(-1, EDLIB_MODE_HW, EDLIB_TASK_DISTANCE));
   delete [] c_aseq;
   delete [] c_bseq;
 
-  if(result.editDistance == -1)
+  if(result.alignmentLength < LEN)
     align = false;
   else align = true;
 
@@ -102,12 +90,11 @@ void LocalAlignment(const CSC<IT,NT> & A, std::vector<string> & reads)
   int alen, blen, left, right;
   bool align;
 
-
 	for(size_t i = 0; i < A.cols; ++i) 
   { 
     for(size_t j = A.colptr[i]; j < A.colptr[i+1]; ++j) 
     { 
-      if(A.values[j].first < UPPER_BOUND) 	// Pairs sharing more than upper_bound k-mers have high precision
+      if(A.values[j] < UPPER_BOUND) 	// Pairs sharing more than upper_bound k-mers have high precision
       {
         aseq = reads[A.rowids[j]];
         bseq = reads[i];
@@ -119,7 +106,7 @@ void LocalAlignment(const CSC<IT,NT> & A, std::vector<string> & reads)
         
         if(align == false)
         {
-          A.values[j].first = 0;
+          A.values[j] = 0;
         }
       }     
     }

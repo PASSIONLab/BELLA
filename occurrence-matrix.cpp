@@ -18,8 +18,9 @@
 #include <string.h>
 #include <cassert>
 #include <ios>
-#include <unordered_map>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/sysctl.h>
 #include "edlib/edlib/include/edlib.h"
 #include <map>
 #include <omp.h>
@@ -119,8 +120,8 @@ int main (int argc, char* argv[]) {
     std::vector<string> quals;
     int rangeStart;
     Kmers kmersfromreads;
-    std::vector<tuple<size_t,size_t,pair<size_t,size_t>>> occurrences;
-    std::vector<tuple<size_t,size_t,pair<size_t,size_t>>> transtuples;
+    std::vector<tuple<size_t,size_t,size_t>> occurrences;
+    std::vector<tuple<size_t,size_t,size_t>> transtuples;
 
     cout << "Input k-mers file: " << argv[1] <<endl;
     cout << "Psbsim depth: " << DEPTH << endl;
@@ -178,8 +179,8 @@ int main (int argc, char* argv[]) {
 
                     auto found = kmerdict.find(lexsmall);
                     if(found != kmerdict.end()) {
-                        occurrences.push_back(std::make_tuple(read_id, found->second, make_pair(found->second, j))); // vector<tuple<read_id,kmer_id, kmer_id>
-                        transtuples.push_back(std::make_tuple(found->second, read_id, make_pair(found->second, j)));
+                        occurrences.push_back(std::make_tuple(read_id, found->second, found->second)); // vector<tuple<read_id,kmer_id, kmer_id>
+                        transtuples.push_back(std::make_tuple(found->second, read_id, found->second));
                     }
                 }
                 read_id++;
@@ -197,37 +198,36 @@ int main (int argc, char* argv[]) {
 
     cout << "Total number of reads: "<< read_id << endl;
   
-    CSC<size_t, pair<size_t,size_t>> spmat(occurrences, read_id, kmervect.size(), 
-                            [] (pair<size_t,size_t> & c1, pair<size_t,size_t> & c2) 
-                            {   if(c1.first != c2.first) cout << "error in MergeDuplicates()" << endl;
-                                return make_pair(c1.first, c1.second);
+    CSC<size_t, size_t> spmat(occurrences, read_id, kmervect.size(), 
+                            [] (size_t & c1, size_t & c2) 
+                            {   if(c1 != c2) cout << "error in MergeDuplicates()" << endl;
+                                return c1;
                             });
     std::cout << "spmat created with " << spmat.nnz << " nonzeros" << endl;
-    std::vector<tuple<size_t,size_t,pair<size_t,size_t>>>().swap(occurrences);    // remove memory of occurences
+    std::vector<tuple<size_t,size_t,size_t>>().swap(occurrences);    // remove memory of occurences
 
-    CSC<size_t, pair<size_t,size_t>> transpmat(transtuples, kmervect.size(), read_id, 
-                            [] (pair<size_t,size_t> & c1, pair<size_t,size_t> & c2) 
-                            {   if(c1.first != c2.first) cout << "error in MergeDuplicates()" << endl;
-                                return make_pair(c1.first, c1.second);
+    CSC<size_t, size_t> transpmat(transtuples, kmervect.size(), read_id, 
+                            [] (size_t & c1, size_t & c2) 
+                            {   if(c1 != c2) cout << "error in MergeDuplicates()" << endl;
+                                return c1;
                             });
     std::cout << "transpose(spmat) created" << endl;
-    std::vector<tuple<size_t,size_t,pair<size_t,size_t>>>().swap(transtuples); // remove memory of transtuples
+    std::vector<tuple<size_t,size_t,size_t>>().swap(transtuples); // remove memory of transtuples
 
     spmat.Sorted();
     transpmat.Sorted();
 
     double start = omp_get_wtime();
-    CSC<size_t, pair<size_t, pair<size_t,size_t>>> tempspmat;
+    CSC<size_t, size_t> tempspmat;
 
     HeapSpGEMM(spmat, transpmat, 
-            [] (pair<size_t,size_t> & c1, pair<size_t,size_t> & c2)
-            {  if(c1.first != c2.first) 
+            [] (size_t & c1, size_t & c2)
+            {  if(c1 != c2) 
                 cout << "error in multop()" << endl;
-                pair<size_t,size_t> temp = make_pair(c1.second, c2.second);
-                return make_pair(1, temp);
-            }, [] (pair<size_t, pair<size_t,size_t>> & m1, pair<size_t, pair<size_t,size_t>> & m2)
+                return 1;
+            }, [] (size_t & m1, size_t & m2)
             { 
-               return make_pair(m1.first+m2.first, m1.second);
+               return m1+m2;
             }, tempspmat);
     
     cout << "Multiply time: " << omp_get_wtime()-start << " sec" << endl;
@@ -235,13 +235,13 @@ int main (int argc, char* argv[]) {
     cout << "Preliminary statistics:" << endl;
     GetStatistics(tempspmat); // function to obtain preliminary statistics
 
-    double start2 = omp_get_wtime();
-    LocalAlignment(tempspmat, reads);  // sparse mat, seq vector
-    cout << "Local alignment time: " << (omp_get_wtime()-start2)/60 << " min" << endl;
-    cout << "Total time: " << (omp_get_wtime()-all)/60 << " min" << endl;
+    //double start2 = omp_get_wtime();
+    // LocalAlignment(tempspmat, reads);  // sparse mat, seq vector
+    //cout << "Local alignment time: " << (omp_get_wtime()-start2)/60 << " min" << endl;
+    cout << "Total time: " << omp_get_wtime()-all << " sec" << endl;
 
-    cout << "Final statistics:" << endl;
-    GetStatistics(tempspmat);
+    //cout << "Final statistics:" << endl;
+    //GetStatistics(tempspmat);
 
     return 0;
 } 

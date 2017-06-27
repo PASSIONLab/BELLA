@@ -2,7 +2,6 @@
 #include "utility.h"
 #include "IntervalTree.h"
 #include "BitMap.h"
-#include "global.h"
 #include <omp.h>
 #include <fstream>
 #include <iostream>
@@ -14,7 +13,6 @@
 #include <vector>
 
 #define KMER_LENGTH 17
-#define S 1 // minimum number of shard k-mers
 using namespace std;
 
 // compute the number of true overlapping reads
@@ -137,70 +135,19 @@ size_t ComputeLength(map<size_t, pair<size_t, size_t>> & ifsmap, IT & col, IT & 
     return alignment_length;
 }
 
-// Estimation of overlapping region length
-template <typename IT>
-double ExpectedKmers(IT & i, IT & j, IT & len_i, IT & len_j) { // reads length has to be included and position of the same k-mer on different reads
-
-    double left;    // to define the left margin 
-    double right;   // to define the right margin
-    double estime, p;  // expected overlap region length
-    size_t temp_i, temp_j;
-    double er = 0.15; // error rate
-    
-    if(i <= j)
-        left = (double)i;
-    else left = (double)j;
-
-    temp_i = len_i - i;
-    temp_j = len_j - j; 
-
-    if(temp_i <= temp_j)
-        right = (double)temp_i;
-    else right = (double)temp_j;
-
-    estime = left + right; // estimated overlap
-    p = 1-pow((1-pow((1-er), (2*KMER_LENGTH))), estime); // expected number of k-mers
-
-    return p;
-}
-
-template <typename IT>
-double MaxGap(IT & i, IT & j, IT & len_i, IT & len_j) { // reads length has to be included and position of the same k-mer on different reads
-
-    double left;    // to define the left margin 
-    double right;   // to define the right margin
-    double estime;  // expected overlap region length
-    double gap;
-    size_t temp_i, temp_j;
-    double variance_single_base = 0.12;
-    
-    if(i <= j)
-        left = (double)i;
-    else left = (double)j;
-
-    temp_i = len_i - i;
-    temp_j = len_j - j; 
-
-    if(temp_i <= temp_j)
-        right = (double)temp_i;
-    else right = (double)temp_j;
-
-    estime = left + right; // estimated overlap
-    //gap = estime*variance_single_base;
-    
-    return estime;
-}
-
 template <class IT, class NT>
-void GetStatistics(const CSC<IT,NT> & A) 
+void DetectOverlap(const CSC<IT,NT> & A) 
 {
-    std::ifstream ifs("yeast.axt"); // it would be better to make this reading more general
+    std::ifstream ifs("test_01.axt"); // it would be better to make this reading more general
     std::map<size_t, pair<size_t, size_t>> ifsmap;
+    std::vector<pair<size_t, pair<size_t, size_t>>>::iterator nit;
+    std::vector<pair<size_t, pair<size_t, size_t>>>::iterator it;
     double di; // k-mers distances on read i
     double dj; // k-mers distances on read j
-    double TPandFP = 0, TP = 0;
-    size_t track = 0, var, alignment_length;
+    double overlapcount = 0, truepositive = 0, prefilter = 0;
+    size_t var, alignment_length;
     bool same;
+    double track = 0;
 
     // creation reads map from axt file to be used to find potential overlapping reads pairs 
     if(ifs.is_open()) {
@@ -220,28 +167,71 @@ void GetStatistics(const CSC<IT,NT> & A)
     ifs.clear();
     ifs.seekg(0, ios::beg);
 
-    double P = TrueOverlapping(ifs); // computing true overlapping reads pairs from fastq
+    double trueoverlapping = TrueOverlapping(ifs); // computing true overlapping reads pairs from fastq
     ifs.close();
 
+    // filtering on reads pairs to keep just potential overlapping ones
     for(size_t i = 0; i < A.cols; ++i) 
     { 
         for(size_t j = A.colptr[i]; j < A.colptr[i+1]; ++j) 
-        {
-            if(A.values[j] >= S)
+        { 
+            //if(i != A.rowids[j]) 
+            //{
+            if(A.values[j]->size() > 1)
+            { 
+                track = 0;
+                var = A.values[j]->size();
+    
+                for(it = A.values[j]->begin(); it != A.values[j]->end(); ++it)     
+                {
+                    for(nit = A.values[j]->begin(); nit != A.values[j]->end(); ++nit)     
+                    {
+                        if(it->first != nit->first) 
+                        {
+                            same = false; 
+        
+                            di = ComputeDistance(it->second.first, nit->second.first);
+                            dj = ComputeDistance(it->second.second, nit->second.second);
+        
+                            same = PotentialOverlap(di, dj); // compute evidence of potential overlap for each k-mers pair
+        
+                            if(same == true)
+                                track++; // keep track of any potential overlap
+                        }
+                    }
+                }
+    
+                if(track >= (double)var/2) // keep the pair if it shows at least one evidence of potential overlap
+                {    
+                    overlapcount++;
+                    alignment_length = ComputeLength(ifsmap, i, A.rowids[j]); // compute the overlap length between potential overlapping reads pairs
+                    
+                    if(alignment_length >= KMER_LENGTH) 
+                    {    
+                        truepositive++;
+                    }
+                }
+            } 
+            else if(A.values[j]->size() == 1)
             {
-                TPandFP++;
-                alignment_length = ComputeLength(ifsmap, i, A.rowids[j]); // compute the overlap length between potential overlapping reads pairs
-            
-                if(alignment_length >= KMER_LENGTH)    
-                    TP++;
+                overlapcount++;
+                alignment_length = ComputeLength(ifsmap, i, A.rowids[j]); 
+                
+                if(alignment_length >= KMER_LENGTH) 
+                {    
+                    truepositive++;
+                }
             }
+            prefilter++;
+            //}
         }
     }
-    cout << "S (minimum number of shared k-mers) = " << S << endl;
-    cout << "P = " << P << endl;
-    cout << "TP+FP = " << TPandFP << endl;
-    cout << "TP = " << TP << endl;
-    cout << "Recall = " << TP/P << endl;
-    cout << "Precision = " << TP/TPandFP << endl;
+
+    cout << "Total number of reads pairs at the beginning (|| O ||) = " << prefilter << endl;
+    cout << "True overlapping reads pairs (|| A ||) = " << trueoverlapping << endl;
+    cout << "Potentially overlapping read pairs (|| A' ||) = " << overlapcount << endl;
+    cout << "True positive reads pairs among the potential ones (|| A and A' ||) = " << truepositive << endl;
+    cout << "Recall = " << truepositive/trueoverlapping << endl;
+    cout << "\n-- A BIT LESS CONSERVATIVE --\n" << endl;
     
 }
