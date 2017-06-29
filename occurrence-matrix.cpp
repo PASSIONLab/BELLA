@@ -191,8 +191,6 @@ int main (int argc, char* argv[]) {
     delete pfq;
     }
     // don't free this vector I need this information to align sequences 
-    // using sparse matrices also to find alignment between reads? 
-
     //std::vector<string>().swap(seqs);   // free memory of seqs 
     std::vector<string>().swap(quals); // free memory of quals
 

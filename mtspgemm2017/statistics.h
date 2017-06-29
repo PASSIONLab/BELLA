@@ -194,7 +194,7 @@ double MaxGap(IT & i, IT & j, IT & len_i, IT & len_j) { // reads length has to b
 template <class IT, class NT>
 void GetStatistics(const CSC<IT,NT> & A) 
 {
-    std::ifstream ifs("yeast.axt"); // it would be better to make this reading more general
+    std::ifstream ifs("test_01.axt"); // it would be better to make this reading more general
     std::map<size_t, pair<size_t, size_t>> ifsmap;
     double di; // k-mers distances on read i
     double dj; // k-mers distances on read j
