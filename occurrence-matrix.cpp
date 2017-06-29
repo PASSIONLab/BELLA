@@ -21,7 +21,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/sysctl.h>
-#include "edlib/edlib/include/edlib.h"
 #include <map>
 #include <omp.h>
 #include "kmercode/hash_funcs.h"
@@ -33,7 +32,6 @@
 
 
 #include "mtspgemm2017/utility.h"
-#include "mtspgemm2017/filter.h"
 #include "mtspgemm2017/CSC.h"
 #include "mtspgemm2017/CSR.h"
 #include "mtspgemm2017/IO.h"
