@@ -48,11 +48,25 @@ This report briefly explains the preliminaries analysis computed to identify the
 %In Appendix \ref{append} the raw data used for the final results are reported.
 \section{Reliable k-mers}\label{rks}
 
-The first computed analysis regards the identification of a reliable set of k-mers (RKS).
+The first computed analysis regards the identification of a reliable set of k-mers (RKS). Our algorithm relies on detecting overlaps between long reads efficiently. We treat the k-mer occurrences in each long read as the feature vector of that read. However, due to high error rates, the number of distinct k-mers in a dataset can be orders of magnitude larger the actual correct k-mers. Keeping all the k-mers in our feature set would not only increase the computational costs and memory requirements, it would also lower our precision.
+
+Ideally, we want k-mers that occur only once in the genome. Multiple occurences of the same k-mer in the genome correspond to repeat regions. If we kept non-unique k-mers in our feature set, they would increase the number of spurious alignments and hence increase the computational costs. Our rationale for ignoring non-unique k-mers comes from the observation that either (a) the repeated region is small enough compared to the length of the read that the unique part of the read can still be used to find overlaps of this read with other reads, or (b) that the repeated region is almost as long as the read itself, in which case there is no benefit in aligning this read to other reads because it doesn't increase our information about the final genome. 
+
+We see by looking at the k-mer histogram that the majority of k-mers in the right tail either occur multiple times or don't occur in the genome at all (insert one of Giulia's histograms). The probability of a k-mer being sequenced correctly is approximately $(1-e)^k$ where $e$ is the error rate. If the sequencing depth is d, then observing this k-mer in the input data d times  is a very slim 
+$(1-e)^{dk}$. 
+
+Our analysis here is only correct if no other distinct section of the genome has been morphed into this k-mer by error. 
+We acknowledge that such morphing occurs in practice but the majority of the high-frequency k-mers in the input set are due to correct sequencing if the value of k is chosen appropriately. Take the Human genome that is approximatyely $3$ Gbp and for the sake of argument, only consider substitution errors. For $k=17$, It encodes $4^{17}=16$ billion different k-mers. Assuming independence, every possible k-mer exists in the genome with probability 3/16. The probability that a 17-mer we have seen being the result of off-by-1 error in sequencing is $(3/16) \cdot 17 \cdot e \cdot (1-e)^{17-1} \approx 3 e (1-e)^{16}$, whereas the probability of sequencing a 17-mer correctly is $(1-e)^{17}$.
+
+The probability that observing a k-mer that corresponds to a unique (non-repetitive) region $d-1$ times in the input would be approximately $P(d-1) = d (1-e)^{(d-1)k} (1-(1-e)^k)$. To generalize, the probability to observe $d-t$ times is
+
+ $$P(d-t) = {d \choose t} (1-e)^{(d-t)k} (1-(1-e)^k)^t$$
+ 
+ {\color{red} Giulia, can you please plot this for e=15\% and k=17 and d=60, for varying t?}
+ 
 The reads were generated starting from the Escherichia Coli genome, using the PacBio reads simulator.
 Then, using Jellyfish software, we generated different k-mers dataset from these reads, varying the value of \emph{k}, we took into account values from 15 to 29.\\
-The k-mers belonging to the RKS set are choosen looking at their occurrence among the generated reads. 
-So, from Jellyfish output, we chose k-mers that occur in the range [depth/2 and 2*depth]\footnote{The depth is equal to 30.}.\\
+The k-mers belonging to the RKS set are chosen looking at their occurrence among the generated reads..\\
 The following plots (Figure \ref{fig:0}, \ref{fig:1}, \ref{fig:2} and \ref{fig:3}) show the percentage of RKS over the total number of generated k-mers per each k-mer occurrence, taking into account different k-mers length.\\
 For the following analysis, we decided to take into account \emph{k} values equal to 15, 17 an 19.
 \begin{figure}
