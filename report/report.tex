@@ -53,7 +53,27 @@ On the other hand, the SMRT technology is prone to an higher error rate with res
 In general, high error rates lead to a significant computational effort in throwing away useless data.
 The presented work proposes a novel approach to select significant data from the input and recognize overlapping reads pairs to reconstruct the whole DNA sequence.
 
-\myworries{Overview of the idea, slide 6-7.}
+To give a general overview of our idea, let's consider a pair of reads that share a region of length $k$ (k-mer), as shown in \Cref{fig:overview}.
+The probability that such region is correclty sequenced on both the reads is approximately $(1-e)^{2 \cdot k}$ (summation of Bernoulli trials), where $e$ is the error rate.
+Then, the probability $P(1,L)$ that at least one k-mer out of $L$ consecutive k-mers being correct in both the sequences is:
+
+$$P(1,L) = 1-(1-(1-e)^{2 \cdot k})^{L}$$
+
+Considering an overlapping region $L$ of 300 base-pairs (bp), with $k$ = 17 and $e$ = 0.15, we obtain that $P(1,300)$ is greater than 70\%.
+Starting from these consideration, we decided to base our approach on shared k-mers between reads.
+However, we have to face the issue derived from having a high error rate. 
+As a matter of fact, an error rate equal to 15\% implies that every possible k-mer will be seen at least once, given enough depth (sequencer parameter).
+Consequently, we would need a k-mer look-up table of size $4^{k}$. 
+Furthermore, we have to consider at least a $k$ value equal to 17 as, choosing a smaller $k$, k-mers are not even unique in large genomes.
+Using $k$ = 15, we can only encode 1 Gbp possibilities whereas, for instance, the Human genome is 3 Gbp.
+To address this issue and identify overlapping regions, we take into account just a reliable set of k-mers.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\textwidth]{image/overview.png}
+    \caption{Pair of overlapping reads sharing a region of length $k$.}
+    \label{fig:overview}
+\end{figure}
 %proposed approach to compute the analysis in Section \ref{code}, while in Section \ref{results} the obtained results are shown.
 %In Appendix \ref{append} the raw data used for the final results are reported.
 
@@ -70,7 +90,10 @@ Multiple occurences of the same k-mer in the genome correspond to repeat regions
 If we kept non-unique k-mers in our feature set, they would increase the number of spurious alignments and hence increase the computational costs. 
 Our rationale for ignoring non-unique k-mers comes from the observation that either (a) the repeated region is small enough compared to the length of the read that the unique part of the read can still be used to find overlaps of this read with other reads, or (b) that the repeated region is almost as long as the read itself, in which case there is no benefit in aligning this read to other reads because it does not increase our information about the final genome. 
 
-We see by looking at the k-mer histogram that the majority of k-mers in the right tail either occur multiple times or do not occur in the genome at all (\Cref{fig:hist}).
+The histogram in \Cref{fig:hist} shows the percentage of unique, non-genomic and repeated k-mers over the total amount of k-mers belonging to a certain frequency. 
+With $unique$ k-mers we define k-mers that occur only once in the genome, while $non-genomic$ k-mers are those that not exist in the genome and $repeated$ k-mers those that appear multiple times in the genome.
+To obtain the plot, we divide k-mers based on their occurrence in the reads and then, having the reference genome, for each occurrence we compute the amount of unique, non-genomic and repeated k-mers.
+We see by looking at the k-mer histogram that the majority of k-mers in the right tail either occur multiple times or do not occur in the genome at all.
 \begin{figure}
     \centering
     \includegraphics[width=\textwidth]{image/histogram.png}
@@ -81,9 +104,14 @@ The probability of a k-mer being sequenced correctly is approximately $(1-e)^k$ 
 $(1-e)^{dk}$. 
 
 Our analysis here is only correct if no other distinct section of the genome has been morphed into this k-mer by error. 
-We acknowledge that such morphing occurs in practice but the majority of the high-frequency k-mers in the input set are due to correct sequencing if the value of k is chosen appropriately. Take the Human genome that is approximatyely $3$ Gbp and for the sake of argument, only consider substitution errors. For $k=17$, It encodes $4^{17}=16$ billion different k-mers. Assuming independence, every possible k-mer exists in the genome with probability 3/16. The probability that a 17-mer we have seen being the result of off-by-1 error in sequencing is $(3/16) \cdot 17 \cdot e \cdot (1-e)^{17-1} \approx 3 e (1-e)^{16}$, whereas the probability of sequencing a 17-mer correctly is $(1-e)^{17}$.
+We acknowledge that such morphing occurs in practice but the majority of the high-frequency k-mers in the input set are due to correct sequencing if the value of $k$ is chosen appropriately. 
+Take the Human genome that is approximatyely $3$ Gbp and for the sake of argument, only consider substitution errors. 
+For $k=17$, it encodes $4^{17}=16$ billion different k-mers. 
+Assuming independence, every possible k-mer exists in the genome with probability $3/16$. 
+The probability that a 17-mer we have seen being the result of off-by-1 error in sequencing is $(3/16) \cdot 17 \cdot e \cdot (1-e)^{17-1} \approx 3 e (1-e)^{16}$, whereas the probability of sequencing a 17-mer correctly is $(1-e)^{17}$.
 
-The probability that observing a k-mer that corresponds to a unique (non-repetitive) region $d-1$ times in the input would be approximately $P(d-1) = d (1-e)^{(d-1)k} (1-(1-e)^k)$. To generalize, the probability to observe $d-t$ times is:
+The probability that observing a k-mer that corresponds to a unique (non-repetitive) region $d-1$ times in the input would be approximately $P(d-1) = d (1-e)^{(d-1)k} (1-(1-e)^k)$. 
+To generalize, the probability to observe $d-t$ times is:
 
  $$P(d-t) = {d \choose t} (1-e)^{(d-t)k} (1-(1-e)^k)^t$$
 
@@ -93,7 +121,6 @@ The probability that observing a k-mer that corresponds to a unique (non-repetit
     \caption{Probability that observing a k-mer that corresponds to a non-repetitive region $d-1$ times in the input.}
     \label{fig:pdt}
 \end{figure}
-
 \Cref{fig:pdt} shows the probability that a k-mer with input occurrence $d-t$ corresponds to a unique region in the genome given $d$ = 60, $k$ = 17 and $e$ = 0.15.
 %The reads were generated starting from the Escherichia Coli genome, using the %PacBio reads simulator.
 %Then, using Jellyfish software, we generated different k-mers dataset from %these reads, varying the value of \emph{k}, we took into account values from %15 to 29.\\
@@ -170,26 +197,42 @@ The probability that observing a k-mer that corresponds to a unique (non-repetit
 
 \section{Proposed algorithm}\label{algorithm}
 
-\myworries{To be fixed, slide 11-16.}
+To identify the overlapping reads pairs, the proposed approach exploits sparse matrices.
+This because sparse matrices express the data access patterns in a concise and clear manner, allowing better organization of computation and generality.
+The column-by-column algorithm we use is equivalent to the k-mer index table concept in HipMer and many other assembler. 
+The first step consists in the creation of a sparse matrix where row are represented by the reads and columns by the set of reliable k-mers, \myworries{insert figure}.
+The cell $(i,j)$ contains the k-mer $id$ and the positions of that k-mer in the considered read.
+%The ultimate goal of the previous analysis consists in obtaining a [k-mer -by- read] matrix (where $A_{ij}$ is the occurrence/absence of k-mer $i$ in read $j$).
+This matrix is used as starting point for the construction of a feature vector in finding alignments among the reads.
+Consequently, we create the transpose of the first one obtaining a k-mers-by-reads matrix.
 
-The ultimate goal of the previous analysis consists in obtaining a [k-mer -by- read] matrix (where $A_{ij}$ is the occurrence/absence of k-mer $i$ in read $j$).
-This matrix is used as starting point for the construction of a feature vector in finding alignments among the reads.\\
-From the previous statistics we decided to take into account the \emph{k} value equal to 15 and consider the k-mers that occur in the range [4,8] as this range provides the highest percentages of unique existence in the \emph{Escherichia Coli} genome.\\
-Firsly, our approach consists in the creation of a dictionary containing all the k-mers belonging to the defined range.
-Then, we construct a [kmer -by- read] sparse matrix, where the ${\{i,j\}}$ cell is a $pair$ data structure.
-The first value of the pair correspond to the identification number of the k-mer $i$ contained in the read $j$, while the second value is a $vector$ data structure where all the positions of that k-mer in the considered read are saved.\\
-Once creating the matrix, we compute its transpose [read -by- k-mer] in order to multiply them and obtain a [read -by- read] matrix.
-We implement the calculation to obtain as final cell ${\{i,j\}}$ a $map$ data structure organized as follow.
-The $keys$ correspond to the identification numbers of the shared k-mers between the two reads, while the $values$ are pairs of vectors containing the k-mers positions on the two reads.\\
-\myworries{To do: filter on the matrix to identify reads pairs sampled from the same region of the genome, implement an Apply() function to compute the delta-pos among k-mers belonging to the same read and compare k-mers delta-pos between reads sharing the same k-mers.}
-Filter to identify \emph{true overlap} reads pair:
-\begin{itemize}
-    \item Compute the delta-pos among k-mers belonging to the same read.
-    \item Comparing k-mers delta-pos between reads sharing the same k-mers.
-    \item If at least one of the comparing is rejected by our filter, we discharge the considered pair.
-    \item The filter consist in a parametric analysis that takes into account the probability of indention and deletion (from the PacBio simulator) to calculate the minimum and maximum length of the two given delta length.
-    \item If there is not overlap between the $L_{max}$ of the shortest read and the $L_{min}$ of the longest one, the pair is rejected as considered a \emph{fake overlap}.
-\end{itemize}
+After that, exploiting the column-by-column algorithm we multiply these two sparse matrices obtaining a resulted matrix allows us to keep track of all the read pairs that share some k-mers and the corresponding positions on both the reads, \myworries{insert figure}.
+Here, the cell $(i,j)$ consists in a vector containing the k-mers ids are and the corrisponding positions in the read $i$ and read $j$. 
+The generality of this approach comes from being able to use the same algorithm to also keep track of distances between shared k-mers. 
+In fact, we are interested in keeping track of the distance between shared k-mers as it can provide more evidence of overlap.
+
+To detect which reads pairs show some evidence of potential overlap, we implemented the following method, \myworries{insert figure}. 
+For each read pairs, (a) we compute the distance between each pair of consecutive k-mers both on read $i$ and read $j$.
+For each k-mers pairs, (b) we select the shortest distance between the one on read $i$ and on read $j$ and then, given the probabilities of insertion and deletion (that are given by the sequencer), (3) we compute the maximum length of the shortest one (dividing with $1-p_{deletion}$) and the minimum length of the longest one (dividing with $1+p_{insertion}$).
+If the former is greater than the latter, we consider that k-mers pair as evidence of potential overlap.
+In order to be as conservative as possible and be sure to remove just those reads pairs that certainly not overlap, we decide to keep into account all the reads pairs that present at least one evidence of potential overlap among their k-mers pairs.
+
+\myworries{Add references.}
+%Firsly, our approach consists in the creation of a dictionary containing all the k-mers belonging to the defined range.
+%Then, we construct a [kmer -by- read] sparse matrix, where the ${\{i,j\}}$ cell is a $pair$ data structure.
+%The first value of the pair correspond to the identification number of the k-mer $i$ contained in the read $j$, while the second value is a $vector$ data structure where all the positions of that k-mer in the considered read are saved.\\
+%Once creating the matrix, we compute its transpose [read -by- k-mer] in order to multiply them and obtain a [read -by- read] matrix.
+%We implement the calculation to obtain as final cell ${\{i,j\}}$ a $map$ data structure organized as follow.
+%The $keys$ correspond to the identification numbers of the shared k-mers between the two reads, while the $values$ are pairs of vectors containing the k-mers positions on the two reads.\\
+%\myworries{To do: filter on the matrix to identify reads pairs sampled from the same region of the genome, implement an Apply() function to compute the delta-pos among k-mers belonging to the same read and compare k-mers delta-pos between reads sharing the same k-mers.}
+%Filter to identify \emph{true overlap} reads pair:
+%\begin{itemize}
+%    \item Compute the delta-pos among k-mers belonging to the same read.
+%    \item Comparing k-mers delta-pos between reads sharing the same k-mers.
+%    \item If at least one of the comparing is rejected by our filter, we %discharge the considered pair.
+%    \item The filter consist in a parametric analysis that takes into account %the probability of indention and deletion (from the PacBio simulator) to %calculate the minimum and maximum length of the two given delta length.
+%    \item If there is not overlap between the $L_{max}$ of the shortest read %and the $L_{min}$ of the longest one, the pair is rejected as considered a %\emph{fake overlap}.
+%\end{itemize}
 
 \subsection{Light version}
 

@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015) (preloaded format=pdflatex 2015.5.24)  30 JUN 2017 21:31
+This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015) (preloaded format=pdflatex 2015.5.24)  1 JUL 2017 00:39
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -559,46 +559,42 @@ LaTeX Font Info:    Try loading font information for U+msb on input line 43.
 (/usr/local/texlive/2015/texmf-dist/tex/latex/amsfonts/umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 )
-<image/histogram.png, id=1, 674.52pt x 414.54875pt>
-File: image/histogram.png Graphic file (type png)
- <use image/histogram.png>
-Package pdftex.def Info: image/histogram.png used on input line 76.
-(pdftex.def)             Requested size: 484.20988pt x 297.5893pt.
+<image/overview.png, id=1, 485.815pt x 59.22125pt>
+File: image/overview.png Graphic file (type png)
+ <use image/overview.png>
+Package pdftex.def Info: image/overview.png used on input line 73.
+(pdftex.def)             Requested size: 484.20988pt x 59.025pt.
 
 [1
 
 {/usr/local/texlive/2015/texmf-var/fonts/map/pdftex/updmap/pdftex.map}]
-[2 <./image/histogram.png>]
+<image/histogram.png, id=21, 674.52pt x 414.54875pt>
+File: image/histogram.png Graphic file (type png)
+ <use image/histogram.png>
+Package pdftex.def Info: image/histogram.png used on input line 99.
+(pdftex.def)             Requested size: 484.20988pt x 297.5893pt.
+
 
 Package amsmath Warning: Foreign command \atopwithdelims;
 (amsmath)                \frac or \genfrac should be used instead
-(amsmath)                 on input line 88.
+(amsmath)                 on input line 116.
 
-<image/pdt.pdf, id=24, 1435.3625pt x 789.95125pt>
+<image/pdt.pdf, id=22, 1417.295pt x 779.91376pt>
 File: image/pdt.pdf Graphic file (type pdf)
  <use image/pdt.pdf>
-Package pdftex.def Info: image/pdt.pdf used on input line 92.
-(pdftex.def)             Requested size: 484.20988pt x 266.48253pt.
- [3 <./image/pdt.pdf>]
-LaTeX Font Info:    Try loading font information for OMS+cmr on input line 187.
-
- (/usr/local/texlive/2015/texmf-dist/tex/latex/base/omscmr.fd
-File: omscmr.fd 2014/09/29 v2.5h Standard LaTeX font definitions
-)
-LaTeX Font Info:    Font shape `OMS/cmr/m/n' in size <10.95> not available
-(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 187.
-
-[4]
+Package pdftex.def Info: image/pdt.pdf used on input line 120.
+(pdftex.def)             Requested size: 484.20988pt x 266.45242pt.
+ [2 <./image/overview.png>] [3 <./image/histogram.png> <./image/pdt.pdf>] [4]
 No file report.bbl.
 (./report.aux) ) 
 Here is how much of TeX's memory you used:
- 9295 strings out of 493089
- 142074 string characters out of 6134842
- 249195 words of memory out of 5000000
- 12588 multiletter control sequences out of 15000+600000
+ 9285 strings out of 493089
+ 141906 string characters out of 6134842
+ 250195 words of memory out of 5000000
+ 12580 multiletter control sequences out of 15000+600000
  17604 words of font info for 54 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 40i,9n,43p,702b,300s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 40i,9n,43p,477b,300s stack positions out of 5000i,500n,10000p,200000b,80000s
 {/usr/local/texlive/2015/texmf-dist/fonts/enc/dvips/cm-super/cm
 -super-t1.enc}</usr/local/texlive/2015/texmf-dist/fonts/type1/public/amsfonts/c
 m/cmex10.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public/amsfonts/cm
@@ -615,10 +611,10 @@ ocal/texlive/2015/texmf-dist/fonts/type1/public/cm-super/sfrm1095.pfb></usr/loc
 al/texlive/2015/texmf-dist/fonts/type1/public/cm-super/sfrm1200.pfb></usr/local
 /texlive/2015/texmf-dist/fonts/type1/public/cm-super/sfrm1728.pfb></usr/local/t
 exlive/2015/texmf-dist/fonts/type1/public/cm-super/sfti1095.pfb>
-Output written on report.pdf (4 pages, 269559 bytes).
+Output written on report.pdf (4 pages, 282636 bytes).
 PDF statistics:
- 95 PDF objects out of 1000 (max. 8388607)
- 67 compressed objects within 1 object stream
+ 103 PDF objects out of 1000 (max. 8388607)
+ 71 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
- 11 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 16 words of extra memory for PDF output out of 10000 (max. 10000000)
 
