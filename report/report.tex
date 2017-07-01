@@ -62,10 +62,10 @@ $$P(1,L) = 1-(1-(1-e)^{2 \cdot k})^{L}$$
 Considering an overlapping region $L$ of 300 base-pairs (bp), with $k$ = 17 and $e$ = 0.15, we obtain that $P(1,300)$ is greater than 70\%.
 Starting from these consideration, we decided to base our approach on shared k-mers between reads.
 However, we have to face the issue derived from having a high error rate. 
-As a matter of fact, an error rate equal to 15\% implies that every possible k-mer will be seen at least once, given enough depth (sequencer parameter).
+As a matter of fact, an error rate equal to 15\% implies that every possible k-mer will be seen at least once, given enough depth ($d$, sequencer parameter).
 Consequently, we would need a k-mer look-up table of size $4^{k}$. 
 Furthermore, we have to consider at least a $k$ value equal to 17 as, choosing a smaller $k$, k-mers are not even unique in large genomes.
-Using $k$ = 15, we can only encode 1 Gbp possibilities whereas, for instance, the Human genome is 3 Gbp.
+Using $k$ = 15, we can only encode 1 Gbp possibilities whereas, for instance, the $Human$ genome is $3$ Gbp.
 To address this issue and identify overlapping regions, we take into account just a reliable set of k-mers.
 
 \begin{figure}
@@ -90,22 +90,29 @@ Multiple occurences of the same k-mer in the genome correspond to repeat regions
 If we kept non-unique k-mers in our feature set, they would increase the number of spurious alignments and hence increase the computational costs. 
 Our rationale for ignoring non-unique k-mers comes from the observation that either (a) the repeated region is small enough compared to the length of the read that the unique part of the read can still be used to find overlaps of this read with other reads, or (b) that the repeated region is almost as long as the read itself, in which case there is no benefit in aligning this read to other reads because it does not increase our information about the final genome. 
 
-The histogram in \Cref{fig:hist} shows the percentage of unique, non-genomic and repeated k-mers over the total amount of k-mers belonging to a certain frequency. 
-With $unique$ k-mers we define k-mers that occur only once in the genome, while $non-genomic$ k-mers are those that not exist in the genome and $repeated$ k-mers those that appear multiple times in the genome.
+The histogram in \Cref{fig:hist} shows the distribution of unique, non-genomic and repeated k-mers in the genome, given their frequency in the input set of reads.
+With $unique$ k-mers we define k-mers that occur only once in the genome, while $non-genomic$ k-mers are those that not exist in the genome and $repeated$ k-mers those that appear multiple times in the genome. 
 To obtain the plot, we divide k-mers based on their occurrence in the reads and then, having the reference genome, for each occurrence we compute the amount of unique, non-genomic and repeated k-mers.
 We see by looking at the k-mer histogram that the majority of k-mers in the right tail either occur multiple times or do not occur in the genome at all.
+Furthermore, \Cref{fig:unique} points out the percentage of unique k-mers over the total amount of k-mers belonging to a certain frequency; the number above each bar represents the absolute number of unique k-mers for a given frequency.
+Both \Cref{fig:hist} and \Cref{fig:unique} are obtained using the \emph{Escherichia Coli} genome with $d$ = 30, $k$ = 17 and $e$ = 0.15.
 \begin{figure}
     \centering
-    \includegraphics[width=\textwidth]{image/histogram.png}
-    \caption{Percentage of unique, non-genomic and repeated k-mers over the total amount of k-mers belonging to a certain frequency.}
+    \includegraphics[width=\textwidth]{image/kmerdistribution.pdf}
+    \caption{Distribution of unique, non-genomic and repeated k-mers over the total amount of k-mers belonging to a certain frequency.}
     \label{fig:hist}
 \end{figure}
-The probability of a k-mer being sequenced correctly is approximately $(1-e)^k$ where $e$ is the error rate. If the sequencing depth is d, then observing this k-mer in the input data d times  is a very slim 
-$(1-e)^{dk}$. 
+\begin{figure}
+    \centering
+    \includegraphics[width=\textwidth]{image/unique.pdf}
+    \caption{Percentage of unique k-mers over the total amount of k-mers belonging to a certain frequency. The number above each bar represents the absolute number of unique k-mers for a given frequency.}
+    \label{fig:unique}
+\end{figure}
 
+The probability of a k-mer being sequenced correctly is approximately $(1-e)^k$ where $e$ is the error rate. If the sequencing depth is $d$, then observing this k-mer in the input data d times  is a very slim $(1-e)^{dk}$. 
 Our analysis here is only correct if no other distinct section of the genome has been morphed into this k-mer by error. 
 We acknowledge that such morphing occurs in practice but the majority of the high-frequency k-mers in the input set are due to correct sequencing if the value of $k$ is chosen appropriately. 
-Take the Human genome that is approximatyely $3$ Gbp and for the sake of argument, only consider substitution errors. 
+Take the $Human$ genome that is approximatyely $3$ Gbp and for the sake of argument, only consider substitution errors. 
 For $k=17$, it encodes $4^{17}=16$ billion different k-mers. 
 Assuming independence, every possible k-mer exists in the genome with probability $3/16$. 
 The probability that a 17-mer we have seen being the result of off-by-1 error in sequencing is $(3/16) \cdot 17 \cdot e \cdot (1-e)^{17-1} \approx 3 e (1-e)^{16}$, whereas the probability of sequencing a 17-mer correctly is $(1-e)^{17}$.
@@ -213,7 +220,7 @@ In fact, we are interested in keeping track of the distance between shared k-mer
 
 To detect which reads pairs show some evidence of potential overlap, we implemented the following method, \myworries{insert figure}. 
 For each read pairs, (a) we compute the distance between each pair of consecutive k-mers both on read $i$ and read $j$.
-For each k-mers pairs, (b) we select the shortest distance between the one on read $i$ and on read $j$ and then, given the probabilities of insertion and deletion (that are given by the sequencer), (3) we compute the maximum length of the shortest one (dividing with $1-p_{deletion}$) and the minimum length of the longest one (dividing with $1+p_{insertion}$).
+For each k-mers pairs, (b) we select the shortest distance between the one on read $i$ and on read $j$ and then, given the probabilities of insertion and deletion (that are given by the sequencer), (c) we compute the maximum length of the shortest one (dividing with $1-p_{deletion}$) and the minimum length of the longest one (dividing with $1+p_{insertion}$).
 If the former is greater than the latter, we consider that k-mers pair as evidence of potential overlap.
 In order to be as conservative as possible and be sure to remove just those reads pairs that certainly not overlap, we decide to keep into account all the reads pairs that present at least one evidence of potential overlap among their k-mers pairs.
 
