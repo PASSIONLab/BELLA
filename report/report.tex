@@ -13,7 +13,9 @@
 %\usepackage[latin1]{inputenc}
 %\usepackage[dvips]{epsfig}
 %\DeclareGraphicsExtensions{.ps,.eps}
-\usepackage{subfigure}
+\usepackage{subfigure}\usepackage{cite}
+\usepackage{cleveref}
+\usepackage{cite}
 \usepackage[T1]{fontenc}
 \usepackage{fancyhdr}
 \usepackage[utf8x]{inputenc}
@@ -32,6 +34,9 @@
 \usepackage{setspace}
 \usepackage{xcolor}
 \newcommand\myworries[1]{\textcolor{red}{#1}}
+\newcommand{\figureref}[1]{\figurename~\ref{#1}}
+\newcommand{\tableref}[1]{Table~\ref{#1}}
+\newcommand{\equationref}[1]{Eq.~\ref{#1}}
 
 
 \begin{document}
@@ -65,10 +70,10 @@ Multiple occurences of the same k-mer in the genome correspond to repeat regions
 If we kept non-unique k-mers in our feature set, they would increase the number of spurious alignments and hence increase the computational costs. 
 Our rationale for ignoring non-unique k-mers comes from the observation that either (a) the repeated region is small enough compared to the length of the read that the unique part of the read can still be used to find overlaps of this read with other reads, or (b) that the repeated region is almost as long as the read itself, in which case there is no benefit in aligning this read to other reads because it does not increase our information about the final genome. 
 
-We see by looking at the k-mer histogram that the majority of k-mers in the right tail either occur multiple times or do not occur in the genome at all (Fig.\ref{fig:hist}).
+We see by looking at the k-mer histogram that the majority of k-mers in the right tail either occur multiple times or do not occur in the genome at all (\Cref{fig:hist}).
 \begin{figure}
     \centering
-    \includegraphics[scale=0.65]{image/histogram.png}
+    \includegraphics[width=\textwidth]{image/histogram.png}
     \caption{Percentage of unique, non-genomic and repeated k-mers over the total amount of k-mers belonging to a certain frequency.}
     \label{fig:hist}
 \end{figure}
@@ -78,17 +83,18 @@ $(1-e)^{dk}$.
 Our analysis here is only correct if no other distinct section of the genome has been morphed into this k-mer by error. 
 We acknowledge that such morphing occurs in practice but the majority of the high-frequency k-mers in the input set are due to correct sequencing if the value of k is chosen appropriately. Take the Human genome that is approximatyely $3$ Gbp and for the sake of argument, only consider substitution errors. For $k=17$, It encodes $4^{17}=16$ billion different k-mers. Assuming independence, every possible k-mer exists in the genome with probability 3/16. The probability that a 17-mer we have seen being the result of off-by-1 error in sequencing is $(3/16) \cdot 17 \cdot e \cdot (1-e)^{17-1} \approx 3 e (1-e)^{16}$, whereas the probability of sequencing a 17-mer correctly is $(1-e)^{17}$.
 
-The probability that observing a k-mer that corresponds to a unique (non-repetitive) region $d-1$ times in the input would be approximately $P(d-1) = d (1-e)^{(d-1)k} (1-(1-e)^k)$. To generalize, the probability to observe $d-t$ times is
+The probability that observing a k-mer that corresponds to a unique (non-repetitive) region $d-1$ times in the input would be approximately $P(d-1) = d (1-e)^{(d-1)k} (1-(1-e)^k)$. To generalize, the probability to observe $d-t$ times is:
 
  $$P(d-t) = {d \choose t} (1-e)^{(d-t)k} (1-(1-e)^k)^t$$
 
 \begin{figure}
     \centering
-    \includegraphics[scale=0.50]{image/chart.png}
+    \includegraphics[width=\textwidth]{image/pdt.pdf}
     \caption{Probability that observing a k-mer that corresponds to a non-repetitive region $d-1$ times in the input.}
-    \label{fig:chart}
+    \label{fig:pdt}
 \end{figure}
-\myworries{Use same chart style.}
+
+\Cref{fig:pdt} shows the probability that a k-mer with input occurrence $d-t$ corresponds to a unique region in the genome given $d$ = 60, $k$ = 17 and $e$ = 0.15.
 %The reads were generated starting from the Escherichia Coli genome, using the %PacBio reads simulator.
 %Then, using Jellyfish software, we generated different k-mers dataset from %these reads, varying the value of \emph{k}, we took into account values from %15 to 29.\\
 %The k-mers belonging to the RKS set are chosen looking at their occurrence %among the generated reads..\\

@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015) (preloaded format=pdflatex 2015.5.24)  30 JUN 2017 20:07
+This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015) (preloaded format=pdflatex 2015.5.24)  30 JUN 2017 21:31
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -88,6 +88,14 @@ Package: subfigure 2002/03/15 v2.1.5 subfigure package
 (/usr/local/texlive/2015/texmf-dist/tex/latex/subfigure/subfigure.cfg)
 \subfig@top=\skip47
 \subfig@bottom=\skip48
+)
+(/usr/local/texlive/2015/texmf-dist/tex/latex/cite/cite.sty
+LaTeX Info: Redefining \cite on input line 302.
+LaTeX Info: Redefining \nocite on input line 332.
+Package: cite 2015/02/27  v 5.5
+)
+(/usr/local/texlive/2015/texmf-dist/tex/latex/cleveref/cleveref.sty
+Package: cleveref 2013/12/28 v0.19 Intelligent cross-referencing
 )
 (/usr/local/texlive/2015/texmf-dist/tex/latex/base/fontenc.sty
 Package: fontenc 2005/09/27 v1.99g Standard LaTeX package
@@ -196,12 +204,17 @@ LaTeX Font Info:    Overwriting math alphabet `\mathfrak' in version `bold'
 ))
 (/usr/local/texlive/2015/texmf-dist/tex/latex/natbib/natbib.sty
 Package: natbib 2010/09/13 8.31b (PWD, AO)
+
+
+Package natbib Warning: The `cite' package should not be used
+(natbib)                with natbib. Use option `sort' instead.
+
 \bibhang=\skip61
 \bibsep=\skip62
 LaTeX Info: Redefining \cite on input line 694.
+LaTeX Info: Redefining \citenum on input line 708.
 \c@NAT@ctr=\count108
-)
-(/usr/local/texlive/2015/texmf-dist/tex/latex/tools/longtable.sty
+) (/usr/local/texlive/2015/texmf-dist/tex/latex/tools/longtable.sty
 Package: longtable 2014/10/28 v4.11 Multi-page Table package (DPC)
 \LTleft=\skip63
 \LTright=\skip64
@@ -218,9 +231,6 @@ Package: longtable 2014/10/28 v4.11 Multi-page Table package (DPC)
 \c@LT@tables=\count112
 \c@LT@chunks=\count113
 \LT@p@ftn=\toks26
-)
-(/usr/local/texlive/2015/texmf-dist/tex/latex/cleveref/cleveref.sty
-Package: cleveref 2013/12/28 v0.19 Intelligent cross-referencing
 )
 (/usr/local/texlive/2015/texmf-dist/tex/latex/carlisle/ltxtable.sty
 Package: ltxtable 1995/12/11 v0.2 longtable/tabularx merge (DPC)
@@ -431,18 +441,18 @@ Package xcolor Info: Model `wave' substituted by `hsb' on input line 1360.
 (./report.aux)
 \openout1 = `report.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 37.
-LaTeX Font Info:    ... okay on input line 37.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 37.
-LaTeX Font Info:    ... okay on input line 37.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 37.
-LaTeX Font Info:    ... okay on input line 37.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 37.
-LaTeX Font Info:    ... okay on input line 37.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 37.
-LaTeX Font Info:    ... okay on input line 37.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 37.
-LaTeX Font Info:    ... okay on input line 37.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 42.
+LaTeX Font Info:    ... okay on input line 42.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 42.
+LaTeX Font Info:    ... okay on input line 42.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 42.
+LaTeX Font Info:    ... okay on input line 42.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 42.
+LaTeX Font Info:    ... okay on input line 42.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 42.
+LaTeX Font Info:    ... okay on input line 42.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 42.
+LaTeX Font Info:    ... okay on input line 42.
 
 *geometry* driver: auto-detecting
 *geometry* detected driver: pdftex
@@ -539,12 +549,12 @@ File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Liv
 e
 ))
 \c@lstlisting=\count142
-LaTeX Font Info:    Try loading font information for U+msa on input line 38.
+LaTeX Font Info:    Try loading font information for U+msa on input line 43.
 
 (/usr/local/texlive/2015/texmf-dist/tex/latex/amsfonts/umsa.fd
 File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 )
-LaTeX Font Info:    Try loading font information for U+msb on input line 38.
+LaTeX Font Info:    Try loading font information for U+msb on input line 43.
 
 (/usr/local/texlive/2015/texmf-dist/tex/latex/amsfonts/umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
@@ -552,42 +562,43 @@ File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 <image/histogram.png, id=1, 674.52pt x 414.54875pt>
 File: image/histogram.png Graphic file (type png)
  <use image/histogram.png>
-Package pdftex.def Info: image/histogram.png used on input line 71.
-(pdftex.def)             Requested size: 438.4328pt x 269.45349pt.
+Package pdftex.def Info: image/histogram.png used on input line 76.
+(pdftex.def)             Requested size: 484.20988pt x 297.5893pt.
 
 [1
 
 {/usr/local/texlive/2015/texmf-var/fonts/map/pdftex/updmap/pdftex.map}]
+[2 <./image/histogram.png>]
 
 Package amsmath Warning: Foreign command \atopwithdelims;
 (amsmath)                \frac or \genfrac should be used instead
-(amsmath)                 on input line 83.
+(amsmath)                 on input line 88.
 
-<image/chart.png, id=20, 877.2775pt x 542.025pt>
-File: image/chart.png Graphic file (type png)
- <use image/chart.png>
-Package pdftex.def Info: image/chart.png used on input line 87.
-(pdftex.def)             Requested size: 438.63768pt x 271.01183pt.
- [2 <./image/histogram.png>]
-LaTeX Font Info:    Try loading font information for OMS+cmr on input line 181.
+<image/pdt.pdf, id=24, 1435.3625pt x 789.95125pt>
+File: image/pdt.pdf Graphic file (type pdf)
+ <use image/pdt.pdf>
+Package pdftex.def Info: image/pdt.pdf used on input line 92.
+(pdftex.def)             Requested size: 484.20988pt x 266.48253pt.
+ [3 <./image/pdt.pdf>]
+LaTeX Font Info:    Try loading font information for OMS+cmr on input line 187.
 
-
-(/usr/local/texlive/2015/texmf-dist/tex/latex/base/omscmr.fd
+ (/usr/local/texlive/2015/texmf-dist/tex/latex/base/omscmr.fd
 File: omscmr.fd 2014/09/29 v2.5h Standard LaTeX font definitions
 )
 LaTeX Font Info:    Font shape `OMS/cmr/m/n' in size <10.95> not available
-(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 181.
- [3 <./image/chart.png (PNG copy)>] [4]
+(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 187.
+
+[4]
 No file report.bbl.
 (./report.aux) ) 
 Here is how much of TeX's memory you used:
- 9215 strings out of 493089
- 141022 string characters out of 6134842
- 248538 words of memory out of 5000000
- 12511 multiletter control sequences out of 15000+600000
+ 9295 strings out of 493089
+ 142074 string characters out of 6134842
+ 249195 words of memory out of 5000000
+ 12588 multiletter control sequences out of 15000+600000
  17604 words of font info for 54 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 40i,9n,43p,702b,294s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 40i,9n,43p,702b,300s stack positions out of 5000i,500n,10000p,200000b,80000s
 {/usr/local/texlive/2015/texmf-dist/fonts/enc/dvips/cm-super/cm
 -super-t1.enc}</usr/local/texlive/2015/texmf-dist/fonts/type1/public/amsfonts/c
 m/cmex10.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public/amsfonts/cm
@@ -604,10 +615,10 @@ ocal/texlive/2015/texmf-dist/fonts/type1/public/cm-super/sfrm1095.pfb></usr/loc
 al/texlive/2015/texmf-dist/fonts/type1/public/cm-super/sfrm1200.pfb></usr/local
 /texlive/2015/texmf-dist/fonts/type1/public/cm-super/sfrm1728.pfb></usr/local/t
 exlive/2015/texmf-dist/fonts/type1/public/cm-super/sfti1095.pfb>
-Output written on report.pdf (4 pages, 277545 bytes).
+Output written on report.pdf (4 pages, 269559 bytes).
 PDF statistics:
- 82 PDF objects out of 1000 (max. 8388607)
- 57 compressed objects within 1 object stream
+ 95 PDF objects out of 1000 (max. 8388607)
+ 67 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
  11 words of extra memory for PDF output out of 10000 (max. 10000000)
 
