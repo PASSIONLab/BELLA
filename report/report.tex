@@ -207,13 +207,26 @@ To generalize, the probability to observe $d-t$ times is:
 To identify the overlapping reads pairs, the proposed approach exploits sparse matrices.
 This because sparse matrices express the data access patterns in a concise and clear manner, allowing better organization of computation and generality.
 The column-by-column algorithm we use is equivalent to the k-mer index table concept in HipMer and many other assembler. 
-The first step consists in the creation of a sparse matrix where row are represented by the reads and columns by the set of reliable k-mers, \myworries{insert figure}.
+The first step consists in the creation of a sparse matrix where row are represented by the reads and columns by the set of reliable k-mers.
 The cell $(i,j)$ contains the k-mer $id$ and the positions of that k-mer in the considered read.
 %The ultimate goal of the previous analysis consists in obtaining a [k-mer -by- read] matrix (where $A_{ij}$ is the occurrence/absence of k-mer $i$ in read $j$).
 This matrix is used as starting point for the construction of a feature vector in finding alignments among the reads.
-Consequently, we create the transpose of the first one obtaining a k-mers-by-reads matrix.
+Consequently, we create the transpose of the first one obtaining a $kmers-by-reads$ matrix, as shown in \Cref{fig:matrices}.
+\begin{figure}
+    \centering
+    \includegraphics[width=\textwidth]{image/matrices.png}
+    \caption{Sparse matrix $reads-by-kmers$ on the left and its transpose on the right.}
+    \label{fig:matrices}
+\end{figure}
+\begin{figure}
+    \centering
+    \includegraphics[width=\textwidth]{image/mult.png}
+    \caption{Sparse matrix multiplication exploiting a $column-by-column$ algorithm \myworries{cite}.}
+    \label{fig:mult}
+\end{figure}
 
-After that, exploiting the column-by-column algorithm we multiply these two sparse matrices obtaining a resulted matrix allows us to keep track of all the read pairs that share some k-mers and the corresponding positions on both the reads, \myworries{insert figure}.
+After that, exploiting the column-by-column algorithm we multiply these two sparse matrices obtaining a resulted matrix, as illustrated in \Cref{fig:mult}.
+The final sparse matrix allows us to keep track of all the read pairs that share some k-mers and the corresponding positions on both the reads.
 Here, the cell $(i,j)$ consists in a vector containing the k-mers ids are and the corrisponding positions in the read $i$ and read $j$. 
 The generality of this approach comes from being able to use the same algorithm to also keep track of distances between shared k-mers. 
 In fact, we are interested in keeping track of the distance between shared k-mers as it can provide more evidence of overlap.

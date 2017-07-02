@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015) (preloaded format=pdflatex 2015.5.24)  1 JUL 2017 16:01
+This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015) (preloaded format=pdflatex 2015.5.24)  1 JUL 2017 16:48
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -591,18 +591,31 @@ File: image/pdt.pdf Graphic file (type pdf)
  <use image/pdt.pdf>
 Package pdftex.def Info: image/pdt.pdf used on input line 127.
 (pdftex.def)             Requested size: 484.20988pt x 269.66997pt.
+
+<image/matrices.png, id=24, 652.93938pt x 405.01312pt>
+File: image/matrices.png Graphic file (type png)
+
+<use image/matrices.png>
+Package pdftex.def Info: image/matrices.png used on input line 217.
+(pdftex.def)             Requested size: 484.20988pt x 300.34772pt.
+ <image/mult.png, id=25, 725.71124pt x 392.96812pt>
+File: image/mult.png Graphic file (type png)
+
+<use image/mult.png>
+Package pdftex.def Info: image/mult.png used on input line 223.
+(pdftex.def)             Requested size: 484.20988pt x 262.20195pt.
  [2 <./image/overview.png>] [3 <./image/kmerdistribution.pdf> <./image/unique.p
-df>] [4 <./image/pdt.pdf>] [5]
+df>] [4 <./image/pdt.pdf>] [5 <./image/matrices.png> <./image/mult.png>] [6]
 No file report.bbl.
 (./report.aux) ) 
 Here is how much of TeX's memory you used:
- 9292 strings out of 493089
- 142063 string characters out of 6134842
- 251195 words of memory out of 5000000
- 12586 multiletter control sequences out of 15000+600000
+ 9306 strings out of 493089
+ 142307 string characters out of 6134842
+ 252195 words of memory out of 5000000
+ 12598 multiletter control sequences out of 15000+600000
  17604 words of font info for 54 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 40i,9n,43p,477b,298s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 40i,9n,43p,477b,300s stack positions out of 5000i,500n,10000p,200000b,80000s
 {/usr/local/texlive/2015/texmf-dist/fonts/enc/dvips/cm-super/cm
 -super-t1.enc}</usr/local/texlive/2015/texmf-dist/fonts/type1/public/amsfonts/c
 m/cmex10.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public/amsfonts/cm
@@ -619,10 +632,10 @@ ocal/texlive/2015/texmf-dist/fonts/type1/public/cm-super/sfrm1095.pfb></usr/loc
 al/texlive/2015/texmf-dist/fonts/type1/public/cm-super/sfrm1200.pfb></usr/local
 /texlive/2015/texmf-dist/fonts/type1/public/cm-super/sfrm1728.pfb></usr/local/t
 exlive/2015/texmf-dist/fonts/type1/public/cm-super/sfti1095.pfb>
-Output written on report.pdf (5 pages, 255096 bytes).
+Output written on report.pdf (6 pages, 552408 bytes).
 PDF statistics:
- 135 PDF objects out of 1000 (max. 8388607)
- 96 compressed objects within 1 object stream
+ 142 PDF objects out of 1000 (max. 8388607)
+ 98 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
- 21 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 31 words of extra memory for PDF output out of 10000 (max. 10000000)
 
