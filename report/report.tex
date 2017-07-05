@@ -63,7 +63,7 @@ $$P(1,L) = 1-(1-(1-e)^{2 \cdot k})^{L}$$
 Considering an overlapping region $L$ of 300 base-pairs (bp), with $k$ = 17 and $e$ = 0.15, we obtain that $P(1,300)$ is greater than 70\%.
 Starting from these consideration, we decided to base our approach on shared k-mers between reads.
 However, we have to face the issue derived from having a high error rate. 
-As a matter of fact, an error rate equal to 15\% implies that every possible k-mer will be seen at least once, given enough depth ($d$, sequencer parameter).
+As a matter of fact, an error rate equal to 15\% implies that for large genomes, every possible k-mer will be seen at least once, given enough depth ($d$, sequencer parameter).
 Consequently, we would need a k-mer look-up table of size $4^{k}$. 
 Furthermore, we have to consider at least a $k$ value equal to 17 as, choosing a smaller $k$, k-mers are not even unique in large genomes.
 Using $k$ = 15, we can only encode 1 Gbp possibilities whereas, for instance, the $Human$ genome is $3$ Gbp.
@@ -126,7 +126,8 @@ To generalize, the probability to observe $d-t$ times is:
 \begin{figure}
     \centering
     \includegraphics[width=\textwidth]{image/pdt.pdf}
-    \caption{Probability that observing a k-mer that corresponds to a non-repetitive region $d-1$ times in the input.}
+    \caption{Probability that observing a k-mer that corresponds to a non-repetitive region $d-t$ times in the input for
+    $d$ = 60, $k$ = 17 and $e$ = 0.15.}
     \label{fig:pdt}
 \end{figure}
 \Cref{fig:pdt} shows the probability that a k-mer with input occurrence $d-t$ corresponds to a unique region in the genome given $d$ = 60, $k$ = 17 and $e$ = 0.15.
