@@ -33,12 +33,11 @@
 
 
 #include "mtspgemm2017/utility.h"
-#include "mtspgemm2017/filter.h"
 #include "mtspgemm2017/CSC.h"
 #include "mtspgemm2017/CSR.h"
 #include "mtspgemm2017/IO.h"
 #include "mtspgemm2017/global.h"
-#include "mtspgemm2017/statistics.h"
+#include "mtspgemm2017/metric.h"
 #include "mtspgemm2017/multiply.h"
 
 #define LSIZE 16000
@@ -128,6 +127,10 @@ int main (int argc, char* argv[]) {
     cout << "k-mer length: " << KMER_LENGTH <<endl;
     cout << "Reference genome: " << argv[2] <<endl;
 
+    //cout << "EDLIB_EDOP_INSERT = " << EDLIB_EDOP_INSERT << endl;
+    //cout << "EDLIB_EDOP_DELETE = " << EDLIB_EDOP_DELETE << endl;
+    //cout << "EDLIB_EDOP_MISMATCH = " << EDLIB_EDOP_MISMATCH << endl;  
+
     double all = omp_get_wtime();
     if(filein.is_open()) {
             while(getline(filein, line)) {
@@ -144,7 +147,8 @@ int main (int argc, char* argv[]) {
     filein.close();
 
     dictionaryCreation(kmerdict, kmervect);
-
+    cout << "Reliable k-mers = " << kmerdict.size() << endl;
+    
     size_t read_id = 0; // read_id needs to be global (not just per file)
     for(auto itr=allfiles.begin(); itr!=allfiles.end(); itr++) {
 
@@ -167,7 +171,7 @@ int main (int argc, char* argv[]) {
                 reads.push_back(seqs[i]);
                 
                 // skip this sequence if the length is too short
-                if (len <= KMER_LENGTH)
+                if(len < 300)
                     continue;
 
                 for(size_t j=0; j<=len-KMER_LENGTH; j++)  
@@ -228,18 +232,13 @@ int main (int argc, char* argv[]) {
                return m1+m2;
             }, tempspmat);
     
+    //cout << tempspmat.nnz << endl;
     cout << "Multiply time: " << omp_get_wtime()-start << " sec" << endl;
-
-    cout << "Preliminary statistics:" << endl;
-    GetStatistics(tempspmat); // function to obtain preliminary statistics
-
-    //double start2 = omp_get_wtime();
-    // LocalAlignment(tempspmat, reads);  // sparse mat, seq vector
-    //cout << "Local alignment time: " << (omp_get_wtime()-start2)/60 << " min" << endl;
+    cout << "output nnz = " << tempspmat.nnz << endl;
+    double start2 = omp_get_wtime();
+    LocalAlignmentTest(tempspmat, reads);  // sparse mat, seq vector
+    cout << "Local alignment time: " << (omp_get_wtime()-start2)/60 << " min" << endl;
     cout << "Total time: " << omp_get_wtime()-all << " sec" << endl;
-
-    //cout << "Final statistics:" << endl;
-    //GetStatistics(tempspmat);
 
     return 0;
 } 

@@ -3,6 +3,7 @@
 #include "IntervalTree.h"
 #include "BitMap.h"
 #include "global.h"
+#include "../edlib/edlib/include/edlib.h"
 #include <omp.h>
 #include <fstream>
 #include <iostream>
@@ -12,9 +13,21 @@
 #include <cmath>
 #include <numeric>
 #include <vector>
+#include <sys/types.h> 
+#include <sys/stat.h> 
+#include <math.h>
+#include <limits.h>
+#include <bitset>
+#include <map>
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <unistd.h>
+#include <ctype.h> 
 
+#define ERR .15 
 #define KMER_LENGTH 17
-#define S 1 // minimum number of shard k-mers
+#define S 0 // minimum number of shard k-mers
 using namespace std;
 
 // compute the number of true overlapping reads
@@ -191,16 +204,38 @@ double MaxGap(IT & i, IT & j, IT & len_i, IT & len_j) { // reads length has to b
     return estime;
 }
 
-template <class IT, class NT>
-void GetStatistics(const CSC<IT,NT> & A) 
+bool Filter(std::string & aseq, std::string & bseq, int & alen, int & blen, size_t & alignment_length) 
 {
-    std::ifstream ifs("test_01.axt"); // it would be better to make this reading more general
+  bool align;
+  EdlibAlignResult result;
+  char *c_aseq = new char[alen+1];
+  strcpy(c_aseq, aseq.c_str());
+  char *c_bseq = new char[blen+1];
+  strcpy(c_bseq, bseq.c_str());
+
+  result = edlibAlign(c_aseq, alen, c_bseq, blen, edlibNewAlignConfig(-1, EDLIB_MODE_HW, EDLIB_TASK_PATH));
+  delete [] c_aseq;
+  delete [] c_bseq;
+
+  if(result.alignmentLength < 300)
+    align = false;
+  else align = true;
+
+  edlibFreeAlignResult(result);
+}
+
+template <class IT, class NT>
+void LocalAlignmentTest(const CSC<IT,NT> & A, std::vector<string> & reads) 
+{
+    std::ifstream ifs("ec_0001.axt"); // it would be better to make this reading more general
     std::map<size_t, pair<size_t, size_t>> ifsmap;
     double di; // k-mers distances on read i
     double dj; // k-mers distances on read j
-    double TPandFP = 0, TP = 0;
+    double TPandFP = 0, TP = 0, LA = 0;
     size_t track = 0, var, alignment_length;
-    bool same;
+    std::string aseq, bseq;
+    int alen, blen;
+    bool align;
 
     // creation reads map from axt file to be used to find potential overlapping reads pairs 
     if(ifs.is_open()) {
@@ -227,21 +262,34 @@ void GetStatistics(const CSC<IT,NT> & A)
     { 
         for(size_t j = A.colptr[i]; j < A.colptr[i+1]; ++j) 
         {
-            if(A.values[j] >= S)
+            if(A.values[j] > S)
             {
+                aseq = reads[A.rowids[j]];
+                bseq = reads[i];
+                alen = (int)aseq.length();
+                blen = (int)bseq.length();
+                
                 TPandFP++;
                 alignment_length = ComputeLength(ifsmap, i, A.rowids[j]); // compute the overlap length between potential overlapping reads pairs
             
-                if(alignment_length >= KMER_LENGTH)    
+                if(alignment_length >= 2000)
+                {
                     TP++;
+                    //align = Filter(aseq, bseq, alen, blen, alignment_length);
+                    //if(align == true)
+                    //    LA++;
+                }
             }
         }
     }
-    cout << "S (minimum number of shared k-mers) = " << S << endl;
-    cout << "P = " << P << endl;
-    cout << "TP+FP = " << TPandFP << endl;
-    cout << "TP = " << TP << endl;
+    
+    //cout << "S (minimum number of shared k-mers) = " << S << endl;
+    cout << "TP+FP after multiply = " << TPandFP << endl;
+    cout << "P from fastq at least overlap 2000 bp = " << P << endl;
+    cout << "TP from fastq at least overlap 2000 bp = " << TP << endl;
     cout << "Recall = " << TP/P << endl;
+   // cout << "Recall Local Alignment = " << LA/P << endl;
     cout << "Precision = " << TP/TPandFP << endl;
+    //cout << "Precision Local Alignment = " << LA/TPandFP << endl;
     
 }
