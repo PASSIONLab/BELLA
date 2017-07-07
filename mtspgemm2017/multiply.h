@@ -1,17 +1,17 @@
 #include "CSC.h"
 #include "global.h"
-#include <mach/mach.h>
-#include <mach/vm_statistics.h>
-#include <mach/mach_types.h>
-#include <mach/mach_init.h>
-#include <mach/mach_host.h>
 #include <omp.h>
 #include <fstream>
 #include <iostream>
 #include <string>
 #include <cstdlib>
 #include <algorithm>
-//#include <tbb/scalable_allocator.h>
+#include "sys/types.h"
+#include "sys/sysinfo.h"
+
+/* LINUX-BASED BLOCK MULTIPLICATION */
+
+struct sysinfo memInfo;
 
 #define PERCORECACHE (1024 * 1024)
 #define KMER_LENGTH 17
@@ -99,6 +99,9 @@ template <typename IT, typename NT, typename FT, typename MultiplyOperation, typ
 void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, CSC<IT,FT> & C)
 {
     IT start, end, ncols;
+    
+    /* OSX-based memory consumption implementation <--
+
     vm_size_t page_size;
     mach_port_t mach_port;
     mach_msg_type_number_t count;
@@ -119,19 +122,22 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         
         cout << "Free memory: " << free_memory/PERCORECACHE << "\nUsed memory: " << used_memory/PERCORECACHE << endl;
         /* It is good to note that just because Mac OS X may show very little actual free memory at times that it may 
-        not be a good indication of how much is ready to be used on short notice. */
+        not be a good indication of how much is ready to be used on short notice.
 
-    }
-    
+    } */
+
+    /* LINUX-based memory consumption implementation */
+
     uint64_t d = B.nnz/B.cols; // about d nnz each col
     uint64_t rsv = B.nnz*d;    // worst case
-    uint64_t required_memory = (rsv)*sizeof(size_t);
+    uint64_t requiredmemory = (rsv)*sizeof(size_t);
 
     cout << "Required memory: " << required_memory/PERCORECACHE << endl;
-
-    if(required_memory > free_memory)
+    cout << "Free ram: " << memInfo.freeram/PERCORECACHE << endl;
+    
+    if(requiredmemory > memInfo.freeram)
     {
-        IT blocks = required_memory/free_memory;
+        IT blocks = requiredmemory/memInfo.freeram;
         IT bcols = B.cols/blocks;
         
         cout << "blocks = " << blocks << endl;

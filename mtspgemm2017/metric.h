@@ -9,6 +9,7 @@
 #include <iostream>
 #include <string>
 #include <cstdlib>
+#include <cstdio>
 #include <algorithm>
 #include <cmath>
 #include <numeric>
@@ -204,7 +205,7 @@ double MaxGap(IT & i, IT & j, IT & len_i, IT & len_j) { // reads length has to b
     return estime;
 }
 
-bool Filter(std::string & aseq, std::string & bseq, int & alen, int & blen, size_t & alignment_length) 
+bool Filter(std::string & aseq, std::string & bseq, int & alen, int & blen) 
 {
   bool align;
   EdlibAlignResult result;
@@ -222,12 +223,13 @@ bool Filter(std::string & aseq, std::string & bseq, int & alen, int & blen, size
   else align = true;
 
   edlibFreeAlignResult(result);
+  return align;
 }
 
 template <class IT, class NT>
 void LocalAlignmentTest(const CSC<IT,NT> & A, std::vector<string> & reads) 
 {
-    std::ifstream ifs("ec_0001.axt"); // it would be better to make this reading more general
+    std::ifstream ifs("chr21.axt"); // it would be better to make this reading more general
     std::map<size_t, pair<size_t, size_t>> ifsmap;
     double di; // k-mers distances on read i
     double dj; // k-mers distances on read j
@@ -235,7 +237,7 @@ void LocalAlignmentTest(const CSC<IT,NT> & A, std::vector<string> & reads)
     size_t track = 0, var, alignment_length;
     std::string aseq, bseq;
     int alen, blen;
-    bool align;
+    //bool align;
 
     // creation reads map from axt file to be used to find potential overlapping reads pairs 
     if(ifs.is_open()) {
@@ -264,18 +266,18 @@ void LocalAlignmentTest(const CSC<IT,NT> & A, std::vector<string> & reads)
         {
             if(A.values[j] > S)
             {
-                aseq = reads[A.rowids[j]];
-                bseq = reads[i];
-                alen = (int)aseq.length();
-                blen = (int)bseq.length();
+                //aseq = reads[A.rowids[j]];
+                //bseq = reads[i];
+                //alen = (int)aseq.length();
+                //blen = (int)bseq.length();
                 
                 TPandFP++;
                 alignment_length = ComputeLength(ifsmap, i, A.rowids[j]); // compute the overlap length between potential overlapping reads pairs
             
-                if(alignment_length >= 2000)
+                if(alignment_length >= KMER_LENGTH)
                 {
                     TP++;
-                    //align = Filter(aseq, bseq, alen, blen, alignment_length);
+                    //align = Filter(aseq, bseq, alen, blen);
                     //if(align == true)
                     //    LA++;
                 }

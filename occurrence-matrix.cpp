@@ -30,10 +30,10 @@
 #include "kmercode/fq_reader.h"
 #include "kmercode/ParallelFASTQ.h"
 
-
 #include "mtspgemm2017/utility.h"
 #include "mtspgemm2017/CSC.h"
 #include "mtspgemm2017/CSR.h"
+#include "edlib/edlib/include/edlib.h"
 #include "mtspgemm2017/IO.h"
 #include "mtspgemm2017/global.h"
 #include "mtspgemm2017/metric.h"
@@ -126,9 +126,9 @@ int main (int argc, char* argv[]) {
     cout << "k-mer length: " << KMER_LENGTH <<endl;
     cout << "Reference genome: " << argv[2] <<endl;
 
-    //cout << "EDLIB_EDOP_INSERT = " << EDLIB_EDOP_INSERT << endl;
-    //cout << "EDLIB_EDOP_DELETE = " << EDLIB_EDOP_DELETE << endl;
-    //cout << "EDLIB_EDOP_MISMATCH = " << EDLIB_EDOP_MISMATCH << endl;  
+    cout << "EDLIB_EDOP_INSERT = " << EDLIB_EDOP_INSERT << endl;
+    cout << "EDLIB_EDOP_DELETE = " << EDLIB_EDOP_DELETE << endl;
+    cout << "EDLIB_EDOP_MISMATCH = " << EDLIB_EDOP_MISMATCH << endl;  
 
     double all = omp_get_wtime();
     if(filein.is_open()) {
@@ -233,7 +233,7 @@ int main (int argc, char* argv[]) {
     
     //cout << tempspmat.nnz << endl;
     cout << "Multiply time: " << omp_get_wtime()-start << " sec" << endl;
-    cout << "output nnz = " << tempspmat.nnz << endl;
+    //cout << "output nnz = " << tempspmat.nnz << endl;
     double start2 = omp_get_wtime();
     LocalAlignmentTest(tempspmat, reads);  // sparse mat, seq vector
     cout << "Local alignment time: " << (omp_get_wtime()-start2)/60 << " min" << endl;
