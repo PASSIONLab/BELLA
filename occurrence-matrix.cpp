@@ -126,9 +126,9 @@ int main (int argc, char* argv[]) {
     cout << "k-mer length: " << KMER_LENGTH <<endl;
     cout << "Reference genome: " << argv[2] <<endl;
 
-    cout << "EDLIB_EDOP_INSERT = " << EDLIB_EDOP_INSERT << endl;
-    cout << "EDLIB_EDOP_DELETE = " << EDLIB_EDOP_DELETE << endl;
-    cout << "EDLIB_EDOP_MISMATCH = " << EDLIB_EDOP_MISMATCH << endl;  
+    // cout << "EDLIB_EDOP_INSERT = " << EDLIB_EDOP_INSERT << endl;
+    // cout << "EDLIB_EDOP_DELETE = " << EDLIB_EDOP_DELETE << endl;
+    // cout << "EDLIB_EDOP_MISMATCH = " << EDLIB_EDOP_MISMATCH << endl;  
 
     double all = omp_get_wtime();
     if(filein.is_open()) {
@@ -170,7 +170,7 @@ int main (int argc, char* argv[]) {
                 reads.push_back(seqs[i]);
                 
                 // skip this sequence if the length is too short
-                if(len < 300)
+                if(len < KMER_LENGTH)
                     continue;
 
                 for(size_t j=0; j<=len-KMER_LENGTH; j++)  

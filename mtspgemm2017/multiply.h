@@ -6,12 +6,13 @@
 #include <string>
 #include <cstdlib>
 #include <algorithm>
-#include "sys/types.h"
-#include "sys/sysinfo.h"
+#include <mach/mach.h>
+#include <mach/vm_statistics.h>
+#include <mach/mach_types.h>
+#include <mach/mach_init.h>
+#include <mach/mach_host.h>
 
-/* LINUX-BASED BLOCK MULTIPLICATION */
-
-struct sysinfo memInfo;
+/* OSX-BASED BLOCK MULTIPLICATION */
 
 #define PERCORECACHE (1024 * 1024)
 #define KMER_LENGTH 17
@@ -19,8 +20,8 @@ struct sysinfo memInfo;
 template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation>
 void LocalSpGEMM(IT & start, IT & end, IT & ncols, const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, vector<IT> * RowIdsofC, vector<FT> * ValuesofC)
 {
-    //#pragma omp parallel for
     int i, v;
+    //#pragma omp parallel for
     for(i = start, v=0; i<end, v<ncols; ++i, v++) // for bcols of B (one block)
     {
         IT hsize = B.colptr[i+1]-B.colptr[i];
@@ -100,7 +101,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
 {
     IT start, end, ncols;
     
-    /* OSX-based memory consumption implementation <--
+    /* OSX-based memory consumption implementation */
 
     vm_size_t page_size;
     mach_port_t mach_port;
@@ -122,22 +123,20 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         
         cout << "Free memory: " << free_memory/PERCORECACHE << "\nUsed memory: " << used_memory/PERCORECACHE << endl;
         /* It is good to note that just because Mac OS X may show very little actual free memory at times that it may 
-        not be a good indication of how much is ready to be used on short notice.
+        not be a good indication of how much is ready to be used on short notice. */
 
-    } */
-
-    /* LINUX-based memory consumption implementation */
+    } 
 
     uint64_t d = B.nnz/B.cols; // about d nnz each col
     uint64_t rsv = B.nnz*d;    // worst case
     uint64_t requiredmemory = (rsv)*sizeof(size_t);
 
-    cout << "Required memory: " << required_memory/PERCORECACHE << endl;
-    cout << "Free ram: " << memInfo.freeram/PERCORECACHE << endl;
+    cout << "Required memory: " << requiredmemory/PERCORECACHE << endl;
     
-    if(requiredmemory > memInfo.freeram)
+    if(requiredmemory > free_memory)
     {
-        IT blocks = requiredmemory/memInfo.freeram;
+        cout << "*** BLOCK MULTIPLICATION ***" << endl; 
+        IT blocks = requiredmemory/free_memory;
         IT bcols = B.cols/blocks;
         
         cout << "blocks = " << blocks << endl;
@@ -147,9 +146,6 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         C.cols = B.cols;
         C.colptr = new IT[C.cols+1];
         C.colptr[0] = 0;
-
-        IT *rowidstemp = new IT[rsv]; // worst case
-        FT *valuestemp = new FT[rsv]; // worst case
 
         IT pcols = 0;
 
@@ -172,39 +168,57 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
             LocalSpGEMM(start, end, ncols, A, B, multop, addop, RowIdsofC, ValuesofC);
             
             int i, j;
-            for(i=start, j=0; i<end, j<ncols; ++i, j++)                     // for all edge lists (do NOT parallelize)
+            for(i=start, j=0; i<end, j<ncols; ++i, j++) // for all edge lists (do NOT parallelize)
             {
                 C.colptr[i+1] = C.colptr[i] + RowIdsofC[j].size();
             }
-            C.nnz = C.nnz + C.colptr[end]; // keep track total #nnz
+
+            if(b == 0) // first iteration on blocks
+            {
+                C.nnz = C.colptr[end];
+                C.rowids = new IT[C.nnz];
+                C.values = new FT[C.nnz];
+
+            } else // resize
+            {
+                IT nnznew = C.colptr[end];
+
+                IT *temprow = new IT[nnznew];
+                copy(C.rowids, C.rowids+C.nnz, temprow);
+                delete C.rowids;
+
+                C.rowids = new IT[nnznew];
+                copy(temprow, temprow+nnznew, C.rowids);
+                delete temprow;
+
+                FT *tempval = new IT[nnznew];
+                copy(C.values, C.values+C.nnz, tempval);
+                delete C.values;
+
+                C.values = new FT[nnznew];
+                copy(tempval, tempval+nnznew, C.values);
+                delete tempval;
+
+                C.nnz = nnznew;
+            }
          
-            //pragma omp parallel for
             int m, l;
+            //#pragma omp parallel for
             for(m=start, l=0; m<end, l<ncols; ++m, l++) // combine step
             {
                 // to do: local alignment as alpha operation
                 // transform(&ValuesofC[colStart[i]], &ValuesofC[colEnd[i]], &ValuesofC[colStart[i]], alphaop);
-                copy(RowIdsofC[l].begin(), RowIdsofC[l].end(), rowidstemp + C.colptr[m]);
-                copy(ValuesofC[l].begin(), ValuesofC[l].end(), valuestemp + C.colptr[m]);
+                copy(RowIdsofC[l].begin(), RowIdsofC[l].end(), C.rowids + C.colptr[m]);
+                copy(ValuesofC[l].begin(), ValuesofC[l].end(), C.values + C.colptr[m]);
             }
 
             pcols = pcols+ncols; // update counter
             delete [] RowIdsofC;
             delete [] ValuesofC;
         }
-
-        cout << "C.nnz = " << C.nnz << endl;
-        C.rowids = new IT[C.nnz];
-        C.values = new FT[C.nnz];
-
-        copy(rowidstemp, rowidstemp+C.nnz, C.rowids);
-        copy(valuestemp, valuestemp+C.nnz, C.values);
-
-        delete rowidstemp;
-        delete valuestemp;
-
     } else
     {
+        cout << "*** STANDARD MULTIPLICATION ***" << endl;
         start = 0;
         end = B.cols;
         ncols = B.cols;
