@@ -232,12 +232,12 @@ int main (int argc, char* argv[]) {
             }, tempspmat);
     
     //cout << tempspmat.nnz << endl;
-    cout << "Multiply time: " << omp_get_wtime()-start << " sec" << endl;
+    cout << "Multiply time: " << (omp_get_wtime()-start)/60 << " min" << endl;
     //cout << "output nnz = " << tempspmat.nnz << endl;
     double start2 = omp_get_wtime();
     LocalAlignmentTest(tempspmat, reads);  // sparse mat, seq vector
     cout << "Local alignment time: " << (omp_get_wtime()-start2)/60 << " min" << endl;
-    cout << "Total time: " << omp_get_wtime()-all << " sec" << endl;
+    cout << "Total time: " << (omp_get_wtime()-all)/60 << " min" << endl;
 
     return 0;
 } 

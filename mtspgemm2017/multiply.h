@@ -20,9 +20,9 @@
 template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation>
 void LocalSpGEMM(IT & start, IT & end, IT & ncols, const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, vector<IT> * RowIdsofC, vector<FT> * ValuesofC)
 {
-    int i, v;
     //#pragma omp parallel for
-    for(i = start, v=0; i<end, v<ncols; ++i, v++) // for bcols of B (one block)
+    int v = 0;
+    for(int i = start; i<end; ++i) // for bcols of B (one block)
     {
         IT hsize = B.colptr[i+1]-B.colptr[i];
         HeapEntry<IT,FT> *mergeheap = new HeapEntry<IT,FT>[hsize];
@@ -44,6 +44,7 @@ void LocalSpGEMM(IT & start, IT & end, IT & ncols, const CSC<IT,NT> & A, const C
                 maxnnzc += npins;
             }
         }
+
         hsize = k; // if any of A's "significant" columns is empty, k will be less than hsize
         make_heap(mergeheap, mergeheap + hsize);        
         // reserve changes the capacity of the vector, so that future push_back's won't cause reallocation
@@ -85,10 +86,10 @@ void LocalSpGEMM(IT & start, IT & end, IT & ncols, const CSC<IT,NT> & A, const C
             {
                 --hsize;
             }     
-     }
+        }
+        v++;
         delete [] mergeheap;
     }
-
 }
 
 /**
@@ -167,10 +168,11 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         
             LocalSpGEMM(start, end, ncols, A, B, multop, addop, RowIdsofC, ValuesofC);
             
-            int i, j;
-            for(i=start, j=0; i<end, j<ncols; ++i, j++) // for all edge lists (do NOT parallelize)
+            int j = 0;
+            for(int i=start; i<end; ++i) // for all edge lists (do NOT parallelize)
             {
                 C.colptr[i+1] = C.colptr[i] + RowIdsofC[j].size();
+                j++;
             }
 
             if(b == 0) // first iteration on blocks
@@ -202,14 +204,15 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                 C.nnz = nnznew;
             }
          
-            int m, l;
             //#pragma omp parallel for
-            for(m=start, l=0; m<end, l<ncols; ++m, l++) // combine step
+            int l = 0;
+            for(int m=start; m<end; ++m) // combine step
             {
                 // to do: local alignment as alpha operation
                 // transform(&ValuesofC[colStart[i]], &ValuesofC[colEnd[i]], &ValuesofC[colStart[i]], alphaop);
                 copy(RowIdsofC[l].begin(), RowIdsofC[l].end(), C.rowids + C.colptr[m]);
                 copy(ValuesofC[l].begin(), ValuesofC[l].end(), C.values + C.colptr[m]);
+                ++l;
             }
 
             pcols = pcols+ncols; // update counter
