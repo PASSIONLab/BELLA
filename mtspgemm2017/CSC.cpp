@@ -201,20 +201,19 @@ template <class HANDLER>
 void CSC<IT,NT>::ParallelWrite(const string & filename, bool onebased, HANDLER handler)
 {
 	tuple<IT, IT, NT> * tuples  = new tuple<IT, IT, NT>[nnz];
+	IT additive = 0;
+	if(onebased)	additive = 1;
 
         IT k = 0;
         for(IT colid = 0; colid< cols; ++colid)
         {
                 for(IT i = colptr[colid]; i< colptr[colid+1]; ++i)
                 {
-                        get<0>(tuples[k]) = rowids[i];	// row-id
-                        get<1>(tuples[k]) = colid;	// column-id
+                        get<0>(tuples[k]) = additive + rowids[i];	// row-id
+                        get<1>(tuples[k]) = additive + colid;		// column-id
                         get<2>(tuples[k++]) = values[i];
                 }
         }
-
-	vector<IT> localsizes(omp_get_max_threads(), 0);
-	vector<IT> prefixsums(omp_get_max_threads(), 0);
 	vector<IT> bytes(omp_get_max_threads(), 0);
 	
 	#pragma omp parallel
@@ -230,20 +229,12 @@ void CSC<IT,NT>::ParallelWrite(const string & filename, bool onebased, HANDLER h
 			ss << "%\n";				
 			ss << rows << '\t' << cols << '\t' << nnz << '\n';	// rank-0 has the header
 		}	
-		IT entries = nnz;			
-		localsizes[myrank] =  entries;
-       		#pragma omp barrier
-
-		#pragma omp single 
-        	{
-            		std::partial_sum(localsizes.begin(), localsizes.begin()+nprocs, prefixsums.begin(), IT(0));
-		}
-		IT sizeuntil = prefixsums[myrank];
-		if(onebased)	sizeuntil += 1;	// increment by 1	
-		for(IT k=0; k< entries; ++k)
+		
+		#pragma omp for	
+		for(IT k=0; k< nnz; ++k)	// let the parallel division of range [0,...,nnz-1] be handled by the compiler
 		{
-			ss << get<0>(tuples[k]) + sizeuntil << '\t';
-			ss << get<1>(tuples[k]) + sizeuntil << '\t';
+			ss << get<0>(tuples[k]) << '\t';
+			ss << get<1>(tuples[k]) << '\t';
 			handler.save(ss, get<2>(tuples[k]));
 			ss << '\n';
 		}
@@ -251,6 +242,8 @@ void CSC<IT,NT>::ParallelWrite(const string & filename, bool onebased, HANDLER h
 		std::string text = ss.str();
 
     		bytes[myrank] = text.size();
+		#pragma omp flush(bytes) 
+
 		int64_t bytesuntil = accumulate(bytes, bytes+myrank, static_cast<int64_t>(0));
 		int64_t bytestotal = accumulate(bytes, bytes+nprocs, static_cast<int64_t>(0));
 		
