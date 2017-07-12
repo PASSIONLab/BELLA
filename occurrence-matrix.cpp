@@ -219,24 +219,24 @@ int main (int argc, char* argv[]) {
     transpmat.Sorted();
 
     double start = omp_get_wtime();
-    CSC<size_t, size_t> tempspmat;
+    //CSC<size_t, size_t> tempspmat;
 
     HeapSpGEMM(spmat, transpmat, 
             [] (size_t & c1, size_t & c2)
             {  if(c1 != c2) 
                 cout << "error in multop()" << endl;
                 return 1;
-            }, [] (size_t & m1, size_t & m2)
-            { 
+            }, 
+            [] (size_t & m1, size_t & m2)
+            {
                return m1+m2;
-            }, tempspmat);
+            });
     
-    //cout << tempspmat.nnz << endl;
     cout << "Multiply time: " << (omp_get_wtime()-start)/60 << " min" << endl;
     //cout << "output nnz = " << tempspmat.nnz << endl;
-    double start2 = omp_get_wtime();
-    LocalAlignmentTest(tempspmat, reads);  // sparse mat, seq vector
-    cout << "Local alignment time: " << (omp_get_wtime()-start2)/60 << " min" << endl;
+    //double start2 = omp_get_wtime();
+    //LocalAlignmentTest(tempspmat, reads);  // sparse mat, seq vector
+    //cout << "Local alignment time: " << (omp_get_wtime()-start2)/60 << " min" << endl;
     cout << "Total time: " << (omp_get_wtime()-all)/60 << " min" << endl;
 
     return 0;

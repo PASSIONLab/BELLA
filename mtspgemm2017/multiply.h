@@ -3,6 +3,7 @@
 #include <omp.h>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <cstdlib>
 #include <algorithm>
@@ -17,15 +18,25 @@
 #define PERCORECACHE (1024 * 1024)
 #define KMER_LENGTH 17
 
-template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation>
-void LocalSpGEMM(IT & start, IT & end, IT & ncols, const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, vector<IT> * RowIdsofC, vector<FT> * ValuesofC)
+/* CSV containing CSC indices of the output sparse matrix*/
+void writeToFile(std::stringstream & myBatch)
+{  
+    std::string myString = myBatch.str();  
+    std::ofstream myfile;  
+    myfile.open ("outSpmat.csv", ios_base::app);  
+    myfile << myString;  
+    myfile.close();  
+} 
+
+template <typename IT, typename NT, typename MultiplyOperation, typename AddOperation>
+void LocalSpGEMM(IT & start, IT & end, IT & ncols, const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, vector<IT> * RowIdsofC, vector<NT> * ValuesofC)
 {
     //#pragma omp parallel for
     int v = 0;
     for(int i = start; i<end; ++i) // for bcols of B (one block)
     {
         IT hsize = B.colptr[i+1]-B.colptr[i];
-        HeapEntry<IT,FT> *mergeheap = new HeapEntry<IT,FT>[hsize];
+        HeapEntry<IT,NT> *mergeheap = new HeapEntry<IT,NT>[hsize];
         IT maxnnzc = 0;      // max number of nonzeros in C(:,i)
 
         IT k = 0;   // make initial heap
@@ -56,7 +67,7 @@ void LocalSpGEMM(IT & start, IT & end, IT & ncols, const CSC<IT,NT> & A, const C
         while(hsize > 0)
         {
             pop_heap(mergeheap, mergeheap + hsize);         // result is stored in mergeheap[hsize-1]
-            HeapEntry<IT,FT> hentry = mergeheap[hsize-1];
+            HeapEntry<IT,NT> hentry = mergeheap[hsize-1];
             
             // Use short circuiting
             if( (!RowIdsofC[v].empty()) && RowIdsofC[v].back() == hentry.key)
@@ -87,21 +98,21 @@ void LocalSpGEMM(IT & start, IT & end, IT & ncols, const CSC<IT,NT> & A, const C
                 --hsize;
             }     
         }
+
         v++;
         delete [] mergeheap;
     }
-}
+} 
 
 /**
   * Sparse multithreaded GEMM.
   * Probably slower than HeapSpGEMM_gmalloc but likely to use less memory
  **/
+
 //template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation, typename AlphaOperation>
-template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation>
-void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, CSC<IT,FT> & C)
-{
-    IT start, end, ncols;
-    
+template <typename IT, typename NT, typename MultiplyOperation, typename AddOperation>
+void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop)
+{   
     /* OSX-based memory consumption implementation */
 
     vm_size_t page_size;
@@ -121,34 +132,31 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         used_memory = ((int64_t)vm_stats.active_count +
                       (int64_t)vm_stats.inactive_count +
                       (int64_t)vm_stats.wire_count) * (int64_t)page_size;
-        
-        cout << "Free memory: " << free_memory/PERCORECACHE << "\nUsed memory: " << used_memory/PERCORECACHE << endl;
+
+        //cout << "Free memory: " << free_memory/PERCORECACHE << endl;
         /* It is good to note that just because Mac OS X may show very little actual free memory at times that it may 
         not be a good indication of how much is ready to be used on short notice. */
-
     } 
 
     uint64_t d = B.nnz/B.cols; // about d nnz each col
     uint64_t rsv = B.nnz*d;    // worst case
-    uint64_t requiredmemory = (rsv)*sizeof(size_t);
-
-    cout << "Required memory: " << requiredmemory/PERCORECACHE << endl;
+    uint64_t required_memory = (rsv)*sizeof(size_t);
+    IT start, end, ncols;
     
-    if(requiredmemory > free_memory)
+    if(required_memory > free_memory)
     {
-        cout << "*** BLOCK MULTIPLICATION ***" << endl; 
-        IT blocks = requiredmemory/free_memory;
-        IT bcols = B.cols/blocks;
+        cout << "*** BLOCK MULTIPLICATION: OUTPUT TO FILE ***" << endl; 
+        IT blocks = required_memory/free_memory;
+        IT bcols = B.cols/blocks; // define number of columns for each blocks
         
         cout << "blocks = " << blocks << endl;
-        cout << "bcols = " << bcols << endl;    // define number of columns for each blocks
+        cout << "bcols = " << bcols << endl;
 
-        C.rows = A.rows;
-        C.cols = B.cols;
-        C.colptr = new IT[C.cols+1];
-        C.colptr[0] = 0;
+        IT * colptr = new IT[B.cols+1];
+        colptr[0] = 0;
 
         IT pcols = 0;
+        std::stringstream myBatch;
 
         for(IT b = 0; b < blocks+1; b++) 
         { 
@@ -164,100 +172,79 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
             }
             
             vector<IT> * RowIdsofC = new vector<IT>[ncols];      // row ids for each column of C (bunch of cols)
-            vector<FT> * ValuesofC = new vector<FT>[ncols];      // values for each column of C (bunch of cols)
-        
+            vector<NT> * ValuesofC = new vector<NT>[ncols];      // values for each column of C (bunch of cols)
+
             LocalSpGEMM(start, end, ncols, A, B, multop, addop, RowIdsofC, ValuesofC);
-            
-            int j = 0;
+
+            int k=0;
             for(int i=start; i<end; ++i) // for all edge lists (do NOT parallelize)
             {
-                C.colptr[i+1] = C.colptr[i] + RowIdsofC[j].size();
-                j++;
+                colptr[i+1] = colptr[i] + RowIdsofC[k].size();
+                ++k;
             }
 
-            if(b == 0) // first iteration on blocks
+            IT * rowids = new IT[colptr[end]];
+            IT * values = new NT[colptr[end]];
+           
+            k=0;
+            for(int i=start; i<end; ++i)        // for all edge lists (do NOT parallelize)
             {
-                C.nnz = C.colptr[end];
-                C.rowids = new IT[C.nnz];
-                C.values = new FT[C.nnz];
-
-            } else // resize
-            {
-                IT nnznew = C.colptr[end];
-
-                IT *temprow = new IT[nnznew];
-                copy(C.rowids, C.rowids+C.nnz, temprow);
-                delete C.rowids;
-
-                C.rowids = new IT[nnznew];
-                copy(temprow, temprow+nnznew, C.rowids);
-                delete temprow;
-
-                FT *tempval = new IT[nnznew];
-                copy(C.values, C.values+C.nnz, tempval);
-                delete C.values;
-
-                C.values = new FT[nnznew];
-                copy(tempval, tempval+nnznew, C.values);
-                delete tempval;
-
-                C.nnz = nnznew;
-            }
-         
-            //#pragma omp parallel for
-            int l = 0;
-            for(int m=start; m<end; ++m) // combine step
-            {
-                // to do: local alignment as alpha operation
-                // transform(&ValuesofC[colStart[i]], &ValuesofC[colEnd[i]], &ValuesofC[colStart[i]], alphaop);
-                copy(RowIdsofC[l].begin(), RowIdsofC[l].end(), C.rowids + C.colptr[m]);
-                copy(ValuesofC[l].begin(), ValuesofC[l].end(), C.values + C.colptr[m]);
-                ++l;
+                copy(RowIdsofC[k].begin(), RowIdsofC[k].end(), rowids + colptr[i]);
+                copy(ValuesofC[k].begin(), ValuesofC[k].end(), values + colptr[i]);
+                ++k;
             }
 
-            pcols = pcols+ncols; // update counter
             delete [] RowIdsofC;
             delete [] ValuesofC;
+
+            for(int i=start; i<end; ++i)
+                for(int j=colptr[i]; j<colptr[i+1]; ++j)
+                    myBatch << i << "," << rowids[j] << "," << values[j] << endl;
+
+            delete rowids;
+            delete values;
+
+            writeToFile(myBatch);
+            pcols = pcols+ncols;        // update counter
         }
     } else
     {
-        cout << "*** STANDARD MULTIPLICATION ***" << endl;
+        cout << "*** STANDARD MULTIPLICATION: OUTPUT TO FILE ***" << endl;
         start = 0;
         end = B.cols;
         ncols = B.cols;
         vector<IT> * RowIdsofC = new vector<IT>[B.cols];      // row ids for each column of C
-        vector<FT> * ValuesofC = new vector<FT>[B.cols];      // values for each column of C
+        vector<NT> * ValuesofC = new vector<NT>[B.cols];      // values for each column of C
 
         LocalSpGEMM(start, end, ncols, A, B, multop, addop, RowIdsofC, ValuesofC);
 
-        if(C.isEmpty())
+        IT * colptr = new IT[B.cols+1];
+        colptr[0] = 0;
+        std::stringstream myBatch;
+
+        for(int i=0; i < B.cols; ++i)        // for all edge lists (do NOT parallelize)
+            colptr[i+1] = colptr[i] + RowIdsofC[i].size();
+
+        IT * rowids = new IT[colptr[B.cols]];
+        NT * values = new NT[colptr[B.cols]];
+        
+        for(int i=0; i < B.cols; ++i)        // for all edge lists (do NOT parallelize)
         {
-            C.rows = A.rows;
-            C.cols = B.cols;
-            C.colptr = new IT[C.cols+1];
-            C.colptr[0] = 0;
-        
-            for(int i=0; i < C.cols; ++i)        // for all edge lists (do NOT parallelize)
-            {
-                C.colptr[i+1] = C.colptr[i] + RowIdsofC[i].size();
-            }
-
-            C.nnz = C.colptr[C.cols];
-            C.rowids = new IT[C.nnz];
-            C.values = new FT[C.nnz];
-        
-            #pragma omp parallel for
-            for(int i=0; i<C.cols; ++i)         // combine step
-            {
-                // to do: local alignment as alpha operation
-                // transform(&ValuesofC[colStart[i]], &ValuesofC[colEnd[i]], &ValuesofC[colStart[i]], alphaop);
-                copy(RowIdsofC[i].begin(), RowIdsofC[i].end(), C.rowids + C.colptr[i]);
-                copy(ValuesofC[i].begin(), ValuesofC[i].end(), C.values + C.colptr[i]);
-            }
-
-            delete [] RowIdsofC;
-            delete [] ValuesofC;
+            copy(RowIdsofC[i].begin(), RowIdsofC[i].end(), rowids + colptr[i]);
+            copy(ValuesofC[i].begin(), ValuesofC[i].end(), values + colptr[i]);
         }
+
+        delete [] RowIdsofC;
+        delete [] ValuesofC;
+
+        for(int i=0; i<B.cols; ++i)
+            for(int j=colptr[i]; j<colptr[i+1]; ++j)
+                myBatch << i << "," << rowids[j] << "," << values[j] << endl;
+        
+        delete rowids;
+        delete values;
+
+        writeToFile(myBatch); 
     } 
 }
 

@@ -229,7 +229,7 @@ bool Filter(std::string & aseq, std::string & bseq, int & alen, int & blen)
 template <class IT, class NT>
 void LocalAlignmentTest(const CSC<IT,NT> & A, std::vector<string> & reads) 
 {
-    std::ifstream ifs("chr21.axt"); // it would be better to make this reading more general
+    std::ifstream ifs("test_01.axt"); // it would be better to make this reading more general
     std::map<size_t, pair<size_t, size_t>> ifsmap;
     double di; // k-mers distances on read i
     double dj; // k-mers distances on read j
