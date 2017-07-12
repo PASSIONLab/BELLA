@@ -200,12 +200,12 @@ template <class IT, class NT>
 template <class HANDLER>
 void CSC<IT,NT>::ParallelWrite(const string & filename, bool onebased, HANDLER handler)
 {
-	tuples  = new tuple<IT, IT, NT>[nnz];
+	tuple<IT, IT, NT> * tuples  = new tuple<IT, IT, NT>[nnz];
 
         IT k = 0;
         for(IT colid = 0; colid< cols; ++colid)
         {
-                for(IT i = colptrp[colid]; i< colptr[colid+1]; ++i)
+                for(IT i = colptr[colid]; i< colptr[colid+1]; ++i)
                 {
                         get<0>(tuples[k]) = rowids[i];	// row-id
                         get<1>(tuples[k]) = colid;	// column-id
@@ -270,7 +270,7 @@ void CSC<IT,NT>::ParallelWrite(const string & filename, bool onebased, HANDLER h
     		if (stat(filename.c_str(), &st) == -1)
     		{
        			cout << "File generation failed" << endl;
-			return;
+			abort();;
 		}
 		if(myrank == nprocs-1)	// let some other processor do the testing
 		{
@@ -281,7 +281,7 @@ void CSC<IT,NT>::ParallelWrite(const string & filename, bool onebased, HANDLER h
 		if ((ffinal = fopen(filename.c_str(), "rb+")) == NULL)	// then everyone fills it
        		{
 			printf("Matrix market output file %s failed to open at process %d\n", filename.c_str(), myrank);
-			return;
+			abort();;
        		}
 		fseek (ffinal , bytesuntil , SEEK_SET );
 		fwrite(text.c_str(),1, bytes[myrank] ,ffinal);
