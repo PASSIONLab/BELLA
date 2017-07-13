@@ -28,7 +28,6 @@
 
 #define ERR .15 
 #define KMER_LENGTH 17
-#define S 0 // minimum number of shard k-mers
 using namespace std;
 
 // compute the number of true overlapping reads
@@ -264,7 +263,7 @@ void LocalAlignmentTest(const CSC<IT,NT> & A, std::vector<string> & reads)
     { 
         for(size_t j = A.colptr[i]; j < A.colptr[i+1]; ++j) 
         {
-            if(A.values[j] > S)
+            if(A.values[j] > 0)
             {
                 //aseq = reads[A.rowids[j]];
                 //bseq = reads[i];
@@ -284,14 +283,10 @@ void LocalAlignmentTest(const CSC<IT,NT> & A, std::vector<string> & reads)
             }
         }
     }
-    
-    //cout << "S (minimum number of shared k-mers) = " << S << endl;
+
     cout << "TP+FP after multiply = " << TPandFP << endl;
     cout << "P from fastq at least overlap 2000 bp = " << P << endl;
     cout << "TP from fastq at least overlap 2000 bp = " << TP << endl;
     cout << "Recall = " << TP/P << endl;
-   // cout << "Recall Local Alignment = " << LA/P << endl;
-    cout << "Precision = " << TP/TPandFP << endl;
-    //cout << "Precision Local Alignment = " << LA/TPandFP << endl;
-    
+    cout << "Precision = " << TP/TPandFP << endl; 
 }

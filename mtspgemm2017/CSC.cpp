@@ -283,8 +283,6 @@ void CSC<IT,NT>::ParallelWrite(const string & filename, bool onebased, HANDLER h
 	}
 };
 
- 
-
 
 template <class IT, class NT>
 template <typename AddOperation>
