@@ -8,3 +8,5 @@ To run: ./trie mer_counts_dumps.fa (generated using jellyfish dump) my_genome.fn
 To compile the main code occurrence-matrix.cpp: make parse
 To run: ./parse kmers-table.fa my_genome.fna listofdata.txt
 In the folder the .axt has to be included.
+
+In multiply.h: remember to define which OS you're using (OSX or LINUX) in order to get the memory usage.

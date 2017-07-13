@@ -79,8 +79,8 @@ std::vector<filedata>  GetFiles(char *filename) {
     return filesview;
 }
 
-//typedef std::map<Kmer,size_t> dictionary; // <k-mer && reverse-complement, #kmers>
-//typedef std::vector<Kmer> Kmers;
+typedef std::map<Kmer,size_t> dictionary; // <k-mer && reverse-complement, #kmers>
+typedef std::vector<Kmer> Kmers;
 //typedef std::pair<size_t, vector<size_t> > cellspmat; // pair<kmer_id_j, vector<posix_in_read_i>>
 //typedef std::vector<pair<size_t, pair<size_t, size_t>>> multcell; // map<kmer_id, vector<posix_in_read_i, posix_in_read_j>>
 //typedef shared_ptr<multcell> mult_ptr; // pointer to multcell
@@ -122,9 +122,7 @@ int main (int argc, char* argv[]) {
     Kmers kmersfromreads;
     std::vector<tuple<size_t,size_t,size_t>> occurrences;
     std::vector<tuple<size_t,size_t,size_t>> transtuples;
-
-    //automaticRange(filein, rangeStart);
-    double all = omp_get_wtime();
+    
     cout << "Input k-mers file: " << argv[1] <<endl;
     cout << "Psbsim depth: " << DEPTH << endl;
     cout << "k-mer length: " << KMER_LENGTH <<endl;
@@ -194,8 +192,8 @@ int main (int argc, char* argv[]) {
     delete pfq;
     }
     // don't free this vector I need this information to align sequences 
-    //std::vector<string>().swap(seqs);   // free memory of seqs 
-    std::vector<string>().swap(quals); // free memory of quals
+    // std::vector<string>().swap(seqs);   // free memory of seqs 
+    std::vector<string>().swap(quals);     // free memory of quals
 
     cout << "Total number of reads: "<< read_id << endl;
   

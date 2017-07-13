@@ -7,15 +7,24 @@
 #include <string>
 #include <cstdlib>
 #include <algorithm>
+
+#define PERCORECACHE (1024 * 1024)
+#define KMER_LENGTH 17
+#define OSX
+
+#ifdef OSX
 #include <mach/mach.h>
 #include <mach/vm_statistics.h>
 #include <mach/mach_types.h>
 #include <mach/mach_init.h>
 #include <mach/mach_host.h>
+#endif
 
-#define PERCORECACHE (1024 * 1024)
-#define KMER_LENGTH 17
-#define OSX
+#ifdef LINUX
+#include "sys/types.h"
+#include "sys/sysinfo.h"
+struct sysinfo info;
+#endif
 
 /* CSV containing CSC indices of the output sparse matrix*/
 void writeToFile(std::stringstream & myBatch)
@@ -133,12 +142,13 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         /* It is good to note that just because Mac OS X may show very little actual free memory at times that it may 
         not be a good indication of how much is ready to be used on short notice. */
     } 
-    #else /* LINUX-based memory consumption implementation */
+    #endif
+    
+    #ifdef LINUX /* LINUX-based memory consumption implementation */
     if(sysinfo(&info) != 0)
     {
         return false;
     }   
-
     unsigned long free_memory = info.freeram * info.mem_unit;
     free_memory += info.freeswap * info.mem_unit;
     free_memory += info.bufferram * info.mem_unit;
