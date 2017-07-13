@@ -197,6 +197,94 @@ CSC<IT,NT>::CSC(Triple<IT,NT> * triples, IT mynnz, IT m, IT n):nnz(mynnz),rows(m
 }
 
 template <class IT, class NT>
+template <class HANDLER>
+void CSC<IT,NT>::ParallelWrite(const string & filename, bool onebased, HANDLER handler)
+{
+	tuple<IT, IT, NT> * tuples  = new tuple<IT, IT, NT>[nnz];
+	IT additive = 0;
+	if(onebased)	additive = 1;
+
+        IT k = 0;
+        for(IT colid = 0; colid< cols; ++colid)
+        {
+                for(IT i = colptr[colid]; i< colptr[colid+1]; ++i)
+                {
+                        get<0>(tuples[k]) = additive + rowids[i];	// row-id
+                        get<1>(tuples[k]) = additive + colid;		// column-id
+                        get<2>(tuples[k++]) = values[i];
+                }
+        }
+	vector<IT> bytes(omp_get_max_threads(), 0);
+	
+	#pragma omp parallel
+   	{
+        	long int fpos, end_fpos;
+        	int myrank = omp_get_thread_num();
+        	int nprocs = omp_get_num_threads();
+
+		std::stringstream ss;
+		if(myrank == 0)
+		{
+			ss << "%%MatrixMarket matrix coordinate real general\n";
+			ss << "%\n";				
+			ss << rows << '\t' << cols << '\t' << nnz << '\n';	// rank-0 has the header
+		}	
+		
+		#pragma omp for	
+		for(IT k=0; k< nnz; ++k)	// let the parallel division of range [0,...,nnz-1] be handled by the compiler
+		{
+			ss << get<0>(tuples[k]) << '\t';
+			ss << get<1>(tuples[k]) << '\t';
+			handler.save(ss, get<2>(tuples[k]));
+			ss << '\n';
+		}
+		delete [] tuples;
+		std::string text = ss.str();
+
+    		bytes[myrank] = text.size();
+		#pragma omp flush(bytes) 
+
+		int64_t bytesuntil = accumulate(bytes, bytes+myrank, static_cast<int64_t>(0));
+		int64_t bytestotal = accumulate(bytes, bytes+nprocs, static_cast<int64_t>(0));
+		
+
+    		if(myrank == 0)	// only leader rights the original file with no content
+    		{
+			std::ofstream ofs(filename.c_str(), std::ios::binary | std::ios::out);
+			cout << "Creating file with " << bytestotal << " bytes" << endl;
+    			ofs.seekp(bytestotal - 1);
+    			ofs.write("", 1);	// this will likely create a sparse file so the actual disks won't spin yet
+			ofs.close();
+   		}
+        	#pragma omp barrier
+
+
+		struct stat st;     // get file size
+    		if (stat(filename.c_str(), &st) == -1)
+    		{
+       			cout << "File generation failed" << endl;
+			abort();;
+		}
+		if(myrank == nprocs-1)	// let some other processor do the testing
+		{
+			cout << "File is actually " << st.st_size << " bytes seen from process " << myrank << endl;	
+		}
+
+    		FILE *ffinal;
+		if ((ffinal = fopen(filename.c_str(), "rb+")) == NULL)	// then everyone fills it
+       		{
+			printf("Matrix market output file %s failed to open at process %d\n", filename.c_str(), myrank);
+			abort();;
+       		}
+		fseek (ffinal , bytesuntil , SEEK_SET );
+		fwrite(text.c_str(),1, bytes[myrank] ,ffinal);
+		fflush(ffinal);
+		fclose(ffinal);
+	}
+};
+
+
+template <class IT, class NT>
 template <typename AddOperation>
 void CSC<IT,NT>::MergeDuplicates (AddOperation addop)
 {

@@ -5,7 +5,7 @@
 #include <cstdlib>
 #include <algorithm>
 
-#define GENOMESIZE 4641652
+#define GENOMESIZE 13783801
 #define KMER_LENGTH 17
 
 using namespace std;
@@ -52,4 +52,6 @@ int main (int argc, char* argv[]) {
 
 	rangeStart = it->first;
 	cout << "rangeStart = " << rangeStart <<endl;
+
+	return 0;
 }

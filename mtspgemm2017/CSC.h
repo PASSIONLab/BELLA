@@ -54,6 +54,22 @@ public:
         if( cols > 0 )
             delete [] colptr;
     }
+
+    class ScalarReadSaveHandler
+    {
+	public:
+		template <typename c, typename t>
+		void save(std::basic_ostream<c,t>& os, const NT& v)
+		{
+			os << v;
+		}
+    };
+
+    void ParallelWrite(const string & filename, bool onebased) { ParallelWrite(filename, onebased, ScalarReadSaveHandler()); };
+
+    template <class HANDLER>    
+    void ParallelWrite(const string & filename, bool onebased, HANDLER handler);
+
   
     bool isEmpty()
     {
