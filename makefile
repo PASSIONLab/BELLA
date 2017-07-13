@@ -4,7 +4,7 @@ include mtspgemm2017/GTgraph/Makefile.var
 INCLUDE = -I$(SPRNPATH)/include -I$(DALPATH)
 MLKINCLUDE = -I/opt/intel/composer_xe_2015.0.039/mkl/include
 LIBPATH = -L/opt/intel/composer_xe_2015.0.039/mkl/lib
-COMPILER = g++-6
+COMPILER = g++
 
 sprng:	
 	(cd $(SPRNPATH); $(MAKE); cd ../..)

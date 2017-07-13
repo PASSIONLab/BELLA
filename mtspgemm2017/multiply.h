@@ -13,8 +13,6 @@
 #include <mach/mach_init.h>
 #include <mach/mach_host.h>
 
-/* OSX-BASED BLOCK MULTIPLICATION */
-
 #define PERCORECACHE (1024 * 1024)
 #define KMER_LENGTH 17
 
@@ -113,8 +111,7 @@ void LocalSpGEMM(IT & start, IT & end, IT & ncols, const CSC<IT,NT> & A, const C
 template <typename IT, typename NT, typename MultiplyOperation, typename AddOperation>
 void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop)
 {   
-    /* OSX-based memory consumption implementation */
-
+    #ifdef OSX /* OSX-based memory consumption implementation */
     vm_size_t page_size;
     mach_port_t mach_port;
     mach_msg_type_number_t count;
@@ -137,6 +134,9 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         /* It is good to note that just because Mac OS X may show very little actual free memory at times that it may 
         not be a good indication of how much is ready to be used on short notice. */
     } 
+    #else /* LINUX-based memory consumption implementation */
+    
+    #endif
 
     uint64_t d = B.nnz/B.cols; // about d nnz each col
     uint64_t rsv = B.nnz*d;    // worst case
@@ -201,12 +201,13 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                 for(int j=colptr[i]; j<colptr[i+1]; ++j)
                     myBatch << i << "," << rowids[j] << "," << values[j] << endl;
 
-            delete rowids;
-            delete values;
+            delete [] rowids;
+            delete [] values;
 
             writeToFile(myBatch);
             pcols = pcols+ncols;        // update counter
         }
+        delete [] colptr;
     } else
     {
         cout << "*** STANDARD MULTIPLICATION: OUTPUT TO FILE ***" << endl;
@@ -241,8 +242,9 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
             for(int j=colptr[i]; j<colptr[i+1]; ++j)
                 myBatch << i << "," << rowids[j] << "," << values[j] << endl;
         
-        delete rowids;
-        delete values;
+        delete [] rowids;
+        delete [] values;
+        delete [] colptr;
 
         writeToFile(myBatch); 
     } 
