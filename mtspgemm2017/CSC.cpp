@@ -202,7 +202,8 @@ void CSC<IT,NT>::ParallelWrite(const string & filename, bool onebased, HANDLER h
 {
 	tuple<IT, IT, NT> * tuples  = new tuple<IT, IT, NT>[nnz];
 	IT additive = 0;
-	if(onebased)	additive = 1;
+	if(onebased)
+        additive = 1;
 
         IT k = 0;
         for(IT colid = 0; colid< cols; ++colid)
@@ -241,7 +242,7 @@ void CSC<IT,NT>::ParallelWrite(const string & filename, bool onebased, HANDLER h
 		delete [] tuples;
 		std::string text = ss.str();
 
-    		bytes[myrank] = text.size();
+    	bytes[myrank] = text.size();
 		#pragma omp flush(bytes) 
 
 		int64_t bytesuntil = accumulate(bytes, bytes+myrank, static_cast<int64_t>(0));

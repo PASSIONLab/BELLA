@@ -243,10 +243,9 @@ int main (int argc, char* argv[]) {
     double start2 = omp_get_wtime();
     DetectOverlap(tempspmat); // function to remove reads pairs that don't show evidence of potential overlap and to compute the recall 
     cout << "Filter time " << omp_get_wtime()-start2 << " seconds" << endl;
-    cout << "Total time " << omp_get_wtime()-all << " seconds" << endl;
+    cout << "Total time " << omp_get_wtime()-all << " seconds" << endl; */
 
-    CSC<size_t, size_t> tempspmat; */
-
+    // CSC<size_t, size_t> tempspmat; 
     HeapSpGEMM(spmat, transpmat, 
             [] (size_t & c1, size_t & c2)
             {  if(c1 != c2) 
@@ -258,8 +257,9 @@ int main (int argc, char* argv[]) {
                return m1+m2;
             });
     
-    cout << "Multiply time: " << (omp_get_wtime()-start)/60 << " min" << endl;
-    //LocalAlignmentTest(tempspmat, reads);  
+    cout << "Multiply time: " << (omp_get_wtime()-start) << " sec" << endl;
+    std::ifstream filename("outSpmat.csv");
+    LocalAlignmentTest(filename);  
     cout << "Total time: " << (omp_get_wtime()-all)/60 << " min" << endl;
     return 0;
 } 

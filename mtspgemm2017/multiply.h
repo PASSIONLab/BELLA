@@ -10,9 +10,9 @@
 
 #define PERCORECACHE (1024 * 1024)
 #define KMER_LENGTH 17
-#define OSX
+#define _OSX
 
-#ifdef OSX
+#ifdef _OSX
 #include <mach/mach.h>
 #include <mach/vm_statistics.h>
 #include <mach/mach_types.h>
@@ -20,7 +20,7 @@
 #include <mach/mach_host.h>
 #endif
 
-#ifdef LINUX
+#ifdef _LINUX
 #include "sys/types.h"
 #include "sys/sysinfo.h"
 struct sysinfo info;
@@ -31,10 +31,10 @@ void writeToFile(std::stringstream & myBatch)
 {  
     std::string myString = myBatch.str();  
     std::ofstream myfile;  
-    myfile.open ("outSpmat.csv", ios_base::app);  
+    myfile.open ("spmat.csv", ios_base::app);  
     myfile << myString;  
     myfile.close();  
-} 
+}
 
 template <typename IT, typename NT, typename MultiplyOperation, typename AddOperation>
 void LocalSpGEMM(IT & start, IT & end, IT & ncols, const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, vector<IT> * RowIdsofC, vector<NT> * ValuesofC)
@@ -106,7 +106,6 @@ void LocalSpGEMM(IT & start, IT & end, IT & ncols, const CSC<IT,NT> & A, const C
                 --hsize;
             }     
         }
-
         v++;
         delete [] mergeheap;
     }
@@ -121,7 +120,7 @@ void LocalSpGEMM(IT & start, IT & end, IT & ncols, const CSC<IT,NT> & A, const C
 template <typename IT, typename NT, typename MultiplyOperation, typename AddOperation>
 void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop)
 {   
-    #ifdef OSX /* OSX-based memory consumption implementation */
+    #ifdef _OSX /* OSX-based memory consumption implementation */
     vm_size_t page_size;
     mach_port_t mach_port;
     mach_msg_type_number_t count;
@@ -144,7 +143,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     } 
     #endif
     
-    #ifdef LINUX /* LINUX-based memory consumption implementation */
+    #ifdef _LINUX /* LINUX-based memory consumption implementation */
     if(sysinfo(&info) != 0)
     {
         return false;
@@ -158,6 +157,8 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     uint64_t rsv = B.nnz*d;    // worst case
     uint64_t required_memory = (rsv)*sizeof(size_t);
     IT start, end, ncols;
+    IT * rowids;
+    IT * values;
     
     if(required_memory > free_memory)
     {
@@ -198,13 +199,15 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                 colptr[i+1] = colptr[i] + RowIdsofC[k].size();
                 ++k;
             }
-
-            IT * rowids = new IT[colptr[end]];
-            IT * values = new NT[colptr[end]];
            
+            IT * rowids = new IT[colptr[end]];
+            NT * values = new NT[colptr[end]];
+
             k=0;
-            for(int i=start; i<end; ++i)        // for all edge lists (do NOT parallelize)
+            for(int i=start; i<end; ++i) // combine step
             {
+                // TODO: Local Alignment as Alpha Operation
+                // transform(&ValuesofC[colStart[i]], &ValuesofC[colEnd[i]], &ValuesofC[colStart[i]], alphaop);
                 copy(RowIdsofC[k].begin(), RowIdsofC[k].end(), rowids + colptr[i]);
                 copy(ValuesofC[k].begin(), ValuesofC[k].end(), values + colptr[i]);
                 ++k;
@@ -213,15 +216,17 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
             delete [] RowIdsofC;
             delete [] ValuesofC;
 
-            for(int i=start; i<end; ++i)
+            for(int i=start; i<end; ++i) {
                 for(int j=colptr[i]; j<colptr[i+1]; ++j)
-                    myBatch << i << "," << rowids[j] << "," << values[j] << endl;
+                    myBatch << i << ',' << rowids[j] << ',' << values[j] << endl;
+            }
 
             delete [] rowids;
             delete [] values;
 
             writeToFile(myBatch);
-            pcols = pcols+ncols;        // update counter
+            myBatch.str(std::string());
+            pcols = pcols+ncols; // update counter
         }
         delete [] colptr;
     } else
@@ -256,13 +261,13 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
 
         for(int i=0; i<B.cols; ++i)
             for(int j=colptr[i]; j<colptr[i+1]; ++j)
-                myBatch << i << "," << rowids[j] << "," << values[j] << endl;
+                myBatch << i << ',' << rowids[j] << ',' << values[j] << endl;
         
         delete [] rowids;
         delete [] values;
         delete [] colptr;
 
-        writeToFile(myBatch); 
+        writeToFile(myBatch);
     } 
 }
 

@@ -30,8 +30,141 @@
 #define KMER_LENGTH 17
 using namespace std;
 
-// compute the number of true overlapping reads
-double TrueOverlapping(ifstream & ifs) {
+#ifdef _MULTPTR
+/* Compute the distance between two k-mers on the same read */
+template <typename IT>
+double ComputeDistance(IT & fst, IT & snd) 
+{
+
+    double delta;
+    double min, max, diff;
+
+    if(fst < snd) {
+        min = (double)fst;
+        max = (double)snd;
+    } else {
+        max = (double)fst;
+        min = (double)snd;
+    }
+
+    diff = max-min;
+    delta = diff; 
+
+    return delta;
+}    
+
+/* Find when a k-mers pair represents an evidence of potential overlap or not */
+bool PotentialOverlap(double & dfst, double & dsnd) 
+{
+
+    double dmin, dmax; /* Define the shortest and longest distance */
+    double Lmin, Lmax; /* Compute the shortest length of the longest distance and the longest length of the shortest distance */
+    bool region = false;
+    double p_ins = 1.090;
+    double p_del = 0.955;
+    
+    if(dfst <= dsnd) { 
+        dmin = dfst; 
+        dmax = dsnd;
+    } else {
+        dmax = dfst;
+        dmin = dsnd;
+    }
+    
+    Lmax = dmin/p_del; /* Maximum length of the shortest delta given the probability of deletion */
+    Lmin = dmax/p_ins; /* Minimum length of the longest delta given the probability of insertion */
+    
+    if(Lmax > Lmin) {
+        region = true;
+    } else region = false;
+
+    return region;
+}
+
+/* Estimation of overlapping region length
+   Reads length has to be included and position of the same k-mer on different reads */
+template <typename IT>
+double ExpectedKmers(IT & i, IT & j, IT & len_i, IT & len_j) 
+{
+
+    double left;    /* Define the left margin */
+    double right;   /* Define the right margin */
+    double estime, p;  /* Expected overlap region length */
+    size_t temp_i, temp_j;
+    
+    if(i <= j)
+        left = (double)i;
+    else left = (double)j;
+
+    temp_i = len_i - i;
+    temp_j = len_j - j; 
+
+    if(temp_i <= temp_j)
+        right = (double)temp_i;
+    else right = (double)temp_j;
+
+    estime = left + right; /* Estimated overlap */
+    p = 1-pow((1-pow((1-ERR), (2*KMER_LENGTH))), estime); /* Expected number of k-mers */
+
+    return p;
+}
+
+/* Reads length has to be included and position of the same k-mer on different reads */
+template <typename IT>
+double MaxGap(IT & i, IT & j, IT & len_i, IT & len_j) 
+{
+
+    double left;    /* Define the left margin */
+    double right;   /* Define the right margin */
+    double estime;  /* Expected overlap region length */
+    double gap;
+    size_t temp_i, temp_j;
+    double variance_single_base = 0.12;
+    
+    if(i <= j)
+        left = (double)i;
+    else left = (double)j;
+
+    temp_i = len_i - i;
+    temp_j = len_j - j; 
+
+    if(temp_i <= temp_j)
+        right = (double)temp_i;
+    else right = (double)temp_j;
+
+    estime = left + right; /* Estimated overlap */
+
+    return estime;
+}
+#endif
+
+#ifdef _LOCALIGN
+/* EDLIB Local Alignment */
+bool Filter(std::string & aseq, std::string & bseq, int & alen, int & blen) 
+{
+  bool align;
+  EdlibAlignResult result;
+  char *c_aseq = new char[alen+1];
+  strcpy(c_aseq, aseq.c_str());
+  char *c_bseq = new char[blen+1];
+  strcpy(c_bseq, bseq.c_str());
+
+  result = edlibAlign(c_aseq, alen, c_bseq, blen, edlibNewAlignConfig(-1, EDLIB_MODE_HW, EDLIB_TASK_PATH));
+  delete [] c_aseq;
+  delete [] c_bseq;
+
+  if(result.alignmentLength < 300)
+    align = false;
+  else align = true;
+
+  edlibFreeAlignResult(result);
+  return align;
+}
+#endif
+
+/* Compute the number of true overlapping reads */
+double TrueOverlapping(ifstream & ifs) 
+{
 
     vector<Interval<int>> intervals;
     vector<Interval<int>> queries;
@@ -69,67 +202,15 @@ double TrueOverlapping(ifstream & ifs) {
     }
 
     return trueoverlaps;
-
 }
 
-// compute the distance between two k-mers on the same read
-template <typename IT>
-double ComputeDistance(IT & fst, IT & snd) {
+/* Compute the overlap length between potential overlapping reads pairs */
+int ComputeLength(map<int, pair<int,int>> & ifsmap, int & col, int & row) 
+{
 
-    double delta;
-    double min, max, diff;
-
-    //#pragma omp parallel for
-    //cout << "i =" << fst[i] << ", j = " << snd[j] << endl;
-
-    if(fst < snd) {
-        min = (double)fst;
-        max = (double)snd;
-    } else {
-        max = (double)fst;
-        min = (double)snd;
-    }
-
-    diff = max-min;
-    delta = diff; 
-
-    return delta;
-}    
-
-// find when a k-mers pair represents an evidence of potential overlap or not
-bool PotentialOverlap(double & dfst, double & dsnd) {
-
-    double dmin, dmax; // to define the shortest and longest delta
-    double Lmin, Lmax; // to compute the shortest length of the longest delta and the longest length of the shortes delta 
-    bool region = false;
-    double p_ins = 1.090;
-    double p_del = 0.955;
-    
-    if(dfst <= dsnd) { 
-        dmin = dfst; 
-        dmax = dsnd;
-    } else {
-        dmax = dfst;
-        dmin = dsnd;
-    }
-    
-    Lmax = dmin/p_del; // maximum length of the shortest delta given the probability of deletion
-    Lmin = dmax/p_ins; // minimum length of the longest delta given the probability of insertion
-    
-    if(Lmax > Lmin) {
-        region = true;
-    } else region = false;
-
-    return region;
-}
-
-// compute the overlap length between potential overlapping reads pairs
-template <typename IT>
-size_t ComputeLength(map<size_t, pair<size_t, size_t>> & ifsmap, IT & col, IT & row) {
-
-    size_t alignment_length = 0;
-    std::map<size_t, pair<size_t, size_t>>::iterator jit;
-    std::map<size_t, pair<size_t, size_t>>::iterator iit;
+    int alignment_length = 0;
+    std::map<int, pair<int,int>>::iterator jit;
+    std::map<int, pair<int,int>>::iterator iit;
 
     jit = ifsmap.find(col); // col index
     iit = ifsmap.find(row); // row index
@@ -150,104 +231,34 @@ size_t ComputeLength(map<size_t, pair<size_t, size_t>> & ifsmap, IT & col, IT & 
     return alignment_length;
 }
 
-// Estimation of overlapping region length
-template <typename IT>
-double ExpectedKmers(IT & i, IT & j, IT & len_i, IT & len_j) { // reads length has to be included and position of the same k-mer on different reads
-
-    double left;    // to define the left margin 
-    double right;   // to define the right margin
-    double estime, p;  // expected overlap region length
-    size_t temp_i, temp_j;
-    double er = 0.15; // error rate
-    
-    if(i <= j)
-        left = (double)i;
-    else left = (double)j;
-
-    temp_i = len_i - i;
-    temp_j = len_j - j; 
-
-    if(temp_i <= temp_j)
-        right = (double)temp_i;
-    else right = (double)temp_j;
-
-    estime = left + right; // estimated overlap
-    p = 1-pow((1-pow((1-er), (2*KMER_LENGTH))), estime); // expected number of k-mers
-
-    return p;
-}
-
-template <typename IT>
-double MaxGap(IT & i, IT & j, IT & len_i, IT & len_j) { // reads length has to be included and position of the same k-mer on different reads
-
-    double left;    // to define the left margin 
-    double right;   // to define the right margin
-    double estime;  // expected overlap region length
-    double gap;
-    size_t temp_i, temp_j;
-    double variance_single_base = 0.12;
-    
-    if(i <= j)
-        left = (double)i;
-    else left = (double)j;
-
-    temp_i = len_i - i;
-    temp_j = len_j - j; 
-
-    if(temp_i <= temp_j)
-        right = (double)temp_i;
-    else right = (double)temp_j;
-
-    estime = left + right; // estimated overlap
-    //gap = estime*variance_single_base;
-    
-    return estime;
-}
-
-bool Filter(std::string & aseq, std::string & bseq, int & alen, int & blen) 
+void LocalAlignmentTest(std::ifstream & filename) 
 {
-  bool align;
-  EdlibAlignResult result;
-  char *c_aseq = new char[alen+1];
-  strcpy(c_aseq, aseq.c_str());
-  char *c_bseq = new char[blen+1];
-  strcpy(c_bseq, bseq.c_str());
+    std::ifstream ifs("test_01.axt"); /* To be generalized */
+    std::map<int, pair<int,int>> ifsmap;
+    double TPandFP = 0, TP = 0;
+    int alignment_length;
 
-  result = edlibAlign(c_aseq, alen, c_bseq, blen, edlibNewAlignConfig(-1, EDLIB_MODE_HW, EDLIB_TASK_PATH));
-  delete [] c_aseq;
-  delete [] c_bseq;
+    #ifdef _MULTPTR
+    double di; /* k-mers distances on read i */
+    double dj; /* k-mers distances on read j */
+    #endif
 
-  if(result.alignmentLength < 300)
-    align = false;
-  else align = true;
-
-  edlibFreeAlignResult(result);
-  return align;
-}
-
-template <class IT, class NT>
-void LocalAlignmentTest(const CSC<IT,NT> & A, std::vector<string> & reads) 
-{
-    std::ifstream ifs("test_01.axt"); // it would be better to make this reading more general
-    std::map<size_t, pair<size_t, size_t>> ifsmap;
-    double di; // k-mers distances on read i
-    double dj; // k-mers distances on read j
-    double TPandFP = 0, TP = 0, LA = 0;
-    size_t track = 0, var, alignment_length;
+    #ifdef _LOCALIGN
     std::string aseq, bseq;
     int alen, blen;
-    //bool align;
+    double LA = 0;
+    #endif
 
-    // creation reads map from axt file to be used to find potential overlapping reads pairs 
+    /* Create reads map from axt file to be used to find potential overlapping reads pairs */
     if(ifs.is_open()) {
         int id;
         int st;
         int en;
-        std::pair<size_t, size_t> values;
+        std::pair<int, int> values;
         while(ifs >> id >> st >> en) {
-            size_t key = {id};
-            size_t start = {st};
-            size_t end = {en};
+            int key = {id};
+            int start = {st};
+            int end = {en};
             values = make_pair(start, end);
             ifsmap[key] = values;
         }
@@ -256,37 +267,53 @@ void LocalAlignmentTest(const CSC<IT,NT> & A, std::vector<string> & reads)
     ifs.clear();
     ifs.seekg(0, ios::beg);
 
-    double P = TrueOverlapping(ifs); // computing true overlapping reads pairs from fastq
-    ifs.close();
+    /* Compute true overlapping reads pairs from fastq */
+    double P = TrueOverlapping(ifs);
+    ifs.clear();
+    ifs.seekg(0, ios::beg);
 
-    for(size_t i = 0; i < A.cols; ++i) 
-    { 
-        for(size_t j = A.colptr[i]; j < A.colptr[i+1]; ++j) 
+    if(filename.is_open())
+    {
+        std::string line;
+        while(getline(filename, line))
         {
-            if(A.values[j] > 0)
+            TPandFP++;
+            std::stringstream lineStream(line);
+            std::string col, row;
+
+            getline(lineStream, col, ',');
+            getline(lineStream, row, ',');
+
+            int colid = stoi(col);
+            int rowid = stoi(row);
+
+            #ifdef _LOCALIGN
+            aseq = reads[A.rowids[j]];
+            bseq = reads[i];
+            alen = (int)aseq.length();
+            blen = (int)bseq.length();
+            #endif
+
+            /* Compute the overlap length between potential overlapping reads pairs */
+            alignment_length = ComputeLength(ifsmap, colid, rowid);
+            if(alignment_length >= KMER_LENGTH)
             {
-                //aseq = reads[A.rowids[j]];
-                //bseq = reads[i];
-                //alen = (int)aseq.length();
-                //blen = (int)bseq.length();
-                
-                TPandFP++;
-                alignment_length = ComputeLength(ifsmap, i, A.rowids[j]); // compute the overlap length between potential overlapping reads pairs
-            
-                if(alignment_length >= KMER_LENGTH)
-                {
-                    TP++;
-                    //align = Filter(aseq, bseq, alen, blen);
-                    //if(align == true)
-                    //    LA++;
-                }
+                TP++;
+
+                #ifdef _LOCALIGN
+                align = Filter(aseq, bseq, alen, blen);
+                if(align == true)
+                    LA++;
+                #endif
             }
         }
     }
+    filename.close();
+    ifs.close();
 
     cout << "TP+FP after multiply = " << TPandFP << endl;
-    cout << "P from fastq at least overlap 2000 bp = " << P << endl;
-    cout << "TP from fastq at least overlap 2000 bp = " << TP << endl;
+    cout << "P from fastq = " << P << endl;
+    cout << "TP from fastq = " << TP << endl;
     cout << "Recall = " << TP/P << endl;
     cout << "Precision = " << TP/TPandFP << endl; 
 }
