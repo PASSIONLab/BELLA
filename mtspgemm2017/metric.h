@@ -3,7 +3,6 @@
 #include "IntervalTree.h"
 #include "BitMap.h"
 #include "global.h"
-#include "../edlib/edlib/include/edlib.h"
 #include <omp.h>
 #include <fstream>
 #include <iostream>
@@ -31,6 +30,7 @@
 using namespace std;
 
 #ifdef _MULTPTR
+
 /* Compute the distance between two k-mers on the same read */
 template <typename IT>
 double ComputeDistance(IT & fst, IT & snd) 
@@ -79,86 +79,6 @@ bool PotentialOverlap(double & dfst, double & dsnd)
     } else region = false;
 
     return region;
-}
-
-/* Estimation of overlapping region length
-   Reads length has to be included and position of the same k-mer on different reads */
-template <typename IT>
-double ExpectedKmers(IT & i, IT & j, IT & len_i, IT & len_j) 
-{
-
-    double left;    /* Define the left margin */
-    double right;   /* Define the right margin */
-    double estime, p;  /* Expected overlap region length */
-    size_t temp_i, temp_j;
-    
-    if(i <= j)
-        left = (double)i;
-    else left = (double)j;
-
-    temp_i = len_i - i;
-    temp_j = len_j - j; 
-
-    if(temp_i <= temp_j)
-        right = (double)temp_i;
-    else right = (double)temp_j;
-
-    estime = left + right; /* Estimated overlap */
-    p = 1-pow((1-pow((1-ERR), (2*KMER_LENGTH))), estime); /* Expected number of k-mers */
-
-    return p;
-}
-
-/* Reads length has to be included and position of the same k-mer on different reads */
-template <typename IT>
-double MaxGap(IT & i, IT & j, IT & len_i, IT & len_j) 
-{
-
-    double left;    /* Define the left margin */
-    double right;   /* Define the right margin */
-    double estime;  /* Expected overlap region length */
-    double gap;
-    size_t temp_i, temp_j;
-    double variance_single_base = 0.12;
-    
-    if(i <= j)
-        left = (double)i;
-    else left = (double)j;
-
-    temp_i = len_i - i;
-    temp_j = len_j - j; 
-
-    if(temp_i <= temp_j)
-        right = (double)temp_i;
-    else right = (double)temp_j;
-
-    estime = left + right; /* Estimated overlap */
-
-    return estime;
-}
-#endif
-
-#ifdef _LOCALIGN
-/* EDLIB Local Alignment */
-bool Filter(std::string & aseq, std::string & bseq, int & alen, int & blen) 
-{
-  bool align;
-  EdlibAlignResult result;
-  char *c_aseq = new char[alen+1];
-  strcpy(c_aseq, aseq.c_str());
-  char *c_bseq = new char[blen+1];
-  strcpy(c_bseq, bseq.c_str());
-
-  result = edlibAlign(c_aseq, alen, c_bseq, blen, edlibNewAlignConfig(-1, EDLIB_MODE_HW, EDLIB_TASK_PATH));
-  delete [] c_aseq;
-  delete [] c_bseq;
-
-  if(result.alignmentLength < 300)
-    align = false;
-  else align = true;
-
-  edlibFreeAlignResult(result);
-  return align;
 }
 #endif
 
@@ -231,7 +151,7 @@ int ComputeLength(map<int, pair<int,int>> & ifsmap, int & col, int & row)
     return alignment_length;
 }
 
-void LocalAlignmentTest(std::ifstream & filename) 
+void GetMetrics(std::ifstream & filename) 
 {
     std::ifstream ifs("test_01.axt"); /* To be generalized */
     std::map<int, pair<int,int>> ifsmap;
@@ -241,12 +161,6 @@ void LocalAlignmentTest(std::ifstream & filename)
     #ifdef _MULTPTR
     double di; /* k-mers distances on read i */
     double dj; /* k-mers distances on read j */
-    #endif
-
-    #ifdef _LOCALIGN
-    std::string aseq, bseq;
-    int alen, blen;
-    double LA = 0;
     #endif
 
     /* Create reads map from axt file to be used to find potential overlapping reads pairs */
@@ -287,25 +201,10 @@ void LocalAlignmentTest(std::ifstream & filename)
             int colid = stoi(col);
             int rowid = stoi(row);
 
-            #ifdef _LOCALIGN
-            aseq = reads[A.rowids[j]];
-            bseq = reads[i];
-            alen = (int)aseq.length();
-            blen = (int)bseq.length();
-            #endif
-
             /* Compute the overlap length between potential overlapping reads pairs */
             alignment_length = ComputeLength(ifsmap, colid, rowid);
             if(alignment_length >= KMER_LENGTH)
-            {
                 TP++;
-
-                #ifdef _LOCALIGN
-                align = Filter(aseq, bseq, alen, blen);
-                if(align == true)
-                    LA++;
-                #endif
-            }
         }
     }
     filename.close();
