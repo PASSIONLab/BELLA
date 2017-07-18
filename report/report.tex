@@ -317,7 +317,7 @@ However, we saw that removing the filter does not change significantly our TPR (
 The simple selection of reliable k-mers and the application of the sparse matrix multiplication guarantee the best results (that means almost the same maximum we were able to achieve with the previous version of the algorithm) both for sensitivity and precision.
 %The sensivity and precision for different genomes are shown in \Cref{table:met}.
 
-To increase our precision, we exploit the information about the first shared k-mer position as it allows us to compute the potential overlap length between two reads, as shown in \Cref{fig:ovlen}.
+\myworries{Work in progress.} To increase our precision, we exploit the information about the first shared k-mer position as it allows us to compute the potential overlap length $L_{ov}$ between two reads, as shown in \Cref{fig:ovlen}.
 Following, this length can be used to compute the theoretical maximum edit distance used during the expensive local alignment phase to throw away false positives read pairs.
 \begin{figure}
     \centering
@@ -325,6 +325,20 @@ Following, this length can be used to compute the theoretical maximum edit dista
     \caption{Overlap length computed exploiting the position of the first shared k-mer between the two considered reads.}
     \label{fig:ovlen}
 \end{figure}
+If the probability of correctly sequence a bases-pair is equal to $p^2$ where $p=(1-e)$, the average number of correct bases-pairs in a region of length $L_{ov}$ is $\mu = L_{ov} \cdot p^2$, while the standard deviation is $\sigma = \sqrt{L_{ov}\cdot p^2 \cdot (1-p^2)}$.
+If we consider our data as normally distributed, we can approximate the maximum edit distance for a given $L_{ov}$, which is computed runtime for each reads pair, as:
+
+$$edit~distance = L_{ov}-L_{ov} \cdot p^2-\sqrt{L_{ov}\cdot p^2\cdot (1-p^2)} = L_{ov}-\mu-\sigma$$
+
+So far, we consider as suitable values those values within $\sigma$ from the mean.
+To sum up, first of all, we compute the number of shared k-mers between two reads exploiting the multiplication.
+Then, we apply the local alignment and write on file only those reads pairs which show an edit distance smaller than the one described above.
+
+That said, we can make some further considerations: (a) the precision of our data is significantly better if we consider reads pairs sharing more than $2$ k-mers and (b) the current approach leads to throw away some $true~positive~data$ due to the fact that the k-mer position we use to compute $L_{ov}$ could be wrong.
+Consequently, we could decide to apply the local alignment filter only on reads pairs sharing $one$ k-mer. 
+In this way for the $Escherichia~Coli$ genome, we would obtain a recall equal to 86.40\% and a precision of 80.28\%.
+These percentages show, respectively, a decrease of 4.81\% and an increase of  28.28\%.
+\myworries{Think about how to improve these percentages, perhaps a correction factor while computing $L_{ov}$.}
 %In the MECAT paper (http://www.biorxiv.org/content/early/2016/12/15/089250), the authors consider just reads with length at %least equal to 5000 bp (Figure 2 in their paper) and define that two reads has the correct pairwise relationship if they %overlap for more than 2000 bp (Table 2 in their paper).
 %So, we generated the initial set of reads with pbsim setting 5000 bp as minimum length and setting the threshold to consider %a pair as correct (both in the initial set and when we filter our pairs) equal to 2000 bp.
 %In this case, for instance for the $E.Coli$, we obtain a recall of 99\% and a precision of 34\%. 
@@ -372,7 +386,6 @@ Following, this length can be used to compute the theoretical maximum edit dista
 %\label{table:mecat}
 %\end{table}
 
-\myworries{Add references.}
 \clearpage
 
 %\appendix

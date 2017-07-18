@@ -59,7 +59,7 @@ void overlaplen(NT & values, std::string & row, std::string col, int & len, int 
         right = temp1;
     else right = temp2;
 
-    len = left+right; /* Estimated overlap, divided with pCORR to be more conservative */
+    len = left+right; /* Estimated overlap */
 }
 
 /* EDLIB Local Alignment */
@@ -84,8 +84,8 @@ bool edlibop(NT & values, std::string & row, std::string & col, int & len, int &
     
         /* In len we expect len*pow(pCORR, 2) correct base-pairs,
         so here we compute the maximum edit distance as len - mean error (len*pow(pCORR, 2) 
-        - 2 * standard deviation 2*sqrt(len*pow(pCORR, 2)*pow(1-pCORR, 2)) */
-        int maxed = len-(len*pow(pCORR, 2)-3*sqrt(len*pow(pCORR, 2)*pow(1-pCORR, 2))); 
+        - standard deviation = sqrt(len*pow(pCORR, 2)*(1-pow(pCORR, 2)) */
+        int maxed = len-len*pow(pCORR, 2)-sqrt(len*pow(pCORR, 2)*(1-pow(pCORR, 2))); 
     
         EdlibAlignResult result = edlibAlign(read1, len, read2, len, edlibNewAlignConfig(maxed, EDLIB_MODE_NW, EDLIB_TASK_DISTANCE));
         delete [] read1;
