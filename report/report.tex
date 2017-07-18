@@ -291,81 +291,86 @@ For instance, two reads could be interconnected through a k-mer excluded from th
 \subsection{Light version}
 
 The previous explained version of the algorithm is implemented on single node and it has very high memory requirements. 
-Due to the memory bound, this version does not allow us to test our approach with genomes greater than the \emph{Escherischia Coli} one.
+%Due to the memory bound, this version does not allow us to test our approach with genomes greater than the \emph{Escherischia Coli} one.
 Consequently, we decided to implement a \emph{light} version of the algorithm.
-
-In this second version, the cell $(i,j)$ of the matrices before the multiplication contains just the integer value that represents the k-mer $id$ in the k-mers dictionary; while the cell $(i,j)$ in the resulted matrix is an integer value representing the number of shared k-mers between the two considered reads.
-This change allowed us to test our approch with different genomes, as shown in \Cref{table:ram}.
-\begin{table}
-\centering
-\begin{tabular*}{\textwidth}{l @{\extracolsep{\fill}} rrr}
-\hline %inserts double horizontal lines 
-\addlinespace[1ex] Genome & Sequence size (MB) & Reliable k-mers (million) & RAM Usage (GB) \\ 
-%heading
-\addlinespace[1ex]\hline % inserts single horizontal line
-\addlinespace[0.8ex] $E.$ $Coli$ & 4.7 & 1.63 & 1.3 \\ 
-\addlinespace[0.8ex] $C.$ $Elegans$ Chr. $3$ & 14.1 & 4.97 & 7.6 \\
-\addlinespace[0.8ex] $C.$ $Elegans$ Chr. $4$ & 17.8 & 6.87 & 8.3 \\
-\addlinespace[0.8ex] $E.$ $Caballus$ Chr. $31$ & 25.5 & 16.17 & 8.8 \\
-\addlinespace[1ex]\hline
-\end{tabular*}
-\caption{Reliable k-mers and RAM usage of the $light$ algorithm for different genomes.}
-\label{table:ram}
-\end{table}
-
-Due to this modification, we cannot apply the distances filter previously described as to use it we need additional information, such as the k-mers positions in the reads.
+In this second version, the cell $(i,j)$ of the matrices before the multiplication contains the integer value that represents the k-mer $id$ in the k-mers dictionary and the first position of that k-mer in the corresponding read; while the cell $(i,j)$ in the resulted matrix contains three integer values. 
+The first represents the number of shared k-mers between the two considered reads, while the second and the third are the positions of the first shared k-mer on the two reads.
+%This change allowed us to test our approch with different genomes, as shown in \Cref{table:ram}.
+%\begin{table}
+%\centering
+%\begin{tabular*}{\textwidth}{l @{\extracolsep{\fill}} rrr}
+%\hline %inserts double horizontal lines 
+%\addlinespace[1ex] Genome & Sequence size (MB) & Reliable k-mers (million) & RAM Usage (GB) \\ 
+%%heading
+%\addlinespace[1ex]\hline % inserts single horizontal line
+%\addlinespace[0.8ex] $E.$ $Coli$ & 4.7 & 1.63 & 1.3 \\ 
+%\addlinespace[0.8ex] $C.$ $Elegans$ Chr. $3$ & 14.1 & 4.97 & 7.6 \\
+%\addlinespace[0.8ex] $C.$ $Elegans$ Chr. $4$ & 17.8 & 6.87 & 8.3 \\
+%\addlinespace[0.8ex] $E.$ $Caballus$ Chr. $31$ & 25.5 & 16.17 & 8.8 \\
+%\addlinespace[1ex]\hline
+%\end{tabular*}
+%\caption{Reliable k-mers and RAM usage of the $light$ algorithm for different genomes.}
+%\label{table:ram}
+%\end{table}
+These changes make infeasible applying the distances filter previously described, as it needs additional information, such as the positions of all the shared k-mers in the reads.
 However, we saw that removing the filter does not change significantly our TPR (called also sensitivity) and precision.
 The simple selection of reliable k-mers and the application of the sparse matrix multiplication guarantee the best results (that means almost the same maximum we were able to achieve with the previous version of the algorithm) both for sensitivity and precision.
-The sensivity and precision for different genomes are shown in \Cref{table:met}.
-So far, our precision is very low that means we are potentially wasting a significant amount of computiation in the later stages.
-\myworries{Implement an intermediate version that can allow us to compute the potential overlap between two considered reads and try to use this information to throw away false positives.}.
+%The sensivity and precision for different genomes are shown in \Cref{table:met}.
 
-In the MECAT paper (http://www.biorxiv.org/content/early/2016/12/15/089250), the authors consider just reads with length at least equal to 5000 bp (Figure 2 in their paper) and define that two reads has the correct pairwise relationship if they overlap for more than 2000 bp (Table 2 in their paper).
-So, we generated the initial set of reads with pbsim setting 5000 bp as minimum length and setting the threshold to consider a pair as correct (both in the initial set and when we filter our pairs) equal to 2000 bp.
-In this case, for instance for the $E.Coli$, we obtain a recall of 99\% and a precision of 34\%. 
-Even if the precision is lower with respect to our previous implementation, the number of reads pairs on which compute the local alignment is smaller (about 1.23 millions less than before, but we're still wasting a lot of computation).
-Considering than in a region of length 2000, we expected to see about 8 shared k-mers (computed as $2000 \cdot (1-e)^{34}$), setting 4 as minimum number of shared k-mers to be more conservative, we obtain 98.14\% of recall and 68.6\% of precision, setting 8 we got 93.94\% of recall and 78.8\% of precision.
-The results obtained applying MECAT thresholds for difference genomes are reported in \Cref{table:mecat}.
-The term \emph{computational saving} in \Cref{table:mecat} is defined as $1-\frac{TP+FP}{R^2}$, where TP are the true positives, FP are the false positives and R is number of reads.
-
-\begin{table}
-\centering
-\begin{tabular}{lrr}
-\hline %inserts double horizontal lines 
-\addlinespace[1ex] Genome & Sensitivity (\%) & Precision (\%) \\ 
-%heading
-\addlinespace[1ex]\hline % inserts single horizontal line
-\addlinespace[0.8ex] $E.$ $Coli$ & 90.77 & 62.58 \\ 
-\addlinespace[0.8ex] $C.$ $Elegans$ Chr. $3$ & 91.14 & 3.80 \\
-\addlinespace[0.8ex] $C.$ $Elegans$ Chr. $4$ & 91.53 & 3.50 \\
-\addlinespace[0.8ex] $E.$ $Caballus$ Chr. $31$ & 94.16 & 5.91 \\
-\addlinespace[1ex]\hline
-\end{tabular}
-\caption{$Light$ version: sensitivity and precision for different genomes.}
-\label{table:met}
-\end{table}
-
-\begin{table}
-\centering
-\begin{tabular*}{\textwidth}{l @{\extracolsep{\fill}} rrr}
-\hline %inserts double horizontal lines 
-\addlinespace[1ex]Genome & Sensitivity (\%) & Precision (\%) & Computational saving (\%) \\ 
-%heading
-\addlinespace[1ex]\hline % inserts single horizontal line
-\addlinespace[0.8ex] $E.$ $Coli$ & 98.15 & 68.60 & 99.68 \\ 
-\addlinespace[0.8ex] $C.$ $Elegans$ Chr. $3$ & 97.67 & 30.25 & 99.76 \\
-\addlinespace[0.8ex] $C.$ $Elegans$ Chr. $4$ & 97.89 & 31.06 & 99.81 \\
-\addlinespace[0.8ex] $E.$ $Caballus$ Chr. $31$ & 98.94 & 16.83 & 99.76 \\
-\addlinespace[1ex]\hline
-\addlinespace[0.8ex] $E.$ $Coli$ & 93.94 & 78.87 & 99.74 \\ 
-\addlinespace[0.8ex] $C.$ $Elegans$ Chr. $3$ & 92.26 & 73.04 & 99.91 \\
-\addlinespace[0.8ex] $C.$ $Elegans$ Chr. $4$ & 92.80 & 70.79 & 99.92 \\
-\addlinespace[0.8ex] $E.$ $Caballus$ Chr. $31$ & 96.13 & 31.89 & 99.88 \\
-\addlinespace[1ex]\hline
-\end{tabular*}
-\caption{$Light$ version: sensitivity and precision for different genomes computed using MECAT threshold (minimum read length = 5000 bp and minimum overlap = 2000 bp) with number of shared k-mers $S$ equal to 4 (upper part of the table) and 8 (lower part).}
-\label{table:mecat}
-\end{table}
+To increase our precision, we exploit the information about the first shared k-mer position as it allows us to compute the potential overlap length between two reads, as shown in \Cref{fig:ovlen}.
+Following, this length can be used to compute the theoretical maximum edit distance used during the expensive local alignment phase to throw away false positives read pairs.
+\begin{figure}
+    \centering
+    \includegraphics[width=\textwidth]{image/Ovlen.pdf}
+    \caption{Overlap length computed exploiting the position of the first shared k-mer between the two considered reads.}
+    \label{fig:ovlen}
+\end{figure}
+%In the MECAT paper (http://www.biorxiv.org/content/early/2016/12/15/089250), the authors consider just reads with length at %least equal to 5000 bp (Figure 2 in their paper) and define that two reads has the correct pairwise relationship if they %overlap for more than 2000 bp (Table 2 in their paper).
+%So, we generated the initial set of reads with pbsim setting 5000 bp as minimum length and setting the threshold to consider %a pair as correct (both in the initial set and when we filter our pairs) equal to 2000 bp.
+%In this case, for instance for the $E.Coli$, we obtain a recall of 99\% and a precision of 34\%. 
+%Even if the precision is lower with respect to our previous implementation, the number of reads pairs on which compute the %local alignment is smaller (about 1.23 millions less than before, but we're still wasting a lot of computation).
+%Considering than in a region of length 2000, we expected to see about 8 shared k-mers (computed as $2000 \cdot (1-e)^{34}$), %setting 4 as minimum number of shared k-mers to be more conservative, we obtain 98.14\% of recall and 68.6\% of precision, %setting 8 we got 93.94\% of recall and 78.8\% of precision.
+%The results obtained applying MECAT thresholds for difference genomes are reported in \Cref{table:mecat}.
+%The term \emph{computational saving} in \Cref{table:mecat} is defined as $1-\frac{TP+FP}{R^2}$, where TP are the true %positives, FP are the false positives and R is number of reads.
+%
+%\begin{table}
+%\centering
+%\begin{tabular}{lrr}
+%\hline %inserts double horizontal lines 
+%\addlinespace[1ex] Genome & Sensitivity (\%) & Precision (\%) \\ 
+%%heading
+%\addlinespace[1ex]\hline % inserts single horizontal line
+%\addlinespace[0.8ex] $E.$ $Coli$ & 90.77 & 62.58 \\ 
+%\addlinespace[0.8ex] $C.$ $Elegans$ Chr. $3$ & 91.14 & 3.80 \\
+%\addlinespace[0.8ex] $C.$ $Elegans$ Chr. $4$ & 91.53 & 3.50 \\
+%\addlinespace[0.8ex] $E.$ $Caballus$ Chr. $31$ & 94.16 & 5.91 \\
+%\addlinespace[1ex]\hline
+%\end{tabular}
+%\caption{$Light$ version: sensitivity and precision for different genomes.}
+%\label{table:met}
+%\end{table}
+%
+%\begin{table}
+%\centering
+%\begin{tabular*}{\textwidth}{l @{\extracolsep{\fill}} rrr}
+%\hline %inserts double horizontal lines 
+%\addlinespace[1ex]Genome & Sensitivity (\%) & Precision (\%) & Computational saving (\%) \\ 
+%%heading
+%\addlinespace[1ex]\hline % inserts single horizontal line
+%\addlinespace[0.8ex] $E.$ $Coli$ & 98.15 & 68.60 & 99.68 \\ 
+%\addlinespace[0.8ex] $C.$ $Elegans$ Chr. $3$ & 97.67 & 30.25 & 99.76 \\
+%\addlinespace[0.8ex] $C.$ $Elegans$ Chr. $4$ & 97.89 & 31.06 & 99.81 \\
+%\addlinespace[0.8ex] $E.$ $Caballus$ Chr. $31$ & 98.94 & 16.83 & 99.76 \\
+%\addlinespace[1ex]\hline
+%\addlinespace[0.8ex] $E.$ $Coli$ & 93.94 & 78.87 & 99.74 \\ 
+%\addlinespace[0.8ex] $C.$ $Elegans$ Chr. $3$ & 92.26 & 73.04 & 99.91 \\
+%\addlinespace[0.8ex] $C.$ $Elegans$ Chr. $4$ & 92.80 & 70.79 & 99.92 \\
+%\addlinespace[0.8ex] $E.$ $Caballus$ Chr. $31$ & 96.13 & 31.89 & 99.88 \\
+%\addlinespace[1ex]\hline
+%\end{tabular*}
+%\caption{$Light$ version: sensitivity and precision for different genomes computed using MECAT threshold (minimum read %length = 5000 bp and minimum overlap = 2000 bp) with number of shared k-mers $S$ equal to 4 (upper part of the table) and 8 (%lower part).}
+%\label{table:mecat}
+%\end{table}
 
 \myworries{Add references.}
 \clearpage
