@@ -87,7 +87,7 @@ bool edlibop(NT & values, std::string & row, std::string & col, int & len, int &
         /* In len we expect len*pow(pCORR, 2) correct base-pairs,
         so here we compute the maximum edit distance as len - mean error (len*pow(pCORR, 2) 
         - standard deviation = sqrt(len*pow(pCORR, 2)*(1-pow(pCORR, 2)) */
-        int maxed = len-len*pCORR+4*sqrt(len*pCORR*pWRON); 
+        int maxed = len-len*pCORR+2*sqrt(len*pCORR*pWRON); 
     
         EdlibAlignResult result = edlibAlign(read1, len, read2, len, edlibNewAlignConfig(maxed, EDLIB_MODE_NW, EDLIB_TASK_DISTANCE));
         delete [] read1;
