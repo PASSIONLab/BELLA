@@ -27,63 +27,87 @@
 
 #define ERR .15 
 #define KMER_LENGTH 17
+//#define _MULTPTR
 using namespace std;
 
 #ifdef _MULTPTR
-
 /* Compute the distance between two k-mers on the same read */
 template <typename IT>
-double ComputeDistance(IT & fst, IT & snd) 
+int computeDist(IT & pos, IT & next) 
 {
+    int dist;
+    int min, max;
 
-    double delta;
-    double min, max, diff;
-
-    if(fst < snd) {
-        min = (double)fst;
-        max = (double)snd;
+    if(pos < next) {
+        min = pos;
+        max = next;
     } else {
-        max = (double)fst;
-        min = (double)snd;
+        max = pos;
+        min = next;
     }
 
-    diff = max-min;
-    delta = diff; 
+    dist = max-min;
 
-    return delta;
+    return dist;
 }    
-
 /* Find when a k-mers pair represents an evidence of potential overlap or not */
-bool PotentialOverlap(double & dfst, double & dsnd) 
+bool potentialOv(int & dist1, int & dist2) 
 {
 
-    double dmin, dmax; /* Define the shortest and longest distance */
-    double Lmin, Lmax; /* Compute the shortest length of the longest distance and the longest length of the shortest distance */
-    bool region = false;
-    double p_ins = 1.090;
-    double p_del = 0.955;
+    int dmin, dmax;     /* Define the shortest and longest distance */
+    int Lmin, Lmax;     /* Compute the shortest length of the longest distance and the longest length of the shortest distance */
+    bool accept = false;
+    double pINS = 1.090;
+    double pDEL = 0.955;
     
-    if(dfst <= dsnd) { 
-        dmin = dfst; 
-        dmax = dsnd;
+    if(dist1 <= dist2) { 
+        dmin = dist1; 
+        dmax = dist2;
     } else {
-        dmax = dfst;
-        dmin = dsnd;
+        dmax = dist1;
+        dmin = dist2;
     }
     
-    Lmax = dmin/p_del; /* Maximum length of the shortest delta given the probability of deletion */
-    Lmin = dmax/p_ins; /* Minimum length of the longest delta given the probability of insertion */
+    Lmax = dmin/pDEL;  /* Maximum length of the shortest delta given the probability of deletion */
+    Lmin = dmax/pINS;  /* Minimum length of the longest delta given the probability of insertion */
     
     if(Lmax > Lmin) {
-        region = true;
-    } else region = false;
+        accept = true;
+    } else accept = false;
 
-    return region;
+    return accept;
+}
+/* Function to obtain reads pairs distances vector, output to file */
+void getFeatures(FT & values, std::string samplename)
+{
+    bool ov;
+    int dist1, dist2; /* k-mers distances on read i and read j */
+    std::stringstream featuresDist;
+    typename FT::iterator it;
+    typename FT::iterator nit;
+
+    if(values[j]->size() > 1)
+    {
+        for(it = values[j]->begin(); it != values[j]->end(); ++it)     
+        {
+            for(nit = values[j]->begin(); nit != values[j]->end(); ++nit)     
+            {
+                if(it->first != nit->first) 
+                {
+                    ov = false; 
+                    dist1 = computeDist(it->second.first, nit->second.first);
+                    dist2 = computeDist(it->second.second, nit->second.second);
+                    /* Compute evidence of potential overlap for each k-mers pair */
+                    ov = potentialOv(dist1, dist2); 
+                }
+            }
+        }
+    }
 }
 #endif
 
 /* Compute the number of true overlapping reads */
-double TrueOverlapping(ifstream & ifs) 
+double trueOv(ifstream & ifs) 
 {
 
     vector<Interval<int>> intervals;
@@ -125,7 +149,7 @@ double TrueOverlapping(ifstream & ifs)
 }
 
 /* Compute the overlap length between potential overlapping reads pairs */
-int ComputeLength(map<int, pair<int,int>> & ifsmap, int & col, int & row) 
+int computeLength(map<int, pair<int,int>> & ifsmap, int & col, int & row) 
 {
 
     int alignment_length = 0;
@@ -151,17 +175,12 @@ int ComputeLength(map<int, pair<int,int>> & ifsmap, int & col, int & row)
     return alignment_length;
 }
 
-void GetMetrics(std::ifstream & filename) 
+void getMetrics(std::ifstream & filename) 
 {
     std::ifstream ifs("test_01.axt"); /* To be generalized */
     std::map<int, pair<int,int>> ifsmap;
     double TPandFP = 0, TP = 0;
     int alignment_length;
-
-    #ifdef _MULTPTR
-    double di; /* k-mers distances on read i */
-    double dj; /* k-mers distances on read j */
-    #endif
 
     /* Create reads map from axt file to be used to find potential overlapping reads pairs */
     if(ifs.is_open()) {
@@ -182,7 +201,7 @@ void GetMetrics(std::ifstream & filename)
     ifs.seekg(0, ios::beg);
 
     /* Compute true overlapping reads pairs from fastq */
-    double P = TrueOverlapping(ifs);
+    double P = trueOv(ifs);
     ifs.clear();
     ifs.seekg(0, ios::beg);
 
@@ -202,7 +221,7 @@ void GetMetrics(std::ifstream & filename)
             int rowid = stoi(row);
 
             /* Compute the overlap length between potential overlapping reads pairs */
-            alignment_length = ComputeLength(ifsmap, colid, rowid);
+            alignment_length = computeLength(ifsmap, colid, rowid);
             if(alignment_length >= KMER_LENGTH)
                 TP++;
         }

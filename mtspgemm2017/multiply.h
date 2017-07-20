@@ -1,5 +1,6 @@
 #include "CSC.h"
 #include "global.h"
+#include "metric.h"
 #include "../edlib/edlib/include/edlib.h"
 #include <omp.h>
 #include <fstream>
@@ -22,6 +23,7 @@
 #define KMER_LENGTH 17
 #define _OSX
 #define _EDLIB
+//#define _MULTPTR
 
 #ifdef _OSX
 #include <mach/mach.h>
@@ -42,8 +44,7 @@ struct sysinfo info;
 #define pWRON .2775
 #define minLEN 17
 /* Compute potential overlap */
-template <typename NT>
-void overlaplen(NT & values, std::string & row, std::string col, int & len, int & left) 
+void getOverlaplen(std::pair<int, int> & values, std::string & row, std::string col, int & len, int & left) 
 {
     /* Left margin passed as argument */
     int right;           /* Define the right margin */
@@ -65,14 +66,13 @@ void overlaplen(NT & values, std::string & row, std::string col, int & len, int 
 }
 
 /* EDLIB Local Alignment */
-template <typename NT>
-bool edlibop(NT & values, std::string & row, std::string & col, int & len, int & ed) 
+bool edlibOp(std::pair<int, int> & values, std::string & row, std::string & col, int & len, int & ed) 
 {
     bool align;
     int left = 0;
     /* Compute the overlap potential length and obtain substring of 
     overlaplength from the considered pair and pass them to alignop */
-    overlaplen(values, row, col, len, left);
+    getOverlaplen(values, row, col, len, left);
     /* Obtain row and col substr of overlaplength */
     std::string substrow = row.substr(values.first-left, len);   
     std::string substcol = col.substr(values.second-left, len); 
@@ -84,9 +84,8 @@ bool edlibop(NT & values, std::string & row, std::string & col, int & len, int &
         strcpy(read1, substrow.c_str());
         strcpy(read2, substcol.c_str());
     
-        /* In len we expect len*pow(pCORR, 2) correct base-pairs,
-        so here we compute the maximum edit distance as len - mean error (len*pow(pCORR, 2) 
-        - standard deviation = sqrt(len*pow(pCORR, 2)*(1-pow(pCORR, 2)) */
+        /* In len we expect len*pow(pCORR, 2) correct base-pairs, so here we compute the maximum 
+        edit distance as len - mean + 2 standard deviation = len - (len*pow(pCORR, 2) + 2 * qrt(len*pow(pCORR, 2)*(1-pow(pCORR, 2)) */
         int maxed = len-len*pCORR+2*sqrt(len*pCORR*pWRON); 
     
         EdlibAlignResult result = edlibAlign(read1, len, read2, len, edlibNewAlignConfig(maxed, EDLIB_MODE_NW, EDLIB_TASK_DISTANCE));
@@ -109,25 +108,25 @@ bool edlibop(NT & values, std::string & row, std::string & col, int & len, int &
 #endif
 
 /* CSV containing CSC indices of the output sparse matrix*/
-void writeToFile(std::stringstream & myBatch)
+void writeToFile(std::stringstream & myBatch, std::string filename)
 {  
     std::string myString = myBatch.str();  
     std::ofstream myfile;  
-    myfile.open ("spmat.csv", ios_base::app);  
+    myfile.open (filename, ios_base::app);  
     myfile << myString;  
     myfile.close();  
 }
 
-template <typename IT, typename NT, typename MultiplyOperation, typename AddOperation>
-void LocalSpGEMM(IT & start, IT & end, IT & ncols, const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, vector<IT> * RowIdsofC, vector<pair<IT,NT>> * ValuesofC)
+template <typename IT, typename NT, typename MultiplyOperation, typename AddOperation, typename FT>
+void LocalSpGEMM(IT & start, IT & end, IT & ncols, const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, vector<IT> * RowIdsofC, vector<FT> * ValuesofC)
 {
     //#pragma omp parallel for
     int v = 0;
     for(int i = start; i<end; ++i) // for bcols of B (one block)
     {
         IT hsize = B.colptr[i+1]-B.colptr[i];
-        HeapEntry<IT,pair<IT,NT>> *mergeheap = new HeapEntry<IT,pair<IT,NT>>[hsize];
-        IT maxnnzc = 0;      // max number of nonzeros in C(:,i)
+        HeapEntry<IT,FT> *mergeheap = new HeapEntry<IT,FT>[hsize];
+        IT maxnnzc = 0;           // max number of nonzeros in C(:,i)
 
         IT k = 0;   // make initial heap
 
@@ -157,7 +156,7 @@ void LocalSpGEMM(IT & start, IT & end, IT & ncols, const CSC<IT,NT> & A, const C
         while(hsize > 0)
         {
             pop_heap(mergeheap, mergeheap + hsize);         // result is stored in mergeheap[hsize-1]
-            HeapEntry<IT,pair<IT,NT>> hentry = mergeheap[hsize-1];
+            HeapEntry<IT,FT> hentry = mergeheap[hsize-1];
             
             // Use short circuiting
             if( (!RowIdsofC[v].empty()) && RowIdsofC[v].back() == hentry.key)
@@ -198,8 +197,8 @@ void LocalSpGEMM(IT & start, IT & end, IT & ncols, const CSC<IT,NT> & A, const C
   * Probably slower than HeapSpGEMM_gmalloc but likely to use less memory
  **/
 
-template <typename IT, typename NT, typename MultiplyOperation, typename AddOperation>
-void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, std::vector<string> & reads)
+template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation>
+void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, std::vector<string> & reads, FT & getvaluetype)
 {   
     #ifdef _OSX /* OSX-based memory consumption implementation */
     vm_size_t page_size;
@@ -239,7 +238,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     uint64_t required_memory = (rsv)*sizeof(size_t);
     IT start, end, ncols;
     IT * rowids;
-    IT * values;
+    FT * values;
     
     if(required_memory > free_memory)
     {
@@ -271,7 +270,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
             }
             
             vector<IT> * RowIdsofC = new vector<IT>[ncols];                    // row ids for each column of C (bunch of cols)
-            vector<pair<IT,NT>> * ValuesofC = new vector<pair<IT,NT>>[ncols];  // values for each column of C (bunch of cols)
+            vector<FT> * ValuesofC = new vector<FT>[ncols];  // values for each column of C (bunch of cols)
         
             LocalSpGEMM(start, end, ncols, A, B, multop, addop, RowIdsofC, ValuesofC);
 
@@ -283,7 +282,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
             }
            
             IT * rowids = new IT[colptr[end]];
-            pair<IT,NT> * values = new pair<IT,NT>[colptr[end]];
+            FT * values = new FT[colptr[end]];
 
             k=0;
             for(int i=start; i<end; ++i) // combine step
@@ -300,13 +299,23 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
             for(int i=start; i<end; ++i) {
                 for(int j=colptr[i]; j<colptr[i+1]; ++j) {
                     #ifdef _EDLIB
+                    #ifdef _MULTPTR
+                    if(values[j]->size() < 2)
+                    {
+                        int len, ed;
+                        if(edlibOp(values[j]->front().second, reads[rowids[j]], reads[i], len, ed) == true)
+                        myBatch << i << ',' << rowids[j] << ',' << values[j]->size() << endl;
+                    }
+                    else myBatch << i << ',' << rowids[j] << ',' << values[j]->size() << endl;
+                    #else
                     if(values[j].first < 2)
                     {
                     int len, ed; 
-                    if(edlibop(values[j].second, reads[rowids[j]], reads[i], len, ed) == true)
+                    if(edlibOp(values[j].second, reads[rowids[j]], reads[i], len, ed) == true)
                         myBatch << i << ',' << rowids[j] << ',' << values[j].first << endl;
                     }
                     else myBatch << i << ',' << rowids[j] << ',' << values[j].first << endl;
+                    #endif
                     #else
                     myBatch << i << ',' << rowids[j] << ',' << values[j].first << endl;
                     #endif
@@ -316,7 +325,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
             delete [] rowids;
             delete [] values;
 
-            writeToFile(myBatch);
+            writeToFile(myBatch, "spmat.csv");
             myBatch.str(std::string());
             pcols = pcols+ncols; // update counter
         }
@@ -328,7 +337,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         end = B.cols;
         ncols = B.cols;
         vector<IT> * RowIdsofC = new vector<IT>[B.cols];      // row ids for each column of C
-        vector<pair<IT,NT>> * ValuesofC = new vector<pair<IT,NT>>[B.cols];      // values for each column of C
+        vector<FT> * ValuesofC = new vector<FT>[B.cols];      // values for each column of C
 
         LocalSpGEMM(start, end, ncols, A, B, multop, addop, RowIdsofC, ValuesofC);
 
@@ -340,7 +349,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
             colptr[i+1] = colptr[i] + RowIdsofC[i].size();
 
         IT * rowids = new IT[colptr[B.cols]];
-        pair<IT,NT> * values = new pair<IT,NT>[colptr[B.cols]];
+        FT * values = new FT[colptr[B.cols]];
         
         for(int i=0; i < B.cols; ++i)        // for all edge lists (do NOT parallelize)
         {
@@ -354,13 +363,23 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         for(int i=0; i<B.cols; ++i) {
             for(int j=colptr[i]; j<colptr[i+1]; ++j) {
                 #ifdef _EDLIB
+                #ifdef _MULTPTR
+                if(values[j]->size() < 2)
+                {
+                    int len, ed;
+                    if(edlibOp(values[j]->front().second, reads[rowids[j]], reads[i], len, ed) == true)
+                    myBatch << i << ',' << rowids[j] << ',' << values[j]->size() << endl;
+                }
+                else myBatch << i << ',' << rowids[j] << ',' << values[j]->size() << endl;
+                #else
                 if(values[j].first < 2)
                 {
                 int len, ed; 
-                if(edlibop(values[j].second, reads[rowids[j]], reads[i], len, ed) == true)
+                if(edlibOp(values[j].second, reads[rowids[j]], reads[i], len, ed) == true)
                     myBatch << i << ',' << rowids[j] << ',' << values[j].first << endl;
                 }
                 else myBatch << i << ',' << rowids[j] << ',' << values[j].first << endl;
+                #endif
                 #else
                 myBatch << i << ',' << rowids[j] << ',' << values[j].first << endl;
                 #endif
@@ -371,7 +390,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         delete [] values;
         delete [] colptr;
 
-        writeToFile(myBatch);
+        writeToFile(myBatch, "spmat.csv");
         myBatch.str(std::string());
     } 
 }
