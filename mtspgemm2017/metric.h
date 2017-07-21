@@ -24,6 +24,7 @@
 #include <stdint.h>
 #include <unistd.h>
 #include <ctype.h> 
+#include <memory>
 
 #define ERR .15 
 #define KMER_LENGTH 17
@@ -32,8 +33,7 @@ using namespace std;
 
 #ifdef _MULTPTR
 /* Compute the distance between two k-mers on the same read */
-template <typename IT>
-int computeDist(IT & pos, IT & next) 
+int computeDist(int & pos, int & next) 
 {
     int dist;
     int min, max;
@@ -54,18 +54,18 @@ int computeDist(IT & pos, IT & next)
 bool potentialOv(int & dist1, int & dist2) 
 {
 
-    int dmin, dmax;     /* Define the shortest and longest distance */
-    int Lmin, Lmax;     /* Compute the shortest length of the longest distance and the longest length of the shortest distance */
+    double dmin, dmax;     /* Define the shortest and longest distance */
+    double Lmin, Lmax;     /* Compute the shortest length of the longest distance and the longest length of the shortest distance */
     bool accept = false;
     double pINS = 1.090;
     double pDEL = 0.955;
     
     if(dist1 <= dist2) { 
-        dmin = dist1; 
-        dmax = dist2;
+        dmin = (double)dist1; 
+        dmax = (double)dist2;
     } else {
-        dmax = dist1;
-        dmin = dist2;
+        dmax = (double)dist1;
+        dmin = (double)dist2;
     }
     
     Lmax = dmin/pDEL;  /* Maximum length of the shortest delta given the probability of deletion */
@@ -78,38 +78,40 @@ bool potentialOv(int & dist1, int & dist2)
     return accept;
 }
 /* Function to obtain reads pairs distances vector, output to file */
-void getFeatures(FT & values, std::string samplename)
+template <typename FT>
+double getRatio(FT & values)
 {
     bool ov;
-    int dist1, dist2; /* k-mers distances on read i and read j */
-    std::stringstream featuresDist;
-    typename FT::iterator it;
-    typename FT::iterator nit;
+    double ratio, count, numpair;
+    int dist1, dist2;
+    std::vector<std::pair<int, std::pair<int, int>>> defvalues = *values;
+    std::vector<std::pair<int, std::pair<int, int>>>::iterator it;
+    std::vector<std::pair<int, std::pair<int, int>>>::iterator nit;
 
-    if(values[j]->size() > 1)
+    for(it = defvalues.begin(); it != defvalues.end(); it++)     
     {
-        for(it = values[j]->begin(); it != values[j]->end(); ++it)     
+        for(nit = defvalues.begin(); nit != defvalues.end(); nit++)     
         {
-            for(nit = values[j]->begin(); nit != values[j]->end(); ++nit)     
+            if(it->first != nit->first) 
             {
-                if(it->first != nit->first) 
-                {
-                    ov = false; 
-                    dist1 = computeDist(it->second.first, nit->second.first);
-                    dist2 = computeDist(it->second.second, nit->second.second);
-                    /* Compute evidence of potential overlap for each k-mers pair */
-                    ov = potentialOv(dist1, dist2); 
-                }
+                numpair++;
+                ov = false; 
+                dist1 = computeDist(it->second.first, nit->second.first);
+                dist2 = computeDist(it->second.second, nit->second.second);
+                /* Compute evidence of potential overlap for each k-mers pair */
+                ov = potentialOv(dist1, dist2); 
+                if(ov)
+                    count++;
             }
         }
     }
+    return ratio = count/numpair; /* Amount of potential overlap evidence over the total number of k-mers pairs */
 }
 #endif
 
 /* Compute the number of true overlapping reads */
 double trueOv(ifstream & ifs) 
 {
-
     vector<Interval<int>> intervals;
     vector<Interval<int>> queries;
     vector<Interval<int>>::iterator q;
