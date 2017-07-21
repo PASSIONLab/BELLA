@@ -120,7 +120,6 @@ void writeToFile(std::stringstream & myBatch, std::string filename)
 template <typename IT, typename NT, typename MultiplyOperation, typename AddOperation, typename FT>
 void LocalSpGEMM(IT & start, IT & end, IT & ncols, const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, vector<IT> * RowIdsofC, vector<FT> * ValuesofC)
 {
-    //#pragma omp parallel for
     int v = 0;
     for(int i = start; i<end; ++i) // for bcols of B (one block)
     {
@@ -191,7 +190,6 @@ void LocalSpGEMM(IT & start, IT & end, IT & ncols, const CSC<IT,NT> & A, const C
         delete [] mergeheap;
     }
 } 
-
 /**
   * Sparse multithreaded GEMM.
   * Probably slower than HeapSpGEMM_gmalloc but likely to use less memory
@@ -244,11 +242,34 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     {
         cout << "*** BLOCK MULTIPLICATION: OUTPUT TO FILE ***" << endl; 
 
-        IT blocks = required_memory/free_memory;
-        IT bcols = B.cols/blocks; // define number of columns for each blocks
-        
-        cout << "blocks = " << blocks+1 << endl;
-        cout << "bcols = " << bcols << endl;
+        int numBlocks = required_memory/free_memory;
+        int colsPerBlock = B.cols/numBlocks;                // define number of columns for each blocks
+
+        /* multi thread variable definition */
+        int * colStart = new int[numBlocks+1];              // need one block more for remaining cols
+        int * colEnd = new int[numBlocks+1];                // need one block more for remaining cols
+        int * numCols = new int[numBlocks+1];
+
+        colStart[0] = 0;
+        colEnd[0] = 0;
+        numCols[0] = 0;
+
+        int colsTrace = 0;
+        for(int i = 0; i < numBlocks+1; ++i)
+        {
+            colStart[i] = colsTrace;
+            if(colsTrace+colsPerBlock <= B.cols)
+            {
+                colEnd[i] = colStart[i]+colsPerBlock;
+                numCols[i] = colsPerBlock;
+
+            } else 
+            {
+                colEnd[i] = B.cols;
+                numCols[i] = B.cols-colsTrace;
+            }
+            colsTrace = colsTrace+numCols[i];
+        }
 
         IT * colptr = new IT[B.cols+1];
         colptr[0] = 0;
@@ -256,36 +277,31 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         IT pcols = 0;
         std::stringstream myBatch;
 
-        for(IT b = 0; b < blocks+1; b++) 
+        #ifdef _MULTPTR
+        std::stringstream myTrue;
+        std::stringstream myFalse;
+        #endif
+
+        #pragma omp parallel for private(myBatch) shared(colStart,colEnd,numCols)
+        for(int b = 0; b < numBlocks+1; ++b) 
         { 
-            start = pcols;
-            if(pcols+bcols <= B.cols)
-            {
-                end = pcols+bcols;
-                ncols = bcols;
-            } else 
-            {
-                end = B.cols;
-                ncols = B.cols-pcols;
-            }
-            
-            vector<IT> * RowIdsofC = new vector<IT>[ncols];                    // row ids for each column of C (bunch of cols)
-            vector<FT> * ValuesofC = new vector<FT>[ncols];  // values for each column of C (bunch of cols)
+            vector<IT> * RowIdsofC = new vector<IT>[numCols[b]];  // row ids for each column of C (bunch of cols)
+            vector<FT> * ValuesofC = new vector<FT>[numCols[b]];  // values for each column of C (bunch of cols)
         
-            LocalSpGEMM(start, end, ncols, A, B, multop, addop, RowIdsofC, ValuesofC);
+            LocalSpGEMM(colStart[b], colEnd[b], numCols[b], A, B, multop, addop, RowIdsofC, ValuesofC);
 
             int k=0;
-            for(int i=start; i<end; ++i) // for all edge lists (do NOT parallelize)
+            for(int i=colStart[b]; i<colEnd[b]; ++i) // for all edge lists (do NOT parallelize)
             {
                 colptr[i+1] = colptr[i] + RowIdsofC[k].size();
                 ++k;
             }
            
-            IT * rowids = new IT[colptr[end]];
-            FT * values = new FT[colptr[end]];
+            IT * rowids = new IT[colptr[colEnd[b]]];
+            FT * values = new FT[colptr[colEnd[b]]];
 
             k=0;
-            for(int i=start; i<end; ++i) // combine step
+            for(int i=colStart[b]; i<colEnd[b]; ++i) // combine step
             {
                 copy(RowIdsofC[k].begin(), RowIdsofC[k].end(), rowids + colptr[i]);
                 copy(ValuesofC[k].begin(), ValuesofC[k].end(), values + colptr[i]);
@@ -296,17 +312,28 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
             delete [] ValuesofC;
 
             /* Local Alignment before write on stringstream */
-            for(int i=start; i<end; ++i) {
+            for(int i=colStart[b]; i<colEnd[b]; ++i) {
                 for(int j=colptr[i]; j<colptr[i+1]; ++j) {
                     #ifdef _EDLIB
                     #ifdef _MULTPTR
-                    if(values[j]->size() < 2)
+                    int len, ed;
+                    if(edlibOp(values[j]->front().second, reads[rowids[j]], reads[i], len, ed) == true)
                     {
-                        int len, ed;
-                        if(edlibOp(values[j]->front().second, reads[rowids[j]], reads[i], len, ed) == true)
+                        if(values[j]->size() > 1)
+                        {
+                        double ratio = getRatio(values[j]);
+                        myTrue << i << ',' << rowids[j] << ',' << ratio << endl;
+                        }
                         myBatch << i << ',' << rowids[j] << ',' << values[j]->size() << endl;
+
+                    } else if(edlibOp(values[j]->front().second, reads[rowids[j]], reads[i], len, ed) == false)
+                    {
+                        if(values[j]->size() > 1)
+                        {
+                            double ratio = getRatio(values[j]);
+                            myFalse << i << ',' << rowids[j] << ',' << ratio << endl;
+                        }
                     }
-                    else myBatch << i << ',' << rowids[j] << ',' << values[j]->size() << endl;
                     #else
                     if(values[j].first < 2)
                     {
@@ -325,21 +352,32 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
             delete [] rowids;
             delete [] values;
 
-            writeToFile(myBatch, "spmat.csv");
-            myBatch.str(std::string());
-            pcols = pcols+ncols; // update counter
+            #pragma omp critical
+            {
+                #ifdef _MULTPTR
+                writeToFile(myFalse, "falsesample.csv");
+                writeToFile(myTrue, "truesample.csv");
+                myFalse.str(std::string());
+                myTrue.str(std::string());
+                #endif
+                writeToFile(myBatch, "spmat.csv");
+                myBatch.str(std::string());
+            }
         }
         delete [] colptr;
+        delete [] colStart;
+        delete [] colEnd;
+        delete [] numCols;
     } else
     {
         cout << "*** STANDARD MULTIPLICATION: OUTPUT TO FILE ***" << endl;
-        start = 0;
-        end = B.cols;
-        ncols = B.cols;
+        int colStart = 0;
+        int colEnd = B.cols;
+        int numCols = B.cols;
         vector<IT> * RowIdsofC = new vector<IT>[B.cols];      // row ids for each column of C
         vector<FT> * ValuesofC = new vector<FT>[B.cols];      // values for each column of C
 
-        LocalSpGEMM(start, end, ncols, A, B, multop, addop, RowIdsofC, ValuesofC);
+        LocalSpGEMM(colStart, colEnd, numCols, A, B, multop, addop, RowIdsofC, ValuesofC);
 
         IT * colptr = new IT[B.cols+1];
         colptr[0] = 0;

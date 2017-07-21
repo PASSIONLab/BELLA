@@ -36,7 +36,7 @@
 #include "edlib/edlib/include/edlib.h"
 #include "mtspgemm2017/IO.h"
 #include "mtspgemm2017/global.h"
-#include "mtspgemm2017/metric.h"
+//#include "mtspgemm2017/metric.h"
 #include "mtspgemm2017/multiply.h"
 
 #define LSIZE 16000
