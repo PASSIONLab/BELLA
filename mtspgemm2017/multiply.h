@@ -22,7 +22,7 @@
 #define PERCORECACHE (1024 * 1024)
 #define KMER_LENGTH 17
 #define _OSX
-#define _EDLIB
+//#define _EDLIB
 //#define _MULTPTR
 
 #ifdef _OSX
@@ -234,14 +234,12 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     uint64_t d = B.nnz/B.cols; // about d nnz each col
     uint64_t rsv = B.nnz*d;    // worst case
     uint64_t required_memory = (rsv)*sizeof(size_t);
-    IT start, end, ncols;
     IT * rowids;
     FT * values;
     
     if(required_memory > free_memory)
     {
-        cout << "*** BLOCK MULTIPLICATION: OUTPUT TO FILE ***" << endl; 
-
+        
         int numBlocks = required_memory/free_memory;
         int colsPerBlock = B.cols/numBlocks;                // define number of columns for each blocks
 
@@ -249,6 +247,9 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         int * colStart = new int[numBlocks+1];              // need one block more for remaining cols
         int * colEnd = new int[numBlocks+1];                // need one block more for remaining cols
         int * numCols = new int[numBlocks+1];
+
+        cout << "numBlocks " << numBlocks+1 << endl;
+        cout << "colsPerBlock " << colsPerBlock << endl;
 
         colStart[0] = 0;
         colEnd[0] = 0;
@@ -271,10 +272,8 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
             colsTrace = colsTrace+numCols[i];
         }
 
-        IT * colptr = new IT[B.cols+1];
-        colptr[0] = 0;
-
-        IT pcols = 0;
+        //IT * colptr = new IT[B.cols+1]; 
+        //colptr[0] = 0;
         std::stringstream myBatch;
 
         #ifdef _MULTPTR
@@ -287,21 +286,24 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         { 
             vector<IT> * RowIdsofC = new vector<IT>[numCols[b]];  // row ids for each column of C (bunch of cols)
             vector<FT> * ValuesofC = new vector<FT>[numCols[b]];  // values for each column of C (bunch of cols)
+            
+            IT * colptr = new IT[numCols[b]+1];
+            colptr[0] = 0;
         
             LocalSpGEMM(colStart[b], colEnd[b], numCols[b], A, B, multop, addop, RowIdsofC, ValuesofC);
 
             int k=0;
-            for(int i=colStart[b]; i<colEnd[b]; ++i) // for all edge lists (do NOT parallelize)
+            for(int i=0; i<numCols[b]; ++i) // for all edge lists (do NOT parallelize)
             {
                 colptr[i+1] = colptr[i] + RowIdsofC[k].size();
                 ++k;
             }
            
-            IT * rowids = new IT[colptr[colEnd[b]]];
-            FT * values = new FT[colptr[colEnd[b]]];
+            IT * rowids = new IT[colptr[numCols[b]]];
+            FT * values = new FT[colptr[numCols[b]]];
 
             k=0;
-            for(int i=colStart[b]; i<colEnd[b]; ++i) // combine step
+            for(int i=0; i<numCols[b]; ++i) // combine step
             {
                 copy(RowIdsofC[k].begin(), RowIdsofC[k].end(), rowids + colptr[i]);
                 copy(ValuesofC[k].begin(), ValuesofC[k].end(), values + colptr[i]);
@@ -312,43 +314,47 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
             delete [] ValuesofC;
 
             /* Local Alignment before write on stringstream */
-            for(int i=colStart[b]; i<colEnd[b]; ++i) {
+            for(int i=0; i<numCols[b]; ++i) {
                 for(int j=colptr[i]; j<colptr[i+1]; ++j) {
                     #ifdef _EDLIB
                     #ifdef _MULTPTR
                     int len, ed;
-                    if(edlibOp(values[j]->front().second, reads[rowids[j]], reads[i], len, ed) == true)
+                    if(edlibOp(values[j]->front().second, reads[rowids[j]], reads[i+colStart[b]], len, ed) == true)
                     {
                         if(values[j]->size() > 1)
                         {
                         double ratio = getRatio(values[j]);
-                        myTrue << i << ',' << rowids[j] << ',' << ratio << endl;
+                        myTrue << i+colStart[b] << ',' << rowids[j] << ',' << ratio << endl;
                         }
-                        myBatch << i << ',' << rowids[j] << ',' << values[j]->size() << endl;
+                        myBatch << i+colStart[b] << ',' << rowids[j] << ',' << values[j]->size() << endl;
 
-                    } else if(edlibOp(values[j]->front().second, reads[rowids[j]], reads[i], len, ed) == false)
+                    } else if(edlibOp(values[j]->front().second, reads[rowids[j]], reads[i+colStart[b]], len, ed) == false)
                     {
                         if(values[j]->size() > 1)
                         {
                             double ratio = getRatio(values[j]);
-                            myFalse << i << ',' << rowids[j] << ',' << ratio << endl;
+                            myFalse << i+colStart[b] << ',' << rowids[j] << ',' << ratio << endl;
                         }
                     }
                     #else
                     if(values[j].first < 2)
                     {
-                    int len, ed; 
-                    if(edlibOp(values[j].second, reads[rowids[j]], reads[i], len, ed) == true)
-                        myBatch << i << ',' << rowids[j] << ',' << values[j].first << endl;
-                    }
-                    else myBatch << i << ',' << rowids[j] << ',' << values[j].first << endl;
+                        int len, ed; 
+                        if(edlibOp(values[j].second, reads[rowids[j]], reads[i+colStart[b]], len, ed) == true)
+                        {
+                            myBatch << i+colStart[b] << ',' << rowids[j] << ',' << values[j].first << endl;
+                            onetrue++;
+                        }
+                    } 
+                    else myBatch << i+colStart[b] << ',' << rowids[j] << ',' << values[j].first << endl;
                     #endif
                     #else
-                    myBatch << i << ',' << rowids[j] << ',' << values[j].first << endl;
+                    myBatch << i+colStart[b] << ',' << rowids[j] << ',' << values[j].first << endl;
                     #endif
                 }
             }
 
+            delete [] colptr;
             delete [] rowids;
             delete [] values;
 
@@ -364,13 +370,12 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                 myBatch.str(std::string());
             }
         }
-        delete [] colptr;
+        //delete [] colptr;
         delete [] colStart;
         delete [] colEnd;
         delete [] numCols;
     } else
     {
-        cout << "*** STANDARD MULTIPLICATION: OUTPUT TO FILE ***" << endl;
         int colStart = 0;
         int colEnd = B.cols;
         int numCols = B.cols;

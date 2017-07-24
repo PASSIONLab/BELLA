@@ -179,7 +179,7 @@ int computeLength(map<int, pair<int,int>> & ifsmap, int & col, int & row)
 
 void getMetrics(std::ifstream & filename) 
 {
-    std::ifstream ifs("test_01.axt"); /* To be generalized */
+    std::ifstream ifs("saccV.axt"); /* To be generalized */
     std::map<int, pair<int,int>> ifsmap;
     double TPandFP = 0, TP = 0;
     int alignment_length;
@@ -228,6 +228,7 @@ void getMetrics(std::ifstream & filename)
                 TP++;
         }
     }
+
     filename.close();
     ifs.close();
 
