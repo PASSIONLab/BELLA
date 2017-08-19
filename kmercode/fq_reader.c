@@ -20,7 +20,7 @@
 #endif
 
 #ifndef DEFAULT_READ_LEN
-#define DEFAULT_READ_LEN 255
+#define DEFAULT_READ_LEN 100000
 #endif
 
 #ifdef __MACH__

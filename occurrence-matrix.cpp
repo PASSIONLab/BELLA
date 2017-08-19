@@ -33,7 +33,7 @@
 #include "mtspgemm2017/utility.h"
 #include "mtspgemm2017/CSC.h"
 #include "mtspgemm2017/CSR.h"
-#include "edlib/edlib/include/edlib.h"
+//#include "edlib/edlib/include/edlib.h"
 #include "mtspgemm2017/IO.h"
 #include "mtspgemm2017/global.h"
 //#include "mtspgemm2017/metric.h"
@@ -52,6 +52,18 @@ struct filedata {
     char filename[MAX_FILE_PATH];
     size_t filesize;
 };
+
+#ifdef SEEDED
+struct spmatype {
+
+    int count;   /* number of shared k-mers */
+    int pos_1_i; /* first k-mer position on read i */
+    int pos_1_j; /* first k-mer position on read j */
+    int pos_2_i; /* second k-mer position on read i, it could not exist */
+    int pos_2_j; /* second k-mer position on read i, it could not exist */
+
+}
+#endif
 
 std::vector<filedata>  GetFiles(char *filename) {
     int64_t totalsize = 0;

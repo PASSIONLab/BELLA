@@ -1,7 +1,7 @@
 #include "CSC.h"
 #include "global.h"
 #include "metric.h"
-#include "../edlib/edlib/include/edlib.h"
+//#include "../edlib/edlib/include/edlib.h"
 #include <omp.h>
 #include <fstream>
 #include <iostream>
@@ -341,10 +341,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                     {
                         int len, ed; 
                         if(edlibOp(values[j].second, reads[rowids[j]], reads[i+colStart[b]], len, ed) == true)
-                        {
                             myBatch << i+colStart[b] << ',' << rowids[j] << ',' << values[j].first << endl;
-                            onetrue++;
-                        }
                     } 
                     else myBatch << i+colStart[b] << ',' << rowids[j] << ',' << values[j].first << endl;
                     #endif
