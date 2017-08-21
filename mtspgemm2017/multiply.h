@@ -133,7 +133,7 @@ void LocalSpGEMM(IT & start, IT & end, IT & ncols, const CSC<IT,NT> & A, const C
         {
             IT inner = B.rowids[j]; // get the row id of B (or column id of A)
             IT npins = A.colptr[inner+1] - A.colptr[inner]; // get the number of nonzeros in A's corresponding column
-            
+        
             if(npins > 0)
             {
                 mergeheap[k].loc = 1;
@@ -148,7 +148,7 @@ void LocalSpGEMM(IT & start, IT & end, IT & ncols, const CSC<IT,NT> & A, const C
         make_heap(mergeheap, mergeheap + hsize);        
         // reserve changes the capacity of the vector, so that future push_back's won't cause reallocation
         // but it does not change the size, you can still use v.size() to get the number of valid elements
-
+ 
         RowIdsofC[v].reserve(maxnnzc); 
         ValuesofC[v].reserve(maxnnzc);
         
@@ -167,7 +167,7 @@ void LocalSpGEMM(IT & start, IT & end, IT & ncols, const CSC<IT,NT> & A, const C
                 ValuesofC[v].push_back(hentry.value);
                 RowIdsofC[v].push_back(hentry.key);
             }
-            
+      
             IT inner = B.rowids[hentry.runr];
             
             // If still unused nonzeros exists in A(:,colind), insert the next nonzero to the heap
@@ -289,19 +289,19 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
             
             IT * colptr = new IT[numCols[b]+1];
             colptr[0] = 0;
-        
+           
             LocalSpGEMM(colStart[b], colEnd[b], numCols[b], A, B, multop, addop, RowIdsofC, ValuesofC);
-
+     
             int k=0;
             for(int i=0; i<numCols[b]; ++i) // for all edge lists (do NOT parallelize)
             {
                 colptr[i+1] = colptr[i] + RowIdsofC[k].size();
                 ++k;
             }
-           
+          
             IT * rowids = new IT[colptr[numCols[b]]];
             FT * values = new FT[colptr[numCols[b]]];
-
+           
             k=0;
             for(int i=0; i<numCols[b]; ++i) // combine step
             {
@@ -346,7 +346,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                     else myBatch << i+colStart[b] << ',' << rowids[j] << ',' << values[j].first << endl;
                     #endif
                     #else
-                    myBatch << i+colStart[b] << ',' << rowids[j] << ',' << values[j].first << endl;
+                    myBatch << i+colStart[b] << ',' << rowids[j] << ',' << values[j]->count << ',' << values[j]->pos[0] << ',' << values[j]->pos[1] << ',' << values[j]->pos[2] << ',' << values[j]->pos[3] << endl;
                     #endif
                 }
             }
@@ -421,7 +421,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                 else myBatch << i << ',' << rowids[j] << ',' << values[j].first << endl;
                 #endif
                 #else
-                myBatch << i << ',' << rowids[j] << ',' << values[j].first << endl;
+                myBatch << i << ',' << rowids[j] << ',' << values[j]->count << ',' << values[j]->pos[0] << ',' << values[j]->pos[1] << ',' << values[j]->pos[2] << ',' << values[j]->pos[3] << endl;
                 #endif
             }
         }

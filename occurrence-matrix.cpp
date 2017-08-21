@@ -36,13 +36,13 @@
 //#include "edlib/edlib/include/edlib.h"
 #include "mtspgemm2017/IO.h"
 #include "mtspgemm2017/global.h"
-//#include "mtspgemm2017/metric.h"
 #include "mtspgemm2017/multiply.h"
 
 #define LSIZE 16000
 #define KMER_LENGTH 17
 #define ITERS 10
 #define DEPTH 30
+#define _SEEDED
 //#define _MULPTR
 
 using namespace std;
@@ -52,18 +52,6 @@ struct filedata {
     char filename[MAX_FILE_PATH];
     size_t filesize;
 };
-
-#ifdef SEEDED
-struct spmatype {
-
-    int count;   /* number of shared k-mers */
-    int pos_1_i; /* first k-mer position on read i */
-    int pos_1_j; /* first k-mer position on read j */
-    int pos_2_i; /* second k-mer position on read i, it could not exist */
-    int pos_2_j; /* second k-mer position on read i, it could not exist */
-
-}
-#endif
 
 std::vector<filedata>  GetFiles(char *filename) {
     int64_t totalsize = 0;
@@ -94,10 +82,20 @@ std::vector<filedata>  GetFiles(char *filename) {
 
 typedef std::map<Kmer, int> dictionary; // <k-mer && reverse-complement, #kmers>
 typedef std::vector<Kmer> Kmers;
+
 #ifdef _MULPTR
 typedef std::pair<int, vector<int>> cellspmat;             // pair<kmer_id_j, vector<posix_in_read_i>>
 typedef std::vector<pair<int, pair<int, int>>> multcell;   // map<kmer_id, vector<posix_in_read_i, posix_in_read_j>>
 typedef shared_ptr<multcell> mult_ptr;                     // pointer to multcell
+#endif
+
+#ifdef _SEEDED
+struct spmatype {
+
+    int count;   /* number of shared k-mers */
+    int pos[4] = {0};  /* pos1i, pos1j, pos2i, pos2j */
+};
+typedef shared_ptr<spmatype> spmat_ptr; // pointer to spmatype datastruct
 #endif
 
 // Function to create the dictionary
@@ -138,8 +136,12 @@ int main (int argc, char* argv[]) {
     #ifdef _MULPTR
     std::vector<tuple<int,int,cellspmat>> occurrences;
     std::vector<tuple<int,int,cellspmat>> transtuples;
+    #endif
+    #ifdef _SEEDED
+    std::vector<tuple<int,int,int>> occurrences;
+    std::vector<tuple<int,int,int>> transtuples;
     #else
-    std::vector<tuple<int,int,std::pair<int,int>>> occurrences;
+    std::vector<tuple<int,int,std::pair<int,int>>> occurrences; // I could need just int also in this light version to keep track of the k-mer position in the read
     std::vector<tuple<int,int,std::pair<int,int>>> transtuples;
     #endif
     
@@ -149,9 +151,7 @@ int main (int argc, char* argv[]) {
     cout << "reference genome: " << argv[2] <<endl;
 
     #ifdef _MULPTR
-    cout << "\n*** MULPTR version ***\n" << endl;
-    #else
-    cout << "\n*** LIGHT version ***\n" << endl;
+    cout << "*** MULPTR version ***" << endl;
     #endif
 
     double all = omp_get_wtime();
@@ -209,8 +209,12 @@ int main (int argc, char* argv[]) {
                         #ifdef _MULPTR
                         occurrences.push_back(std::make_tuple(read_id, found->second, make_pair(found->second, vector<int>(1,j)))); // vector<tuple<read_id,kmer_id,pair<kmer_id,pos_in_read>>
                         transtuples.push_back(std::make_tuple(found->second, read_id, make_pair(found->second, vector<int>(1,j)))); // transtuples.push_back(col_id, row_id, value)
+                        #endif
+                        #ifdef _SEEDED
+                        occurrences.push_back(std::make_tuple(read_id, found->second, j)); // vector<tuple<read_id,kmer_id,kmerpos>>
+                        transtuples.push_back(std::make_tuple(found->second, read_id, j)); // transtuples.push_back(col_id, row_id, kmerpos)
                         #else
-                        occurrences.push_back(std::make_tuple(read_id, found->second, make_pair(found->second, j))); // vector<tuple<read_id,kmer_id, kmer_id>
+                        occurrences.push_back(std::make_tuple(read_id, found->second, make_pair(found->second, j))); // vector<tuple<read_id,kmer_id,kmer_id + kmerpos>
                         transtuples.push_back(std::make_tuple(found->second, read_id, make_pair(found->second, j)));
                         #endif
                     }
@@ -245,6 +249,23 @@ int main (int argc, char* argv[]) {
                                 return make_pair(c1.first, merged);
                             });
     std::vector<tuple<int,int,cellspmat>>().swap(transtuples); // remove memory of transtuples
+    #endif
+    #ifdef _SEEDED
+    CSC<int, int> spmat(occurrences, read_id, kmervect.size(), 
+                            [] (int & p1, int & p2) 
+                            {   // I assume that there's no errors in MergeDuplicates (to fix)
+                                // I keep just the first position of that k-mer in that read
+                                return p1;
+                            });
+    //std::cout << "spmat created with " << spmat.nnz << " nonzeros" << endl;
+    std::vector<tuple<int,int,int>>().swap(occurrences);    // remove memory of occurences
+
+    CSC<int, int> transpmat(transtuples, kmervect.size(), read_id, 
+                            [] (int & p1, int & p2) 
+                            {  return p1;
+                            });
+    //std::cout << "transpose(spmat) created" << endl;
+    std::vector<tuple<int,int,int>>().swap(transtuples); // remove memory of transtuples
     #else
     CSC<int, std::pair<int, int>> spmat(occurrences, read_id, kmervect.size(), 
                             [] (std::pair<int,int> & c1, std::pair<int,int> & c2) 
@@ -289,6 +310,26 @@ int main (int argc, char* argv[]) {
         [] (mult_ptr & h, mult_ptr & m)
             {   m->insert(m->end(), h->begin(), h->end());
             return m;
+            }, reads, getvaluetype);
+    #endif
+    #ifdef _SEEDED
+    spmat_ptr getvaluetype(make_shared<spmatype>());
+    HeapSpGEMM(spmat, transpmat, 
+            [] (int & pi, int & pj) // n-th k-mer positions on read i and on read j 
+            {   spmat_ptr value(make_shared<spmatype>());
+                value->count = 1;
+                value->pos[0] = pi;
+                value->pos[1] = pj;
+                return value;
+            }, 
+            [] (spmat_ptr & m1, spmat_ptr & m2)
+            {   spmat_ptr value(make_shared<spmatype>());
+                value->count = m1->count+m2->count;
+                value->pos[0] = m1->pos[0];
+                value->pos[1] = m1->pos[1];
+                value->pos[2] = m2->pos[0];
+                value->pos[3] = m2->pos[1];
+                return value;
             }, reads, getvaluetype);
     #else 
     std::pair<int, std::pair<int, int>> getvaluetype;
