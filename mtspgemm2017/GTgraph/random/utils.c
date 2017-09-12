@@ -76,7 +76,7 @@ void countsort_aux(LONG_T q, LONG_T *lKey, LONG_T *lSorted, \
 		mhp[k] = 0;
     
 	for (k=0; k<q; k++)
-		mhp[bits(lKey[k],bitOff,m)]++;
+		mhp[mbits(lKey[k],bitOff,m)]++;
 
 	for (k=0; k<R; k++) {
 		last = psHisto[k] = myHisto[k];
@@ -98,7 +98,7 @@ void countsort_aux(LONG_T q, LONG_T *lKey, LONG_T *lSorted, \
 	}
     
 	for (k=0; k<q; k++) {
-		j = bits(lKey[k],bitOff,m);
+		j = mbits(lKey[k],bitOff,m);
 		lSorted[mhp[j]] = lKey[k];
 		auxSorted[mhp[j]] = auxKey[k];
 		mhp[j]++;

@@ -8,7 +8,7 @@
 #include "globals.h"
 #include "string.h"
 
-#define bits(x,k,j) ((x>>k) & ~(~0<<j))
+#define mbits(x,k,j) ((x>>k) & ~(~0<<j))
 
 void writeToFile(graph*);
 void updateLog(void);

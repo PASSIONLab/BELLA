@@ -18,10 +18,13 @@
 #include <math.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <seqan/seeds.h>
 
 #define PERCORECACHE (1024 * 1024)
 #define KMER_LENGTH 17
 #define _OSX
+#define TETA 3
+#define OMEGA 2*0.15*300
 //#define _EDLIB
 //#define _MULTPTR
 
@@ -346,6 +349,29 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                     else myBatch << i+colStart[b] << ',' << rowids[j] << ',' << values[j].first << endl;
                     #endif
                     #else
+                    // add SeqAn seed and extend alignment
+                    if(values[j]->count < 2)
+                    {
+                        seqan::CharString col = reads[i+colStart[b]];
+                        seqan::CharString row = reads[rowids[j]];
+                        // Seed creation (as of now, we use just one seed)
+                        seqan::Seed<seqan::Simple> seed(values[j]->pos[0], values[j]->pos[1], KMER_LENGTH); // begin(read i), begin(read j) and length(seed)
+                        // void extendSeed(seed, database, query, direction, MatchExtend);
+                        // void extendSeed(seed, database, query, direction, scoreMatrix, scoreDropOff, {UngappedXDrop, GappedXDrop});
+                        seqan::Score<int, seqan::Simple> scoringScheme(1, -1, -1);
+                        // Select drop off: max(\epsilon, k * error_rate * sequence_extended_so_far)
+                        // Some initial guesses would be \epsilon=3, and k=2 (these are of course tunable)
+                        extendSeed(seed, col, row, seqan::EXTEND_BOTH, scoringScheme, 90, seqan::UnGappedXDrop());
+                        if(max(endPositionH(seed)-beginPositionH(seed), endPositionV(seed)-beginPositionV(seed)) > 300)
+                            myBatch << i+colStart[b] << ',' << rowids[j] << ',' << values[j]->count << ',' << values[j]->pos[0] << ',' << values[j]->pos[1] << ',' << values[j]->pos[2] << ',' << values[j]->pos[3] << endl;
+                        // std::cout << endPositionH(seed3) << std::endl;  //output: 14
+                        // std::cout << endPositionV(seed3) << std::endl;  //output: 13
+                        // Comment from SeqAn developer: for ungapped X-drop extension of Simple Seeds, we can simply
+                        // update the begin and end values in each dimension. TODO: understand how to discriminare "valide" reads pairs.
+                        // TODO: re-define macros for bits
+                       
+                    }
+                    else 
                     myBatch << i+colStart[b] << ',' << rowids[j] << ',' << values[j]->count << ',' << values[j]->pos[0] << ',' << values[j]->pos[1] << ',' << values[j]->pos[2] << ',' << values[j]->pos[3] << endl;
                     #endif
                 }
