@@ -1,7 +1,14 @@
 #include "CSC.h"
 #include "global.h"
 #include "metric.h"
-//#include "../edlib/edlib/include/edlib.h"
+#include "../kmercode/hash_funcs.h"
+#include "../kmercode/Kmer.hpp"
+#include "../kmercode/Buffer.h"
+#include "../kmercode/common.h"
+#include "../kmercode/fq_reader.h"
+#include "../kmercode/ParallelFASTQ.h"
+#include "../edlib/include/edlib.h"
+#include <seqan/seeds.h>
 #include <omp.h>
 #include <fstream>
 #include <iostream>
@@ -18,7 +25,6 @@
 #include <math.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <seqan/seeds.h>
 
 #define PERCORECACHE (1024 * 1024)
 #define KMER_LENGTH 17
@@ -47,19 +53,19 @@ struct sysinfo info;
 #define pWRON .2775
 #define minLEN 17
 /* Compute potential overlap */
-void getOverlaplen(std::pair<int, int> & values, std::string & row, std::string col, int & len, int & left) 
+void getOverlaplen(int & pos_i, int & pos_j, std::string & row, std::string col, int & len, int & left) 
 {
     /* Left margin passed as argument */
     int right;           /* Define the right margin */
     int overlaplength;   /* Expected overlap region length */
     int temp1, temp2;
     
-    if(values.first <= values.second)
-        left = values.first;
-    else left = values.second;
+    if(pos_i <= pos_j)
+        left = pos_i;
+    else left = pos_j;
 
-    temp1 = row.length() - values.first;   /* 1st value referred to A's row */
-    temp2 = col.length() - values.second;  /* 2nd value referred to B's col */
+    temp1 = row.length() - pos_i;   /* 1st value referred to A's row */
+    temp2 = col.length() - pos_j;  /* 2nd value referred to B's col */
 
     if(temp1 <= temp2)
         right = temp1;
@@ -69,29 +75,39 @@ void getOverlaplen(std::pair<int, int> & values, std::string & row, std::string 
 }
 
 /* EDLIB Local Alignment */
-bool edlibOp(std::pair<int, int> & values, std::string & row, std::string & col, int & len, int & ed) 
+bool edlibOp(int & pos_i, int & pos_j, std::string & row, std::string & col, int & len, int & ed) 
 {
     bool align;
     int left = 0;
     /* Compute the overlap potential length and obtain substring of 
     overlaplength from the considered pair and pass them to alignop */
-    getOverlaplen(values, row, col, len, left);
+    getOverlaplen(pos_i, pos_j, row, col, len, left);
     /* Obtain row and col substr of overlaplength */
-    std::string substrow = row.substr(values.first-left, len);   
-    std::string substcol = col.substr(values.second-left, len); 
+    std::string substrow = row.substr(pos_i-left, len);   
+    std::string substcol = col.substr(pos_j-left, len); 
     
     if(len >= minLEN)
     {
+        Kmer kmerfromrow;
+        Kmer kmerfromcol;
+
+        kmerfromrow.set_kmer(substrow.c_str());
+        kmerfromcol.set_kmer(substcol.c_str());
+
+        kmerfromrow = kmerfromrow.rep();
+        kmerfromcol = kmerfromcol.rep();
+
         char *read1 = new char[len+1];
         char *read2 = new char[len+1];
-        strcpy(read1, substrow.c_str());
-        strcpy(read2, substcol.c_str());
+
+        kmerfromrow.toString(read1);
+        kmerfromcol.toString(read2);
     
         /* In len we expect len*pow(pCORR, 2) correct base-pairs, so here we compute the maximum 
         edit distance as len - mean + 2 standard deviation = len - (len*pow(pCORR, 2) + 2 * qrt(len*pow(pCORR, 2)*(1-pow(pCORR, 2)) */
         int maxed = len-len*pCORR+2*sqrt(len*pCORR*pWRON); 
     
-        EdlibAlignResult result = edlibAlign(read1, len, read2, len, edlibNewAlignConfig(maxed, EDLIB_MODE_NW, EDLIB_TASK_DISTANCE));
+        EdlibAlignResult result = edlibAlign(read1, len, read2, len, edlibNewAlignConfig(maxed, EDLIB_MODE_NW, EDLIB_TASK_DISTANCE, NULL, 0));
         delete [] read1;
         delete [] read2;
     
@@ -340,35 +356,33 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                         }
                     }
                     #else
-                    if(values[j].first < 2)
+                    if(values[j]->count <= 2)
                     {
                         int len, ed; 
-                        if(edlibOp(values[j].second, reads[rowids[j]], reads[i+colStart[b]], len, ed) == true)
-                            myBatch << i+colStart[b] << ',' << rowids[j] << ',' << values[j].first << endl;
+                        if(edlibOp(values[j]->pos[0], values[j]->pos[2], reads[rowids[j]], reads[i+colStart[b]], len, ed) == true)
+                            myBatch << i+colStart[b] << ',' << rowids[j] << ',' << values[j]->count << endl;
                     } 
-                    else myBatch << i+colStart[b] << ',' << rowids[j] << ',' << values[j].first << endl;
+                    else myBatch << i+colStart[b] << ',' << rowids[j] << ',' << values[j]->count << endl;
                     #endif
                     #else
                     // add SeqAn seed and extend alignment
-                    if(values[j]->count < 2)
+                    if(values[j]->count <= 2)
                     {
                         seqan::CharString col = reads[i+colStart[b]];
                         seqan::CharString row = reads[rowids[j]];
                         // Seed creation (as of now, we use just one seed)
                         seqan::Seed<seqan::Simple> seed(values[j]->pos[0], values[j]->pos[1], KMER_LENGTH); // begin(read i), begin(read j) and length(seed)
-                        // void extendSeed(seed, database, query, direction, MatchExtend);
-                        // void extendSeed(seed, database, query, direction, scoreMatrix, scoreDropOff, {UngappedXDrop, GappedXDrop});
                         seqan::Score<int, seqan::Simple> scoringScheme(1, -1, -1);
                         // Select drop off: max(\epsilon, k * error_rate * sequence_extended_so_far)
                         // Some initial guesses would be \epsilon=3, and k=2 (these are of course tunable)
-                        extendSeed(seed, col, row, seqan::EXTEND_BOTH, scoringScheme, 90, seqan::UnGappedXDrop());
+
+                        // TODO: dropScore has to be a float type, function has to become a bool function that return false if the alignment score is too low
+                        
+                        extendSeed(seed, col, row, seqan::EXTEND_BOTH, scoringScheme, 1, seqan::UnGappedXDrop());
                         if(max(endPositionH(seed)-beginPositionH(seed), endPositionV(seed)-beginPositionV(seed)) > 300)
                             myBatch << i+colStart[b] << ',' << rowids[j] << ',' << values[j]->count << ',' << values[j]->pos[0] << ',' << values[j]->pos[1] << ',' << values[j]->pos[2] << ',' << values[j]->pos[3] << endl;
                         // std::cout << endPositionH(seed3) << std::endl;  //output: 14
                         // std::cout << endPositionV(seed3) << std::endl;  //output: 13
-                        // Comment from SeqAn developer: for ungapped X-drop extension of Simple Seeds, we can simply
-                        // update the begin and end values in each dimension. TODO: understand how to discriminare "valide" reads pairs.
-                        // TODO: re-define macros for bits
                        
                     }
                     else 
@@ -433,18 +447,18 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                 if(values[j]->size() < 2)
                 {
                     int len, ed;
-                    if(edlibOp(values[j]->front().second, reads[rowids[j]], reads[i], len, ed) == true)
-                    myBatch << i << ',' << rowids[j] << ',' << values[j]->size() << endl;
+                    if(edlibOp(values[j]->pos[0], values[j]->pos[2], reads[rowids[j]], reads[i], len, ed) == true)
+                    myBatch << i << ',' << rowids[j] << ',' << values[j]->count << endl;
                 }
-                else myBatch << i << ',' << rowids[j] << ',' << values[j]->size() << endl;
+                else myBatch << i << ',' << rowids[j] << ',' << values[j]->count << endl;
                 #else
-                if(values[j].first < 2)
+                if(values[j]->count <= 2)
                 {
                 int len, ed; 
-                if(edlibOp(values[j].second, reads[rowids[j]], reads[i], len, ed) == true)
-                    myBatch << i << ',' << rowids[j] << ',' << values[j].first << endl;
+                if(edlibOp(values[j]->pos[0], values[j]->pos[2], reads[rowids[j]], reads[i], len, ed) == true)
+                    myBatch << i << ',' << rowids[j] << ',' << values[j]->count << endl;
                 }
-                else myBatch << i << ',' << rowids[j] << ',' << values[j].first << endl;
+                else myBatch << i << ',' << rowids[j] << ',' << values[j]->count << endl;
                 #endif
                 #else
                 myBatch << i << ',' << rowids[j] << ',' << values[j]->count << ',' << values[j]->pos[0] << ',' << values[j]->pos[1] << ',' << values[j]->pos[2] << ',' << values[j]->pos[3] << endl;
