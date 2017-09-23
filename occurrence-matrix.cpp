@@ -91,7 +91,7 @@ typedef shared_ptr<multcell> mult_ptr;                     // pointer to multcel
 #ifdef _SEEDED
 struct spmatype {
 
-    int count;   /* number of shared k-mers */
+    int count = 0;   /* number of shared k-mers */
     int pos[4] = {0};  /* pos1i, pos1j, pos2i, pos2j */
 };
 typedef shared_ptr<spmatype> spmat_ptr; // pointer to spmatype datastruct
@@ -317,17 +317,17 @@ int main (int argc, char* argv[]) {
             [] (int & pi, int & pj) // n-th k-mer positions on read i and on read j 
             {   spmat_ptr value(make_shared<spmatype>());
                 value->count = 1;
-                value->pos[0] = pi;
-                value->pos[1] = pj;
+                value->pos[0] = pi; // row
+                value->pos[1] = pj; // col
                 return value;
             }, 
             [] (spmat_ptr & m1, spmat_ptr & m2)
             {   spmat_ptr value(make_shared<spmatype>());
                 value->count = m1->count+m2->count;
-                value->pos[0] = m1->pos[0];
-                value->pos[1] = m1->pos[1];
-                value->pos[2] = m2->pos[0];
-                value->pos[3] = m2->pos[1];
+                value->pos[0] = m1->pos[0]; // row 
+                value->pos[1] = m1->pos[1]; // col
+                value->pos[2] = m2->pos[0]; // row 
+                value->pos[3] = m2->pos[1]; // col
                 return value;
             }, reads, getvaluetype);
     #else 

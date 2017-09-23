@@ -8,6 +8,10 @@
 #include "../kmercode/fq_reader.h"
 #include "../kmercode/ParallelFASTQ.h"
 #include "../edlib/include/edlib.h"
+#include <seqan/sequence.h>
+#include <seqan/align.h>
+#include <seqan/score.h>
+#include <seqan/modifier.h>
 #include <seqan/seeds.h>
 #include <omp.h>
 #include <fstream>
@@ -26,11 +30,15 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+using namespace seqan;
+
+typedef Seed<Simple>  TSeed;
+typedef SeedSet<TSeed> TSeedSet;
+
 #define PERCORECACHE (1024 * 1024)
 #define KMER_LENGTH 17
+#define pWRON .7
 #define _OSX
-#define TETA 3
-#define OMEGA 2*0.15*300
 //#define _EDLIB
 //#define _MULTPTR
 
@@ -50,7 +58,7 @@ struct sysinfo info;
 
 #ifdef _EDLIB
 #define pCORR .7225
-#define pWRON .2775
+#define pWRON .2275
 #define minLEN 17
 /* Compute potential overlap */
 void getOverlaplen(int & pos_i, int & pos_j, std::string & row, std::string col, int & len, int & left) 
@@ -293,14 +301,24 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
 
         //IT * colptr = new IT[B.cols+1]; 
         //colptr[0] = 0;
+
         std::stringstream myBatch;
+
+        Dna5String seqH; 
+        Dna5String seqV; 
+        Dna5String seedH;
+        Dna5String seedV;
+        int64_t longestExtension1;
+        int64_t longestExtension2;
+
+        Score<int, Simple> scoringScheme(1, -1, -1);
 
         #ifdef _MULTPTR
         std::stringstream myTrue;
         std::stringstream myFalse;
         #endif
 
-        #pragma omp parallel for private(myBatch) shared(colStart,colEnd,numCols)
+        #pragma omp parallel for private(myBatch, seedH, seedV, seqH, seqV, longestExtension1, longestExtension2) shared(colStart,colEnd,numCols)
         for(int b = 0; b < numBlocks+1; ++b) 
         { 
             vector<IT> * RowIdsofC = new vector<IT>[numCols[b]];  // row ids for each column of C (bunch of cols)
@@ -356,37 +374,96 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                         }
                     }
                     #else
-                    if(values[j]->count <= 2)
+                    if(values[j]->count < 2)
                     {
                         int len, ed; 
-                        if(edlibOp(values[j]->pos[0], values[j]->pos[2], reads[rowids[j]], reads[i+colStart[b]], len, ed) == true)
+                        if(edlibOp(values[j]->pos[0], values[j]->pos[1], reads[i+colStart[b]], reads[rowids[j]], len, ed) == true)
                             myBatch << i+colStart[b] << ',' << rowids[j] << ',' << values[j]->count << endl;
                     } 
                     else myBatch << i+colStart[b] << ',' << rowids[j] << ',' << values[j]->count << endl;
                     #endif
-                    #else
-                    // add SeqAn seed and extend alignment
-                    if(values[j]->count <= 2)
-                    {
-                        seqan::CharString col = reads[i+colStart[b]];
-                        seqan::CharString row = reads[rowids[j]];
-                        // Seed creation (as of now, we use just one seed)
-                        seqan::Seed<seqan::Simple> seed(values[j]->pos[0], values[j]->pos[1], KMER_LENGTH); // begin(read i), begin(read j) and length(seed)
-                        seqan::Score<int, seqan::Simple> scoringScheme(1, -1, -1);
-                        // Select drop off: max(\epsilon, k * error_rate * sequence_extended_so_far)
-                        // Some initial guesses would be \epsilon=3, and k=2 (these are of course tunable)
+                    #else 
+                    if(values[j]->count == 1)
+                    {          
+                        seqH = reads[rowids[j]];
+                        seqV = reads[i+colStart[b]];
 
-                        // TODO: dropScore has to be a float type, function has to become a bool function that return false if the alignment score is too low
+                        Seed<Simple> seed1(values[j]->pos[0], values[j]->pos[1], values[j]->pos[0]+KMER_LENGTH, values[j]->pos[1]+KMER_LENGTH);
+                        seedH = infix(seqH, beginPositionH(seed1), endPositionH(seed1));
+                        seedV = infix(seqV, beginPositionV(seed1), endPositionV(seed1));
+
+                        Dna5StringReverseComplement twin(seedH);
+
+                        if(twin == seedV)
+                        {
+                            Dna5StringReverseComplement twinRead(seqH);
+                            values[j]->pos[0] = reads[rowids[j]].length()-values[j]->pos[0]-KMER_LENGTH;
+                            Seed<Simple> seed1(values[j]->pos[0], values[j]->pos[1], values[j]->pos[0]+KMER_LENGTH, values[j]->pos[1]+KMER_LENGTH);
+
+                            /* Perform match extension */
+                            longestExtension1 = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
+                
+                        } else
+                        {
+                            /* Perform match extension */
+                            longestExtension1 = extendSeed(seed1, seqH, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
+        
+                        }
+
+                        if(longestExtension1 > (int64_t)50)
+                            myBatch << i+colStart[b] << ',' << rowids[j] << ',' << values[j]->count << endl;
+                    } 
+                    else if(values[j]->count > 1)
+                    {       
+
+                        seqH = reads[rowids[j]];
+                        seqV = reads[i+colStart[b]];
+
+                        Seed<Simple> seed1(values[j]->pos[0], values[j]->pos[1], values[j]->pos[0]+KMER_LENGTH, values[j]->pos[1]+KMER_LENGTH);
+                        Seed<Simple> seed2(values[j]->pos[2], values[j]->pos[3], values[j]->pos[2]+KMER_LENGTH, values[j]->pos[3]+KMER_LENGTH);
+                        seedH = infix(seqH, beginPositionH(seed1), endPositionH(seed1));
+                        seedV = infix(seqV, beginPositionV(seed1), endPositionV(seed1));
+
+                        Dna5StringReverseComplement twin(seedH);
+
+                        if(twin == seedV)
+                        {
+                            Dna5StringReverseComplement twinRead(seqH);
+
+                            values[j]->pos[0] = reads[rowids[j]].length()-values[j]->pos[0]-KMER_LENGTH;
+                            values[j]->pos[2] = reads[rowids[j]].length()-values[j]->pos[2]-KMER_LENGTH;
+
+                            Seed<Simple> seed1(values[j]->pos[0], values[j]->pos[1], values[j]->pos[0]+KMER_LENGTH, values[j]->pos[1]+KMER_LENGTH);
+                            Seed<Simple> seed2(values[j]->pos[2], values[j]->pos[3], values[j]->pos[2]+KMER_LENGTH, values[j]->pos[3]+KMER_LENGTH);
+
+                            /* Perform match extension */
+                            longestExtension1 = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
+                            longestExtension2 = extendSeed(seed2, twinRead, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
+
+                            // cout << longestExtension1 << endl;
+                            // cout << longestExtension2 << endl;
+
+                        } else
+                        {
+                            /* Perform match extension */
+                            longestExtension1 = extendSeed(seed1, seqH, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
+                            longestExtension2 = extendSeed(seed2, seqH, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
+
+                            // cout << longestExtension1 << endl;
+                            // cout << longestExtension2 << endl;
                         
-                        extendSeed(seed, col, row, seqan::EXTEND_BOTH, scoringScheme, 1, seqan::UnGappedXDrop());
-                        if(max(endPositionH(seed)-beginPositionH(seed), endPositionV(seed)-beginPositionV(seed)) > 300)
-                            myBatch << i+colStart[b] << ',' << rowids[j] << ',' << values[j]->count << ',' << values[j]->pos[0] << ',' << values[j]->pos[1] << ',' << values[j]->pos[2] << ',' << values[j]->pos[3] << endl;
-                        // std::cout << endPositionH(seed3) << std::endl;  //output: 14
-                        // std::cout << endPositionV(seed3) << std::endl;  //output: 13
-                       
-                    }
-                    else 
-                    myBatch << i+colStart[b] << ',' << rowids[j] << ',' << values[j]->count << ',' << values[j]->pos[0] << ',' << values[j]->pos[1] << ',' << values[j]->pos[2] << ',' << values[j]->pos[3] << endl;
+                        }
+                        // min_covered_bases = 50; 
+                        // TODO: need to experiment with this: std::min((int64_t) (read->get_sequence_length() * 0.10f), (int64_t) 50);
+                        //if(longestExtension1 > min(min((int64_t)(reads[i+colStart[b]].length()*0.10f), (int64_t)(reads[rowids[j]].length()*0.10f)), (int64_t)50) || longestExtension2 > min(min((int64_t)(reads[i+colStart[b]].length()*0.10f), (int64_t)(reads[rowids[j]].length()*0.10f)), (int64_t)50))
+                        //    myBatch << i+colStart[b] << ',' << rowids[j] << ',' << values[j]->count << endl;
+                        if(longestExtension1 > (int64_t)50 || longestExtension2 > (int64_t)50)
+                            myBatch << i+colStart[b] << ',' << rowids[j] << ',' << values[j]->count << endl;
+
+                        //clear(seedSet);
+                        //clear(seedChain);
+
+                    } else myBatch << i+colStart[b] << ',' << rowids[j] << ',' << values[j]->count << endl;
                     #endif
                 }
             }
@@ -452,7 +529,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                 }
                 else myBatch << i << ',' << rowids[j] << ',' << values[j]->count << endl;
                 #else
-                if(values[j]->count <= 2)
+                if(values[j]->count < 2)
                 {
                 int len, ed; 
                 if(edlibOp(values[j]->pos[0], values[j]->pos[2], reads[rowids[j]], reads[i], len, ed) == true)
