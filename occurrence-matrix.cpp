@@ -40,7 +40,7 @@
 #define LSIZE 16000
 #define KMER_LENGTH 17
 #define ITERS 10
-#define DEPTH 30
+#define DEPTH 25
 #define _SEEDED
 //#define _MULPTR
 
@@ -92,9 +92,15 @@ typedef shared_ptr<multcell> mult_ptr;                     // pointer to multcel
 struct spmatype {
 
     int count = 0;   /* number of shared k-mers */
-    int pos[4] = {0};  /* pos1i, pos1j, pos2i, pos2j */
+    int pos[4] = {0};  /* pos1i, pos1j, pos2i, pos2j, pos3i, pos3j */
 };
 typedef shared_ptr<spmatype> spmat_ptr; // pointer to spmatype datastruct
+struct readsinfo {
+
+    std::string nametag;   
+    std::string seq; 
+
+};
 #endif
 
 // Function to create the dictionary
@@ -128,10 +134,13 @@ int main (int argc, char* argv[]) {
     Kmer kmerfromstr;
     Kmers kmervect;
     std::vector<string> seqs;
-    std::vector<string> reads;
     std::vector<string> quals;
+    std::vector<string> nametags;
+    std::vector<readsinfo> reads;
     int rangeStart;
+    readsinfo temp;
     Kmers kmersfromreads;
+
     #ifdef _MULPTR
     std::vector<tuple<int,int,cellspmat>> occurrences;
     std::vector<tuple<int,int,cellspmat>> transtuples;
@@ -180,7 +189,7 @@ int main (int argc, char* argv[]) {
         size_t fillstatus = 1;
         while(fillstatus) { 
             //double time1 = omp_get_wtime();
-            fillstatus = pfq->fill_block(seqs, quals, upperlimit);
+            fillstatus = pfq->fill_block(nametags, seqs, quals, upperlimit);
             int nreads = seqs.size();
 
             //double time2 = omp_get_wtime();
@@ -190,7 +199,9 @@ int main (int argc, char* argv[]) {
             {
                 // remember that the last valid position is length()-1
                 int len = seqs[i].length();
-                reads.push_back(seqs[i]);
+                temp.nametag = nametags[i];
+                temp.seq = seqs[i];
+                reads.push_back(temp);
                 
                 // skip this sequence if the length is too short
                 if(len < KMER_LENGTH)
@@ -349,8 +360,8 @@ int main (int argc, char* argv[]) {
     #endif
     
     cout << "multiply (local alignment included) time: " << omp_get_wtime()-start << " sec" << endl;
-    std::ifstream filename("spmat.csv");
-    getMetrics(filename);  
+    // std::ifstream filename("spmat.csv");
+    // getMetrics(filename);  
     cout << "total time: " << omp_get_wtime()-all << " sec" << endl;
 
     return 0;

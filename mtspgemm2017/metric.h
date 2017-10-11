@@ -28,117 +28,39 @@
 
 #define ERR .15 
 #define KMER_LENGTH 17
-//#define _MULTPTR
+
 using namespace std;
 
-#ifdef _MULTPTR
-/* Compute the distance between two k-mers on the same read */
-int computeDist(int & pos, int & next) 
-{
-    int dist;
-    int min, max;
-
-    if(pos < next) {
-        min = pos;
-        max = next;
-    } else {
-        max = pos;
-        min = next;
-    }
-
-    dist = max-min;
-
-    return dist;
-}    
-/* Find when a k-mers pair represents an evidence of potential overlap or not */
-bool potentialOv(int & dist1, int & dist2) 
-{
-
-    double dmin, dmax;     /* Define the shortest and longest distance */
-    double Lmin, Lmax;     /* Compute the shortest length of the longest distance and the longest length of the shortest distance */
-    bool accept = false;
-    double pINS = 1.090;
-    double pDEL = 0.955;
-    
-    if(dist1 <= dist2) { 
-        dmin = (double)dist1; 
-        dmax = (double)dist2;
-    } else {
-        dmax = (double)dist1;
-        dmin = (double)dist2;
-    }
-    
-    Lmax = dmin/pDEL;  /* Maximum length of the shortest delta given the probability of deletion */
-    Lmin = dmax/pINS;  /* Minimum length of the longest delta given the probability of insertion */
-    
-    if(Lmax > Lmin) {
-        accept = true;
-    } else accept = false;
-
-    return accept;
-}
-/* Function to obtain reads pairs distances vector, output to file */
-template <typename FT>
-double getRatio(FT & values)
-{
-    bool ov;
-    double ratio, count, numpair;
-    int dist1, dist2;
-    std::vector<std::pair<int, std::pair<int, int>>> defvalues = *values;
-    std::vector<std::pair<int, std::pair<int, int>>>::iterator it;
-    std::vector<std::pair<int, std::pair<int, int>>>::iterator nit;
-
-    for(it = defvalues.begin(); it != defvalues.end(); it++)     
-    {
-        for(nit = defvalues.begin(); nit != defvalues.end(); nit++)     
-        {
-            if(it->first != nit->first) 
-            {
-                numpair++;
-                ov = false; 
-                dist1 = computeDist(it->second.first, nit->second.first);
-                dist2 = computeDist(it->second.second, nit->second.second);
-                /* Compute evidence of potential overlap for each k-mers pair */
-                ov = potentialOv(dist1, dist2); 
-                if(ov)
-                    count++;
-            }
-        }
-    }
-    return ratio = count/numpair; /* Amount of potential overlap evidence over the total number of k-mers pairs */
-}
-#endif
-
 /* Compute the number of true overlapping reads */
-double trueOv(ifstream & ifs) 
+double trueOv(ifstream & fastafai) 
 {
-    vector<Interval<int>> intervals;
-    vector<Interval<int>> queries;
-    vector<Interval<int>>::iterator q;
+    vector<Interval<std::string>> intervals;
+    vector<Interval<std::string>> queries;
+    vector<Interval<std::string>>::iterator q;
     double trueoverlaps;
 
-    if(ifs.is_open()) {
+    if(fastafai.is_open()) {
 
-        int id;
-        int st;
-        int en;
-        
-        while(ifs >> id >> st >> en) {
+        std::string str;
+        int start;
+        int end;
+        while(fastafai >> str >> start >> end)
+        {
             
-            intervals.push_back(Interval<int>(st, en, id));
-            queries.push_back(Interval<int>(st, en, id));
+            intervals.push_back(Interval<std::string>(start, end, str));
+            queries.push_back(Interval<std::string>(start, end, str));
         }
 
-    } else std::cout << "error opening the ifs" << endl;
+    } else std::cout << "Error opening the .sam" << endl;
 
-    IntervalTree<int> tree;
+    IntervalTree<std::string> tree;
     vector<size_t> treecounts;
 
-    tree = IntervalTree<int>(intervals);
+    tree = IntervalTree<std::string>(intervals);
 
     for (q = queries.begin(); q != queries.end(); ++q) 
     {
-        vector<Interval<int>> results;
+        vector<Interval<std::string>> results;
         tree.findOverlapping(q->start, q->stop, results);
         treecounts.push_back(results.size());
     }
@@ -151,15 +73,16 @@ double trueOv(ifstream & ifs)
 }
 
 /* Compute the overlap length between potential overlapping reads pairs */
-int computeLength(map<int, pair<int,int>> & ifsmap, int & col, int & row) 
+int computeLength(map<std::string, std::pair<int,int>> & sammap, std::string & col_nametag, std::string & row_nametag) 
 {
 
     int alignment_length = 0;
-    std::map<int, pair<int,int>>::iterator jit;
-    std::map<int, pair<int,int>>::iterator iit;
 
-    jit = ifsmap.find(col); // col index
-    iit = ifsmap.find(row); // row index
+    std::map<std::string, std::pair<int,int>>::iterator jit;
+    std::map<std::string, std::pair<int,int>>::iterator iit;
+
+    jit = sammap.find(col_nametag); // col name
+    iit = sammap.find(row_nametag); // row name 
     
     if(iit->second.first < jit->second.first) {
         if(iit->second.second > jit->second.first) {
@@ -170,42 +93,57 @@ int computeLength(map<int, pair<int,int>> & ifsmap, int & col, int & row)
         if(jit->second.second > iit->second.first) {
             alignment_length = min((jit->second.second - iit->second.first), (iit->second.second - iit->second.first));
         }
-    } else { 
-        alignment_length = min((jit->second.second - iit->second.first), (iit->second.second - iit->second.first)); 
-    } 
+    } else alignment_length = min((jit->second.second - iit->second.first), (iit->second.second - iit->second.first)); 
 
     return alignment_length;
 }
 
 void getMetrics(std::ifstream & filename) 
 {
-    std::ifstream ifs("test_01.axt"); /* To be generalized */
-    std::map<int, pair<int,int>> ifsmap;
-    double TPandFP = 0, TP = 0;
+    std::ifstream sam("sim-accuracy.axt");
+    //std::ifstream sam_rv("parsedSamrv.axt");
+    std::map<std::string, std::pair<int,int>> sammap;
+    //std::map<std::string, std::pair<int,int>> sammaprv;
     int alignment_length;
+    double TPandFP = 0, TP = 0;
 
-    /* Create reads map from axt file to be used to find potential overlapping reads pairs */
-    if(ifs.is_open()) {
-        int id;
-        int st;
-        int en;
-        std::pair<int, int> values;
-        while(ifs >> id >> st >> en) {
-            int key = {id};
-            int start = {st};
-            int end = {en};
-            values = make_pair(start, end);
-            ifsmap[key] = values;
+    if(sam.is_open())
+    {
+        std::string str;
+        int start;
+        int end;
+        std::pair<int,int> coords;
+        while(sam >> str >> start >> end)
+        {
+            std::string nametag = str;
+            int start_v = start;
+            int end_v = end;
+            coords = make_pair(start_v, end_v);
+            sammap.insert(std::pair<std::string, std::pair<int, int>>(nametag,coords));
         }
-    } else std::cout << "error opening the ifs" << endl;
+    } else std::cout << "Error opening the .sam" << endl;
 
-    ifs.clear();
-    ifs.seekg(0, ios::beg);
+    //if(sam_rv.is_open())
+    //{
+    //    std::string str;
+    //    int start;
+    //    int end;
+    //    std::pair<int,int> coords;
+    //    while(sam_rv >> str >> start >> end)
+    //    {
+    //        std::string nametag = str;
+    //        int start_v = start;
+    //        int end_v = end;
+    //        coords = make_pair(start_v, end_v);
+    //        sammaprv.insert(std::pair<std::string, std::pair<int, int>>(nametag,coords));
+    //    }
+    //} else std::cout << "Error opening the .sam-rv" << endl;
 
-    /* Compute true overlapping reads pairs from fastq */
-    double P = trueOv(ifs);
-    ifs.clear();
-    ifs.seekg(0, ios::beg);
+    sam.clear();
+    sam.seekg(0, ios::beg);
+
+    //sam_rv.clear();
+    //sam_rv.seekg(0, ios::beg);
 
     if(filename.is_open())
     {
@@ -214,27 +152,41 @@ void getMetrics(std::ifstream & filename)
         {
             TPandFP++;
             std::stringstream lineStream(line);
-            std::string col, row;
+            std::string col_nametag, row_nametag;
 
-            getline(lineStream, col, ',');
-            getline(lineStream, row, ',');
-
-            int colid = stoi(col);
-            int rowid = stoi(row);
+            getline(lineStream, col_nametag, ',');
+            getline(lineStream, row_nametag, ',');
 
             /* Compute the overlap length between potential overlapping reads pairs */
-            alignment_length = computeLength(ifsmap, colid, rowid);
-            if(alignment_length >= KMER_LENGTH)
+            alignment_length = computeLength(sammap, col_nametag, row_nametag);
+            if(alignment_length >= 17)
                 TP++;
+
+           // alignment_length = computeLength(sammaprv, col_nametag, row_nametag);
+           // if(alignment_length >= 17)
+           //     TP++;
         }
     }
 
-    filename.close();
-    ifs.close();
+    sam.clear();
+    sam.seekg(0, ios::beg);
 
-    cout << "TP+FP after multiply = " << TPandFP << endl;
-    cout << "P from fastq = " << P << endl;
-    cout << "TP from fastq = " << TP << endl;
+    //sam_rv.clear();
+    //sam_rv.seekg(0, ios::beg);
+
+    /* Compute true overlapping reads pairs from fastq */
+    //double P_sam = trueOv(sam);
+    //double P_sam_rv = trueOv(sam_rv);
+
+    double P = trueOv(sam);
+
+    filename.close();
+    sam.close();
+    // sam_rv.close();
+
+    cout << "Overlapping from BELLA = " << TPandFP << endl;
+    cout << "True overlapping from fastq = " << P << endl;
+    cout << "True overlapping from BELLA = " << TP << endl;
     cout << "Recall = " << TP/P << endl;
     cout << "Precision = " << TP/TPandFP << endl; 
 }

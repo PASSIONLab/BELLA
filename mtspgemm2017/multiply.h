@@ -39,8 +39,6 @@ typedef SeedSet<TSeed> TSeedSet;
 #define KMER_LENGTH 17
 #define pWRON .7
 #define _OSX
-//#define _EDLIB
-//#define _MULTPTR
 
 #ifdef _OSX
 #include <mach/mach.h>
@@ -222,8 +220,8 @@ void LocalSpGEMM(IT & start, IT & end, IT & ncols, const CSC<IT,NT> & A, const C
   * Probably slower than HeapSpGEMM_gmalloc but likely to use less memory
  **/
 
-template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation>
-void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, std::vector<string> & reads, FT & getvaluetype)
+template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation, typename readsinfo>
+void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, std::vector<readsinfo> & reads, FT & getvaluetype)
 {   
     #ifdef _OSX /* OSX-based memory consumption implementation */
     vm_size_t page_size;
@@ -313,11 +311,6 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
 
         Score<int, Simple> scoringScheme(1, -1, -1);
 
-        #ifdef _MULTPTR
-        std::stringstream myTrue;
-        std::stringstream myFalse;
-        #endif
-
         #pragma omp parallel for private(myBatch, seedH, seedV, seqH, seqV, longestExtension1, longestExtension2) shared(colStart,colEnd,numCols)
         for(int b = 0; b < numBlocks+1; ++b) 
         { 
@@ -351,42 +344,14 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
             delete [] ValuesofC;
 
             /* Local Alignment before write on stringstream */
-            for(int i=0; i<numCols[b]; ++i) {
-                for(int j=colptr[i]; j<colptr[i+1]; ++j) {
-                    #ifdef _EDLIB
-                    #ifdef _MULTPTR
-                    int len, ed;
-                    if(edlibOp(values[j]->front().second, reads[rowids[j]], reads[i+colStart[b]], len, ed) == true)
-                    {
-                        if(values[j]->size() > 1)
-                        {
-                        double ratio = getRatio(values[j]);
-                        myTrue << i+colStart[b] << ',' << rowids[j] << ',' << ratio << endl;
-                        }
-                        myBatch << i+colStart[b] << ',' << rowids[j] << ',' << values[j]->size() << endl;
-
-                    } else if(edlibOp(values[j]->front().second, reads[rowids[j]], reads[i+colStart[b]], len, ed) == false)
-                    {
-                        if(values[j]->size() > 1)
-                        {
-                            double ratio = getRatio(values[j]);
-                            myFalse << i+colStart[b] << ',' << rowids[j] << ',' << ratio << endl;
-                        }
-                    }
-                    #else
-                    if(values[j]->count < 2)
-                    {
-                        int len, ed; 
-                        if(edlibOp(values[j]->pos[0], values[j]->pos[1], reads[i+colStart[b]], reads[rowids[j]], len, ed) == true)
-                            myBatch << i+colStart[b] << ',' << rowids[j] << ',' << values[j]->count << endl;
-                    } 
-                    else myBatch << i+colStart[b] << ',' << rowids[j] << ',' << values[j]->count << endl;
-                    #endif
-                    #else 
+            for(int i=0; i<numCols[b]; ++i) 
+            {
+                for(int j=colptr[i]; j<colptr[i+1]; ++j) 
+                {
                     if(values[j]->count == 1)
                     {          
-                        seqH = reads[rowids[j]];
-                        seqV = reads[i+colStart[b]];
+                        seqH = reads[rowids[j]].seq;
+                        seqV = reads[i+colStart[b]].seq;
 
                         Seed<Simple> seed1(values[j]->pos[0], values[j]->pos[1], values[j]->pos[0]+KMER_LENGTH, values[j]->pos[1]+KMER_LENGTH);
                         seedH = infix(seqH, beginPositionH(seed1), endPositionH(seed1));
@@ -397,7 +362,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                         if(twin == seedV)
                         {
                             Dna5StringReverseComplement twinRead(seqH);
-                            values[j]->pos[0] = reads[rowids[j]].length()-values[j]->pos[0]-KMER_LENGTH;
+                            values[j]->pos[0] = reads[rowids[j]].seq.length()-values[j]->pos[0]-KMER_LENGTH;
                             Seed<Simple> seed1(values[j]->pos[0], values[j]->pos[1], values[j]->pos[0]+KMER_LENGTH, values[j]->pos[1]+KMER_LENGTH);
 
                             /* Perform match extension */
@@ -410,14 +375,18 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         
                         }
 
-                        if(longestExtension1 > (int64_t)50)
-                            myBatch << i+colStart[b] << ',' << rowids[j] << ',' << values[j]->count << endl;
+                        if(longestExtension1 > 70)
+                        {
+                            myBatch << reads[i+colStart[b]].nametag << "," << reads[rowids[j]].nametag << endl;
+                            // myBatch << reads[i+colStart[b]].nametag << ',' << reads[rowids[j]].nametag << ',' << values[j]->count << endl;
+                            // myBatch << i+colStart[b] << ',' << rowids[j] << ',' << values[j]->count << endl;
+                        }
                     } 
                     else if(values[j]->count > 1)
                     {       
 
-                        seqH = reads[rowids[j]];
-                        seqV = reads[i+colStart[b]];
+                        seqH = reads[rowids[j]].seq;
+                        seqV = reads[i+colStart[b]].seq;
 
                         Seed<Simple> seed1(values[j]->pos[0], values[j]->pos[1], values[j]->pos[0]+KMER_LENGTH, values[j]->pos[1]+KMER_LENGTH);
                         Seed<Simple> seed2(values[j]->pos[2], values[j]->pos[3], values[j]->pos[2]+KMER_LENGTH, values[j]->pos[3]+KMER_LENGTH);
@@ -430,8 +399,8 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                         {
                             Dna5StringReverseComplement twinRead(seqH);
 
-                            values[j]->pos[0] = reads[rowids[j]].length()-values[j]->pos[0]-KMER_LENGTH;
-                            values[j]->pos[2] = reads[rowids[j]].length()-values[j]->pos[2]-KMER_LENGTH;
+                            values[j]->pos[0] = reads[rowids[j]].seq.length()-values[j]->pos[0]-KMER_LENGTH;
+                            values[j]->pos[2] = reads[rowids[j]].seq.length()-values[j]->pos[2]-KMER_LENGTH;
 
                             Seed<Simple> seed1(values[j]->pos[0], values[j]->pos[1], values[j]->pos[0]+KMER_LENGTH, values[j]->pos[1]+KMER_LENGTH);
                             Seed<Simple> seed2(values[j]->pos[2], values[j]->pos[3], values[j]->pos[2]+KMER_LENGTH, values[j]->pos[3]+KMER_LENGTH);
@@ -455,16 +424,21 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                         }
                         // min_covered_bases = 50; 
                         // TODO: need to experiment with this: std::min((int64_t) (read->get_sequence_length() * 0.10f), (int64_t) 50);
-                        //if(longestExtension1 > min(min((int64_t)(reads[i+colStart[b]].length()*0.10f), (int64_t)(reads[rowids[j]].length()*0.10f)), (int64_t)50) || longestExtension2 > min(min((int64_t)(reads[i+colStart[b]].length()*0.10f), (int64_t)(reads[rowids[j]].length()*0.10f)), (int64_t)50))
-                        //    myBatch << i+colStart[b] << ',' << rowids[j] << ',' << values[j]->count << endl;
-                        if(longestExtension1 > (int64_t)50 || longestExtension2 > (int64_t)50)
-                            myBatch << i+colStart[b] << ',' << rowids[j] << ',' << values[j]->count << endl;
+
+                        if(longestExtension1 > 70 || longestExtension2 > 70)
+                        {
+                            myBatch << reads[i+colStart[b]].nametag << "," << reads[rowids[j]].nametag << endl;
+                            // myBatch << reads[i+colStart[b]].nametag << ',' << reads[rowids[j]].nametag << ',' << values[j]->count << endl;
+                            // myBatch << i+colStart[b] << ',' << rowids[j] << ',' << values[j]->count << endl;
+                        }
 
                         //clear(seedSet);
                         //clear(seedChain);
 
-                    } else myBatch << i+colStart[b] << ',' << rowids[j] << ',' << values[j]->count << endl;
-                    #endif
+                    } else 
+                    {
+                        myBatch << reads[i+colStart[b]].nametag << "," << reads[rowids[j]].nametag << endl;
+                    } // myBatch << reads[i+colStart[b]].nametag << ',' << reads[rowids[j]].nametag << ',' << values[j]->count << endl; // myBatch << i+colStart[b] << ',' << rowids[j] << ',' << values[j]->count << endl; // 
                 }
             }
 
@@ -474,13 +448,8 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
 
             #pragma omp critical
             {
-                #ifdef _MULTPTR
-                writeToFile(myFalse, "falsesample.csv");
-                writeToFile(myTrue, "truesample.csv");
-                myFalse.str(std::string());
-                myTrue.str(std::string());
-                #endif
-                writeToFile(myBatch, "spmat.csv");
+                // cout << "Sono il thread " << omp_get_thread_num() <<  " di " << omp_get_num_threads() << " e sto per morire ..o forse no!" << endl;
+                writeToFile(myBatch, "BELLAreads.txt");
                 myBatch.str(std::string());
             }
         }
@@ -517,29 +486,112 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         delete [] RowIdsofC;
         delete [] ValuesofC;
 
-        for(int i=0; i<B.cols; ++i) {
-            for(int j=colptr[i]; j<colptr[i+1]; ++j) {
-                #ifdef _EDLIB
-                #ifdef _MULTPTR
-                if(values[j]->size() < 2)
+        Dna5String seqH; 
+        Dna5String seqV; 
+        Dna5String seedH;
+        Dna5String seedV;
+        int64_t longestExtension1;
+        int64_t longestExtension2;
+
+        std::stringstream myBatchSingle;
+        Score<int, Simple> scoringScheme(1, -1, -1);
+
+        for(int i=0; i<B.cols; ++i) 
+        {
+            for(int j=colptr[i]; j<colptr[i+1]; ++j) 
+            {
+                if(values[j]->count == 1)
+                {          
+                    seqH = reads[rowids[j]].seq;
+                    seqV = reads[i].seq;
+
+                    Seed<Simple> seed1(values[j]->pos[0], values[j]->pos[1], values[j]->pos[0]+KMER_LENGTH, values[j]->pos[1]+KMER_LENGTH);
+                    seedH = infix(seqH, beginPositionH(seed1), endPositionH(seed1));
+                    seedV = infix(seqV, beginPositionV(seed1), endPositionV(seed1));
+
+                    Dna5StringReverseComplement twin(seedH);
+
+                    if(twin == seedV)
+                    {
+                        Dna5StringReverseComplement twinRead(seqH);
+                        values[j]->pos[0] = reads[rowids[j]].seq.length()-values[j]->pos[0]-KMER_LENGTH;
+                        Seed<Simple> seed1(values[j]->pos[0], values[j]->pos[1], values[j]->pos[0]+KMER_LENGTH, values[j]->pos[1]+KMER_LENGTH);
+
+                        /* Perform match extension */
+                        longestExtension1 = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
+                
+                    } else
+                    {
+                        /* Perform match extension */
+                        longestExtension1 = extendSeed(seed1, seqH, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
+        
+                    }
+
+                    if(longestExtension1 > 70)
+                    {
+                            myBatchSingle << reads[i].nametag << "," << reads[rowids[j]].nametag << endl;
+                            // myBatch << reads[i+colStart[b]].nametag << ',' << reads[rowids[j]].nametag << ',' << values[j]->count << endl;
+                            // myBatch << i+colStart[b] << ',' << rowids[j] << ',' << values[j]->count << endl;
+                    }
+                } 
+                else if(values[j]->count > 1)
+                {       
+
+                    seqH = reads[rowids[j]].seq;
+                    seqV = reads[i].seq;
+
+                    Seed<Simple> seed1(values[j]->pos[0], values[j]->pos[1], values[j]->pos[0]+KMER_LENGTH, values[j]->pos[1]+KMER_LENGTH);
+                    Seed<Simple> seed2(values[j]->pos[2], values[j]->pos[3], values[j]->pos[2]+KMER_LENGTH, values[j]->pos[3]+KMER_LENGTH);
+                    seedH = infix(seqH, beginPositionH(seed1), endPositionH(seed1));
+                    seedV = infix(seqV, beginPositionV(seed1), endPositionV(seed1));
+
+                    Dna5StringReverseComplement twin(seedH);
+
+                    if(twin == seedV)
+                    {
+                        Dna5StringReverseComplement twinRead(seqH);
+
+                        values[j]->pos[0] = reads[rowids[j]].seq.length()-values[j]->pos[0]-KMER_LENGTH;
+                        values[j]->pos[2] = reads[rowids[j]].seq.length()-values[j]->pos[2]-KMER_LENGTH;
+
+                        Seed<Simple> seed1(values[j]->pos[0], values[j]->pos[1], values[j]->pos[0]+KMER_LENGTH, values[j]->pos[1]+KMER_LENGTH);
+                        Seed<Simple> seed2(values[j]->pos[2], values[j]->pos[3], values[j]->pos[2]+KMER_LENGTH, values[j]->pos[3]+KMER_LENGTH);
+
+                        /* Perform match extension */
+                        longestExtension1 = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
+                        longestExtension2 = extendSeed(seed2, twinRead, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
+
+                        // cout << longestExtension1 << endl;
+                        // cout << longestExtension2 << endl;
+
+                    } else
+                    {
+                        /* Perform match extension */
+                        longestExtension1 = extendSeed(seed1, seqH, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
+                        longestExtension2 = extendSeed(seed2, seqH, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
+
+                        // cout << longestExtension1 << endl;
+                        // cout << longestExtension2 << endl;
+                    
+                    }
+                    // min_covered_bases = 50; 
+                    // TODO: need to experiment with this: std::min((int64_t) (read->get_sequence_length() * 0.10f), (int64_t) 50);
+
+                    if(longestExtension1 > 70 || longestExtension2 > 70)
+                    {
+                            myBatchSingle << reads[i].nametag << "," << reads[rowids[j]].nametag << endl;
+                            // myBatch << reads[i+colStart[b]].nametag << ',' << reads[rowids[j]].nametag << ',' << values[j]->count << endl;
+                            // myBatch << i+colStart[b] << ',' << rowids[j] << ',' << values[j]->count << endl;
+                    }
+                    //clear(seedSet);
+                    //clear(seedChain);
+
+                } else 
                 {
-                    int len, ed;
-                    if(edlibOp(values[j]->pos[0], values[j]->pos[2], reads[rowids[j]], reads[i], len, ed) == true)
-                    myBatch << i << ',' << rowids[j] << ',' << values[j]->count << endl;
+                    myBatchSingle << reads[i].nametag << "," << reads[rowids[j]].nametag << endl;
+                    // myBatch << reads[i+colStart[b]].nametag << ',' << reads[rowids[j]].nametag << ',' << values[j]->count << endl;
+                    // myBatch << i+colStart[b] << ',' << rowids[j] << ',' << values[j]->count << endl;
                 }
-                else myBatch << i << ',' << rowids[j] << ',' << values[j]->count << endl;
-                #else
-                if(values[j]->count < 2)
-                {
-                int len, ed; 
-                if(edlibOp(values[j]->pos[0], values[j]->pos[2], reads[rowids[j]], reads[i], len, ed) == true)
-                    myBatch << i << ',' << rowids[j] << ',' << values[j]->count << endl;
-                }
-                else myBatch << i << ',' << rowids[j] << ',' << values[j]->count << endl;
-                #endif
-                #else
-                myBatch << i << ',' << rowids[j] << ',' << values[j]->count << ',' << values[j]->pos[0] << ',' << values[j]->pos[1] << ',' << values[j]->pos[2] << ',' << values[j]->pos[3] << endl;
-                #endif
             }
         }
         
@@ -547,8 +599,8 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         delete [] values;
         delete [] colptr;
 
-        writeToFile(myBatch, "spmat.csv");
-        myBatch.str(std::string());
+        writeToFile(myBatchSingle, "BELLAreads.txt");
+        myBatchSingle.str(std::string());
     } 
 }
 
