@@ -375,14 +375,16 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         
                         }
 
-                        if(longestExtension1 > 70)
+                        if(longestExtension1 > 50)
                         {
-                            myBatch << reads[i+colStart[b]].nametag << "," << reads[rowids[j]].nametag << endl;
+                            // myBatch << reads[i+colStart[b]].nametag << "," << reads[rowids[j]].nametag << endl;
                             // myBatch << reads[i+colStart[b]].nametag << ',' << reads[rowids[j]].nametag << ',' << values[j]->count << endl;
-                            // myBatch << i+colStart[b] << ',' << rowids[j] << ',' << values[j]->count << endl;
+                            myBatch << i+colStart[b] << ' ' << rowids[j] << ' ' << values[j]->count << ' ' <<  beginPositionV(seed1) << ' ' << 
+                                endPositionV(seed1) << ' ' << reads[i+colStart[b]].seq.length() << ' ' << beginPositionH(seed1) << ' ' << endPositionH(seed1) <<
+                                    ' ' << reads[rowids[j]].seq.length() << endl;
                         }
                     } 
-                    else if(values[j]->count > 1)
+                    else
                     {       
 
                         seqH = reads[rowids[j]].seq;
@@ -409,36 +411,29 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                             longestExtension1 = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
                             longestExtension2 = extendSeed(seed2, twinRead, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
 
-                            // cout << longestExtension1 << endl;
-                            // cout << longestExtension2 << endl;
-
                         } else
                         {
                             /* Perform match extension */
                             longestExtension1 = extendSeed(seed1, seqH, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
                             longestExtension2 = extendSeed(seed2, seqH, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
-
-                            // cout << longestExtension1 << endl;
-                            // cout << longestExtension2 << endl;
                         
                         }
-                        // min_covered_bases = 50; 
-                        // TODO: need to experiment with this: std::min((int64_t) (read->get_sequence_length() * 0.10f), (int64_t) 50);
 
-                        if(longestExtension1 > 70 || longestExtension2 > 70)
+                        if(longestExtension1 > 50 || longestExtension1 > 50)
                         {
-                            myBatch << reads[i+colStart[b]].nametag << "," << reads[rowids[j]].nametag << endl;
-                            // myBatch << reads[i+colStart[b]].nametag << ',' << reads[rowids[j]].nametag << ',' << values[j]->count << endl;
-                            // myBatch << i+colStart[b] << ',' << rowids[j] << ',' << values[j]->count << endl;
+                            if(longestExtension1 >= longestExtension2)
+                            {
+                                myBatch << i+colStart[b] << ' ' << rowids[j] << ' ' << values[j]->count << ' ' <<  beginPositionV(seed1) << ' ' << 
+                                endPositionV(seed1) << ' ' << reads[i+colStart[b]].seq.length() << ' ' << beginPositionH(seed1) << ' ' << endPositionH(seed1) <<
+                                    ' ' << reads[rowids[j]].seq.length() << endl;
+                            } else
+                            {
+                                myBatch << i+colStart[b] << ' ' << rowids[j] << ' ' << values[j]->count << ' ' <<  beginPositionV(seed2) << ' ' << 
+                                endPositionV(seed2) << ' ' << reads[i+colStart[b]].seq.length() << ' ' << beginPositionH(seed2) << ' ' << endPositionH(seed2) <<
+                                    ' ' << reads[rowids[j]].seq.length() << endl;
+                            }
                         }
-
-                        //clear(seedSet);
-                        //clear(seedChain);
-
-                    } else 
-                    {
-                        myBatch << reads[i+colStart[b]].nametag << "," << reads[rowids[j]].nametag << endl;
-                    } // myBatch << reads[i+colStart[b]].nametag << ',' << reads[rowids[j]].nametag << ',' << values[j]->count << endl; // myBatch << i+colStart[b] << ',' << rowids[j] << ',' << values[j]->count << endl; // 
+                    }
                 }
             }
 
@@ -448,8 +443,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
 
             #pragma omp critical
             {
-                // cout << "Sono il thread " << omp_get_thread_num() <<  " di " << omp_get_num_threads() << " e sto per morire ..o forse no!" << endl;
-                writeToFile(myBatch, "BELLAreads.txt");
+                writeToFile(myBatch, "ovls.bella");
                 myBatch.str(std::string());
             }
         }

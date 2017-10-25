@@ -873,7 +873,7 @@ _extendSeedGappedXDropOneDirection(
 }
 
 template <typename TConfig, typename TDatabase, typename TQuery, typename TScoreValue, typename TScoreSpec>
-inline TScoreValue
+inline int
 extendSeed(Seed<Simple, TConfig> & seed,
            TDatabase const & database,
            TQuery const & query,
@@ -930,7 +930,7 @@ extendSeed(Seed<Simple, TConfig> & seed,
         longestExtensionScoreRight =  _extendSeedGappedXDropOneDirection(seed, querySuffix, databaseSuffix, EXTEND_RIGHT, scoringScheme, scoreDropOff);
     }
     longestExtension = abs(longestExtensionScoreRight) + abs(longestExtensionScoreLeft);
-    return longestExtension+17;
+    return (int)longestExtension+17;
     // TODO(holtgrew): Update seed's score?!
 }
 

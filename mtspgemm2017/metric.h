@@ -100,7 +100,7 @@ int computeLength(map<std::string, std::pair<int,int>> & sammap, std::string & c
 
 void getMetrics(std::ifstream & filename) 
 {
-    std::ifstream sam("sim-accuracy.axt");
+    std::ifstream sam("GCF_0001.axt");
     //std::ifstream sam_rv("parsedSamrv.axt");
     std::map<std::string, std::pair<int,int>> sammap;
     //std::map<std::string, std::pair<int,int>> sammaprv;
@@ -154,8 +154,8 @@ void getMetrics(std::ifstream & filename)
             std::stringstream lineStream(line);
             std::string col_nametag, row_nametag;
 
-            getline(lineStream, col_nametag, ',');
-            getline(lineStream, row_nametag, ',');
+            getline(lineStream, col_nametag, ' ');
+            getline(lineStream, row_nametag, ' ');
 
             /* Compute the overlap length between potential overlapping reads pairs */
             alignment_length = computeLength(sammap, col_nametag, row_nametag);

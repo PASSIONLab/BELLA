@@ -222,7 +222,7 @@ void Kmer::set_kmer(const char *s)  {
 }
 
 // This returns a vector of kmers from a long sequence
-// This does ot check for Ns or choose the lesser representation
+// This does not check for Ns or choose the lesser representation
 std::vector<Kmer> Kmer::getKmers(std::string seq) {
    for (auto & c: seq) c = toupper(c); // ensure uppercase
    if (seq.size() < k) return std::vector<Kmer>();

@@ -360,8 +360,8 @@ int main (int argc, char* argv[]) {
     #endif
     
     cout << "multiply (local alignment included) time: " << omp_get_wtime()-start << " sec" << endl;
-    // std::ifstream filename("spmat.csv");
-    // getMetrics(filename);  
+    std::ifstream filename("ovls.bella");
+    getMetrics(filename);  
     cout << "total time: " << omp_get_wtime()-all << " sec" << endl;
 
     return 0;
