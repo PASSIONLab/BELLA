@@ -138,8 +138,8 @@ int main (int argc, char* argv[]) {
     std::vector<string> nametags;
     std::vector<readsinfo> reads;
     int rangeStart;
-    readsinfo temp;
     Kmers kmersfromreads;
+    std::ofstream debug("readnametag.err");
 
     #ifdef _MULPTR
     std::vector<tuple<int,int,cellspmat>> occurrences;
@@ -163,6 +163,7 @@ int main (int argc, char* argv[]) {
     #endif
 
     double all = omp_get_wtime();
+    double kdict = omp_get_wtime();
     if(filein.is_open()) {
             while(getline(filein, line)) {
                 if(line.length() == 0)
@@ -179,28 +180,32 @@ int main (int argc, char* argv[]) {
 
     dictionaryCreation(kmerdict, kmervect);
     cout << "reliable k-mers = " << kmerdict.size() << endl;
+    cout << "kmer dictionary creation took " << omp_get_wtime()-kdict << " seconds "<< endl;
     
+    double parsefastq = omp_get_wtime();
     int read_id = 0; // read_id needs to be global (not just per file)
     for(auto itr=allfiles.begin(); itr!=allfiles.end(); itr++) {
 
         ParallelFASTQ *pfq = new ParallelFASTQ();
         pfq->open(itr->filename, false, itr->filesize);
+        readsinfo temp;
         
         size_t fillstatus = 1;
         while(fillstatus) { 
-            //double time1 = omp_get_wtime();
+            double time1 = omp_get_wtime();
             fillstatus = pfq->fill_block(nametags, seqs, quals, upperlimit);
             int nreads = seqs.size();
 
-            //double time2 = omp_get_wtime();
-            //cout << "Filled " << nreads << " reads in " << time2-time1 << " seconds "<< endl; 
+            // cout << "Filled " << nreads << " reads in " << time2-time1 << " seconds "<< endl; 
             
             for(int i=0; i<nreads; i++) 
             {
                 // remember that the last valid position is length()-1
                 int len = seqs[i].length();
                 temp.nametag = nametags[i];
+                debug << temp.nametag << endl;
                 temp.seq = seqs[i];
+                // save reads for seeded alignment
                 reads.push_back(temp);
                 
                 // skip this sequence if the length is too short
@@ -231,16 +236,19 @@ int main (int argc, char* argv[]) {
                 }
                 read_id++;
             }
-        //cout << "processed reads in " << omp_get_wtime()-time2 << " seconds "<< endl; 
-        //cout << "total number of reads processed so far is " << read_id << endl;
+        // cout << "processed reads in " << omp_get_wtime()-time2 << " seconds "<< endl; 
+        // cout << "total number of reads processed so far is " << read_id << endl;
         } 
     delete pfq;
     }
+    
     // don't free this vector I need this information to align sequences 
     // std::vector<string>().swap(seqs);   // free memory of seqs 
+    
     std::vector<string>().swap(quals);     // free memory of quals
     cout << "total number of reads: "<< read_id << endl;
-
+    cout << "parsing fastq took " << omp_get_wtime()-parsefastq << " seconds "<< endl;
+    double matcreat = omp_get_wtime();
     #ifdef _MULPTR
     CSC<int, cellspmat> spmat(occurrences, read_id, kmervect.size(), 
                             [] (cellspmat & c1, cellspmat & c2) 
@@ -300,7 +308,7 @@ int main (int argc, char* argv[]) {
 
     spmat.Sorted();
     transpmat.Sorted();
-
+    cout << "spm and transpmat creation took " << omp_get_wtime()-matcreat << " seconds "<< endl;
     double start = omp_get_wtime();
     
     #ifdef _MULPTR
@@ -359,9 +367,13 @@ int main (int argc, char* argv[]) {
             }, reads, getvaluetype);
     #endif
     
-    cout << "multiply (local alignment included) time: " << omp_get_wtime()-start << " sec" << endl;
-    std::ifstream filename("ovls.bella");
-    getMetrics(filename);  
+    cout << "overlapper + seeded alignment took " << omp_get_wtime()-start << " sec" << endl;
+    double metric = omp_get_wtime();
+    std::ifstream bella("ovls.bella");
+    std::ifstream mhap("GCFMHAPair.m4");
+    std::ifstream blasr("bacillus_blasrpair2.m4");
+    getMetrics(bella, mhap, blasr);  
+    cout << "metrics computation took " << omp_get_wtime()-metric << " sec" << endl;
     cout << "total time: " << omp_get_wtime()-all << " sec" << endl;
 
     return 0;

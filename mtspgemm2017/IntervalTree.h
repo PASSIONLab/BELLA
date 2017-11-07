@@ -7,7 +7,7 @@
 #include <memory>
 
 #define KMER_LENGTH 17
-#define THR 62
+#define THR 300
 
 using namespace std;
 

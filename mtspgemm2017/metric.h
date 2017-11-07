@@ -32,26 +32,30 @@
 using namespace std;
 
 /* Compute the number of true overlapping reads */
-double trueOv(ifstream & fastafai) 
+double trueOv(ifstream & truth) 
 {
     vector<Interval<std::string>> intervals;
     vector<Interval<std::string>> queries;
     vector<Interval<std::string>>::iterator q;
     double trueoverlaps;
 
-    if(fastafai.is_open()) {
+    if(truth.is_open()) {
 
-        std::string str;
+        std::string ref;
+        std::string read;
+        std::string dontcare1;
+        std::string dontcare2;
+        std::string dontcare3;
         int start;
         int end;
-        while(fastafai >> str >> start >> end)
+        while(truth >> ref >> start >> end >> read >> dontcare1 >> dontcare2 >> dontcare3)
         {
             
-            intervals.push_back(Interval<std::string>(start, end, str));
-            queries.push_back(Interval<std::string>(start, end, str));
+            intervals.push_back(Interval<std::string>(start, end, read));
+            queries.push_back(Interval<std::string>(start, end, read));
         }
 
-    } else std::cout << "Error opening the .sam" << endl;
+    } else std::cout << "Error opening the .axt" << endl;
 
     IntervalTree<std::string> tree;
     vector<size_t> treecounts;
@@ -98,59 +102,44 @@ int computeLength(map<std::string, std::pair<int,int>> & sammap, std::string & c
     return alignment_length;
 }
 
-void getMetrics(std::ifstream & filename) 
+void getMetrics(std::ifstream & bella, std::ifstream & mhap, std::ifstream & blasr) // add blasr/daligner 
 {
-    std::ifstream sam("GCF_0001.axt");
-    //std::ifstream sam_rv("parsedSamrv.axt");
-    std::map<std::string, std::pair<int,int>> sammap;
-    //std::map<std::string, std::pair<int,int>> sammaprv;
+    std::ifstream truth("bacillus_truth.axt");
+    std::map<std::string, std::pair<int,int>> ovlsmap;
     int alignment_length;
-    double TPandFP = 0, TP = 0;
+    double ovlsbella = 0, truebella = 0;
+    double ovlsmhap = 0, truemhap = 0;
+    double ovlsblasr = 0, trueblasr = 0;
 
-    if(sam.is_open())
+    if(truth.is_open())
     {
-        std::string str;
+        std::string ref;
+        std::string read;
+        std::string dontcare1;
+        std::string dontcare2;
+        std::string dontcare3;
         int start;
         int end;
         std::pair<int,int> coords;
-        while(sam >> str >> start >> end)
+        while(truth >> ref >> start >> end >> read >> dontcare1 >> dontcare2 >> dontcare3)
         {
-            std::string nametag = str;
+            std::string nametag = "@" + read;
             int start_v = start;
             int end_v = end;
             coords = make_pair(start_v, end_v);
-            sammap.insert(std::pair<std::string, std::pair<int, int>>(nametag,coords));
+            ovlsmap.insert(std::pair<std::string, std::pair<int, int>>(nametag,coords));
         }
-    } else std::cout << "Error opening the .sam" << endl;
+    } else std::cout << "Error opening the .axt" << endl;
 
-    //if(sam_rv.is_open())
-    //{
-    //    std::string str;
-    //    int start;
-    //    int end;
-    //    std::pair<int,int> coords;
-    //    while(sam_rv >> str >> start >> end)
-    //    {
-    //        std::string nametag = str;
-    //        int start_v = start;
-    //        int end_v = end;
-    //        coords = make_pair(start_v, end_v);
-    //        sammaprv.insert(std::pair<std::string, std::pair<int, int>>(nametag,coords));
-    //    }
-    //} else std::cout << "Error opening the .sam-rv" << endl;
+    truth.clear();
+    truth.seekg(0, ios::beg);
 
-    sam.clear();
-    sam.seekg(0, ios::beg);
-
-    //sam_rv.clear();
-    //sam_rv.seekg(0, ios::beg);
-
-    if(filename.is_open())
+    if(bella.is_open())
     {
         std::string line;
-        while(getline(filename, line))
+        while(getline(bella, line))
         {
-            TPandFP++;
+            ovlsbella++;
             std::stringstream lineStream(line);
             std::string col_nametag, row_nametag;
 
@@ -158,35 +147,80 @@ void getMetrics(std::ifstream & filename)
             getline(lineStream, row_nametag, ' ');
 
             /* Compute the overlap length between potential overlapping reads pairs */
-            alignment_length = computeLength(sammap, col_nametag, row_nametag);
+            alignment_length = computeLength(ovlsmap, col_nametag, row_nametag);
             if(alignment_length >= 17)
-                TP++;
-
-           // alignment_length = computeLength(sammaprv, col_nametag, row_nametag);
-           // if(alignment_length >= 17)
-           //     TP++;
+                truebella++;
         }
     }
 
-    sam.clear();
-    sam.seekg(0, ios::beg);
+    //if(mhap.is_open())
+    //{
+    //    std::string line;
+    //    while(getline(mhap, line))
+    //    {
+    //        ovlsmhap++;
+    //        std::stringstream lineStream(line);
+    //        std::string col_nametag, row_nametag;
+//
+    //        getline(lineStream, col_nametag, ' ');
+    //        getline(lineStream, row_nametag, ' ');
+//
+    //        col_nametag = "@" + col_nametag;
+    //        row_nametag = "@" + row_nametag;
+//
+    //        /* Compute the overlap length between potential overlapping reads pairs */
+    //        alignment_length = computeLength(ovlsmap, col_nametag, row_nametag);
+    //        if(alignment_length >= 1000)
+    //            truemhap++;
+    //    }
+    //}
+    
+    //if(blasr.is_open())
+    //{
+    //    std::string line;
+    //    while(getline(blasr, line))
+    //    {
+    //        ovlsblasr++;
+    //        std::stringstream lineStream(line);
+    //        std::string col_nametag, row_nametag;
+//
+    //        getline(lineStream, col_nametag, ' ');
+    //        getline(lineStream, row_nametag, ' ');
+//
+    //        col_nametag = "@" + col_nametag;
+    //        row_nametag = "@" + row_nametag;
+//
+    //        /* Compute the overlap length between potential overlapping reads pairs */
+    //        alignment_length = computeLength(ovlsmap, col_nametag, row_nametag);
+    //        if(alignment_length >= 1000)
+    //            trueblasr++;
+    //    }
+    //} 
 
-    //sam_rv.clear();
-    //sam_rv.seekg(0, ios::beg);
+    truth.clear();
+    truth.seekg(0, ios::beg);
+    double truetruth = trueOv(truth);
 
-    /* Compute true overlapping reads pairs from fastq */
-    //double P_sam = trueOv(sam);
-    //double P_sam_rv = trueOv(sam_rv);
+    bella.close();
+    mhap.close();
+   // blasr.close();
+    truth.close();
 
-    double P = trueOv(sam);
-
-    filename.close();
-    sam.close();
-    // sam_rv.close();
-
-    cout << "Overlapping from BELLA = " << TPandFP << endl;
-    cout << "True overlapping from fastq = " << P << endl;
-    cout << "True overlapping from BELLA = " << TP << endl;
-    cout << "Recall = " << TP/P << endl;
-    cout << "Precision = " << TP/TPandFP << endl; 
+    /* Truth */
+    cout << "True overlapping from fastq = " << truetruth << endl;
+    /* BELLA Recall and precision */
+    cout << "Overlapping from BELLA = " << ovlsbella << endl;
+    cout << "True overlapping from BELLA = " << truebella << endl;
+    cout << "Recall BELLA = " << truebella/truetruth << endl;
+    cout << "Precision BELLA = " << truebella/ovlsbella << endl;
+    /* MHAP Recall and precision */ 
+    //cout << "Overlapping from MHAP = " << ovlsmhap << endl;
+    //cout << "True overlapping from MHAP = " << truemhap << endl;
+    //cout << "Recall MHAP = " << truemhap/truetruth << endl;
+    //cout << "Precision MHAP = " << truemhap/ovlsmhap << endl;
+    // /* BLASR Recall and precision */ 
+    //cout << "Overlapping from BLASR = " << ovlsblasr << endl;
+    //cout << "True overlapping from BLASR = " << trueblasr << endl;
+    //cout << "Recall BLASR = " << trueblasr/truetruth << endl;
+    //cout << "Precision BLASR = " << trueblasr/ovlsblasr << endl;
 }
