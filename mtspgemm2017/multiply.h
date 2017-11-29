@@ -32,17 +32,14 @@
 
 using namespace seqan;
 
-#ifdef SEQAN
 typedef Seed<Simple>  TSeed;
 typedef SeedSet<TSeed> TSeedSet;
-#endif 
 
 #define PERCORECACHE (1024 * 1024)
 #define KMER_LENGTH 17
-#define pWRON .7
 #define _OSX
-//#define SEQAN
-#define EDLIB
+#define _GAPPED
+// #define _UNGAPPED
 
 #ifdef _OSX
 #include <mach/mach.h>
@@ -58,83 +55,25 @@ typedef SeedSet<TSeed> TSeedSet;
 struct sysinfo info;
 #endif
 
-#ifdef _EDLIB
-#define pCORR .7225
-#define pWRON .2275
-#define minLEN 17
-/* Compute potential overlap */
-void getOverlaplen(int & pos_i, int & pos_j, std::string & row, std::string col, int & len, int & left) 
+int getOverlap(int & i, int & j, std::string & row, std::string col) 
 {
     /* Left margin passed as argument */
-    int right;           /* Define the right margin */
-    int overlaplength;   /* Expected overlap region length */
+    int right, left, len;           
     int temp1, temp2;
     
-    if(pos_i <= pos_j)
-        left = pos_i;
-    else left = pos_j;
+    if(i <= j)
+        left = i;
+    else left = j;
 
-    temp1 = row.length() - pos_i;   /* 1st value referred to A's row */
-    temp2 = col.length() - pos_j;  /* 2nd value referred to B's col */
+    temp1 = row.length() - i;   /* 1st value referred to A's row */
+    temp2 = col.length() - j;  /* 2nd value referred to B's col */
 
     if(temp1 <= temp2)
         right = temp1;
     else right = temp2;
 
-    len = left+right; /* Estimated overlap */
+    return len = left+right; /* Estimated overlap */
 }
-
-/* EDLIB Local Alignment */
-bool edlibOp(int & pos_i, int & pos_j, std::string & row, std::string & col, int & len, int & ed) 
-{
-    bool align;
-    int left = 0;
-    /* Compute the overlap potential length and obtain substring of 
-    overlaplength from the considered pair and pass them to alignop */
-    getOverlaplen(pos_i, pos_j, row, col, len, left);
-    /* Obtain row and col substr of overlaplength */
-    std::string substrow = row.substr(pos_i-left, len);   
-    std::string substcol = col.substr(pos_j-left, len); 
-    
-    if(len >= minLEN)
-    {
-        Kmer kmerfromrow;
-        Kmer kmerfromcol;
-
-        kmerfromrow.set_kmer(substrow.c_str());
-        kmerfromcol.set_kmer(substcol.c_str());
-
-        kmerfromrow = kmerfromrow.rep();
-        kmerfromcol = kmerfromcol.rep();
-
-        char *read1 = new char[len+1];
-        char *read2 = new char[len+1];
-
-        kmerfromrow.toString(read1);
-        kmerfromcol.toString(read2);
-    
-        /* In len we expect len*pow(pCORR, 2) correct base-pairs, so here we compute the maximum 
-        edit distance as len - mean + 2 standard deviation = len - (len*pow(pCORR, 2) + 2 * qrt(len*pow(pCORR, 2)*(1-pow(pCORR, 2)) */
-        int maxed = len-len*pCORR+2*sqrt(len*pCORR*pWRON); 
-    
-        EdlibAlignResult result = edlibAlign(read1, len, read2, len, edlibNewAlignConfig(maxed, EDLIB_MODE_NW, EDLIB_TASK_DISTANCE, NULL, 0));
-        delete [] read1;
-        delete [] read2;
-    
-        if(result.editDistance != -1)
-        {
-            align = true;
-            ed = result.editDistance;
-        }
-        else align = false;
-    
-        edlibFreeAlignResult(result);
-    }
-    else align = false;
-
-    return align;
-}
-#endif
 
 /* CSV containing CSC indices of the output sparse matrix*/
 void writeToFile(std::stringstream & myBatch, std::string filename)
@@ -305,18 +244,20 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         //colptr[0] = 0;
 
         std::stringstream myBatch;
+        std::stringstream myBatchOvl;
 
-        #ifdef SEQAN
         Dna5String seqH; 
         Dna5String seqV; 
         Dna5String seedH;
         Dna5String seedV;
+
         int64_t longestExtensionScore1;
         int64_t longestExtensionScore2;
+        int64_t getOvl;
 
         Score<int, Simple> scoringScheme(1, -1, -1);
 
-        #pragma omp parallel for private(myBatch, seedH, seedV, seqH, seqV, longestExtensionScore1, longestExtensionScore2) shared(colStart,colEnd,numCols, reads)
+        #pragma omp parallel for private(myBatch, seedH, seedV, seqH, seqV, longestExtensionScore1, longestExtensionScore2, getOvl) shared(colStart,colEnd,numCols, reads)
         for(int b = 0; b < numBlocks+1; ++b) 
         { 
             vector<IT> * RowIdsofC = new vector<IT>[numCols[b]];  // row ids for each column of C (bunch of cols)
@@ -372,16 +313,31 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                             Seed<Simple> seed1(values[j]->pos[0], values[j]->pos[1], values[j]->pos[0]+KMER_LENGTH, values[j]->pos[1]+KMER_LENGTH);
 
                             /* Perform match extension */
-                            longestExtensionScore1 = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, 5, GappedXDrop());
+                            #ifdef _GAPPED
+                            longestExtensionScore1 = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
+                            #endif
+
+                            #ifdef _UNGAPPED
+                            longestExtensionScore1 = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, 3, UnGappedXDrop());
+                            #endif
                 
                         } else
                         {
                             /* Perform match extension */
-                            longestExtensionScore1 = extendSeed(seed1, seqH, seqV, EXTEND_BOTH, scoringScheme, 5, GappedXDrop());
+                            #ifdef _GAPPED
+                            longestExtensionScore1 = extendSeed(seed1, seqH, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
+                            #endif
+
+                            #ifdef _UNGAPPED
+                            longestExtensionScore1 = extendSeed(seed1, seqH, seqV, EXTEND_BOTH, scoringScheme, 3, UnGappedXDrop());
+                            #endif
         
                         }
 
-                        if(longestExtensionScore1 > 1200)
+                        getOvl = getOverlap(values[j]->pos[0], values[j]->pos[1], reads[rowids[j]].seq, reads[i+colStart[b]].seq);
+                        myBatchOvl << values[j]->count << ' ' << getOvl << endl;
+
+                        if(longestExtensionScore1 >= 50)
                         {
             
                             myBatch << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << ' ' << values[j]->count << ' ' << longestExtensionScore1 << ' ' << beginPositionV(seed1) << ' ' << 
@@ -413,26 +369,42 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                             Seed<Simple> seed2(values[j]->pos[2], values[j]->pos[3], values[j]->pos[2]+KMER_LENGTH, values[j]->pos[3]+KMER_LENGTH);
 
                             /* Perform match extension */
-                            longestExtensionScore1 = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, 5, GappedXDrop());
-                            longestExtensionScore2 = extendSeed(seed2, twinRead, seqV, EXTEND_BOTH, scoringScheme, 5, GappedXDrop());
+                            #ifdef _GAPPED
+                            longestExtensionScore1 = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
+                            longestExtensionScore2 = extendSeed(seed2, twinRead, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
+                            #endif
+
+                            #ifdef _UNGAPPED
+                            longestExtensionScore1 = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, 3, UnGappedXDrop());
+                            longestExtensionScore2 = extendSeed(seed2, twinRead, seqV, EXTEND_BOTH, scoringScheme, 3, UnGappedXDrop());
+                            #endif
 
                         } else
                         {
                             /* Perform match extension */
-                            longestExtensionScore1 = extendSeed(seed1, seqH, seqV, EXTEND_BOTH, scoringScheme, 5, GappedXDrop());
-                            longestExtensionScore2 = extendSeed(seed2, seqH, seqV, EXTEND_BOTH, scoringScheme, 5, GappedXDrop());
+                            #ifdef _GAPPED
+                            longestExtensionScore1 = extendSeed(seed1, seqH, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
+                            longestExtensionScore2 = extendSeed(seed2, seqH, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
+                            #endif
+
+                            #ifdef _UNGAPPED
+                            longestExtensionScore1 = extendSeed(seed1, seqH, seqV, EXTEND_BOTH, scoringScheme, 3, UnGappedXDrop());
+                            longestExtensionScore2 = extendSeed(seed2, seqH, seqV, EXTEND_BOTH, scoringScheme, 3, UnGappedXDrop());
+                            #endif
                         
                         }
 
-                        if(longestExtensionScore1 > 1200 || longestExtensionScore2 > 1200)
+                        if(longestExtensionScore1 >= 50 || longestExtensionScore2 >= 50)
                         {
                             if(longestExtensionScore1 > longestExtensionScore2)
                             {
+
                                 myBatch << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << ' ' << values[j]->count << ' ' << longestExtensionScore1 << ' ' << beginPositionV(seed1) << ' ' << 
                                 endPositionV(seed1) << ' ' << reads[i+colStart[b]].seq.length() << ' ' << beginPositionH(seed1) << ' ' << endPositionH(seed1) <<
                                     ' ' << reads[rowids[j]].seq.length() << endl;
                             } else
                             {
+
                                 myBatch << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << ' ' << values[j]->count << ' ' << longestExtensionScore2 << ' ' << beginPositionV(seed2) << ' ' << 
                                 endPositionV(seed2) << ' ' << reads[i+colStart[b]].seq.length() << ' ' << beginPositionH(seed2) << ' ' << endPositionH(seed2) <<
                                     ' ' << reads[rowids[j]].seq.length() << endl;
@@ -461,26 +433,41 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                             Seed<Simple> seed2(values[j]->pos[2], values[j]->pos[3], values[j]->pos[2]+KMER_LENGTH, values[j]->pos[3]+KMER_LENGTH);
 
                             /* Perform match extension */
-                            longestExtensionScore1 = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, 5, GappedXDrop());
-                            longestExtensionScore2 = extendSeed(seed2, twinRead, seqV, EXTEND_BOTH, scoringScheme, 5, GappedXDrop());
+                            #ifdef _GAPPED
+                            longestExtensionScore1 = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
+                            longestExtensionScore2 = extendSeed(seed2, twinRead, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
+                            #endif
+
+                            #ifdef _UNGAPPED
+                            longestExtensionScore1 = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, 3, UnGappedXDrop());
+                            longestExtensionScore2 = extendSeed(seed2, twinRead, seqV, EXTEND_BOTH, scoringScheme, 3, UnGappedXDrop());
+                            #endif
 
                         } else
                         {
-                            /* Perform match extension */
-                            longestExtensionScore1 = extendSeed(seed1, seqH, seqV, EXTEND_BOTH, scoringScheme, 5, GappedXDrop());
-                            longestExtensionScore2 = extendSeed(seed2, seqH, seqV, EXTEND_BOTH, scoringScheme, 5, GappedXDrop());
+                            #ifdef _GAPPED
+                            longestExtensionScore1 = extendSeed(seed1, seqH, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
+                            longestExtensionScore2 = extendSeed(seed2, seqH, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
+                            #endif
+
+                            #ifdef _UNGAPPED
+                            longestExtensionScore1 = extendSeed(seed1, seqH, seqV, EXTEND_BOTH, scoringScheme, 3, UnGappedXDrop());
+                            longestExtensionScore2 = extendSeed(seed2, seqH, seqV, EXTEND_BOTH, scoringScheme, 3, UnGappedXDrop());
+                            #endif
                         
                         }
 
-                        if(longestExtensionScore1 > 1200 || longestExtensionScore2 > 1200)
+                        if(longestExtensionScore1 >= 50 || longestExtensionScore2 >= 50)
                         {
                             if(longestExtensionScore1 > longestExtensionScore2)
                             {
+
                                 myBatch << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << ' ' << values[j]->count << ' ' << longestExtensionScore1 << ' ' << beginPositionV(seed1) << ' ' << 
                                 endPositionV(seed1) << ' ' << reads[i+colStart[b]].seq.length() << ' ' << beginPositionH(seed1) << ' ' << endPositionH(seed1) <<
                                     ' ' << reads[rowids[j]].seq.length() << endl;
                             } else
                             {
+
                                 myBatch << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << ' ' << values[j]->count << ' ' << longestExtensionScore2 << ' ' << beginPositionV(seed2) << ' ' << 
                                 endPositionV(seed2) << ' ' << reads[i+colStart[b]].seq.length() << ' ' << beginPositionH(seed2) << ' ' << endPositionH(seed2) <<
                                     ' ' << reads[rowids[j]].seq.length() << endl;
@@ -496,6 +483,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
 
             #pragma omp critical
             {
+                // writeToFile(myBatchOvl, "kmerinovltotal1.txt");
                 writeToFile(myBatch, "ovls.bella");
                 myBatch.str(std::string());
             }
@@ -563,17 +551,28 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                         values[j]->pos[0] = reads[rowids[j]].seq.length()-values[j]->pos[0]-KMER_LENGTH;
                         Seed<Simple> seed1(values[j]->pos[0], values[j]->pos[1], values[j]->pos[0]+KMER_LENGTH, values[j]->pos[1]+KMER_LENGTH);
 
-                        /* Perform match extension */
+                        #ifdef _GAPPED
                         longestExtensionScore1 = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
+                        #endif
+
+                        #ifdef _UNGAPPED
+                        longestExtensionScore1 = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, 3, UnGappedXDrop());
+                        #endif
                 
                     } else
                     {
-                        /* Perform match extension */
+                        
+                        #ifdef _GAPPED
                         longestExtensionScore1 = extendSeed(seed1, seqH, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
+                        #endif
+
+                        #ifdef _UNGAPPED
+                        longestExtensionScore1 = extendSeed(seed1, seqH, seqV, EXTEND_BOTH, scoringScheme, 3, UnGappedXDrop());
+                        #endif
         
                     }
 
-                    if(longestExtensionScore1 > 800)
+                    if(longestExtensionScore1 >= 50)
                     {
                             myBatchSingle << reads[i].nametag << ' ' << reads[rowids[j]].nametag << ' ' << values[j]->count << ' ' << longestExtensionScore1 << ' ' << beginPositionV(seed1) << ' ' << 
                                 endPositionV(seed1) << ' ' << reads[i].seq.length() << ' ' << beginPositionH(seed1) << ' ' << endPositionH(seed1) <<
@@ -603,19 +602,31 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                         Seed<Simple> seed1(values[j]->pos[0], values[j]->pos[1], values[j]->pos[0]+KMER_LENGTH, values[j]->pos[1]+KMER_LENGTH);
                         Seed<Simple> seed2(values[j]->pos[2], values[j]->pos[3], values[j]->pos[2]+KMER_LENGTH, values[j]->pos[3]+KMER_LENGTH);
 
-                        /* Perform match extension */
+                        #ifdef _GAPPED
                         longestExtensionScore1 = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
                         longestExtensionScore2 = extendSeed(seed2, twinRead, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
+                        #endif
+
+                        #ifdef _UNGAPPED
+                        longestExtensionScore1 = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, 3, UnGappedXDrop());
+                        longestExtensionScore2 = extendSeed(seed2, twinRead, seqV, EXTEND_BOTH, scoringScheme, 3, UnGappedXDrop());
+                        #endif
 
                     } else
                     {
-                        /* Perform match extension */
+                        #ifdef _GAPPED
                         longestExtensionScore1 = extendSeed(seed1, seqH, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
                         longestExtensionScore2 = extendSeed(seed2, seqH, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
+                        #endif
+
+                        #ifdef _UNGAPPED
+                        longestExtensionScore1 = extendSeed(seed1, seqH, seqV, EXTEND_BOTH, scoringScheme, 3, UnGappedXDrop());
+                        longestExtensionScore2 = extendSeed(seed2, seqH, seqV, EXTEND_BOTH, scoringScheme, 3, UnGappedXDrop());
+                        #endif
                     
                     }
 
-                    if(longestExtensionScore1 > 800 || longestExtensionScore2 > 800)
+                    if(longestExtensionScore1 >= 50 || longestExtensionScore2 >= 50)
                     {
                         if(longestExtensionScore1 > longestExtensionScore2)
                         {
@@ -640,342 +651,6 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         writeToFile(myBatchSingle, "ovls.bella");
         myBatchSingle.str(std::string());
     }
-    #endif
-    #ifdef EDLIB
-
-        EdlibAlignResult result;
-        std::string seqH;
-        std::string seqV;
-
-        #pragma omp parallel for private(myBatch, result, seqH, seqV) shared(colStart,colEnd,numCols, reads)
-        for(int b = 0; b < numBlocks+1; ++b) 
-        { 
-            vector<IT> * RowIdsofC = new vector<IT>[numCols[b]];  // row ids for each column of C (bunch of cols)
-            vector<FT> * ValuesofC = new vector<FT>[numCols[b]];  // values for each column of C (bunch of cols)
-            
-            IT * colptr = new IT[numCols[b]+1];
-            colptr[0] = 0;
-           
-            LocalSpGEMM(colStart[b], colEnd[b], numCols[b], A, B, multop, addop, RowIdsofC, ValuesofC);
-     
-            int k=0;
-            for(int i=0; i<numCols[b]; ++i) // for all edge lists (do NOT parallelize)
-            {
-                colptr[i+1] = colptr[i] + RowIdsofC[k].size();
-                ++k;
-            }
-          
-            IT * rowids = new IT[colptr[numCols[b]]];
-            FT * values = new FT[colptr[numCols[b]]];
-           
-            k=0;
-            for(int i=0; i<numCols[b]; ++i) // combine step
-            {
-                copy(RowIdsofC[k].begin(), RowIdsofC[k].end(), rowids + colptr[i]);
-                copy(ValuesofC[k].begin(), ValuesofC[k].end(), values + colptr[i]);
-                ++k;
-            }
-
-            delete [] RowIdsofC;
-            delete [] ValuesofC;
-
-            /* Local Alignment before write on stringstream */
-            for(int i=0; i<numCols[b]; ++i) 
-            {
-                for(int j=colptr[i]; j<colptr[i+1]; ++j) 
-                {
-                    if(values[j]->count == 1)
-                    {          
-                        seqH = reads[rowids[j]].seq;
-                        seqV = reads[i+colStart[b]].seq;
-
-                        std::string seedH = seqH.substr(values[j]->pos[0], KMER_LENGTH);
-                        std::string seedV = seqV.substr(values[j]->pos[1], KMER_LENGTH);
-                        
-                        Kmer myseedH(seedH.c_str());
-                        Kmer myseedHtwin = myseedH.twin();
-                        std::string twin = myseedHtwin.toString();
-
-                        if(twin == seedV)
-                        {
-                            Kmer myreadH(seqH.c_str());
-                            Kmer myreadtwin = myseedH.twin();
-                            std::string twinRead = myreadtwin.toString();
-
-                            const char* readH = twinRead.c_str();
-                            const char* readV = seqV.c_str();
-
-                            values[j]->pos[0] = reads[rowids[j]].seq.length()-values[j]->pos[0]-KMER_LENGTH;
-
-                            /* Perform match extension */
-                            result = edlibAlign(readH, strlen(readH), readV, strlen(readV), edlibNewAlignConfig(-1, EDLIB_MODE_HW, EDLIB_TASK_DISTANCE, NULL, 0));
-                
-                        } else
-                        {
-                            const char* readH = seqH.c_str();
-                            const char* readV = seqV.c_str();
-                            /* Perform match extension */
-                            result = edlibAlign(readH, strlen(readH), readV, strlen(readV), edlibNewAlignConfig(-1, EDLIB_MODE_HW, EDLIB_TASK_DISTANCE, NULL, 0));
-        
-                        }
-
-                        if(result.alignmentLength > 50)
-                            myBatch << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << ' ' << values[j]->count << ' ' << result.alignmentLength << ' ' << result.editDistance << endl;
-                    } 
-                    else if(values[j]->count == 2)
-                    {          
-                        seqH = reads[rowids[j]].seq;
-                        seqV = reads[i+colStart[b]].seq;
-
-                        std::string seedH = seqH.substr(values[j]->pos[0], KMER_LENGTH);
-                        std::string seedV = seqV.substr(values[j]->pos[1], KMER_LENGTH);
-                        
-                        Kmer myseedH(seedH.c_str());
-                        Kmer myseedHtwin = myseedH.twin();
-                        std::string twin = myseedHtwin.toString();
-
-                        if(twin == seedV)
-                        {
-                            Kmer myreadH(seqH.c_str());
-                            Kmer myreadtwin = myseedH.twin();
-                            std::string twinRead = myreadtwin.toString();
-
-                            const char* readH = twinRead.c_str();
-                            const char* readV = seqV.c_str();
-
-                            values[j]->pos[0] = reads[rowids[j]].seq.length()-values[j]->pos[0]-KMER_LENGTH;
-
-                            /* Perform match extension */
-                            result = edlibAlign(readH, strlen(readH), readV, strlen(readV), edlibNewAlignConfig(-1, EDLIB_MODE_HW, EDLIB_TASK_DISTANCE, NULL, 0));
-                
-                        } else
-                        {
-                            const char* readH = seqH.c_str();
-                            const char* readV = seqV.c_str();
-                            /* Perform match extension */
-                            result = edlibAlign(readH, strlen(readH), readV, strlen(readV), edlibNewAlignConfig(-1, EDLIB_MODE_HW, EDLIB_TASK_DISTANCE, NULL, 0));
-        
-                        }
-
-                        if(result.alignmentLength > 50)
-                            myBatch << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << ' ' << values[j]->count << ' ' << result.alignmentLength << ' ' << result.editDistance << endl;
-                    } else
-                    {          
-                        seqH = reads[rowids[j]].seq;
-                        seqV = reads[i+colStart[b]].seq;
-
-                        std::string seedH = seqH.substr(values[j]->pos[0], KMER_LENGTH);
-                        std::string seedV = seqV.substr(values[j]->pos[1], KMER_LENGTH);
-                        
-                        Kmer myseedH(seedH.c_str());
-                        Kmer myseedHtwin = myseedH.twin();
-                        std::string twin = myseedHtwin.toString();
-
-                        if(twin == seedV)
-                        {
-                            Kmer myreadH(seqH.c_str());
-                            Kmer myreadtwin = myseedH.twin();
-                            std::string twinRead = myreadtwin.toString();
-
-                            const char* readH = twinRead.c_str();
-                            const char* readV = seqV.c_str();
-
-                            values[j]->pos[0] = reads[rowids[j]].seq.length()-values[j]->pos[0]-KMER_LENGTH;
-
-                            /* Perform match extension */
-                            result = edlibAlign(readH, strlen(readH), readV, strlen(readV), edlibNewAlignConfig(-1, EDLIB_MODE_HW, EDLIB_TASK_DISTANCE, NULL, 0));
-                
-                        } else
-                        {
-                            const char* readH = seqH.c_str();
-                            const char* readV = seqV.c_str();
-                            /* Perform match extension */
-                            result = edlibAlign(readH, strlen(readH), readV, strlen(readV), edlibNewAlignConfig(-1, EDLIB_MODE_HW, EDLIB_TASK_DISTANCE, NULL, 0));
-        
-                        }
-
-                        if(result.alignmentLength > 50) 
-                            myBatch << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << ' ' << values[j]->count << ' ' << result.alignmentLength << ' ' << result.editDistance << endl;
-                    }
-                }
-            }
-
-            delete [] colptr;
-            delete [] rowids;
-            delete [] values;
-
-            #pragma omp critical
-            {
-                writeToFile(myBatch, "ovls.bella");
-                myBatch.str(std::string());
-            }
-        }
-        delete [] colStart;
-        delete [] colEnd;
-        delete [] numCols;
-    } else
-    {
-        int colStart = 0;
-        int colEnd = B.cols;
-        int numCols = B.cols;
-        vector<IT> * RowIdsofC = new vector<IT>[B.cols];      // row ids for each column of C
-        vector<FT> * ValuesofC = new vector<FT>[B.cols];      // values for each column of C
-
-        LocalSpGEMM(colStart, colEnd, numCols, A, B, multop, addop, RowIdsofC, ValuesofC);
-
-        IT * colptr = new IT[B.cols+1];
-        colptr[0] = 0;
-        std::stringstream myBatch;
-
-        for(int i=0; i < B.cols; ++i)        // for all edge lists (do NOT parallelize)
-            colptr[i+1] = colptr[i] + RowIdsofC[i].size();
-
-        IT * rowids = new IT[colptr[B.cols]];
-        FT * values = new FT[colptr[B.cols]];
-        
-        for(int i=0; i < B.cols; ++i)        // for all edge lists (do NOT parallelize)
-        {
-            copy(RowIdsofC[i].begin(), RowIdsofC[i].end(), rowids + colptr[i]);
-            copy(ValuesofC[i].begin(), ValuesofC[i].end(), values + colptr[i]);
-        }
-
-        delete [] RowIdsofC;
-        delete [] ValuesofC;
-
-        std::stringstream myBatchSingle;
-        std::string seqH;
-        std::string seqV;
-
-        EdlibAlignResult result;
-
-        for(int i=0; i<B.cols; ++i) 
-        {
-            for(int j=colptr[i]; j<colptr[i+1]; ++j) 
-            {
-                if(values[j]->count == 1)
-                {          
-                    seqH = reads[rowids[j]].seq;
-                    seqV = reads[i].seq;
-
-                    std::string seedH = seqH.substr(values[j]->pos[0], KMER_LENGTH);
-                    std::string seedV = seqV.substr(values[j]->pos[1], KMER_LENGTH);
-                    
-                    Kmer myseedH(seedH.c_str());
-                    Kmer myseedHtwin = myseedH.twin();
-                    std::string twin = myseedHtwin.toString();
-
-                    if(twin == seedV)
-                    {
-                        Kmer myreadH(seqH.c_str());
-                        Kmer myreadtwin = myseedH.twin();
-                        std::string twinRead = myreadtwin.toString();
-
-                        const char* readH = twinRead.c_str();
-                        const char* readV = seqV.c_str();
-
-                        values[j]->pos[0] = reads[rowids[j]].seq.length()-values[j]->pos[0]-KMER_LENGTH;
-
-                        /* Perform match extension */
-                        result = edlibAlign(readH, strlen(readH), readV, strlen(readV), edlibNewAlignConfig(-1, EDLIB_MODE_HW, EDLIB_TASK_DISTANCE, NULL, 0));
-                
-                    } else
-                    {
-                        const char* readH = seqH.c_str();
-                        const char* readV = seqV.c_str();
-                        /* Perform match extension */
-                        result = edlibAlign(readH, strlen(readH), readV, strlen(readV), edlibNewAlignConfig(-1, EDLIB_MODE_HW, EDLIB_TASK_DISTANCE, NULL, 0));
-        
-                    }
-
-                    if(result.alignmentLength > 50)
-                        myBatchSingle << reads[i].nametag << ' ' << reads[rowids[j]].nametag << ' ' << values[j]->count << ' ' << result.alignmentLength << ' ' << result.editDistance << endl;
-                } 
-                else if(values[j]->count == 2)
-                {          
-                    seqH = reads[rowids[j]].seq;
-                    seqV = reads[i].seq;
-
-                    std::string seedH = seqH.substr(values[j]->pos[0], KMER_LENGTH);
-                    std::string seedV = seqV.substr(values[j]->pos[1], KMER_LENGTH);
-                    
-                    Kmer myseedH(seedH.c_str());
-                    Kmer myseedHtwin = myseedH.twin();
-                    std::string twin = myseedHtwin.toString();
-
-                    if(twin == seedV)
-                    {
-                        Kmer myreadH(seqH.c_str());
-                        Kmer myreadtwin = myseedH.twin();
-                        std::string twinRead = myreadtwin.toString();
-
-                        const char* readH = twinRead.c_str();
-                        const char* readV = seqV.c_str();
-
-                        values[j]->pos[0] = reads[rowids[j]].seq.length()-values[j]->pos[0]-KMER_LENGTH;
-
-                        /* Perform match extension */
-                        result = edlibAlign(readH, strlen(readH), readV, strlen(readV), edlibNewAlignConfig(-1, EDLIB_MODE_HW, EDLIB_TASK_DISTANCE, NULL, 0));
-                
-                    } else
-                    {
-                        const char* readH = seqH.c_str();
-                        const char* readV = seqV.c_str();
-                        /* Perform match extension */
-                        result = edlibAlign(readH, strlen(readH), readV, strlen(readV), edlibNewAlignConfig(-1, EDLIB_MODE_HW, EDLIB_TASK_DISTANCE, NULL, 0));
-        
-                    }
-
-                    if(result.alignmentLength > 50)
-                        myBatchSingle << reads[i].nametag << ' ' << reads[rowids[j]].nametag << ' ' << values[j]->count << ' ' << result.alignmentLength << ' ' << result.editDistance << endl;
-                } else
-                {          
-                    seqH = reads[rowids[j]].seq;
-                    seqV = reads[i].seq;
-
-                    std::string seedH = seqH.substr(values[j]->pos[0], KMER_LENGTH);
-                    std::string seedV = seqV.substr(values[j]->pos[1], KMER_LENGTH);
-                    
-                    Kmer myseedH(seedH.c_str());
-                    Kmer myseedHtwin = myseedH.twin();
-                    std::string twin = myseedHtwin.toString();
-
-                    if(twin == seedV)
-                    {
-                        Kmer myreadH(seqH.c_str());
-                        Kmer myreadtwin = myseedH.twin();
-                        std::string twinRead = myreadtwin.toString();
-
-                        const char* readH = twinRead.c_str();
-                        const char* readV = seqV.c_str();
-
-                        values[j]->pos[0] = reads[rowids[j]].seq.length()-values[j]->pos[0]-KMER_LENGTH;
-
-                        /* Perform match extension */
-                        result = edlibAlign(readH, strlen(readH), readV, strlen(readV), edlibNewAlignConfig(-1, EDLIB_MODE_HW, EDLIB_TASK_DISTANCE, NULL, 0));
-                
-                    } else
-                    {
-                        const char* readH = seqH.c_str();
-                        const char* readV = seqV.c_str();
-                        /* Perform match extension */
-                        result = edlibAlign(readH, strlen(readH), readV, strlen(readV), edlibNewAlignConfig(-1, EDLIB_MODE_HW, EDLIB_TASK_DISTANCE, NULL, 0));
-        
-                    }
-
-                    if(result.alignmentLength > 50) 
-                        myBatchSingle << reads[i].nametag << ' ' << reads[rowids[j]].nametag << ' ' << values[j]->count << ' ' << result.alignmentLength << ' ' << result.editDistance << endl;
-                }
-            }
-        }
-        
-        delete [] rowids;
-        delete [] values;
-        delete [] colptr;
-
-        writeToFile(myBatchSingle, "ovls.bella");
-        myBatchSingle.str(std::string());
-    }
-    #endif
 }
 
 /**

@@ -148,7 +148,7 @@ void getMetrics(std::ifstream & bella, std::ifstream & mhap, std::ifstream & bla
 
             /* Compute the overlap length between potential overlapping reads pairs */
             alignment_length = computeLength(ovlsmap, col_nametag, row_nametag);
-            if(alignment_length >= 17)
+            if(alignment_length >= 1180 && alignment_length <= 1220)
                 truebella++;
         }
     }
@@ -161,13 +161,13 @@ void getMetrics(std::ifstream & bella, std::ifstream & mhap, std::ifstream & bla
     //        ovlsmhap++;
     //        std::stringstream lineStream(line);
     //        std::string col_nametag, row_nametag;
-//
+
     //        getline(lineStream, col_nametag, ' ');
     //        getline(lineStream, row_nametag, ' ');
-//
+
     //        col_nametag = "@" + col_nametag;
     //        row_nametag = "@" + row_nametag;
-//
+
     //        /* Compute the overlap length between potential overlapping reads pairs */
     //        alignment_length = computeLength(ovlsmap, col_nametag, row_nametag);
     //        if(alignment_length >= 1000)
@@ -183,7 +183,7 @@ void getMetrics(std::ifstream & bella, std::ifstream & mhap, std::ifstream & bla
     //        ovlsblasr++;
     //        std::stringstream lineStream(line);
     //        std::string col_nametag, row_nametag;
-//
+
     //        getline(lineStream, col_nametag, ' ');
     //        getline(lineStream, row_nametag, ' ');
 //
