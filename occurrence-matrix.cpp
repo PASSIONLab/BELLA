@@ -115,7 +115,7 @@ void dictionaryCreation(dictionary &kmerdict, Kmers &kmervect)
 }
 
 int main (int argc, char* argv[]) {
-    if(argc < 4)
+    if(argc < 3)
     {
         cout << "not enough parameters... usage: "<< endl;
         cout << "./parse kmers-list reference-genome.fna listoffastqfiles.txt" << endl;
@@ -129,7 +129,7 @@ int main (int argc, char* argv[]) {
     std::string line;
     Kmer::set_k(KMER_LENGTH);
     dictionary kmerdict;
-    std::vector<filedata> allfiles = GetFiles(argv[3]);
+    std::vector<filedata> allfiles = GetFiles(argv[2]);
     size_t upperlimit = 10000000; // in bytes
     Kmer kmerfromstr;
     Kmers kmervect;
@@ -156,7 +156,6 @@ int main (int argc, char* argv[]) {
     cout << "input k-mers file: " << argv[1] <<endl;
     cout << "pbsim depth: " << DEPTH << endl;
     cout << "k-mer length: " << KMER_LENGTH <<endl;
-    cout << "reference genome: " << argv[2] <<endl;
 
     #ifdef _MULPTR
     cout << "*** MULPTR version ***" << endl;
@@ -370,7 +369,7 @@ int main (int argc, char* argv[]) {
     cout << "overlapper + seeded alignment took " << omp_get_wtime()-start << " sec" << endl;
     double metric = omp_get_wtime();
     std::ifstream bella("ovls.bella");
-    std::ifstream mhap("GCFMHAPair.m4");
+    std::ifstream mhap("out.mini");
     std::ifstream blasr("bacillus_blasrpair2.m4");
     getMetrics(bella, mhap, blasr);  
     cout << "metrics computation took " << omp_get_wtime()-metric << " sec" << endl;
