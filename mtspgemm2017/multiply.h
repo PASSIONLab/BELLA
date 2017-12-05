@@ -1,6 +1,7 @@
 #include "CSC.h"
 #include "global.h"
 #include "metric.h"
+#include "alignment.h"
 #include "../kmercode/hash_funcs.h"
 #include "../kmercode/Kmer.hpp"
 #include "../kmercode/Buffer.h"
@@ -39,6 +40,7 @@ typedef SeedSet<TSeed> TSeedSet;
 #define KMER_LENGTH 17
 #define _OSX
 #define _GAPPED
+#define MIN_SCORE 50
 // #define _UNGAPPED
 
 #ifdef _OSX
@@ -244,20 +246,11 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         //colptr[0] = 0;
 
         std::stringstream myBatch;
-        std::stringstream myBatchOvl;
+    
+        int64_t longestExtensionScoreOne;
+        std::pair<int64_t,int64_t> longestExtensionScore;
 
-        Dna5String seqH; 
-        Dna5String seqV; 
-        Dna5String seedH;
-        Dna5String seedV;
-
-        int64_t longestExtensionScore1;
-        int64_t longestExtensionScore2;
-        int64_t getOvl;
-
-        Score<int, Simple> scoringScheme(1, -1, -1);
-
-        #pragma omp parallel for private(myBatch, seedH, seedV, seqH, seqV, longestExtensionScore1, longestExtensionScore2, getOvl) shared(colStart,colEnd,numCols, reads)
+        #pragma omp parallel for private(myBatch, longestExtensionScoreOne, longestExtensionScore) shared(colStart,colEnd,numCols, reads)
         for(int b = 0; b < numBlocks+1; ++b) 
         { 
             vector<IT> * RowIdsofC = new vector<IT>[numCols[b]];  // row ids for each column of C (bunch of cols)
@@ -286,6 +279,8 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                 ++k;
             }
 
+           // cout << "Before delete RowIdsofC" << endl;
+
             delete [] RowIdsofC;
             delete [] ValuesofC;
 
@@ -294,184 +289,26 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
             {
                 for(int j=colptr[i]; j<colptr[i+1]; ++j) 
                 {
-                    //myBatch << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << ' ' << values[j]->count << endl;
                     if(values[j]->count == 1)
-                    {          
-                        seqH = reads[rowids[j]].seq;
-                        seqV = reads[i+colStart[b]].seq;
+                    {      
+                        // The function knows there's just one shared k-mer    
+                        longestExtensionScoreOne = seqanAlOne(reads[rowids[j]].seq, reads[i+colStart[b]].seq, reads[rowids[j]].seq.length(), 
+                            values[j]->pos[0], values[j]->pos[1], 3);
 
-                        Seed<Simple> seed1(values[j]->pos[0], values[j]->pos[1], values[j]->pos[0]+KMER_LENGTH, values[j]->pos[1]+KMER_LENGTH);
-                        seedH = infix(seqH, beginPositionH(seed1), endPositionH(seed1));
-                        seedV = infix(seqV, beginPositionV(seed1), endPositionV(seed1));
-
-                        Dna5StringReverseComplement twin(seedH);
-
-                        if(twin == seedV)
+                        if(longestExtensionScoreOne >= MIN_SCORE)
                         {
-                            Dna5StringReverseComplement twinRead(seqH);
-                            values[j]->pos[0] = reads[rowids[j]].seq.length()-values[j]->pos[0]-KMER_LENGTH;
-                            Seed<Simple> seed1(values[j]->pos[0], values[j]->pos[1], values[j]->pos[0]+KMER_LENGTH, values[j]->pos[1]+KMER_LENGTH);
-
-                            /* Perform match extension */
-                            #ifdef _GAPPED
-                            longestExtensionScore1 = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
-                            #endif
-
-                            #ifdef _UNGAPPED
-                            longestExtensionScore1 = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, 3, UnGappedXDrop());
-                            #endif
-                
-                        } else
-                        {
-                            /* Perform match extension */
-                            #ifdef _GAPPED
-                            longestExtensionScore1 = extendSeed(seed1, seqH, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
-                            #endif
-
-                            #ifdef _UNGAPPED
-                            longestExtensionScore1 = extendSeed(seed1, seqH, seqV, EXTEND_BOTH, scoringScheme, 3, UnGappedXDrop());
-                            #endif
-        
-                        }
-
-                        getOvl = getOverlap(values[j]->pos[0], values[j]->pos[1], reads[rowids[j]].seq, reads[i+colStart[b]].seq);
-                        myBatchOvl << values[j]->count << ' ' << getOvl << endl;
-
-                        if(longestExtensionScore1 >= 50)
-                        {
-            
-                            myBatch << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << ' ' << values[j]->count << ' ' << longestExtensionScore1 << ' ' << beginPositionV(seed1) << ' ' << 
-                                endPositionV(seed1) << ' ' << reads[i+colStart[b]].seq.length() << ' ' << beginPositionH(seed1) << ' ' << endPositionH(seed1) <<
-                                    ' ' << reads[rowids[j]].seq.length() << endl;
+                            myBatch << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << endl;
                         }
                     } 
-                    else if(values[j]->count == 2)
+                    else
                     {       
+                        // The function knows there's more than one shared k-mers  
+                        longestExtensionScore = seqanAlGen(reads[rowids[j]].seq, reads[i+colStart[b]].seq, reads[rowids[j]].seq.length(), 
+                            values[j]->pos[0], values[j]->pos[1], values[j]->pos[2], values[j]->pos[3], 3);
 
-                        seqH = reads[rowids[j]].seq;
-                        seqV = reads[i+colStart[b]].seq;
-
-                        Seed<Simple> seed1(values[j]->pos[0], values[j]->pos[1], values[j]->pos[0]+KMER_LENGTH, values[j]->pos[1]+KMER_LENGTH);
-                        Seed<Simple> seed2(values[j]->pos[2], values[j]->pos[3], values[j]->pos[2]+KMER_LENGTH, values[j]->pos[3]+KMER_LENGTH);
-                        seedH = infix(seqH, beginPositionH(seed1), endPositionH(seed1));
-                        seedV = infix(seqV, beginPositionV(seed1), endPositionV(seed1));
-
-                        Dna5StringReverseComplement twin(seedH);
-
-                        if(twin == seedV)
+                        if(longestExtensionScore.first >= MIN_SCORE || longestExtensionScore.second >= MIN_SCORE)
                         {
-                            Dna5StringReverseComplement twinRead(seqH);
-
-                            values[j]->pos[0] = reads[rowids[j]].seq.length()-values[j]->pos[0]-KMER_LENGTH;
-                            values[j]->pos[2] = reads[rowids[j]].seq.length()-values[j]->pos[2]-KMER_LENGTH;
-
-                            Seed<Simple> seed1(values[j]->pos[0], values[j]->pos[1], values[j]->pos[0]+KMER_LENGTH, values[j]->pos[1]+KMER_LENGTH);
-                            Seed<Simple> seed2(values[j]->pos[2], values[j]->pos[3], values[j]->pos[2]+KMER_LENGTH, values[j]->pos[3]+KMER_LENGTH);
-
-                            /* Perform match extension */
-                            #ifdef _GAPPED
-                            longestExtensionScore1 = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
-                            longestExtensionScore2 = extendSeed(seed2, twinRead, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
-                            #endif
-
-                            #ifdef _UNGAPPED
-                            longestExtensionScore1 = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, 3, UnGappedXDrop());
-                            longestExtensionScore2 = extendSeed(seed2, twinRead, seqV, EXTEND_BOTH, scoringScheme, 3, UnGappedXDrop());
-                            #endif
-
-                        } else
-                        {
-                            /* Perform match extension */
-                            #ifdef _GAPPED
-                            longestExtensionScore1 = extendSeed(seed1, seqH, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
-                            longestExtensionScore2 = extendSeed(seed2, seqH, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
-                            #endif
-
-                            #ifdef _UNGAPPED
-                            longestExtensionScore1 = extendSeed(seed1, seqH, seqV, EXTEND_BOTH, scoringScheme, 3, UnGappedXDrop());
-                            longestExtensionScore2 = extendSeed(seed2, seqH, seqV, EXTEND_BOTH, scoringScheme, 3, UnGappedXDrop());
-                            #endif
-                        
-                        }
-
-                        if(longestExtensionScore1 >= 50 || longestExtensionScore2 >= 50)
-                        {
-                            if(longestExtensionScore1 > longestExtensionScore2)
-                            {
-
-                                myBatch << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << ' ' << values[j]->count << ' ' << longestExtensionScore1 << ' ' << beginPositionV(seed1) << ' ' << 
-                                endPositionV(seed1) << ' ' << reads[i+colStart[b]].seq.length() << ' ' << beginPositionH(seed1) << ' ' << endPositionH(seed1) <<
-                                    ' ' << reads[rowids[j]].seq.length() << endl;
-                            } else
-                            {
-
-                                myBatch << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << ' ' << values[j]->count << ' ' << longestExtensionScore2 << ' ' << beginPositionV(seed2) << ' ' << 
-                                endPositionV(seed2) << ' ' << reads[i+colStart[b]].seq.length() << ' ' << beginPositionH(seed2) << ' ' << endPositionH(seed2) <<
-                                    ' ' << reads[rowids[j]].seq.length() << endl;
-                            }
-                        }
-                    } else
-                    {
-                        seqH = reads[rowids[j]].seq;
-                        seqV = reads[i+colStart[b]].seq;
-
-                        Seed<Simple> seed1(values[j]->pos[0], values[j]->pos[1], values[j]->pos[0]+KMER_LENGTH, values[j]->pos[1]+KMER_LENGTH);
-                        Seed<Simple> seed2(values[j]->pos[2], values[j]->pos[3], values[j]->pos[2]+KMER_LENGTH, values[j]->pos[3]+KMER_LENGTH);
-                        seedH = infix(seqH, beginPositionH(seed1), endPositionH(seed1));
-                        seedV = infix(seqV, beginPositionV(seed1), endPositionV(seed1));
-
-                        Dna5StringReverseComplement twin(seedH);
-
-                        if(twin == seedV)
-                        {
-                            Dna5StringReverseComplement twinRead(seqH);
-
-                            values[j]->pos[0] = reads[rowids[j]].seq.length()-values[j]->pos[0]-KMER_LENGTH;
-                            values[j]->pos[2] = reads[rowids[j]].seq.length()-values[j]->pos[2]-KMER_LENGTH;
-
-                            Seed<Simple> seed1(values[j]->pos[0], values[j]->pos[1], values[j]->pos[0]+KMER_LENGTH, values[j]->pos[1]+KMER_LENGTH);
-                            Seed<Simple> seed2(values[j]->pos[2], values[j]->pos[3], values[j]->pos[2]+KMER_LENGTH, values[j]->pos[3]+KMER_LENGTH);
-
-                            /* Perform match extension */
-                            #ifdef _GAPPED
-                            longestExtensionScore1 = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
-                            longestExtensionScore2 = extendSeed(seed2, twinRead, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
-                            #endif
-
-                            #ifdef _UNGAPPED
-                            longestExtensionScore1 = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, 3, UnGappedXDrop());
-                            longestExtensionScore2 = extendSeed(seed2, twinRead, seqV, EXTEND_BOTH, scoringScheme, 3, UnGappedXDrop());
-                            #endif
-
-                        } else
-                        {
-                            #ifdef _GAPPED
-                            longestExtensionScore1 = extendSeed(seed1, seqH, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
-                            longestExtensionScore2 = extendSeed(seed2, seqH, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
-                            #endif
-
-                            #ifdef _UNGAPPED
-                            longestExtensionScore1 = extendSeed(seed1, seqH, seqV, EXTEND_BOTH, scoringScheme, 3, UnGappedXDrop());
-                            longestExtensionScore2 = extendSeed(seed2, seqH, seqV, EXTEND_BOTH, scoringScheme, 3, UnGappedXDrop());
-                            #endif
-                        
-                        }
-
-                        if(longestExtensionScore1 >= 50 || longestExtensionScore2 >= 50)
-                        {
-                            if(longestExtensionScore1 > longestExtensionScore2)
-                            {
-
-                                myBatch << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << ' ' << values[j]->count << ' ' << longestExtensionScore1 << ' ' << beginPositionV(seed1) << ' ' << 
-                                endPositionV(seed1) << ' ' << reads[i+colStart[b]].seq.length() << ' ' << beginPositionH(seed1) << ' ' << endPositionH(seed1) <<
-                                    ' ' << reads[rowids[j]].seq.length() << endl;
-                            } else
-                            {
-
-                                myBatch << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << ' ' << values[j]->count << ' ' << longestExtensionScore2 << ' ' << beginPositionV(seed2) << ' ' << 
-                                endPositionV(seed2) << ' ' << reads[i+colStart[b]].seq.length() << ' ' << beginPositionH(seed2) << ' ' << endPositionH(seed2) <<
-                                    ' ' << reads[rowids[j]].seq.length() << endl;
-                            }
+                            myBatch << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << endl;
                         }
                     }
                 }
@@ -484,7 +321,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
             #pragma omp critical
             {
                 // writeToFile(myBatchOvl, "kmerinovltotal1.txt");
-                writeToFile(myBatch, "ovls.bella");
+                writeToFile(myBatch, "out.bella");
                 myBatch.str(std::string());
             }
         }
@@ -572,7 +409,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         
                     }
 
-                    if(longestExtensionScore1 >= 50)
+                    if(longestExtensionScore1 >= MIN_SCORE)
                     {
                             myBatchSingle << reads[i].nametag << ' ' << reads[rowids[j]].nametag << ' ' << values[j]->count << ' ' << longestExtensionScore1 << ' ' << beginPositionV(seed1) << ' ' << 
                                 endPositionV(seed1) << ' ' << reads[i].seq.length() << ' ' << beginPositionH(seed1) << ' ' << endPositionH(seed1) <<
@@ -626,7 +463,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                     
                     }
 
-                    if(longestExtensionScore1 >= 50 || longestExtensionScore2 >= 50)
+                    if(longestExtensionScore1 >= MIN_SCORE || longestExtensionScore2 >= MIN_SCORE)
                     {
                         if(longestExtensionScore1 > longestExtensionScore2)
                         {
@@ -648,7 +485,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         delete [] values;
         delete [] colptr;
 
-        writeToFile(myBatchSingle, "ovls.bella");
+        writeToFile(myBatchSingle, "out.bella");
         myBatchSingle.str(std::string());
     }
 }
