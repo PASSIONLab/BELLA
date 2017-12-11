@@ -27,20 +27,21 @@ int main (int argc, char* argv[]) {
 
 	// This program requires as input (so far) Minimap's overlaps + the ground truth computed with BWA-MEM
 	// Later Daligner's, Blasr's and Mhap's overlaps will be required as well
-	if(argc < 3)
+	if(argc < 7)
     {
         cout << "not enough parameters, usage: " << endl;
-        cout << "./benchmark groundtruth.txt out.mini" << endl;
+        cout << "./benchmark groundtruth.txt out.bella out.mini out.mhap" << endl;
     }
 
     std::ifstream ground(argv[1]);
-	// std::ifstream bella(argv[2]);
-    std::ifstream minimap(argv[2]);
-    // std::ifstream blasr("out.m4");
-    // std::ifstream mhap("out.m4");
+	std::ifstream bella(argv[2]);
+    std::ifstream minimap(argv[3]);
+    std::ifstream mhap(argv[4]);
+    std::ifstream mhap_al(argv[5]);
+    std::ifstream blasr(argv[6]);
     // std::ifstream daligner("out.m4");
 
     // getMetrics(bella, mhap, blasr);  
-    benchmarkingAl(ground, minimap);  
+    benchmarkingAl(ground, bella, minimap, mhap, mhap_al, blasr);  
 
 }

@@ -21,6 +21,7 @@
 #include <unistd.h>
 #include <ctype.h> 
 #include <sstream>
+#include <set>
 #include <memory>
 
 #define ERR .15 
@@ -39,11 +40,7 @@ double trueOv(ifstream & truth)
 
     if(truth.is_open()) {
 
-        //std::string ref;
         std::string read;
-        //std::string dontcare1;
-        //std::string dontcare2;
-        //std::string dontcare3;
         int start;
         int end;
         while(truth >> read >> start >> end)
@@ -53,7 +50,7 @@ double trueOv(ifstream & truth)
             queries.push_back(Interval<std::string>(start, end, read));
         }
 
-    } else std::cout << "Error opening the .axt" << endl;
+    } else std::cout << "Error opening the ground truth file" << endl;
 
     IntervalTree<std::string> tree;
     vector<size_t> treecounts;
@@ -73,6 +70,40 @@ double trueOv(ifstream & truth)
 
     return trueoverlaps;
 }
+
+///* Compute the overlap length between potential overlapping reads pairs */
+//int countTrue(map<std::string, std::pair<int,int>> & sammap, std::set<pair<std::string, std::string>> & set) 
+//{
+//    int alignment = 0;
+//    int count = 0;
+//
+//    std::map<std::string, std::pair<int,int>>::iterator jit;
+//    std::map<std::string, std::pair<int,int>>::iterator iit;
+//
+//    for (std::set<pair<std::string, std::string>>::iterator it=set.begin(); it!=set.end(); ++it) {
+//
+//        jit = sammap.find(it->first);   // col name
+//        iit = sammap.find(it->second);  // row name 
+//
+//        if (jit != sammap.end() && iit != sammap.end()) {
+//    
+//            if(iit->second.first < jit->second.first) {
+//                if(iit->second.second > jit->second.first) {
+//                    alignment = min((iit->second.second - jit->second.first), (jit->second.second - jit->second.first));
+//                }
+//            }
+//            else if (iit->second.first > jit->second.first) {
+//                if(jit->second.second > iit->second.first) {
+//                    alignment = min((jit->second.second - iit->second.first), (iit->second.second - iit->second.first));
+//                }
+//            } else alignment = min((jit->second.second - iit->second.first), (iit->second.second - iit->second.first)); 
+//
+//            if(alignment >= THR)
+//                count++;
+//        }
+//    }
+//    return count;
+//}
 
 /* Compute the overlap length between potential overlapping reads pairs */
 int computeLength(map<std::string, std::pair<int,int>> & sammap, std::string & col_nametag, std::string & row_nametag) 
@@ -100,15 +131,23 @@ int computeLength(map<std::string, std::pair<int,int>> & sammap, std::string & c
     return alignment_length;
 }
 
-void benchmarkingAl(std::ifstream & groundtruth, std::ifstream & minimap) // add blasr && daligner && mhap && bella
+void benchmarkingAl(std::ifstream & groundtruth, std::ifstream & bella, std::ifstream & minimap, std::ifstream & mhap, std::ifstream & mhap_al, std::ifstream & blasr) // add blasr && daligner && mhap && bella
 {
     std::map<std::string, std::pair<int,int>> ovlsmap;
+    std::map<std::pair<std::string,std::string>, bool> check_bella;
+    std::map<std::pair<std::string,std::string>, bool> check_mini;
+    std::map<std::pair<std::string,std::string>, bool> check_mhap;
+    std::map<std::pair<std::string,std::string>, bool> check_mhap_al;
+    std::map<std::pair<std::string,std::string>, bool> check_blasr;
+    std::map<std::pair<std::string,std::string>, bool>::iterator it;
     int alignment_length;
-    // double ovlsbella = 0, truebella = 0;
+    double ovlsbella = 0, truebella = 0;
     double ovlsminimap = 0, trueminimap = 0;
-    // double ovlsblasr = 0, trueblasr = 0;
-    // double ovlsdaligner = 0, truedaligner = 0;
-    // double ovlsmhap = 0, truemahpa = 0;
+    double ovlsmhap = 0, truemhap = 0;
+    double ovlsmhap_al = 0, truemhap_al = 0;
+    double ovlsblasr = 0, trueblasr = 0;
+
+    cout << "\nBuilding the ground truth from BWA-MEM filtered sam..." << endl;
 
     if(groundtruth.is_open())
     {
@@ -124,29 +163,53 @@ void benchmarkingAl(std::ifstream & groundtruth, std::ifstream & minimap) // add
             coords = make_pair(start_v, end_v);
             ovlsmap.insert(std::pair<std::string, std::pair<int, int>>(nametag,coords));
         }
-    } else std::cout << "Error opening the .axt" << endl;
+    } else std::cout << "Error opening the ground truth file" << endl;
 
     groundtruth.clear();
     groundtruth.seekg(0, ios::beg);
 
-    // if(bella.is_open())
-    // {
-    //     std::string line;
-    //     while(getline(bella, line))
-    //     {
-    //         ovlsbella++;
-    //         std::stringstream lineStream(line);
-    //         std::string col_nametag, row_nametag;
+    //int countdown = ovlsmap.size();
+    //cout << ovlsmap.size() << endl;
+//
+    //for(std::map<std::string, std::pair<int,int>>::iterator i=ovlsmap.begin(); i!=ovlsmap.end(); i++) {
+    //    for(std::map<std::string, std::pair<int,int>>::iterator j=ovlsmap.begin(); j!=ovlsmap.end(); j++) {
+    //        set_bwam.insert(make_pair(i->first, j->first));
+    //        set_bwam.insert(make_pair(j->first, i->first));
+    //    }
+    //    countdown--;
+    //    cout << countdown << endl; 
+    //}
+//
+    //int truetruth = countTrue(ovlsmap, set_bwam);
 
-    //         getline(lineStream, col_nametag, ' ');
-    //         getline(lineStream, row_nametag, ' ');
+    cout << "Computing BELLA metrics..." << endl;
 
-    //         /* Compute the overlap length between potential overlapping reads pairs */
-    //         alignment_length = computeLength(ovlsmap, col_nametag, row_nametag);
-    //         if(alignment_length >= THR)
-    //             truebella++;
-    //     }
-    // }
+    if(bella.is_open())
+    {
+        std::string line;
+        while(getline(bella, line))
+        {
+            ovlsbella++;
+            std::stringstream lineStream(line);
+            std::string col_nametag, row_nametag;
+
+            getline(lineStream, col_nametag, ' ');
+            getline(lineStream, row_nametag, ' ');
+
+            it = check_bella.find(make_pair(col_nametag, row_nametag));
+            if(it == check_bella.end())
+            {
+                check_bella.insert(make_pair(make_pair(col_nametag, row_nametag), true));
+                /* Compute the overlap length between potential overlapping reads pairs */
+                alignment_length = computeLength(ovlsmap, col_nametag, row_nametag);
+                if(alignment_length >= THR)
+                    truebella++;
+            }
+
+        }
+    }
+
+    cout << "Computing Minimap metrics..." << endl;
 
     if(minimap.is_open())
     {
@@ -166,94 +229,153 @@ void benchmarkingAl(std::ifstream & groundtruth, std::ifstream & minimap) // add
     
             col_nametag = "@" + col_nametag;
             row_nametag = "@" + row_nametag;
-    
-            /* Compute the overlap length between potential overlapping reads pairs */
-            alignment_length = computeLength(ovlsmap, col_nametag, row_nametag);
-            if(alignment_length >= THR)
-                trueminimap++;
+
+            it = check_mini.find(make_pair(col_nametag, row_nametag));
+            if(it == check_mini.end())
+            {
+                check_mini.insert(make_pair(make_pair(col_nametag, row_nametag), true));
+                /* Compute the overlap length between potential overlapping reads pairs */
+                alignment_length = computeLength(ovlsmap, col_nametag, row_nametag);
+                if(alignment_length >= THR)
+                    trueminimap++;
+            }
         }
     }
 
-    //if(mhap.is_open())
-    //{
-    //    std::string line;
-    //    while(getline(mhap, line))
-    //    {
-    //        ovlsmhap++;
-    //        std::stringstream lineStream(line);
-    //        std::string col_nametag, row_nametag;
+    // as -S option count overlaps only once 
+    // (A ov B, but not B ov A), while all other 
+    // (included the ground truth) count all ovls and the self-ovls
+    double trueminimap_tuned = trueminimap*2 + 16890;
 
-    //        getline(lineStream, col_nametag, ' ');
-    //        getline(lineStream, row_nametag, ' ');
+    cout << "Computing MHAP sensitive metrics..." << endl;
 
-    //        col_nametag = "@" + col_nametag;
-    //        row_nametag = "@" + row_nametag;
+    if(mhap.is_open())
+    {
+        std::string line;
+        while(getline(mhap, line))
+        {
+            ovlsmhap++;
+            std::stringstream lineStream(line);
+            std::string col_nametag, row_nametag;
 
-    //        /* Compute the overlap length between potential overlapping reads pairs */
-    //        alignment_length = computeLength(ovlsmap, col_nametag, row_nametag);
-    //        if(alignment_length >= 1000)
-    //            truemhap++;
-    //    }
-    //}
-    
-    //if(blasr.is_open())
-    //{
-    //    std::string line;
-    //    while(getline(blasr, line))
-    //    {
-    //        ovlsblasr++;
-    //        std::stringstream lineStream(line);
-    //        std::string col_nametag, row_nametag;
+            getline(lineStream, col_nametag, ' ');
+            getline(lineStream, row_nametag, ' ');
 
-    //        getline(lineStream, col_nametag, ' ');
-    //        getline(lineStream, row_nametag, ' ');
+            col_nametag = "@" + col_nametag;
+            row_nametag = "@" + row_nametag;
 
-    //        col_nametag = "@" + col_nametag;
-    //        row_nametag = "@" + row_nametag;
+            it = check_mhap.find(make_pair(col_nametag, row_nametag));
+            if(it == check_mhap.end())
+            {
+                check_mhap.insert(make_pair(make_pair(col_nametag, row_nametag), true));
+                /* Compute the overlap length between potential overlapping reads pairs */
+                alignment_length = computeLength(ovlsmap, col_nametag, row_nametag);
+                if(alignment_length >= THR)
+                    truemhap++;
+            }
+        }
+    }
 
-    //        /* Compute the overlap length between potential overlapping reads pairs */
-    //        alignment_length = computeLength(ovlsmap, col_nametag, row_nametag);
-    //        if(alignment_length >= 1000)
-    //            trueblasr++;
-    //    }
-    //} 
+    cout << "Computing MHAP sensitive+alignment metrics..." << endl;
+
+    if(mhap_al.is_open())
+    {
+        std::string line;
+        while(getline(mhap_al, line))
+        {
+            ovlsmhap_al++;
+            std::stringstream lineStream(line);
+            std::string col_nametag, row_nametag;
+
+            getline(lineStream, col_nametag, ' ');
+            getline(lineStream, row_nametag, ' ');
+
+            col_nametag = "@" + col_nametag;
+            row_nametag = "@" + row_nametag;
+
+            it = check_mhap_al.find(make_pair(col_nametag, row_nametag));
+            if(it == check_mhap_al.end())
+            {
+                check_mhap_al.insert(make_pair(make_pair(col_nametag, row_nametag), true));
+                /* Compute the overlap length between potential overlapping reads pairs */
+                alignment_length = computeLength(ovlsmap, col_nametag, row_nametag);
+                if(alignment_length >= THR)
+                    truemhap_al++;
+            }
+        }
+    }
+
+    cout << "Computing BLASR metrics..." << endl;
+
+    if(blasr.is_open())
+    {
+        std::string line;
+        while(getline(blasr, line))
+        {
+            ovlsblasr++;
+            std::stringstream lineStream(line);
+            std::string col_nametag, row_nametag;
+
+            getline(lineStream, col_nametag, ' ');
+            getline(lineStream, row_nametag, ' ');
+
+            col_nametag = "@" + col_nametag;
+            row_nametag = "@" + row_nametag;
+
+            it = check_blasr.find(make_pair(col_nametag, row_nametag));
+            if(it == check_blasr.end())
+            {
+                check_blasr.insert(make_pair(make_pair(col_nametag, row_nametag), true));
+                /* Compute the overlap length between potential overlapping reads pairs */
+                alignment_length = computeLength(ovlsmap, col_nametag, row_nametag);
+                if(alignment_length >= THR)
+                    trueblasr++;
+            }
+
+        }
+    }
 
     groundtruth.clear();
     groundtruth.seekg(0, ios::beg);
     double truetruth = trueOv(groundtruth);
 
-    // bella.close();
+    bella.close();
     minimap.close();
-    // mhap.close();
-    // blasr.close();
+    mhap.close();
+    blasr.close();
     // daligner.close();
     groundtruth.close();
 
     /* Ground Truth */
-    cout << "True overlapping from fastq = " << truetruth << endl;
+    cout << "True overlapping from BWA-MEM = " << truetruth << "\n" << endl;
     /* BELLA Recall and precision */
-    //cout << "Overlapping from BELLA = " << ovlsbella << endl;
-    //cout << "True overlapping from BELLA = " << truebella << endl;
-    //cout << "Recall BELLA = " << truebella/truetruth << endl;
-    //cout << "Precision BELLA = " << truebella/ovlsbella << endl;
+    cout << "Overlapping from BELLA = " << ovlsbella << endl;
+    cout << "True overlapping from BELLA = " << truebella << endl;
+    cout << "Recall BELLA = " << truebella/(double)truetruth << endl;
+    cout << "Precision BELLA = " << truebella/ovlsbella << "\n" << endl;
     /* Minimap Recall and precision */ 
     cout << "Overlapping from minimap = " << ovlsminimap << endl;
     cout << "True overlapping from minimap = " << trueminimap << endl;
-    cout << "Recall minimap = " << trueminimap/truetruth << endl;
-    cout << "Precision minimap = " << trueminimap/ovlsminimap << endl;
+    cout << "Recall minimap = " << trueminimap_tuned/(double)truetruth << endl;
+    cout << "Precision minimap = " << trueminimap/ovlsminimap << "\n" << endl;
     /* MHAP Recall and precision */ 
-    //cout << "Overlapping from BLASR = " << ovlsmhap << endl;
-    //cout << "True overlapping from BLASR = " << truemhap << endl;
-    //cout << "Recall BLASR = " << truemhap/truetruth << endl;
-    //cout << "Precision BLASR = " << truemhap/ovlsmhap << endl;
+    cout << "Overlapping from MHAP = " << ovlsmhap << endl;
+    cout << "True overlapping from MHAP= " << truemhap << endl;
+    cout << "Recall MHAP = " << truemhap/(double)truetruth << endl;
+    cout << "Precision MHAP = " << truemhap/ovlsmhap << "\n" << endl;
+    /* MHAP+alignement Recall and precision */ 
+    cout << "Overlapping from MHAP+alignement = " << ovlsmhap_al << endl;
+    cout << "True overlapping from MHAP+alignement = " << truemhap_al << endl;
+    cout << "Recall MHAP+alignement = " << truemhap_al/(double)truetruth << endl;
+    cout << "Precision MHAP+alignement = " << truemhap_al/ovlsmhap_al << "\n" << endl;
     /* BLASR Recall and precision */ 
-    //cout << "Overlapping from BLASR = " << ovlsblasr << endl;
-    //cout << "True overlapping from BLASR = " << trueblasr << endl;
-    //cout << "Recall BLASR = " << trueblasr/truetruth << endl;
-    //cout << "Precision BLASR = " << trueblasr/ovlsblasr << endl;
+    cout << "Overlapping from BLASR = " << ovlsblasr << endl;
+    cout << "True overlapping from BLASR = " << trueblasr << endl;
+    cout << "Recall BLASR = " << trueblasr/truetruth << endl;
+    cout << "Precision BLASR = " << trueblasr/ovlsblasr << "\n" << endl;
     /* DALIGNER Recall and precision */ 
-    //cout << "Overlapping from BLASR = " << ovlsdaligner << endl;
-    //cout << "True overlapping from BLASR = " << truedaligner << endl;
-    //cout << "Recall BLASR = " << truedaligner/truetruth << endl;
-    //cout << "Precision BLASR = " << truedaligner/ovlsdaligner << endl;
+    //cout << "Overlapping from DALIGNER = " << ovlsdaligner << endl;
+    //cout << "True overlapping from DALIGNER = " << truedaligner << endl;
+    //cout << "Recall DALIGNER = " << truedaligner/truetruth << endl;
+    //cout << "Precision DALIGNER = " << truedaligner/ovlsdaligner << endl;
 }

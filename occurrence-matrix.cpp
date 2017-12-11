@@ -40,7 +40,7 @@
 #define LSIZE 16000
 #define KMER_LENGTH 17
 #define ITERS 10
-#define DEPTH 25
+#define DEPTH 30
 #define _SEEDED
 //#define _MULPTR
 
@@ -154,8 +154,9 @@ int main (int argc, char* argv[]) {
     #endif
     
     cout << "input k-mers file: " << argv[1] <<endl;
-    cout << "pbsim depth: " << DEPTH << endl;
+    cout << "pbsim depth: " << DEPTH << "X" << endl;
     cout << "k-mer length: " << KMER_LENGTH <<endl;
+    cout << "sample name: PBcR-PB-ec" << endl;
 
     #ifdef _MULPTR
     cout << "*** MULPTR version ***" << endl;
@@ -240,7 +241,7 @@ int main (int argc, char* argv[]) {
         } 
     delete pfq;
     }
-    
+
     // don't free this vector I need this information to align sequences 
     // std::vector<string>().swap(seqs);   // free memory of seqs 
     
@@ -367,12 +368,12 @@ int main (int argc, char* argv[]) {
     #endif
     
     cout << "overlapper + seeded alignment took " << omp_get_wtime()-start << " sec" << endl;
-    double metric = omp_get_wtime();
-    std::ifstream bella("ovls.bella");
-    std::ifstream mhap("out.mini");
-    std::ifstream blasr("bacillus_blasrpair2.m4");
-    getMetrics(bella, mhap, blasr);  
-    cout << "metrics computation took " << omp_get_wtime()-metric << " sec" << endl;
+    // double metric = omp_get_wtime();
+    // std::ifstream bella("out.bella");
+    // std::ifstream mhap("out.mini");
+    // std::ifstream blasr("bacillus_blasrpair2.m4");
+    // getMetrics(bella, mhap, blasr);  
+    // cout << "metrics computation took " << omp_get_wtime()-metric << " sec" << endl;
     cout << "total time: " << omp_get_wtime()-all << " sec" << endl;
 
     return 0;
