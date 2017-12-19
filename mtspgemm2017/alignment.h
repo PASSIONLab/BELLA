@@ -30,7 +30,7 @@ using namespace std;
 typedef Seed<Simple>  TSeed;
 typedef SeedSet<TSeed> TSeedSet;
 
-int64_t seqanAlOne(std::string & row, std::string & col, int rlen, int i, int j, int dropFactor) {
+pair<int64_t,Seed<Simple>> seqanAlOne(std::string & row, std::string & col, int rlen, int i, int j, int dropFactor) {
 
 	Score<int, Simple> scoringScheme(1, -1, -1);
 
@@ -38,7 +38,8 @@ int64_t seqanAlOne(std::string & row, std::string & col, int rlen, int i, int j,
     Dna5String seqV; 
     Dna5String seedH;
     Dna5String seedV;
-    int64_t longestExtensionScoreOne;
+    int64_t longestExtensionTemp;
+    std::pair<int64_t,Seed<Simple>> longestExtensionScore;
 
 	seqH = row;
     seqV = col;
@@ -57,28 +58,29 @@ int64_t seqanAlOne(std::string & row, std::string & col, int rlen, int i, int j,
 
         /* Perform match extension */
         #ifdef _GAPPED
-        longestExtensionScoreOne = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
+        longestExtensionTemp = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
         #endif
 
         #ifdef _UNGAPPED
-        longestExtensionScoreOne = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, dropFactor, UnGappedXDrop());
+        longestExtensionTemp = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, dropFactor, UnGappedXDrop());
         #endif
     } else
     {
         /* Perform match extension */
         #ifdef _GAPPED
-        longestExtensionScoreOne = extendSeed(seed1, seqH, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
+        longestExtensionTemp = extendSeed(seed1, seqH, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
         #endif
 
         #ifdef _UNGAPPED
-        longestExtensionScoreOne = extendSeed(seed1, seqH, seqV, EXTEND_BOTH, scoringScheme, dropFactor, UnGappedXDrop());
+        longestExtensionTemp = extendSeed(seed1, seqH, seqV, EXTEND_BOTH, scoringScheme, dropFactor, UnGappedXDrop());
         #endif
     }
 
-    return longestExtensionScoreOne;
+    longestExtensionScore = make_pair(longestExtensionTemp, seed1);
+    return longestExtensionScore;
 }
 
-pair<int64_t, int64_t> seqanAlGen(std::string & row, std::string & col, int rlen, int i, int j, int l, int m, int dropFactor) {
+pair<int64_t,Seed<Simple>> seqanAlGen(std::string & row, std::string & col, int rlen, int i, int j, int l, int m, int dropFactor) {
 
 	Score<int, Simple> scoringScheme(1, -1, -1);
 
@@ -86,7 +88,8 @@ pair<int64_t, int64_t> seqanAlGen(std::string & row, std::string & col, int rlen
     Dna5String seqV; 
     Dna5String seedH;
     Dna5String seedV;
-    pair<int64_t, int64_t> longestExtensionScore;
+    std::pair<int64_t, int64_t> longestExtensionTemp;
+    std::pair<int64_t,Seed<Simple>> longestExtensionScore;
 
 	seqH = row;
     seqV = col;
@@ -110,25 +113,34 @@ pair<int64_t, int64_t> seqanAlGen(std::string & row, std::string & col, int rlen
 
         /* Perform match extension */
         #ifdef _GAPPED
-        longestExtensionScore.first = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
-        longestExtensionScore.second = extendSeed(seed2, twinRead, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
+        longestExtensionTemp.first = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
+        longestExtensionTemp.second = extendSeed(seed2, twinRead, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
         #endif
 
         #ifdef _UNGAPPED
-        longestExtensionScore.first = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, dropFactor, UnGappedXDrop());
-        longestExtensionScore.second = extendSeed(seed2, twinRead, seqV, EXTEND_BOTH, scoringScheme, dropFactor, UnGappedXDrop());
+        longestExtensionTemp.first = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, dropFactor, UnGappedXDrop());
+        longestExtensionTemp.second = extendSeed(seed2, twinRead, seqV, EXTEND_BOTH, scoringScheme, dropFactor, UnGappedXDrop());
         #endif
     } else
     {
         #ifdef _GAPPED
-        longestExtensionScore.first = extendSeed(seed1, seqH, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
-        longestExtensionScore.second = extendSeed(seed2, seqH, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
+        longestExtensionTemp.first = extendSeed(seed1, seqH, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
+        longestExtensionTemp.second = extendSeed(seed2, seqH, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
         #endif
 
         #ifdef _UNGAPPED
-        longestExtensionScore.first = extendSeed(seed1, seqH, seqV, EXTEND_BOTH, scoringScheme, dropFactor, UnGappedXDrop());
-        longestExtensionScore.second = extendSeed(seed2, seqH, seqV, EXTEND_BOTH, scoringScheme, dropFactor, UnGappedXDrop());
+        longestExtensionTemp.first = extendSeed(seed1, seqH, seqV, EXTEND_BOTH, scoringScheme, dropFactor, UnGappedXDrop());
+        longestExtensionTemp.second = extendSeed(seed2, seqH, seqV, EXTEND_BOTH, scoringScheme, dropFactor, UnGappedXDrop());
         #endif
     }
+
+    if(longestExtensionTemp.first > longestExtensionTemp.second)
+    {
+        longestExtensionScore = make_pair(longestExtensionTemp.first, seed1);
+    } else
+    {
+        longestExtensionScore = make_pair(longestExtensionTemp.second, seed2);
+    }
+
     return longestExtensionScore;
 }

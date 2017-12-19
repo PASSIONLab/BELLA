@@ -246,11 +246,9 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         //colptr[0] = 0;
 
         std::stringstream myBatch;
-    
-        int64_t longestExtensionScoreOne;
-        std::pair<int64_t,int64_t> longestExtensionScore;
+        std::pair<int64_t,Seed<Simple>> longestExtensionScore;
 
-        #pragma omp parallel for private(myBatch, longestExtensionScoreOne, longestExtensionScore) shared(colStart,colEnd,numCols, reads)
+        #pragma omp parallel for private(myBatch, longestExtensionScore) shared(colStart,colEnd,numCols, reads)
         for(int b = 0; b < numBlocks+1; ++b) 
         { 
             vector<IT> * RowIdsofC = new vector<IT>[numCols[b]];  // row ids for each column of C (bunch of cols)
@@ -292,23 +290,29 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                     if(values[j]->count == 1)
                     {      
                         // The function knows there's just one shared k-mer    
-                        longestExtensionScoreOne = seqanAlOne(reads[rowids[j]].seq, reads[i+colStart[b]].seq, reads[rowids[j]].seq.length(), 
-                            values[j]->pos[0], values[j]->pos[1], 3);
+                        longestExtensionScore = seqanAlOne(reads[rowids[j]].seq, reads[i+colStart[b]].seq, reads[rowids[j]].seq.length(), 
+                                                        values[j]->pos[0], values[j]->pos[1], 3);
 
-                        if(longestExtensionScoreOne >= MIN_SCORE)
+                        if(longestExtensionScore.first >= MIN_SCORE)
                         {
-                            myBatch << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << endl;
+                            //myBatch << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << endl;
+                            myBatch << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << ' ' << values[j]->count << ' ' << longestExtensionScore.first << ' ' << beginPositionV(longestExtensionScore.second) << ' ' << 
+                                endPositionV(longestExtensionScore.second) << ' ' << reads[i+colStart[b]].seq.length() << ' ' << beginPositionH(longestExtensionScore.second) << ' ' << endPositionH(longestExtensionScore.second) <<
+                                    ' ' << reads[rowids[j]].seq.length() << endl;
+                                
                         }
                     } 
                     else
                     {       
-                        // The function knows there's more than one shared k-mers  
+                        // The function knows there's more than one shared k-mers 
                         longestExtensionScore = seqanAlGen(reads[rowids[j]].seq, reads[i+colStart[b]].seq, reads[rowids[j]].seq.length(), 
                             values[j]->pos[0], values[j]->pos[1], values[j]->pos[2], values[j]->pos[3], 3);
 
-                        if(longestExtensionScore.first >= MIN_SCORE || longestExtensionScore.second >= MIN_SCORE)
+                        if(longestExtensionScore.first >= MIN_SCORE)
                         {
-                            myBatch << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << endl;
+                               myBatch << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << ' ' << values[j]->count << ' ' << longestExtensionScore.first << ' ' << beginPositionV(longestExtensionScore.second) << ' ' << 
+                               endPositionV(longestExtensionScore.second) << ' ' << reads[i+colStart[b]].seq.length() << ' ' << beginPositionH(longestExtensionScore.second) << ' ' << endPositionH(longestExtensionScore.second) <<
+                                   ' ' << reads[rowids[j]].seq.length() << endl;
                         }
                     }
                 }
