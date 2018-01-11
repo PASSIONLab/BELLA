@@ -30,18 +30,19 @@ int main (int argc, char* argv[]) {
 	if(argc < 7)
     {
         cout << "not enough parameters, usage: " << endl;
-        cout << "./benchmark groundtruth.txt out.bella out.mini out.mhap" << endl;
+        cout << "./benchmark <ground-truth> out.bella out.mini out.mhap out.blasr out.daligner" << endl;
     }
 
     std::ifstream ground(argv[1]);
 	std::ifstream bella(argv[2]);
     std::ifstream minimap(argv[3]);
     std::ifstream mhap(argv[4]);
-    std::ifstream mhap_al(argv[5]);
-    std::ifstream blasr(argv[6]);
+    // std::ifstream mhap_al(argv[5]);
+    std::ifstream blasr(argv[5]);
+    std::ifstream daligner(argv[6]);
     // std::ifstream daligner("out.m4");
 
     // getMetrics(bella, mhap, blasr);  
-    benchmarkingAl(ground, bella, minimap, mhap, mhap_al, blasr);  
+    benchmarkingAl(ground, bella, minimap, mhap, blasr, daligner);  
 
 }

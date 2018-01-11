@@ -26,7 +26,6 @@
 
 #define ERR .15 
 #define THR 2000
-#define KMER_LENGTH 17
 
 using namespace std;
 
@@ -131,21 +130,23 @@ int computeLength(map<std::string, std::pair<int,int>> & sammap, std::string & c
     return alignment_length;
 }
 
-void benchmarkingAl(std::ifstream & groundtruth, std::ifstream & bella, std::ifstream & minimap, std::ifstream & mhap, std::ifstream & mhap_al, std::ifstream & blasr) // add blasr && daligner && mhap && bella
+void benchmarkingAl(std::ifstream & groundtruth, std::ifstream & bella, std::ifstream & minimap, std::ifstream & mhap, std::ifstream & blasr, std::ifstream & daligner) // add blasr && daligner && mhap && bella
 {
     std::map<std::string, std::pair<int,int>> ovlsmap;
     std::map<std::pair<std::string,std::string>, bool> check_bella;
     std::map<std::pair<std::string,std::string>, bool> check_mini;
     std::map<std::pair<std::string,std::string>, bool> check_mhap;
-    std::map<std::pair<std::string,std::string>, bool> check_mhap_al;
+    //std::map<std::pair<std::string,std::string>, bool> check_mhap_al;
     std::map<std::pair<std::string,std::string>, bool> check_blasr;
+    std::map<std::pair<std::string,std::string>, bool> check_dal;
     std::map<std::pair<std::string,std::string>, bool>::iterator it;
     int alignment_length;
     double ovlsbella = 0, truebella = 0;
     double ovlsminimap = 0, trueminimap = 0;
     double ovlsmhap = 0, truemhap = 0;
-    double ovlsmhap_al = 0, truemhap_al = 0;
+    // double ovlsmhap_al = 0, truemhap_al = 0;
     double ovlsblasr = 0, trueblasr = 0;
+    double ovlsdal = 0, truedal = 0;
 
     cout << "\nBuilding the ground truth from BWA-MEM filtered sam..." << endl;
 
@@ -183,7 +184,6 @@ void benchmarkingAl(std::ifstream & groundtruth, std::ifstream & bella, std::ifs
     //int truetruth = countTrue(ovlsmap, set_bwam);
 
     cout << "Computing BELLA metrics..." << endl;
-
     if(bella.is_open())
     {
         std::string line;
@@ -210,7 +210,6 @@ void benchmarkingAl(std::ifstream & groundtruth, std::ifstream & bella, std::ifs
     }
 
     cout << "Computing Minimap metrics..." << endl;
-
     if(minimap.is_open())
     {
         std::string line;
@@ -248,7 +247,6 @@ void benchmarkingAl(std::ifstream & groundtruth, std::ifstream & bella, std::ifs
     double trueminimap_tuned = trueminimap*2 + 16890;
 
     cout << "Computing MHAP sensitive metrics..." << endl;
-
     if(mhap.is_open())
     {
         std::string line;
@@ -276,7 +274,7 @@ void benchmarkingAl(std::ifstream & groundtruth, std::ifstream & bella, std::ifs
         }
     }
 
-    cout << "Computing MHAP sensitive+alignment metrics..." << endl;
+    /*cout << "Computing MHAP sensitive+alignment metrics..." << endl;
 
     if(mhap_al.is_open())
     {
@@ -297,16 +295,15 @@ void benchmarkingAl(std::ifstream & groundtruth, std::ifstream & bella, std::ifs
             if(it == check_mhap_al.end())
             {
                 check_mhap_al.insert(make_pair(make_pair(col_nametag, row_nametag), true));
-                /* Compute the overlap length between potential overlapping reads pairs */
+                // Compute the overlap length between potential overlapping reads pairs 
                 alignment_length = computeLength(ovlsmap, col_nametag, row_nametag);
                 if(alignment_length >= THR)
                     truemhap_al++;
             }
         }
-    }
+    }*/
 
     cout << "Computing BLASR metrics..." << endl;
-
     if(blasr.is_open())
     {
         std::string line;
@@ -335,6 +332,34 @@ void benchmarkingAl(std::ifstream & groundtruth, std::ifstream & bella, std::ifs
         }
     }
 
+    cout << "Computing DALIGNER metrics..." << endl;
+    if(daligner.is_open())
+    {
+        std::string line;
+        while(getline(daligner, line))
+        {
+            ovlsdal++;
+            std::stringstream lineStream(line);
+            std::string col_nametag, row_nametag;
+
+            getline(lineStream, col_nametag, ' ');
+            getline(lineStream, row_nametag, ' ');
+
+            col_nametag = col_nametag;
+            row_nametag = row_nametag;
+
+            it = check_dal.find(make_pair(col_nametag, row_nametag));
+            if(it == check_dal.end())
+            {
+                check_dal.insert(make_pair(make_pair(col_nametag, row_nametag), true));
+                /* Compute the overlap length between potential overlapping reads pairs */
+                alignment_length = computeLength(ovlsmap, col_nametag, row_nametag);
+                if(alignment_length >= THR)
+                    truedal++;
+            }
+        }
+    }
+
     groundtruth.clear();
     groundtruth.seekg(0, ios::beg);
     double truetruth = trueOv(groundtruth);
@@ -343,7 +368,7 @@ void benchmarkingAl(std::ifstream & groundtruth, std::ifstream & bella, std::ifs
     minimap.close();
     mhap.close();
     blasr.close();
-    // daligner.close();
+    daligner.close();
     groundtruth.close();
 
     /* Ground Truth */
@@ -364,18 +389,18 @@ void benchmarkingAl(std::ifstream & groundtruth, std::ifstream & bella, std::ifs
     cout << "Recall MHAP = " << truemhap/(double)truetruth << endl;
     cout << "Precision MHAP = " << truemhap/ovlsmhap << "\n" << endl;
     /* MHAP+alignement Recall and precision */ 
-    cout << "Overlapping from MHAP+alignement = " << ovlsmhap_al << endl;
-    cout << "True overlapping from MHAP+alignement = " << truemhap_al << endl;
-    cout << "Recall MHAP+alignement = " << truemhap_al/(double)truetruth << endl;
-    cout << "Precision MHAP+alignement = " << truemhap_al/ovlsmhap_al << "\n" << endl;
+    //cout << "Overlapping from MHAP+alignement = " << ovlsmhap_al << endl;
+    //cout << "True overlapping from MHAP+alignement = " << truemhap_al << endl;
+    //cout << "Recall MHAP+alignement = " << truemhap_al/(double)truetruth << endl;
+    //cout << "Precision MHAP+alignement = " << truemhap_al/ovlsmhap_al << "\n" << endl;
     /* BLASR Recall and precision */ 
     cout << "Overlapping from BLASR = " << ovlsblasr << endl;
     cout << "True overlapping from BLASR = " << trueblasr << endl;
     cout << "Recall BLASR = " << trueblasr/truetruth << endl;
     cout << "Precision BLASR = " << trueblasr/ovlsblasr << "\n" << endl;
     /* DALIGNER Recall and precision */ 
-    //cout << "Overlapping from DALIGNER = " << ovlsdaligner << endl;
-    //cout << "True overlapping from DALIGNER = " << truedaligner << endl;
-    //cout << "Recall DALIGNER = " << truedaligner/truetruth << endl;
-    //cout << "Precision DALIGNER = " << truedaligner/ovlsdaligner << endl;
+    cout << "Overlapping from DALIGNER = " << ovlsdal << endl;
+    cout << "True overlapping from DALIGNER = " << truedal << endl;
+    cout << "Recall DALIGNER = " << truedal/truetruth << endl;
+    cout << "Precision DALIGNER = " << truedal/ovlsdal << endl;
 }

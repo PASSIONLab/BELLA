@@ -68,7 +68,7 @@ int getOverlap(int & i, int & j, std::string & row, std::string col)
     else left = j;
 
     temp1 = row.length() - i;   /* 1st value referred to A's row */
-    temp2 = col.length() - j;  /* 2nd value referred to B's col */
+    temp2 = col.length() - j;   /* 2nd value referred to B's col */
 
     if(temp1 <= temp2)
         right = temp1;
@@ -246,9 +246,11 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         //colptr[0] = 0;
 
         std::stringstream myBatch;
+        std::stringstream myOvl;
         std::pair<int64_t,Seed<Simple>> longestExtensionScore;
+        int ovl;
 
-        #pragma omp parallel for private(myBatch, longestExtensionScore) shared(colStart,colEnd,numCols, reads)
+        #pragma omp parallel for private(myBatch, longestExtensionScore, myOvl, ovl) shared(colStart,colEnd,numCols,reads)
         for(int b = 0; b < numBlocks+1; ++b) 
         { 
             vector<IT> * RowIdsofC = new vector<IT>[numCols[b]];  // row ids for each column of C (bunch of cols)
@@ -310,9 +312,10 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
 
                         if(longestExtensionScore.first >= MIN_SCORE)
                         {
-                               myBatch << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << ' ' << values[j]->count << ' ' << longestExtensionScore.first << ' ' << beginPositionV(longestExtensionScore.second) << ' ' << 
-                               endPositionV(longestExtensionScore.second) << ' ' << reads[i+colStart[b]].seq.length() << ' ' << beginPositionH(longestExtensionScore.second) << ' ' << endPositionH(longestExtensionScore.second) <<
-                                   ' ' << reads[rowids[j]].seq.length() << endl;
+                            myBatch << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << ' ' << values[j]->count << ' ' << longestExtensionScore.first << ' ' << beginPositionV(longestExtensionScore.second) << ' ' << 
+                                endPositionV(longestExtensionScore.second) << ' ' << reads[i+colStart[b]].seq.length() << ' ' << beginPositionH(longestExtensionScore.second) << ' ' << endPositionH(longestExtensionScore.second) <<
+                                    ' ' << reads[rowids[j]].seq.length() << endl;
+
                         }
                     }
                 }
@@ -327,6 +330,8 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                 // writeToFile(myBatchOvl, "kmerinovltotal1.txt");
                 writeToFile(myBatch, "out.bella");
                 myBatch.str(std::string());
+                writeToFile(myOvl, "ovl.bella");
+                myOvl.str(std::string());
             }
         }
         delete [] colStart;
