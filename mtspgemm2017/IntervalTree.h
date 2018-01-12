@@ -7,7 +7,7 @@
 #include <memory>
 
 #define KMER_LENGTH 17
-#define THR 300
+#define THRI 2000
 
 using namespace std;
 
@@ -164,28 +164,27 @@ public:
     }
 
     void findOverlapping(K start, K stop, intervalVector& overlapping) const {
-        size_t ovlscount = 0;
         if (!intervals.empty() && ! (stop < intervals.front().start)) {
             for (typename intervalVector::const_iterator i = intervals.begin(); i != intervals.end(); ++i) {
                 const interval& interval = *i;
-                size_t alignment_length = 0;
+                size_t alignment = 0;
                
                 if(interval.start < start) {
                    if(interval.stop > start) {
-                       alignment_length = min((interval.stop - start), (stop - start));
+                       alignment = min((interval.stop - start), (stop - start));
                    }
                 }
                 else if (interval.start > start) {
                    if(stop > interval.start) {
-                       alignment_length = min((stop - interval.start), (interval.stop - interval.start));
+                       alignment = min((stop - interval.start), (interval.stop - interval.start));
                    }
                 } else { 
-                   alignment_length = min((stop - interval.start), (interval.stop - interval.start)); 
+                   alignment = min((stop - interval.start), (interval.stop - interval.start)); 
                 } 
                
-                if(alignment_length >= 1180 && alignment_length <= 1220) 
+                if(alignment >= THRI) 
                 {    
-                    if (interval.stop >= start && interval.start <= stop && ((interval.start-stop >= 1180) || (start-interval.stop >= 1180)) || ((interval.start-stop <= 1220) || (start-interval.stop <= 1220))) {
+                    if (interval.stop >= start && interval.start <= stop && ((interval.start-stop >= THRI) || (start-interval.stop >= THRI))) {
                       overlapping.push_back(interval);
                     }
                 }
