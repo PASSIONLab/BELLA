@@ -140,11 +140,12 @@ void benchmarkingAl(std::ifstream & groundtruth, std::ifstream & bella, std::ifs
     std::map<std::pair<std::string,std::string>, bool> check_blasr;
     std::map<std::pair<std::string,std::string>, bool> check_dal;
     std::map<std::pair<std::string,std::string>, bool>::iterator it;
+    
     int alignment_length;
+    
     double ovlsbella = 0, truebella = 0;
     double ovlsminimap = 0, trueminimap = 0;
     double ovlsmhap = 0, truemhap = 0;
-    // double ovlsmhap_al = 0, truemhap_al = 0;
     double ovlsblasr = 0, trueblasr = 0;
     double ovlsdal = 0, truedal = 0;
 
@@ -168,20 +169,6 @@ void benchmarkingAl(std::ifstream & groundtruth, std::ifstream & bella, std::ifs
 
     groundtruth.clear();
     groundtruth.seekg(0, ios::beg);
-
-    //int countdown = ovlsmap.size();
-    //cout << ovlsmap.size() << endl;
-//
-    //for(std::map<std::string, std::pair<int,int>>::iterator i=ovlsmap.begin(); i!=ovlsmap.end(); i++) {
-    //    for(std::map<std::string, std::pair<int,int>>::iterator j=ovlsmap.begin(); j!=ovlsmap.end(); j++) {
-    //        set_bwam.insert(make_pair(i->first, j->first));
-    //        set_bwam.insert(make_pair(j->first, i->first));
-    //    }
-    //    countdown--;
-    //    cout << countdown << endl; 
-    //}
-//
-    //int truetruth = countTrue(ovlsmap, set_bwam);
 
     cout << "Computing BELLA metrics..." << endl;
     if(bella.is_open())
@@ -376,17 +363,17 @@ void benchmarkingAl(std::ifstream & groundtruth, std::ifstream & bella, std::ifs
     /* BELLA Recall and precision */
     cout << "Overlapping from BELLA = " << ovlsbella << endl;
     cout << "True overlapping from BELLA = " << truebella << endl;
-    cout << "Recall BELLA = " << truebella/(double)truetruth << endl;
+    cout << "Recall BELLA = " << truebella/truetruth << endl;
     cout << "Precision BELLA = " << truebella/ovlsbella << "\n" << endl;
     /* Minimap Recall and precision */ 
     cout << "Overlapping from minimap = " << ovlsminimap << endl;
     cout << "True overlapping from minimap = " << trueminimap << endl;
-    cout << "Recall minimap = " << trueminimap_tuned/(double)truetruth << endl;
+    cout << "Recall minimap = " << trueminimap_tuned/truetruth << endl;
     cout << "Precision minimap = " << trueminimap/ovlsminimap << "\n" << endl;
     /* MHAP Recall and precision */ 
     cout << "Overlapping from MHAP = " << ovlsmhap << endl;
     cout << "True overlapping from MHAP= " << truemhap << endl;
-    cout << "Recall MHAP = " << truemhap/(double)truetruth << endl;
+    cout << "Recall MHAP = " << truemhap/truetruth << endl;
     cout << "Precision MHAP = " << truemhap/ovlsmhap << "\n" << endl;
     /* MHAP+alignement Recall and precision */ 
     //cout << "Overlapping from MHAP+alignement = " << ovlsmhap_al << endl;
