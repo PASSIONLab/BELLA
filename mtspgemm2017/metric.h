@@ -27,6 +27,7 @@
 #include <memory>
 
 #define ERR .15 
+#define THR 2000
 #define KMER_LENGTH 17
 
 using namespace std;
@@ -41,14 +42,10 @@ double trueOv(ifstream & truth)
 
     if(truth.is_open()) {
 
-        std::string ref;
         std::string read;
-        std::string dontcare1;
-        std::string dontcare2;
-        std::string dontcare3;
         int start;
         int end;
-        while(truth >> ref >> start >> end >> read >> dontcare1 >> dontcare2 >> dontcare3)
+        while(truth >> read >> start >> end)
         {
             
             intervals.push_back(Interval<std::string>(start, end, read));
@@ -104,7 +101,7 @@ int computeLength(map<std::string, std::pair<int,int>> & sammap, std::string & c
 
 void getMetrics(std::ifstream & bella, std::ifstream & mhap, std::ifstream & blasr) // add blasr/daligner 
 {
-    std::ifstream truth("bacillus_truth.axt");
+    std::ifstream truth("PBcR-PB-ec-Q10.txt");
     std::map<std::string, std::pair<int,int>> ovlsmap;
     int alignment_length;
     double ovlsbella = 0, truebella = 0;
@@ -113,15 +110,15 @@ void getMetrics(std::ifstream & bella, std::ifstream & mhap, std::ifstream & bla
 
     if(truth.is_open())
     {
-        std::string ref;
+        //std::string ref;
         std::string read;
-        std::string dontcare1;
-        std::string dontcare2;
-        std::string dontcare3;
+        //std::string dontcare1;
+        //std::string dontcare2;
+        //std::string dontcare3;
         int start;
         int end;
         std::pair<int,int> coords;
-        while(truth >> ref >> start >> end >> read >> dontcare1 >> dontcare2 >> dontcare3)
+        while(truth >> read >> start >> end)
         {
             std::string nametag = "@" + read;
             int start_v = start;
@@ -148,8 +145,34 @@ void getMetrics(std::ifstream & bella, std::ifstream & mhap, std::ifstream & bla
 
             /* Compute the overlap length between potential overlapping reads pairs */
             alignment_length = computeLength(ovlsmap, col_nametag, row_nametag);
-            if(alignment_length >= 1180 && alignment_length <= 1220)
+            if(alignment_length >= THR)
                 truebella++;
+        }
+    }
+
+    if(mhap.is_open())
+    {
+        std::string line;
+        while(getline(mhap, line))
+        {
+            ovlsmhap++;
+            std::stringstream lineStream(line);
+            std::string col_nametag, row_nametag, dontcare1, dontcare2, dontcare3, dontcare4;
+    
+            getline(lineStream, col_nametag, '\t' );
+            getline(lineStream, dontcare1, '\t' );
+            getline(lineStream, dontcare2, '\t' );
+            getline(lineStream, dontcare3, '\t' );
+            getline(lineStream, dontcare4, '\t' );
+            getline(lineStream, row_nametag, '\t' );
+    
+            col_nametag = "@" + col_nametag;
+            row_nametag = "@" + row_nametag;
+    
+            /* Compute the overlap length between potential overlapping reads pairs */
+            alignment_length = computeLength(ovlsmap, col_nametag, row_nametag);
+            if(alignment_length >= THR)
+                truemhap++;
         }
     }
 
@@ -214,10 +237,10 @@ void getMetrics(std::ifstream & bella, std::ifstream & mhap, std::ifstream & bla
     cout << "Recall BELLA = " << truebella/truetruth << endl;
     cout << "Precision BELLA = " << truebella/ovlsbella << endl;
     /* MHAP Recall and precision */ 
-    //cout << "Overlapping from MHAP = " << ovlsmhap << endl;
-    //cout << "True overlapping from MHAP = " << truemhap << endl;
-    //cout << "Recall MHAP = " << truemhap/truetruth << endl;
-    //cout << "Precision MHAP = " << truemhap/ovlsmhap << endl;
+    cout << "Overlapping from minimap = " << ovlsmhap << endl;
+    cout << "True overlapping from minimap = " << truemhap << endl;
+    cout << "Recall minimap = " << truemhap/truetruth << endl;
+    cout << "Precision minimap = " << truemhap/ovlsmhap << endl;
     // /* BLASR Recall and precision */ 
     //cout << "Overlapping from BLASR = " << ovlsblasr << endl;
     //cout << "True overlapping from BLASR = " << trueblasr << endl;

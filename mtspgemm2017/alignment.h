@@ -25,7 +25,7 @@ using namespace std;
 
 #define KMER_LENGTH 17
 #define _GAPPED
-//#define _UNGAPPED
+// #define _UNGAPPED
 
 typedef Seed<Simple>  TSeed;
 typedef SeedSet<TSeed> TSeedSet;
@@ -142,5 +142,113 @@ pair<int64_t,Seed<Simple>> seqanAlGen(std::string & row, std::string & col, int 
         longestExtensionScore = make_pair(longestExtensionTemp.second, seed2);
     }
 
+    return longestExtensionScore;
+}
+
+pair<int64_t,Seed<Simple>> seqanAlOneAllKmer(std::string & row, std::string & col, int rlen, std::vector<std::pair<int,int>> vpos, int dropFactor) {
+
+    Score<int, Simple> scoringScheme(1, -1, -1);
+
+    Dna5String seqH; 
+    Dna5String seqV; 
+    Dna5String seedH;
+    Dna5String seedV;
+    int64_t longestExtensionTemp;
+    std::pair<int64_t,Seed<Simple>> longestExtensionScore;
+
+    seqH = row;
+    seqV = col;
+
+    std::vector<std::pair<int,int>>::iterator it;
+    it = vpos.begin();
+
+    Seed<Simple> seed(it->first, it->second, it->first+KMER_LENGTH, it->second+KMER_LENGTH);
+    seedH = infix(seqH, beginPositionH(seed), endPositionH(seed));
+    seedV = infix(seqV, beginPositionV(seed), endPositionV(seed));
+
+    Dna5StringReverseComplement twin(seedH);
+
+    if(twin == seedV)
+    {
+        Dna5StringReverseComplement twinRead(seqH);
+        int i = it->first;
+        i = rlen-i-KMER_LENGTH;
+        Seed<Simple> seed(i, it->second, i+KMER_LENGTH, it->second+KMER_LENGTH);
+
+        /* Perform match extension */
+        #ifdef _GAPPED
+        longestExtensionTemp = extendSeed(seed, twinRead, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
+        #endif
+
+        #ifdef _UNGAPPED
+        longestExtensionTemp = extendSeed(seed, twinRead, seqV, EXTEND_BOTH, scoringScheme, dropFactor, UnGappedXDrop());
+        #endif
+    } else
+    {
+        /* Perform match extension */
+        #ifdef _GAPPED
+        longestExtensionTemp = extendSeed(seed, seqH, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
+        #endif
+
+        #ifdef _UNGAPPED
+        longestExtensionTemp = extendSeed(seed, seqH, seqV, EXTEND_BOTH, scoringScheme, dropFactor, UnGappedXDrop());
+        #endif
+    }
+
+    longestExtensionScore = make_pair(longestExtensionTemp, seed);
+    return longestExtensionScore;
+}
+
+pair<int64_t,Seed<Simple>> seqanAlGenAllKmer(std::string & row, std::string & col, int rlen, std::vector<std::pair<int,int>> vpos, int dropFactor) {
+
+    Score<int, Simple> scoringScheme(1, -1, -1);
+
+    Dna5String seqH; 
+    Dna5String seqV; 
+    Dna5String seedH;
+    Dna5String seedV;
+    std::pair<int64_t,Seed<Simple>> tempScore;
+    std::pair<int64_t,Seed<Simple>> longestExtensionScore;
+
+    seqH = row;
+    seqV = col;
+    longestExtensionScore.first = 0;
+
+    for(std::vector<std::pair<int,int>>::iterator it=vpos.begin(); it!=vpos.end(); ++it)
+    {
+        Seed<Simple> seed(it->first, it->second, it->first+KMER_LENGTH, it->second+KMER_LENGTH);
+        seedH = infix(seqH, beginPositionH(seed), endPositionH(seed));
+    
+        Dna5StringReverseComplement twin(seedH);
+    
+        if(twin == seedV)
+        {
+            Dna5StringReverseComplement twinRead(seqH);
+
+            int i = it->first;
+            i = rlen-i-KMER_LENGTH;
+            Seed<Simple> seed(i, it->second, i+KMER_LENGTH, it->second+KMER_LENGTH);
+        
+            /* Perform match extension */
+            #ifdef _GAPPED
+            tempScore.first = extendSeed(seed, twinRead, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
+            #endif
+    
+            #ifdef _UNGAPPED
+            tempScore.first = extendSeed(seed, twinRead, seqV, EXTEND_BOTH, scoringScheme, dropFactor, UnGappedXDrop());
+            #endif
+        } else
+        {
+            #ifdef _GAPPED
+            tempScore.first = extendSeed(seed, seqH, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
+            #endif
+    
+            #ifdef _UNGAPPED
+            tempScore.first = extendSeed(seed, seqH, seqV, EXTEND_BOTH, scoringScheme, dropFactor, UnGappedXDrop());
+            #endif
+        }
+        if(tempScore.first > longestExtensionScore.first)
+            longestExtensionScore = make_pair(tempScore.first, seed);
+    }
     return longestExtensionScore;
 }

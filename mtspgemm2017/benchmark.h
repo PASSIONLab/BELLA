@@ -231,7 +231,7 @@ void benchmarkingAl(std::ifstream & groundtruth, std::ifstream & bella, std::ifs
     // as -S option count overlaps only once 
     // (A ov B, but not B ov A), while all other 
     // (included the ground truth) count all ovls and the self-ovls
-    double trueminimap_tuned = trueminimap*2 + 16890;
+    double trueminimap_tuned = trueminimap*2+16890;
 
     cout << "Computing MHAP sensitive metrics..." << endl;
     if(mhap.is_open())

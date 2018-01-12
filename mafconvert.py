@@ -88,15 +88,31 @@ def writeAxt(maf):
     alnStarts = imap(operator.add, maf.alnStarts, repeat(1))
     alnEnds = imap(operator.add, maf.alnStarts, maf.alnSizes)
 
-    rows = zip(alnStarts, alnEnds)
-    #rows = zip(maf.seqNames, alnStarts, alnEnds, maf.strands)
+    rows = zip(maf.seqNames, alnStarts, alnEnds, maf.strands)
     head, tail = rows[0], rows[1:]
 
     outWords = []
-    outWords.append(axtCounter.next())
+    #outWords.append(axtCounter.next())
     outWords.extend(head[:3])
-    #outWords.extend(chain(*tail))
+    outWords.extend(chain(*tail))
+    #outWords.append(maf.namesAndValues["score"])
+
     print joined(outWords, " ")
+    #for i in maf.alnStrings: print i
+
+    ## Convert to AXT's 1-based coordinates:
+    #alnStarts = imap(operator.add, maf.alnStarts, repeat(1))
+    #alnEnds = imap(operator.add, maf.alnStarts, maf.alnSizes)
+#
+    ## rows = zip(alnStarts, alnEnds)
+    #rows = zip(maf.seqNames, alnStarts, alnEnds)
+    #head, tail = rows[0], rows[1:]
+#
+    #outWords = []
+    #outWords.append(axtCounter.next())
+    #outWords.extend(head[:3])
+    ##outWords.extend(chain(*tail))
+    #print joined(outWords, " ")
 
 ##### Routines for converting to tabular format: #####
 

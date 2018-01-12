@@ -21,3 +21,4 @@ mlk_free_spgemm: mkl_free_main.cpp CSC.h CSC.cpp CSR.h CSR.cpp intervaltree/Inte
 clean:
 	(cd GTgraph; make clean; cd ../..)
 	rm -rf mlk_free_spgemm
+

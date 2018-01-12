@@ -55,7 +55,7 @@ public:
         return fqr->max_read_len;
     }
     
-    size_t fill_block(vector<string> & seqs, vector<string> & quals, size_t maxMemoryUsed)
+    size_t fill_block(vector<string> & ids, vector<string> & seqs, vector<string> & quals, size_t maxMemoryUsed)
     {
         size_t memUsed = 0, avgMemPerRead = 0;
         Buffer id = initBuffer(MAX_READ_NAME_LEN);
@@ -65,13 +65,14 @@ public:
         seqs.clear();
         quals.clear();
         while ( memUsed + avgMemPerRead < maxMemoryUsed ) {
-            if (!get_next_fq_record(fqr, id, seq, qual)) {
+            if (!get_next_fq_record(fqr, seq, qual)) {
                 elapsed_t += 0;
                 freeBuffer(id);
                 freeBuffer(seq);
                 freeBuffer(qual);
                 return records_read;
             }
+            ids.push_back(getStartBuffer(id))
             seqs.push_back(getStartBuffer(seq));
             quals.push_back(getStartBuffer(qual));
             records_read++;

@@ -42,7 +42,7 @@
 #define ITERS 10
 #define DEPTH 30
 #define _SEEDED
-//#define _MULPTR
+// #define _MULPTR
 
 using namespace std;
 
@@ -139,7 +139,6 @@ int main (int argc, char* argv[]) {
     std::vector<readsinfo> reads;
     int rangeStart;
     Kmers kmersfromreads;
-    std::ofstream debug("readnametag.err");
 
     #ifdef _MULPTR
     std::vector<tuple<int,int,cellspmat>> occurrences;
@@ -203,7 +202,6 @@ int main (int argc, char* argv[]) {
                 // remember that the last valid position is length()-1
                 int len = seqs[i].length();
                 temp.nametag = nametags[i];
-                debug << temp.nametag << endl;
                 temp.seq = seqs[i];
                 // save reads for seeded alignment
                 reads.push_back(temp);
@@ -368,12 +366,6 @@ int main (int argc, char* argv[]) {
     #endif
     
     cout << "overlapper + seeded alignment took " << omp_get_wtime()-start << " sec" << endl;
-    // double metric = omp_get_wtime();
-    // std::ifstream bella("out.bella");
-    // std::ifstream mhap("out.mini");
-    // std::ifstream blasr("bacillus_blasrpair2.m4");
-    // getMetrics(bella, mhap, blasr);  
-    // cout << "metrics computation took " << omp_get_wtime()-metric << " sec" << endl;
     cout << "total time: " << omp_get_wtime()-all << " sec" << endl;
 
     return 0;

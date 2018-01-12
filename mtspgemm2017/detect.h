@@ -12,7 +12,7 @@
 #include <numeric>
 #include <vector>
 
-#define KMER_LENGTH 17
+#define KMER_LENGTH 21
 using namespace std;
 
 // compute the number of true overlapping reads

@@ -60,10 +60,11 @@ public:
         size_t memUsed = 0, avgMemPerRead = 0;
         Buffer id = initBuffer(MAX_READ_NAME_LEN);
         Buffer seq = initBuffer(DEFAULT_READ_LEN);
-        Buffer qual = initBuffer(DEFAULT_READ_LEN);;
+        Buffer qual = initBuffer(DEFAULT_READ_LEN);
         size_t records_read = 0;
         seqs.clear();
         quals.clear();
+        ids.clear();
         while ( memUsed + avgMemPerRead < maxMemoryUsed ) {
             if (!get_next_fq_record(fqr, id, seq, qual)) {
                 elapsed_t += 0;
