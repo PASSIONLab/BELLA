@@ -1,6 +1,5 @@
 #include "CSC.h"
 #include "global.h"
-#include "metric.h"
 #include "alignment.h"
 #include "../kmercode/hash_funcs.h"
 #include "../kmercode/Kmer.hpp"
@@ -246,11 +245,9 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         //colptr[0] = 0;
 
         std::stringstream myBatch;
-        std::stringstream myOvl;
         std::pair<int64_t,Seed<Simple>> longestExtensionScore;
-        int ovl;
 
-        #pragma omp parallel for private(myBatch, longestExtensionScore, myOvl, ovl) shared(colStart,colEnd,numCols,reads)
+        #pragma omp parallel for private(myBatch, longestExtensionScore) shared(colStart,colEnd,numCols,reads)
         for(int b = 0; b < numBlocks+1; ++b) 
         { 
             vector<IT> * RowIdsofC = new vector<IT>[numCols[b]];  // row ids for each column of C (bunch of cols)
@@ -330,8 +327,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                 // writeToFile(myBatchOvl, "kmerinovltotal1.txt");
                 writeToFile(myBatch, "out.bella");
                 myBatch.str(std::string());
-                writeToFile(myOvl, "ovl.bella");
-                myOvl.str(std::string());
+
             }
         }
         delete [] colStart;
