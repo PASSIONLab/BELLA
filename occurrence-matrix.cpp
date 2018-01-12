@@ -42,7 +42,8 @@
 #define ITERS 10
 #define DEPTH 30
 #define _SEEDED
-// #define _MULPTR
+//#define _ALLKMER
+//#define _MULPTR
 
 using namespace std;
 
@@ -103,6 +104,21 @@ struct readsinfo {
 };
 #endif
 
+#ifdef _ALLKMER
+struct spmatype {
+
+    int count = 0;   /* number of shared k-mers */
+    std::vector<std::pair<int,int>> vpos; /* wanna keep all the independent positions */
+};
+typedef shared_ptr<spmatype> spmat_ptr; // pointer to spmatype datastruct
+struct readsinfo {
+
+    std::string nametag;   
+    std::string seq; 
+
+};
+#endif
+
 // Function to create the dictionary
 // assumption: kmervect has unique entries
 void dictionaryCreation(dictionary &kmerdict, Kmers &kmervect)
@@ -144,22 +160,27 @@ int main (int argc, char* argv[]) {
     std::vector<tuple<int,int,cellspmat>> occurrences;
     std::vector<tuple<int,int,cellspmat>> transtuples;
     #endif
+    #ifdef _ALLKMER
+    std::vector<tuple<int,int,int>> occurrences;
+    std::vector<tuple<int,int,int>> transtuples;
+    #endif
     #ifdef _SEEDED
     std::vector<tuple<int,int,int>> occurrences;
     std::vector<tuple<int,int,int>> transtuples;
-    #else
-    std::vector<tuple<int,int,std::pair<int,int>>> occurrences; // I could need just int also in this light version to keep track of the k-mer position in the read
-    std::vector<tuple<int,int,std::pair<int,int>>> transtuples;
     #endif
+    // #else
+    // std::vector<tuple<int,int,std::pair<int,int>>> occurrences; // I could need just int also in this light version to keep track of the k-mer position in the read
+    // std::vector<tuple<int,int,std::pair<int,int>>> transtuples;
+    // #endif
     
     cout << "input k-mers file: " << argv[1] <<endl;
     cout << "pbsim depth: " << DEPTH << "X" << endl;
     cout << "k-mer length: " << KMER_LENGTH <<endl;
     cout << "sample name: PBcR-PB-ec" << endl;
 
-    #ifdef _MULPTR
-    cout << "*** MULPTR version ***" << endl;
-    #endif
+    // #ifdef _MULPTR
+    // cout << "*** MULPTR version ***" << endl;
+    // #endif
 
     double all = omp_get_wtime();
     double kdict = omp_get_wtime();
@@ -226,10 +247,10 @@ int main (int argc, char* argv[]) {
                         #ifdef _SEEDED
                         occurrences.push_back(std::make_tuple(read_id, found->second, j)); // vector<tuple<read_id,kmer_id,kmerpos>>
                         transtuples.push_back(std::make_tuple(found->second, read_id, j)); // transtuples.push_back(col_id, row_id, kmerpos)
-                        #else
-                        occurrences.push_back(std::make_tuple(read_id, found->second, make_pair(found->second, j))); // vector<tuple<read_id,kmer_id,kmer_id + kmerpos>
-                        transtuples.push_back(std::make_tuple(found->second, read_id, make_pair(found->second, j)));
                         #endif
+                        // occurrences.push_back(std::make_tuple(read_id, found->second, make_pair(found->second, j))); // vector<tuple<read_id,kmer_id,kmer_id + kmerpos>
+                        // transtuples.push_back(std::make_tuple(found->second, read_id, make_pair(found->second, j)));
+                        // #endif
                     }
                 }
                 read_id++;
@@ -282,27 +303,44 @@ int main (int argc, char* argv[]) {
                             });
     //std::cout << "transpose(spmat) created" << endl;
     std::vector<tuple<int,int,int>>().swap(transtuples); // remove memory of transtuples
-    #else
-    CSC<int, std::pair<int, int>> spmat(occurrences, read_id, kmervect.size(), 
-                            [] (std::pair<int,int> & c1, std::pair<int,int> & c2) 
-                            {   if(c1.first != c2.first) cout << "error in MergeDuplicates()" << endl;
-                                std::pair<int, int> value;
-                                value = std::make_pair(c1.first, c1.second);
-                                return value;
+    #endif
+    #ifdef _ALLKMER
+    CSC<int, int> spmat(occurrences, read_id, kmervect.size(), 
+                            [] (int & p1, int & p2) 
+                            {   // I assume that there's no errors in MergeDuplicates (to fix)
+                                // I keep just the first position of that k-mer in that read
+                                return p1;
                             });
     //std::cout << "spmat created with " << spmat.nnz << " nonzeros" << endl;
-    std::vector<tuple<int,int,std::pair<int, int>>>().swap(occurrences);    // remove memory of occurences
+    std::vector<tuple<int,int,int>>().swap(occurrences);    // remove memory of occurences
 
-    CSC<int, std::pair<int, int>> transpmat(transtuples, kmervect.size(), read_id, 
-                            [] (std::pair<int,int> & c1, std::pair<int,int> & c2) 
-                            {   if(c1.first != c2.first) cout << "error in MergeDuplicates()" << endl;
-                                std::pair<int, int> value;
-                                value = std::make_pair(c1.first, c1.second);
-                                return value;
+    CSC<int, int> transpmat(transtuples, kmervect.size(), read_id, 
+                            [] (int & p1, int & p2) 
+                            {  return p1;
                             });
     //std::cout << "transpose(spmat) created" << endl;
-    std::vector<tuple<int,int,std::pair<int, int>>>().swap(transtuples); // remove memory of transtuples
+    std::vector<tuple<int,int,int>>().swap(transtuples); // remove memory of transtuples
     #endif
+    // CSC<int, std::pair<int, int>> spmat(occurrences, read_id, kmervect.size(), 
+    //                         [] (std::pair<int,int> & c1, std::pair<int,int> & c2) 
+    //                         {   if(c1.first != c2.first) cout << "error in MergeDuplicates()" << endl;
+    //                             std::pair<int, int> value;
+    //                             value = std::make_pair(c1.first, c1.second);
+    //                             return value;
+    //                         });
+    // //std::cout << "spmat created with " << spmat.nnz << " nonzeros" << endl;
+    // std::vector<tuple<int,int,std::pair<int, int>>>().swap(occurrences);    // remove memory of occurences
+
+    // CSC<int, std::pair<int, int>> transpmat(transtuples, kmervect.size(), read_id, 
+    //                         [] (std::pair<int,int> & c1, std::pair<int,int> & c2) 
+    //                         {   if(c1.first != c2.first) cout << "error in MergeDuplicates()" << endl;
+    //                             std::pair<int, int> value;
+    //                             value = std::make_pair(c1.first, c1.second);
+    //                             return value;
+    //                         });
+    // //std::cout << "transpose(spmat) created" << endl;
+    // std::vector<tuple<int,int,std::pair<int, int>>>().swap(transtuples); // remove memory of transtuples
+    // #endif
 
     spmat.Sorted();
     transpmat.Sorted();
@@ -347,23 +385,41 @@ int main (int argc, char* argv[]) {
                 value->pos[3] = m2->pos[1]; // col
                 return value;
             }, reads, getvaluetype);
-    #else 
-    std::pair<int, std::pair<int, int>> getvaluetype;
+    #endif
+    #ifdef _ALLKMER
+    spmat_ptr getvaluetype(make_shared<spmatype>());
     HeapSpGEMM(spmat, transpmat, 
-            [] (std::pair<int,int> & c1, std::pair<int,int> & c2)
-            {   if(c1.first != c2.first) cout << "error in multop()" << endl;
-                std::pair<int, int> pos;
-                pos = std::make_pair(c1.second, c2.second);
-                std::pair<int, std::pair<int, int>> value;
-                value = std::make_pair(1, pos);
+            [] (int & pi, int & pj) // n-th k-mer positions on read i and on read j 
+            {   spmat_ptr value(make_shared<spmatype>());
+                value->count = 1;
+                value->vpos.push_back(make_pair(pi,pj));
                 return value;
             }, 
-            [] (std::pair<int, std::pair<int, int>> & m1, std::pair<int, std::pair<int, int>> & m2)
-            {   std::pair<int, std::pair<int, int>> value;
-                value = std::make_pair(m1.first+m2.first, std::make_pair(m2.second.first, m2.second.second));
+            [] (spmat_ptr & m1, spmat_ptr & m2)
+            {   spmat_ptr value(make_shared<spmatype>());
+                value->count = m1->count+m2->count;
+                // insert control on independent k-mer
+                value->vpos.insert(value->vpos.end(), m1->vpos.begin(), m1->vpos.end());
+                value->vpos.insert(value->vpos.end(), m2->vpos.begin(), m2->vpos.end());
                 return value;
             }, reads, getvaluetype);
-    #endif
+    #endif 
+    // std::pair<int, std::pair<int, int>> getvaluetype;
+    // HeapSpGEMM(spmat, transpmat, 
+    //         [] (std::pair<int,int> & c1, std::pair<int,int> & c2)
+    //         {   if(c1.first != c2.first) cout << "error in multop()" << endl;
+    //             std::pair<int, int> pos;
+    //             pos = std::make_pair(c1.second, c2.second);
+    //             std::pair<int, std::pair<int, int>> value;
+    //             value = std::make_pair(1, pos);
+    //             return value;
+    //         }, 
+    //         [] (std::pair<int, std::pair<int, int>> & m1, std::pair<int, std::pair<int, int>> & m2)
+    //         {   std::pair<int, std::pair<int, int>> value;
+    //             value = std::make_pair(m1.first+m2.first, std::make_pair(m2.second.first, m2.second.second));
+    //             return value;
+    //         }, reads, getvaluetype);
+    // #endif
     
     cout << "overlapper + seeded alignment took " << omp_get_wtime()-start << " sec" << endl;
     cout << "total time: " << omp_get_wtime()-all << " sec" << endl;

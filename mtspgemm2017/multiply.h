@@ -40,6 +40,7 @@ typedef SeedSet<TSeed> TSeedSet;
 #define _OSX
 #define _GAPPED
 #define MIN_SCORE 50
+// #define _ALLKMER
 // #define _UNGAPPED
 
 #ifdef _OSX
@@ -282,6 +283,43 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
             delete [] ValuesofC;
 
             /* Local Alignment before write on stringstream */
+            #ifdef _ALLKMER
+            for(int i=0; i<numCols[b]; ++i) 
+            {
+                for(int j=colptr[i]; j<colptr[i+1]; ++j) 
+                {
+                    if(values[j]->count == 1)
+                    {      
+                        // The function knows there's just one shared k-mer    
+                        longestExtensionScore = seqanAlOneAllKmer(reads[rowids[j]].seq, reads[i+colStart[b]].seq, reads[rowids[j]].seq.length(), 
+                                                        values[j]->vpos, 3);
+
+                        if(longestExtensionScore.first >= MIN_SCORE)
+                        {
+                            //myBatch << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << endl;
+                            myBatch << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << ' ' << values[j]->count << ' ' << longestExtensionScore.first << ' ' << beginPositionV(longestExtensionScore.second) << ' ' << 
+                                endPositionV(longestExtensionScore.second) << ' ' << reads[i+colStart[b]].seq.length() << ' ' << beginPositionH(longestExtensionScore.second) << ' ' << endPositionH(longestExtensionScore.second) <<
+                                    ' ' << reads[rowids[j]].seq.length() << endl;
+                                
+                        }
+                    } 
+                    else
+                    {       
+                        // The function knows there's more than one shared k-mers 
+                        longestExtensionScore = seqanAlGenAllKmer(reads[rowids[j]].seq, reads[i+colStart[b]].seq, reads[rowids[j]].seq.length(), 
+                            values[j]->vpos, values[j]->pos[3], 3);
+
+                        if(longestExtensionScore.first >= MIN_SCORE)
+                        {
+                            myBatch << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << ' ' << values[j]->count << ' ' << longestExtensionScore.first << ' ' << beginPositionV(longestExtensionScore.second) << ' ' << 
+                                endPositionV(longestExtensionScore.second) << ' ' << reads[i+colStart[b]].seq.length() << ' ' << beginPositionH(longestExtensionScore.second) << ' ' << endPositionH(longestExtensionScore.second) <<
+                                    ' ' << reads[rowids[j]].seq.length() << endl;
+
+                        }
+                    }
+                }
+            }
+            #else
             for(int i=0; i<numCols[b]; ++i) 
             {
                 for(int j=colptr[i]; j<colptr[i+1]; ++j) 
@@ -317,6 +355,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                     }
                 }
             }
+            #endif
 
             delete [] colptr;
             delete [] rowids;

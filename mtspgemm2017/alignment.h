@@ -247,6 +247,7 @@ pair<int64_t,Seed<Simple>> seqanAlGenAllKmer(std::string & row, std::string & co
             tempScore.first = extendSeed(seed, seqH, seqV, EXTEND_BOTH, scoringScheme, dropFactor, UnGappedXDrop());
             #endif
         }
+        
         if(tempScore.first > longestExtensionScore.first)
             longestExtensionScore = make_pair(tempScore.first, seed);
     }
