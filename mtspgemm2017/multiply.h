@@ -40,7 +40,7 @@ typedef SeedSet<TSeed> TSeedSet;
 #define _OSX
 #define _GAPPED
 #define MIN_SCORE 50
-#define _ALLKMER
+//#define _ALLKMER
 // #define _UNGAPPED
 
 #ifdef _OSX
@@ -243,8 +243,8 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     //colptr[0] = 0;
 
     std::stringstream myBatch;
-    //std::stringstream myDebug;
-    std::pair<int64_t,Seed<Simple>> longestExtensionScore;
+    // std::stringstream myDebug;
+    std::pair<int,Seed<Simple>> longestExtensionScore;
 
     #pragma omp parallel for private(myBatch, longestExtensionScore) shared(colStart,colEnd,numCols,reads)
     for(int b = 0; b < numBlocks+1; ++b) 
@@ -285,14 +285,16 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         for(int i=0; i<numCols[b]; ++i) 
         {
             for(int j=colptr[i]; j<colptr[i+1]; ++j) 
-            {
+            {   
                 if(values[j]->count == 1)
                 {      
                     // The function knows there's just one shared k-mer    
                     longestExtensionScore = seqanAlOneAllKmer(reads[rowids[j]].seq, reads[i+colStart[b]].seq, reads[rowids[j]].seq.length(), 
                                                     values[j]->vpos, 3);
 
-                    // myDebug << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << ' ' << longestExtensionScore.first << endl;
+                    // std::vector<std::pair<int,int>>::iterator it;
+                    // it = values[j]->vpos.begin();
+                    // myDebug << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << ' ' << it->second << ' ' << it->first << endl;
 
                     if(longestExtensionScore.first >= MIN_SCORE)
                     {
@@ -302,15 +304,14 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                                 ' ' << reads[rowids[j]].seq.length() << endl;                          
                     }
                 } 
-                else
+                else if(values[j]->count == 2)
                 {       
                     // The function knows there's more than one shared k-mers 
                     longestExtensionScore = seqanAlGenAllKmer(reads[rowids[j]].seq, reads[i+colStart[b]].seq, reads[rowids[j]].seq.length(), 
                         values[j]->vpos, 3);
-
-                    cout << values[j]->count << " " << values[j]->vpos.size() << endl;
+                
                     // myDebug << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << ' ' << longestExtensionScore.first << endl;
-
+                
                     if(longestExtensionScore.first >= MIN_SCORE)
                     {
                         myBatch << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << ' ' << values[j]->count << ' ' << longestExtensionScore.first << ' ' << beginPositionV(longestExtensionScore.second) << ' ' << 
@@ -331,7 +332,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                     longestExtensionScore = seqanAlOne(reads[rowids[j]].seq, reads[i+colStart[b]].seq, reads[rowids[j]].seq.length(), 
                                                     values[j]->pos[0], values[j]->pos[1], 3);
 
-                    // myDebug << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << ' ' << longestExtensionScore.first << endl;
+                    // myDebug << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << ' ' << values[j]->pos[1] << ' ' << values[j]->pos[0] << endl;
 
                     if(longestExtensionScore.first >= MIN_SCORE)
                     {
@@ -341,7 +342,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                                 ' ' << reads[rowids[j]].seq.length() << endl;      
                     }
                 } 
-                else if(values->count == 2 )
+                else // if(values[j]->count == 2)
                 {       
                     // The function knows there's more than one shared k-mers 
                     longestExtensionScore = seqanAlGen(reads[rowids[j]].seq, reads[i+colStart[b]].seq, reads[rowids[j]].seq.length(), 
@@ -366,10 +367,17 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
 
         #pragma omp critical
         {
-            writeToFile(myBatch, "out.bella");
+            #ifdef _ALLKMER
+            writeToFile(myBatch, "allkmer-out.bella");
             myBatch.str(std::string());
-            // writeToFile(myDebug, "debug.bella");
+            // writeToFile(myDebug, "allkmer-debug.bella");
             // myDebug.str(std::string());
+            #else
+            writeToFile(myBatch, "standard-out.bella");
+            myBatch.str(std::string());
+            // writeToFile(myDebug, "standard-debug.bella");
+            // myDebug.str(std::string());
+            #endif
         }
     }
     delete [] colStart;

@@ -41,8 +41,8 @@
 #define KMER_LENGTH 17
 #define ITERS 10
 #define DEPTH 30
-//#define _SEEDED
-#define _ALLKMER
+#define _SEEDED
+//#define _ALLKMER
 //#define _MULPTR
 
 using namespace std;
@@ -382,16 +382,15 @@ int main (int argc, char* argv[]) {
                 return value;
             }, 
             [] (spmat_ptr & m1, spmat_ptr & m2)
-            {   m1->count = m1->count+m2->count;
+            {   m2->count = m1->count+m2->count;
                 // m1->pos[0] = m1->pos[0]; // row 
                 // m1->pos[1] = m1->pos[1]; // col
-                m1->pos[2] = m2->pos[0]; // row 
-                m1->pos[3] = m2->pos[1]; // col
-                return m1;
+                m2->pos[2] = m1->pos[0]; // row 
+                m2->pos[3] = m1->pos[1]; // col
+                return m2;
             }, reads, getvaluetype);
     #endif
     #ifdef _ALLKMER
-    // DO NOT TOUCH THIS!
     spmat_ptr getvaluetype(make_shared<spmatype>());
     HeapSpGEMM(spmat, transpmat, 
             [] (int & pi, int & pj) // n-th k-mer positions on read i and on read j 
@@ -401,11 +400,10 @@ int main (int argc, char* argv[]) {
                 return value;
             }, 
             [] (spmat_ptr & m1, spmat_ptr & m2)
-            {   m1->count = m1->count+m2->count;
+            {   m2->count = m1->count+m2->count;
                 // insert control on independent k-mer
-                // m1->vpos.insert(m1->vpos.end(), m1->vpos.begin(), m1->vpos.end());
-                m1->vpos.insert(m1->vpos.end(), m2->vpos.begin(), m2->vpos.end());
-                return m1;
+                m2->vpos.insert(m2->vpos.end(), m1->vpos.begin(), m1->vpos.end());
+                return m2;
             }, reads, getvaluetype);
     #endif 
     // std::pair<int, std::pair<int, int>> getvaluetype;
