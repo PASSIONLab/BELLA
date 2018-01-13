@@ -40,7 +40,7 @@ typedef SeedSet<TSeed> TSeedSet;
 #define _OSX
 #define _GAPPED
 #define MIN_SCORE 50
-//#define _ALLKMER
+#define _ALLKMER
 // #define _UNGAPPED
 
 #ifdef _OSX
@@ -296,7 +296,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                                 ' ' << reads[rowids[j]].seq.length() << endl;                          
                     }
                 } 
-                else if(values[j]->count == 2)
+                else //if(values[j]->count == 2)
                 {       
                     // The function knows there's more than one shared k-mers 
                     longestExtensionScore = seqanAlGenAllKmer(reads[rowids[j]].seq, reads[i+colStart[b]].seq, reads[rowids[j]].seq.length(), 
@@ -329,7 +329,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                                 ' ' << reads[rowids[j]].seq.length() << endl;      
                     }
                 } 
-                else // if(values[j]->count == 2)
+                else if(values[j]->count == 2)
                 {       
                     // The function knows there's more than one shared k-mers 
                     longestExtensionScore = seqanAlGen(reads[rowids[j]].seq, reads[i+colStart[b]].seq, reads[rowids[j]].seq.length(), 
