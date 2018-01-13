@@ -215,7 +215,8 @@ pair<int64_t,Seed<Simple>> seqanAlGenAllKmer(std::string & row, std::string & co
     longestExtensionScore.first = 0;
 
     for(std::vector<std::pair<int,int>>::iterator it=vpos.begin(); it!=vpos.end(); ++it)
-    {
+    {   
+        c++;
         Seed<Simple> seed(it->first, it->second, it->first+KMER_LENGTH, it->second+KMER_LENGTH);
         seedH = infix(seqH, beginPositionH(seed), endPositionH(seed));
     
@@ -228,7 +229,7 @@ pair<int64_t,Seed<Simple>> seqanAlGenAllKmer(std::string & row, std::string & co
             int i = it->first;
             i = rlen-i-KMER_LENGTH;
             Seed<Simple> seed(i, it->second, i+KMER_LENGTH, it->second+KMER_LENGTH);
-        
+    
             /* Perform match extension */
             #ifdef _GAPPED
             tempScore.first = extendSeed(seed, twinRead, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
@@ -247,7 +248,7 @@ pair<int64_t,Seed<Simple>> seqanAlGenAllKmer(std::string & row, std::string & co
             tempScore.first = extendSeed(seed, seqH, seqV, EXTEND_BOTH, scoringScheme, dropFactor, UnGappedXDrop());
             #endif
         }
-        
+
         if(tempScore.first > longestExtensionScore.first)
             longestExtensionScore = make_pair(tempScore.first, seed);
     }

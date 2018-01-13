@@ -40,7 +40,7 @@ typedef SeedSet<TSeed> TSeedSet;
 #define _OSX
 #define _GAPPED
 #define MIN_SCORE 50
-// #define _ALLKMER
+#define _ALLKMER
 // #define _UNGAPPED
 
 #ifdef _OSX
@@ -207,331 +207,174 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     IT * rowids;
     FT * values;
     
-    if(required_memory > free_memory)
+    int numBlocks = required_memory/free_memory;
+    int colsPerBlock = B.cols/numBlocks;                // define number of columns for each blocks
+
+    /* multi thread variable definition */
+    int * colStart = new int[numBlocks+1];              // need one block more for remaining cols
+    int * colEnd = new int[numBlocks+1];                // need one block more for remaining cols
+    int * numCols = new int[numBlocks+1];
+
+    cout << "numBlocks " << numBlocks+1 << endl;
+    cout << "colsPerBlock " << colsPerBlock << endl;
+
+    colStart[0] = 0;
+    colEnd[0] = 0;
+    numCols[0] = 0;
+
+    int colsTrace = 0;
+    for(int i = 0; i < numBlocks+1; ++i)
     {
-        
-        int numBlocks = required_memory/free_memory;
-        int colsPerBlock = B.cols/numBlocks;                // define number of columns for each blocks
-
-        /* multi thread variable definition */
-        int * colStart = new int[numBlocks+1];              // need one block more for remaining cols
-        int * colEnd = new int[numBlocks+1];                // need one block more for remaining cols
-        int * numCols = new int[numBlocks+1];
-
-        cout << "numBlocks " << numBlocks+1 << endl;
-        cout << "colsPerBlock " << colsPerBlock << endl;
-
-        colStart[0] = 0;
-        colEnd[0] = 0;
-        numCols[0] = 0;
-
-        int colsTrace = 0;
-        for(int i = 0; i < numBlocks+1; ++i)
+        colStart[i] = colsTrace;
+        if(colsTrace+colsPerBlock <= B.cols)
         {
-            colStart[i] = colsTrace;
-            if(colsTrace+colsPerBlock <= B.cols)
-            {
-                colEnd[i] = colStart[i]+colsPerBlock;
-                numCols[i] = colsPerBlock;
+            colEnd[i] = colStart[i]+colsPerBlock;
+            numCols[i] = colsPerBlock;
 
-            } else 
-            {
-                colEnd[i] = B.cols;
-                numCols[i] = B.cols-colsTrace;
-            }
-            colsTrace = colsTrace+numCols[i];
+        } else 
+        {
+            colEnd[i] = B.cols;
+            numCols[i] = B.cols-colsTrace;
         }
+        colsTrace = colsTrace+numCols[i];
+    }
 
-        //IT * colptr = new IT[B.cols+1]; 
-        //colptr[0] = 0;
+    //IT * colptr = new IT[B.cols+1]; 
+    //colptr[0] = 0;
 
-        std::stringstream myBatch;
-        std::pair<int64_t,Seed<Simple>> longestExtensionScore;
+    std::stringstream myBatch;
+    //std::stringstream myDebug;
+    std::pair<int64_t,Seed<Simple>> longestExtensionScore;
 
-        #pragma omp parallel for private(myBatch, longestExtensionScore) shared(colStart,colEnd,numCols,reads)
-        for(int b = 0; b < numBlocks+1; ++b) 
-        { 
-            vector<IT> * RowIdsofC = new vector<IT>[numCols[b]];  // row ids for each column of C (bunch of cols)
-            vector<FT> * ValuesofC = new vector<FT>[numCols[b]];  // values for each column of C (bunch of cols)
-            
-            IT * colptr = new IT[numCols[b]+1];
-            colptr[0] = 0;
-           
-            LocalSpGEMM(colStart[b], colEnd[b], numCols[b], A, B, multop, addop, RowIdsofC, ValuesofC);
-     
-            int k=0;
-            for(int i=0; i<numCols[b]; ++i) // for all edge lists (do NOT parallelize)
-            {
-                colptr[i+1] = colptr[i] + RowIdsofC[k].size();
-                ++k;
-            }
-          
-            IT * rowids = new IT[colptr[numCols[b]]];
-            FT * values = new FT[colptr[numCols[b]]];
-           
-            k=0;
-            for(int i=0; i<numCols[b]; ++i) // combine step
-            {
-                copy(RowIdsofC[k].begin(), RowIdsofC[k].end(), rowids + colptr[i]);
-                copy(ValuesofC[k].begin(), ValuesofC[k].end(), values + colptr[i]);
-                ++k;
-            }
-
-           // cout << "Before delete RowIdsofC" << endl;
-
-            delete [] RowIdsofC;
-            delete [] ValuesofC;
-
-            /* Local Alignment before write on stringstream */
-            #ifdef _ALLKMER
-            for(int i=0; i<numCols[b]; ++i) 
-            {
-                for(int j=colptr[i]; j<colptr[i+1]; ++j) 
-                {
-                    if(values[j]->count == 1)
-                    {      
-                        // The function knows there's just one shared k-mer    
-                        longestExtensionScore = seqanAlOneAllKmer(reads[rowids[j]].seq, reads[i+colStart[b]].seq, reads[rowids[j]].seq.length(), 
-                                                        values[j]->vpos, 3);
-
-                        if(longestExtensionScore.first >= MIN_SCORE)
-                        {
-                            //myBatch << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << endl;
-                            myBatch << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << ' ' << values[j]->count << ' ' << longestExtensionScore.first << ' ' << beginPositionV(longestExtensionScore.second) << ' ' << 
-                                endPositionV(longestExtensionScore.second) << ' ' << reads[i+colStart[b]].seq.length() << ' ' << beginPositionH(longestExtensionScore.second) << ' ' << endPositionH(longestExtensionScore.second) <<
-                                    ' ' << reads[rowids[j]].seq.length() << endl;
-                                
-                        }
-                    } 
-                    else
-                    {       
-                        // The function knows there's more than one shared k-mers 
-                        longestExtensionScore = seqanAlGenAllKmer(reads[rowids[j]].seq, reads[i+colStart[b]].seq, reads[rowids[j]].seq.length(), 
-                            values[j]->vpos, values[j]->pos[3], 3);
-
-                        if(longestExtensionScore.first >= MIN_SCORE)
-                        {
-                            myBatch << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << ' ' << values[j]->count << ' ' << longestExtensionScore.first << ' ' << beginPositionV(longestExtensionScore.second) << ' ' << 
-                                endPositionV(longestExtensionScore.second) << ' ' << reads[i+colStart[b]].seq.length() << ' ' << beginPositionH(longestExtensionScore.second) << ' ' << endPositionH(longestExtensionScore.second) <<
-                                    ' ' << reads[rowids[j]].seq.length() << endl;
-
-                        }
-                    }
-                }
-            }
-            #else
-            for(int i=0; i<numCols[b]; ++i) 
-            {
-                for(int j=colptr[i]; j<colptr[i+1]; ++j) 
-                {
-                    if(values[j]->count == 1)
-                    {      
-                        // The function knows there's just one shared k-mer    
-                        longestExtensionScore = seqanAlOne(reads[rowids[j]].seq, reads[i+colStart[b]].seq, reads[rowids[j]].seq.length(), 
-                                                        values[j]->pos[0], values[j]->pos[1], 3);
-
-                        if(longestExtensionScore.first >= MIN_SCORE)
-                        {
-                            //myBatch << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << endl;
-                            myBatch << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << ' ' << values[j]->count << ' ' << longestExtensionScore.first << ' ' << beginPositionV(longestExtensionScore.second) << ' ' << 
-                                endPositionV(longestExtensionScore.second) << ' ' << reads[i+colStart[b]].seq.length() << ' ' << beginPositionH(longestExtensionScore.second) << ' ' << endPositionH(longestExtensionScore.second) <<
-                                    ' ' << reads[rowids[j]].seq.length() << endl;
-                                
-                        }
-                    } 
-                    else
-                    {       
-                        // The function knows there's more than one shared k-mers 
-                        longestExtensionScore = seqanAlGen(reads[rowids[j]].seq, reads[i+colStart[b]].seq, reads[rowids[j]].seq.length(), 
-                            values[j]->pos[0], values[j]->pos[1], values[j]->pos[2], values[j]->pos[3], 3);
-
-                        if(longestExtensionScore.first >= MIN_SCORE)
-                        {
-                            myBatch << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << ' ' << values[j]->count << ' ' << longestExtensionScore.first << ' ' << beginPositionV(longestExtensionScore.second) << ' ' << 
-                                endPositionV(longestExtensionScore.second) << ' ' << reads[i+colStart[b]].seq.length() << ' ' << beginPositionH(longestExtensionScore.second) << ' ' << endPositionH(longestExtensionScore.second) <<
-                                    ' ' << reads[rowids[j]].seq.length() << endl;
-
-                        }
-                    }
-                }
-            }
-            #endif
-
-            delete [] colptr;
-            delete [] rowids;
-            delete [] values;
-
-            #pragma omp critical
-            {
-                // writeToFile(myBatchOvl, "kmerinovltotal1.txt");
-                writeToFile(myBatch, "out.bella");
-                myBatch.str(std::string());
-
-            }
-        }
-        delete [] colStart;
-        delete [] colEnd;
-        delete [] numCols;
-    } else
-    {
-        int colStart = 0;
-        int colEnd = B.cols;
-        int numCols = B.cols;
-        vector<IT> * RowIdsofC = new vector<IT>[B.cols];      // row ids for each column of C
-        vector<FT> * ValuesofC = new vector<FT>[B.cols];      // values for each column of C
-
-        LocalSpGEMM(colStart, colEnd, numCols, A, B, multop, addop, RowIdsofC, ValuesofC);
-
-        IT * colptr = new IT[B.cols+1];
+    #pragma omp parallel for private(myBatch, longestExtensionScore) shared(colStart,colEnd,numCols,reads)
+    for(int b = 0; b < numBlocks+1; ++b) 
+    { 
+        vector<IT> * RowIdsofC = new vector<IT>[numCols[b]];  // row ids for each column of C (bunch of cols)
+        vector<FT> * ValuesofC = new vector<FT>[numCols[b]];  // values for each column of C (bunch of cols)
+        
+        IT * colptr = new IT[numCols[b]+1];
         colptr[0] = 0;
-        std::stringstream myBatch;
-
-        for(int i=0; i < B.cols; ++i)        // for all edge lists (do NOT parallelize)
-            colptr[i+1] = colptr[i] + RowIdsofC[i].size();
-
-        IT * rowids = new IT[colptr[B.cols]];
-        FT * values = new FT[colptr[B.cols]];
-        
-        for(int i=0; i < B.cols; ++i)        // for all edge lists (do NOT parallelize)
+       
+        LocalSpGEMM(colStart[b], colEnd[b], numCols[b], A, B, multop, addop, RowIdsofC, ValuesofC);
+    
+        int k=0;
+        for(int i=0; i<numCols[b]; ++i) // for all edge lists (do NOT parallelize)
         {
-            copy(RowIdsofC[i].begin(), RowIdsofC[i].end(), rowids + colptr[i]);
-            copy(ValuesofC[i].begin(), ValuesofC[i].end(), values + colptr[i]);
+            colptr[i+1] = colptr[i] + RowIdsofC[k].size();
+            ++k;
         }
+      
+        IT * rowids = new IT[colptr[numCols[b]]];
+        FT * values = new FT[colptr[numCols[b]]];
+       
+        k=0;
+        for(int i=0; i<numCols[b]; ++i) // combine step
+        {
+            copy(RowIdsofC[k].begin(), RowIdsofC[k].end(), rowids + colptr[i]);
+            copy(ValuesofC[k].begin(), ValuesofC[k].end(), values + colptr[i]);
+            ++k;
+        }
+
+       // cout << "Before delete RowIdsofC" << endl;
 
         delete [] RowIdsofC;
         delete [] ValuesofC;
 
-        Dna5String seqH; 
-        Dna5String seqV; 
-        Dna5String seedH;
-        Dna5String seedV;
-        int64_t longestExtensionScore1;
-        int64_t longestExtensionScore2;
-
-        std::stringstream myBatchSingle;
-        Score<int, Simple> scoringScheme(1, -1, -1);
-
-        for(int i=0; i<B.cols; ++i) 
+        /* Local Alignment before write on stringstream */
+        #ifdef _ALLKMER
+        for(int i=0; i<numCols[b]; ++i) 
         {
             for(int j=colptr[i]; j<colptr[i+1]; ++j) 
             {
                 if(values[j]->count == 1)
-                {          
-                    seqH = reads[rowids[j]].seq;
-                    seqV = reads[i].seq;
+                {      
+                    // The function knows there's just one shared k-mer    
+                    longestExtensionScore = seqanAlOneAllKmer(reads[rowids[j]].seq, reads[i+colStart[b]].seq, reads[rowids[j]].seq.length(), 
+                                                    values[j]->vpos, 3);
 
-                    Seed<Simple> seed1(values[j]->pos[0], values[j]->pos[1], values[j]->pos[0]+KMER_LENGTH, values[j]->pos[1]+KMER_LENGTH);
-                    seedH = infix(seqH, beginPositionH(seed1), endPositionH(seed1));
-                    seedV = infix(seqV, beginPositionV(seed1), endPositionV(seed1));
+                    // myDebug << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << ' ' << longestExtensionScore.first << endl;
 
-                    Dna5StringReverseComplement twin(seedH);
-
-                    if(twin == seedV)
+                    if(longestExtensionScore.first >= MIN_SCORE)
                     {
-                        Dna5StringReverseComplement twinRead(seqH);
-                        values[j]->pos[0] = reads[rowids[j]].seq.length()-values[j]->pos[0]-KMER_LENGTH;
-                        Seed<Simple> seed1(values[j]->pos[0], values[j]->pos[1], values[j]->pos[0]+KMER_LENGTH, values[j]->pos[1]+KMER_LENGTH);
-
-                        #ifdef _GAPPED
-                        longestExtensionScore1 = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
-                        #endif
-
-                        #ifdef _UNGAPPED
-                        longestExtensionScore1 = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, 3, UnGappedXDrop());
-                        #endif
-                
-                    } else
-                    {
-                        
-                        #ifdef _GAPPED
-                        longestExtensionScore1 = extendSeed(seed1, seqH, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
-                        #endif
-
-                        #ifdef _UNGAPPED
-                        longestExtensionScore1 = extendSeed(seed1, seqH, seqV, EXTEND_BOTH, scoringScheme, 3, UnGappedXDrop());
-                        #endif
-        
-                    }
-
-                    if(longestExtensionScore1 >= MIN_SCORE)
-                    {
-                            myBatchSingle << reads[i].nametag << ' ' << reads[rowids[j]].nametag << ' ' << values[j]->count << ' ' << longestExtensionScore1 << ' ' << beginPositionV(seed1) << ' ' << 
-                                endPositionV(seed1) << ' ' << reads[i].seq.length() << ' ' << beginPositionH(seed1) << ' ' << endPositionH(seed1) <<
-                                    ' ' << reads[rowids[j]].seq.length() << endl;
+                        //myBatch << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << endl;
+                        myBatch << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << ' ' << values[j]->count << ' ' << longestExtensionScore.first << ' ' << beginPositionV(longestExtensionScore.second) << ' ' << 
+                            endPositionV(longestExtensionScore.second) << ' ' << reads[i+colStart[b]].seq.length() << ' ' << beginPositionH(longestExtensionScore.second) << ' ' << endPositionH(longestExtensionScore.second) <<
+                                ' ' << reads[rowids[j]].seq.length() << endl;                          
                     }
                 } 
-                else if(values[j]->count > 1)
+                else
                 {       
+                    // The function knows there's more than one shared k-mers 
+                    longestExtensionScore = seqanAlGenAllKmer(reads[rowids[j]].seq, reads[i+colStart[b]].seq, reads[rowids[j]].seq.length(), 
+                        values[j]->vpos, 3);
 
-                    seqH = reads[rowids[j]].seq;
-                    seqV = reads[i].seq;
+                    cout << values[j]->count << " " << values[j]->vpos.size() << endl;
+                    // myDebug << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << ' ' << longestExtensionScore.first << endl;
 
-                    Seed<Simple> seed1(values[j]->pos[0], values[j]->pos[1], values[j]->pos[0]+KMER_LENGTH, values[j]->pos[1]+KMER_LENGTH);
-                    Seed<Simple> seed2(values[j]->pos[2], values[j]->pos[3], values[j]->pos[2]+KMER_LENGTH, values[j]->pos[3]+KMER_LENGTH);
-                    seedH = infix(seqH, beginPositionH(seed1), endPositionH(seed1));
-                    seedV = infix(seqV, beginPositionV(seed1), endPositionV(seed1));
-
-                    Dna5StringReverseComplement twin(seedH);
-
-                    if(twin == seedV)
+                    if(longestExtensionScore.first >= MIN_SCORE)
                     {
-                        Dna5StringReverseComplement twinRead(seqH);
-
-                        values[j]->pos[0] = reads[rowids[j]].seq.length()-values[j]->pos[0]-KMER_LENGTH;
-                        values[j]->pos[2] = reads[rowids[j]].seq.length()-values[j]->pos[2]-KMER_LENGTH;
-
-                        Seed<Simple> seed1(values[j]->pos[0], values[j]->pos[1], values[j]->pos[0]+KMER_LENGTH, values[j]->pos[1]+KMER_LENGTH);
-                        Seed<Simple> seed2(values[j]->pos[2], values[j]->pos[3], values[j]->pos[2]+KMER_LENGTH, values[j]->pos[3]+KMER_LENGTH);
-
-                        #ifdef _GAPPED
-                        longestExtensionScore1 = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
-                        longestExtensionScore2 = extendSeed(seed2, twinRead, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
-                        #endif
-
-                        #ifdef _UNGAPPED
-                        longestExtensionScore1 = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, 3, UnGappedXDrop());
-                        longestExtensionScore2 = extendSeed(seed2, twinRead, seqV, EXTEND_BOTH, scoringScheme, 3, UnGappedXDrop());
-                        #endif
-
-                    } else
-                    {
-                        #ifdef _GAPPED
-                        longestExtensionScore1 = extendSeed(seed1, seqH, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
-                        longestExtensionScore2 = extendSeed(seed2, seqH, seqV, EXTEND_BOTH, scoringScheme, 3, GappedXDrop());
-                        #endif
-
-                        #ifdef _UNGAPPED
-                        longestExtensionScore1 = extendSeed(seed1, seqH, seqV, EXTEND_BOTH, scoringScheme, 3, UnGappedXDrop());
-                        longestExtensionScore2 = extendSeed(seed2, seqH, seqV, EXTEND_BOTH, scoringScheme, 3, UnGappedXDrop());
-                        #endif
-                    
-                    }
-
-                    if(longestExtensionScore1 >= MIN_SCORE || longestExtensionScore2 >= MIN_SCORE)
-                    {
-                        if(longestExtensionScore1 > longestExtensionScore2)
-                        {
-                            myBatchSingle << reads[i].nametag << ' ' << reads[rowids[j]].nametag << ' ' << values[j]->count << ' ' << longestExtensionScore1 << ' ' << beginPositionV(seed1) << ' ' << 
-                            endPositionV(seed1) << ' ' << reads[i].seq.length() << ' ' << beginPositionH(seed1) << ' ' << endPositionH(seed1) <<
+                        myBatch << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << ' ' << values[j]->count << ' ' << longestExtensionScore.first << ' ' << beginPositionV(longestExtensionScore.second) << ' ' << 
+                            endPositionV(longestExtensionScore.second) << ' ' << reads[i+colStart[b]].seq.length() << ' ' << beginPositionH(longestExtensionScore.second) << ' ' << endPositionH(longestExtensionScore.second) <<
                                 ' ' << reads[rowids[j]].seq.length() << endl;
-                        } else
-                        {
-                            myBatchSingle << reads[i].nametag << ' ' << reads[rowids[j]].nametag << ' ' << values[j]->count << ' ' << longestExtensionScore2 << ' ' << beginPositionV(seed2) << ' ' << 
-                            endPositionV(seed2) << ' ' << reads[i].seq.length() << ' ' << beginPositionH(seed2) << ' ' << endPositionH(seed2) <<
-                                ' ' << reads[rowids[j]].seq.length() << endl;
-                        }
                     }
                 }
             }
         }
-        
+        #else
+        for(int i=0; i<numCols[b]; ++i) 
+        {
+            for(int j=colptr[i]; j<colptr[i+1]; ++j) 
+            {
+                if(values[j]->count == 1)
+                {      
+                    // The function knows there's just one shared k-mer    
+                    longestExtensionScore = seqanAlOne(reads[rowids[j]].seq, reads[i+colStart[b]].seq, reads[rowids[j]].seq.length(), 
+                                                    values[j]->pos[0], values[j]->pos[1], 3);
+
+                    // myDebug << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << ' ' << longestExtensionScore.first << endl;
+
+                    if(longestExtensionScore.first >= MIN_SCORE)
+                    {
+                        //myBatch << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << endl;
+                        myBatch << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << ' ' << values[j]->count << ' ' << longestExtensionScore.first << ' ' << beginPositionV(longestExtensionScore.second) << ' ' << 
+                            endPositionV(longestExtensionScore.second) << ' ' << reads[i+colStart[b]].seq.length() << ' ' << beginPositionH(longestExtensionScore.second) << ' ' << endPositionH(longestExtensionScore.second) <<
+                                ' ' << reads[rowids[j]].seq.length() << endl;      
+                    }
+                } 
+                else if(values->count == 2 )
+                {       
+                    // The function knows there's more than one shared k-mers 
+                    longestExtensionScore = seqanAlGen(reads[rowids[j]].seq, reads[i+colStart[b]].seq, reads[rowids[j]].seq.length(), 
+                        values[j]->pos[0], values[j]->pos[1], values[j]->pos[2], values[j]->pos[3], 3);
+                    
+                    // myDebug << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << ' ' << longestExtensionScore.first << endl;
+
+                    if(longestExtensionScore.first >= MIN_SCORE)
+                    {
+                        myBatch << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << ' ' << values[j]->count << ' ' << longestExtensionScore.first << ' ' << beginPositionV(longestExtensionScore.second) << ' ' << 
+                            endPositionV(longestExtensionScore.second) << ' ' << reads[i+colStart[b]].seq.length() << ' ' << beginPositionH(longestExtensionScore.second) << ' ' << endPositionH(longestExtensionScore.second) <<
+                                ' ' << reads[rowids[j]].seq.length() << endl;
+                    }
+                }
+            }
+        }
+        #endif
+
+        delete [] colptr;
         delete [] rowids;
         delete [] values;
-        delete [] colptr;
 
-        writeToFile(myBatchSingle, "out.bella");
-        myBatchSingle.str(std::string());
+        #pragma omp critical
+        {
+            writeToFile(myBatch, "out.bella");
+            myBatch.str(std::string());
+            // writeToFile(myDebug, "debug.bella");
+            // myDebug.str(std::string());
+        }
     }
+    delete [] colStart;
+    delete [] colEnd;
+    delete [] numCols; 
 }
 
 /**

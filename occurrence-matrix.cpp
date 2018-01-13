@@ -41,8 +41,8 @@
 #define KMER_LENGTH 17
 #define ITERS 10
 #define DEPTH 30
-#define _SEEDED
-//#define _ALLKMER
+//#define _SEEDED
+#define _ALLKMER
 //#define _MULPTR
 
 using namespace std;
@@ -248,6 +248,10 @@ int main (int argc, char* argv[]) {
                         occurrences.push_back(std::make_tuple(read_id, found->second, j)); // vector<tuple<read_id,kmer_id,kmerpos>>
                         transtuples.push_back(std::make_tuple(found->second, read_id, j)); // transtuples.push_back(col_id, row_id, kmerpos)
                         #endif
+                        #ifdef _ALLKMER
+                        occurrences.push_back(std::make_tuple(read_id, found->second, j)); // vector<tuple<read_id,kmer_id,kmerpos>>
+                        transtuples.push_back(std::make_tuple(found->second, read_id, j)); // transtuples.push_back(col_id, row_id, kmerpos)
+                        #endif
                         // occurrences.push_back(std::make_tuple(read_id, found->second, make_pair(found->second, j))); // vector<tuple<read_id,kmer_id,kmer_id + kmerpos>
                         // transtuples.push_back(std::make_tuple(found->second, read_id, make_pair(found->second, j)));
                         // #endif
@@ -377,13 +381,18 @@ int main (int argc, char* argv[]) {
                 return value;
             }, 
             [] (spmat_ptr & m1, spmat_ptr & m2)
-            {   spmat_ptr value(make_shared<spmatype>());
-                value->count = m1->count+m2->count;
-                value->pos[0] = m1->pos[0]; // row 
-                value->pos[1] = m1->pos[1]; // col
-                value->pos[2] = m2->pos[0]; // row 
-                value->pos[3] = m2->pos[1]; // col
-                return value;
+            {   m1->count = m1->count+m2->count;
+                // m1->pos[0] = m1->pos[0]; // row 
+                // m1->pos[1] = m1->pos[1]; // col
+                m1->pos[2] = m2->pos[0]; // row 
+                m1->pos[3] = m2->pos[1]; // col
+                // spmat_ptr value(make_shared<spmatype>());
+                // value->count = m1->count+m2->count;
+                // value->pos[0] = m1->pos[0]; // row 
+                // value->pos[1] = m1->pos[1]; // col
+                // value->pos[2] = m2->pos[0]; // row 
+                // value->pos[3] = m2->pos[1]; // col
+                return m1;
             }, reads, getvaluetype);
     #endif
     #ifdef _ALLKMER
@@ -396,12 +405,16 @@ int main (int argc, char* argv[]) {
                 return value;
             }, 
             [] (spmat_ptr & m1, spmat_ptr & m2)
-            {   spmat_ptr value(make_shared<spmatype>());
-                value->count = m1->count+m2->count;
+            {   m1->count = m1->count+m2->count;
                 // insert control on independent k-mer
-                value->vpos.insert(value->vpos.end(), m1->vpos.begin(), m1->vpos.end());
-                value->vpos.insert(value->vpos.end(), m2->vpos.begin(), m2->vpos.end());
-                return value;
+                m1->vpos.insert(m1->vpos.end(), m2->vpos.begin(), m2->vpos.end());
+                // return value;
+                // spmat_ptr value(make_shared<spmatype>());
+                // value->count = m1->count+m2->count;
+                // insert control on independent k-mer
+                // value->vpos.insert(value->vpos.end(), m1->vpos.begin(), m1->vpos.end());
+                // value->vpos.insert(value->vpos.end(), m2->vpos.begin(), m2->vpos.end());
+                return m1;
             }, reads, getvaluetype);
     #endif 
     // std::pair<int, std::pair<int, int>> getvaluetype;
