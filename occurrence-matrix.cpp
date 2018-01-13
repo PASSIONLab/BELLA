@@ -93,7 +93,7 @@ typedef shared_ptr<multcell> mult_ptr;                     // pointer to multcel
 struct spmatype {
 
     int count = 0;   /* number of shared k-mers */
-    int pos[4] = {0};  /* pos1i, pos1j, pos2i, pos2j, pos3i, pos3j */
+    int pos[4] = {0};  /* pos1i, pos1j, pos2i, pos2j */
 };
 typedef shared_ptr<spmatype> spmat_ptr; // pointer to spmatype datastruct
 struct readsinfo {
@@ -108,7 +108,7 @@ struct readsinfo {
 struct spmatype {
 
     int count = 0;   /* number of shared k-mers */
-    std::vector<std::pair<int,int>> vpos; /* wanna keep all the independent positions */
+    std::vector<std::pair<int,int>> vpos; /* wanna keep all the positions */
 };
 typedef shared_ptr<spmatype> spmat_ptr; // pointer to spmatype datastruct
 struct readsinfo {
@@ -371,6 +371,7 @@ int main (int argc, char* argv[]) {
             }, reads, getvaluetype);
     #endif
     #ifdef _SEEDED
+    // DO NOT TOUCH THIS!
     spmat_ptr getvaluetype(make_shared<spmatype>());
     HeapSpGEMM(spmat, transpmat, 
             [] (int & pi, int & pj) // n-th k-mer positions on read i and on read j 
@@ -386,16 +387,11 @@ int main (int argc, char* argv[]) {
                 // m1->pos[1] = m1->pos[1]; // col
                 m1->pos[2] = m2->pos[0]; // row 
                 m1->pos[3] = m2->pos[1]; // col
-                // spmat_ptr value(make_shared<spmatype>());
-                // value->count = m1->count+m2->count;
-                // value->pos[0] = m1->pos[0]; // row 
-                // value->pos[1] = m1->pos[1]; // col
-                // value->pos[2] = m2->pos[0]; // row 
-                // value->pos[3] = m2->pos[1]; // col
                 return m1;
             }, reads, getvaluetype);
     #endif
     #ifdef _ALLKMER
+    // DO NOT TOUCH THIS!
     spmat_ptr getvaluetype(make_shared<spmatype>());
     HeapSpGEMM(spmat, transpmat, 
             [] (int & pi, int & pj) // n-th k-mer positions on read i and on read j 
@@ -407,13 +403,8 @@ int main (int argc, char* argv[]) {
             [] (spmat_ptr & m1, spmat_ptr & m2)
             {   m1->count = m1->count+m2->count;
                 // insert control on independent k-mer
+                // m1->vpos.insert(m1->vpos.end(), m1->vpos.begin(), m1->vpos.end());
                 m1->vpos.insert(m1->vpos.end(), m2->vpos.begin(), m2->vpos.end());
-                // return value;
-                // spmat_ptr value(make_shared<spmatype>());
-                // value->count = m1->count+m2->count;
-                // insert control on independent k-mer
-                // value->vpos.insert(value->vpos.end(), m1->vpos.begin(), m1->vpos.end());
-                // value->vpos.insert(value->vpos.end(), m2->vpos.begin(), m2->vpos.end());
                 return m1;
             }, reads, getvaluetype);
     #endif 
