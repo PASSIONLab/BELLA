@@ -30,18 +30,18 @@ using namespace std;
 typedef Seed<Simple>  TSeed;
 typedef SeedSet<TSeed> TSeedSet;
 
-pair<int64_t,Seed<Simple>> seqanAlOne(std::string & row, std::string & col, int rlen, int i, int j, int dropFactor) {
+pair<int,Seed<Simple>> seqanAlOne(std::string & row, std::string & col, int rlen, int i, int j, int dropFactor) {
 
-	Score<int, Simple> scoringScheme(1, -1, -1);
+    Score<int, Simple> scoringScheme(1, -1, -1);
 
-	Dna5String seqH; 
+    Dna5String seqH; 
     Dna5String seqV; 
     Dna5String seedH;
     Dna5String seedV;
-    int64_t longestExtensionTemp;
-    std::pair<int64_t,Seed<Simple>> longestExtensionScore;
+    int longestExtensionTemp;
+    std::pair<int,Seed<Simple>> longestExtensionScore;
 
-	seqH = row;
+    seqH = row;
     seqV = col;
 
     Seed<Simple> seed1(i, j, i+KMER_LENGTH, j+KMER_LENGTH);
@@ -80,18 +80,18 @@ pair<int64_t,Seed<Simple>> seqanAlOne(std::string & row, std::string & col, int 
     return longestExtensionScore;
 }
 
-pair<int64_t,Seed<Simple>> seqanAlGen(std::string & row, std::string & col, int rlen, int i, int j, int l, int m, int dropFactor) {
+pair<int,Seed<Simple>> seqanAlGen(std::string & row, std::string & col, int rlen, int i, int j, int l, int m, int dropFactor) {
 
-	Score<int, Simple> scoringScheme(1, -1, -1);
+    Score<int, Simple> scoringScheme(1, -1, -1);
 
-	Dna5String seqH; 
+    Dna5String seqH; 
     Dna5String seqV; 
     Dna5String seedH;
     Dna5String seedV;
-    std::pair<int64_t, int64_t> longestExtensionTemp;
-    std::pair<int64_t,Seed<Simple>> longestExtensionScore;
+    std::pair<int, int> longestExtensionTemp;
+    std::pair<int,Seed<Simple>> longestExtensionScore;
 
-	seqH = row;
+    seqH = row;
     seqV = col;
 
     Seed<Simple> seed1(i, j, i+KMER_LENGTH, j+KMER_LENGTH);

@@ -361,7 +361,6 @@ extendSeed(Seed<Simple, TConfig> & seed,
     }
 
     tmpScore = tmpScoreRight + tmpScoreLeft + KMER_LENGTH;
-    // std::cout << tmpScore << endl;
     return (int)tmpScore;
     // TODO(holtgrew): Update score?!
 }

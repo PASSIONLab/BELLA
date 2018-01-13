@@ -41,8 +41,8 @@
 #define KMER_LENGTH 17
 #define ITERS 10
 #define DEPTH 30
-//#define _SEEDED
-#define _ALLKMER
+#define _SEEDED
+//#define _ALLKMER
 //#define _MULPTR
 
 using namespace std;
@@ -252,9 +252,6 @@ int main (int argc, char* argv[]) {
                         occurrences.push_back(std::make_tuple(read_id, found->second, j)); // vector<tuple<read_id,kmer_id,kmerpos>>
                         transtuples.push_back(std::make_tuple(found->second, read_id, j)); // transtuples.push_back(col_id, row_id, kmerpos)
                         #endif
-                        // occurrences.push_back(std::make_tuple(read_id, found->second, make_pair(found->second, j))); // vector<tuple<read_id,kmer_id,kmer_id + kmerpos>
-                        // transtuples.push_back(std::make_tuple(found->second, read_id, make_pair(found->second, j)));
-                        // #endif
                     }
                 }
                 read_id++;
@@ -325,26 +322,6 @@ int main (int argc, char* argv[]) {
     //std::cout << "transpose(spmat) created" << endl;
     std::vector<tuple<int,int,int>>().swap(transtuples); // remove memory of transtuples
     #endif
-    // CSC<int, std::pair<int, int>> spmat(occurrences, read_id, kmervect.size(), 
-    //                         [] (std::pair<int,int> & c1, std::pair<int,int> & c2) 
-    //                         {   if(c1.first != c2.first) cout << "error in MergeDuplicates()" << endl;
-    //                             std::pair<int, int> value;
-    //                             value = std::make_pair(c1.first, c1.second);
-    //                             return value;
-    //                         });
-    // //std::cout << "spmat created with " << spmat.nnz << " nonzeros" << endl;
-    // std::vector<tuple<int,int,std::pair<int, int>>>().swap(occurrences);    // remove memory of occurences
-
-    // CSC<int, std::pair<int, int>> transpmat(transtuples, kmervect.size(), read_id, 
-    //                         [] (std::pair<int,int> & c1, std::pair<int,int> & c2) 
-    //                         {   if(c1.first != c2.first) cout << "error in MergeDuplicates()" << endl;
-    //                             std::pair<int, int> value;
-    //                             value = std::make_pair(c1.first, c1.second);
-    //                             return value;
-    //                         });
-    // //std::cout << "transpose(spmat) created" << endl;
-    // std::vector<tuple<int,int,std::pair<int, int>>>().swap(transtuples); // remove memory of transtuples
-    // #endif
 
     spmat.Sorted();
     transpmat.Sorted();
@@ -406,22 +383,6 @@ int main (int argc, char* argv[]) {
                 return m2;
             }, reads, getvaluetype);
     #endif 
-    // std::pair<int, std::pair<int, int>> getvaluetype;
-    // HeapSpGEMM(spmat, transpmat, 
-    //         [] (std::pair<int,int> & c1, std::pair<int,int> & c2)
-    //         {   if(c1.first != c2.first) cout << "error in multop()" << endl;
-    //             std::pair<int, int> pos;
-    //             pos = std::make_pair(c1.second, c2.second);
-    //             std::pair<int, std::pair<int, int>> value;
-    //             value = std::make_pair(1, pos);
-    //             return value;
-    //         }, 
-    //         [] (std::pair<int, std::pair<int, int>> & m1, std::pair<int, std::pair<int, int>> & m2)
-    //         {   std::pair<int, std::pair<int, int>> value;
-    //             value = std::make_pair(m1.first+m2.first, std::make_pair(m2.second.first, m2.second.second));
-    //             return value;
-    //         }, reads, getvaluetype);
-    // #endif
     
     cout << "overlapper + seeded alignment took " << omp_get_wtime()-start << " sec" << endl;
     cout << "total time: " << omp_get_wtime()-all << " sec" << endl;
