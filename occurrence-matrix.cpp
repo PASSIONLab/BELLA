@@ -41,8 +41,8 @@
 #define KMER_LENGTH 17
 #define ITERS 10
 #define DEPTH 30
-#define _SEEDED
-//#define _ALLKMER
+//#define _SEEDED
+#define _ALLKMER
 //#define _MULPTR
 
 using namespace std;
