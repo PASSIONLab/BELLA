@@ -24,13 +24,10 @@ using namespace seqan;
 using namespace std;
 
 #define KMER_LENGTH 17
-#define _GAPPED
-// #define _UNGAPPED
 
 typedef Seed<Simple>  TSeed;
-typedef SeedSet<TSeed> TSeedSet;
 
-pair<int,Seed<Simple>> seqanAlOne(std::string & row, std::string & col, int rlen, int i, int j, int dropFactor) {
+std::pair<int,TSeed> seqanAlOne(std::string & row, std::string & col, int rlen, int i, int j, int dropFactor) {
 
     Score<int, Simple> scoringScheme(1, -1, -1);
 
@@ -39,12 +36,12 @@ pair<int,Seed<Simple>> seqanAlOne(std::string & row, std::string & col, int rlen
     Dna5String seedH;
     Dna5String seedV;
     int longestExtensionTemp;
-    std::pair<int,Seed<Simple>> longestExtensionScore;
+    std::pair<int,TSeed> longestExtensionScore;
 
     seqH = row;
     seqV = col;
 
-    Seed<Simple> seed1(i, j, i+KMER_LENGTH, j+KMER_LENGTH);
+    TSeed seed1(i, j, i+KMER_LENGTH, j+KMER_LENGTH);
     seedH = infix(seqH, beginPositionH(seed1), endPositionH(seed1));
     seedV = infix(seqV, beginPositionV(seed1), endPositionV(seed1));
 
@@ -54,33 +51,18 @@ pair<int,Seed<Simple>> seqanAlOne(std::string & row, std::string & col, int rlen
     {
         Dna5StringReverseComplement twinRead(seqH);
         i = rlen-i-KMER_LENGTH;
-        Seed<Simple> seed1(i, j, i+KMER_LENGTH, j+KMER_LENGTH);
+        TSeed seed1(i, j, i+KMER_LENGTH, j+KMER_LENGTH);
 
         /* Perform match extension */
-        #ifdef _GAPPED
         longestExtensionTemp = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
-        #endif
 
-        #ifdef _UNGAPPED
-        longestExtensionTemp = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, dropFactor, UnGappedXDrop());
-        #endif
-    } else
-    {
-        /* Perform match extension */
-        #ifdef _GAPPED
-        longestExtensionTemp = extendSeed(seed1, seqH, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
-        #endif
-
-        #ifdef _UNGAPPED
-        longestExtensionTemp = extendSeed(seed1, seqH, seqV, EXTEND_BOTH, scoringScheme, dropFactor, UnGappedXDrop());
-        #endif
-    }
+    } else longestExtensionTemp = extendSeed(seed1, seqH, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
 
     longestExtensionScore = make_pair(longestExtensionTemp, seed1);
     return longestExtensionScore;
 }
 
-pair<int,Seed<Simple>> seqanAlGen(std::string & row, std::string & col, int rlen, int i, int j, int l, int m, int dropFactor) {
+std::pair<int,Seed<Simple>> seqanAlGen(std::string & row, std::string & col, int rlen, int i, int j, int l, int m, int dropFactor) {
 
     Score<int, Simple> scoringScheme(1, -1, -1);
 
@@ -88,14 +70,14 @@ pair<int,Seed<Simple>> seqanAlGen(std::string & row, std::string & col, int rlen
     Dna5String seqV; 
     Dna5String seedH;
     Dna5String seedV;
-    std::pair<int, int> longestExtensionTemp;
+    std::pair<int,int> longestExtensionTemp;
     std::pair<int,Seed<Simple>> longestExtensionScore;
 
     seqH = row;
     seqV = col;
 
-    Seed<Simple> seed1(i, j, i+KMER_LENGTH, j+KMER_LENGTH);
-    Seed<Simple> seed2(l, m, l+KMER_LENGTH, m+KMER_LENGTH);
+    TSeed seed1(i, j, i+KMER_LENGTH, j+KMER_LENGTH);
+    TSeed seed2(l, m, l+KMER_LENGTH, m+KMER_LENGTH);
     seedH = infix(seqH, beginPositionH(seed1), endPositionH(seed1));
     seedV = infix(seqV, beginPositionV(seed1), endPositionV(seed1));
 
@@ -108,44 +90,27 @@ pair<int,Seed<Simple>> seqanAlGen(std::string & row, std::string & col, int rlen
         i = rlen-i-KMER_LENGTH;
         l = rlen-l-KMER_LENGTH;
 
-        Seed<Simple> seed1(i, j, i+KMER_LENGTH, j+KMER_LENGTH);
-        Seed<Simple> seed2(l, m, l+KMER_LENGTH, m+KMER_LENGTH);
+        TSeed seed1(i, j, i+KMER_LENGTH, j+KMER_LENGTH);
+        TSeed seed2(l, m, l+KMER_LENGTH, m+KMER_LENGTH);
 
         /* Perform match extension */
-        #ifdef _GAPPED
         longestExtensionTemp.first = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
         longestExtensionTemp.second = extendSeed(seed2, twinRead, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
-        #endif
 
-        #ifdef _UNGAPPED
-        longestExtensionTemp.first = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, dropFactor, UnGappedXDrop());
-        longestExtensionTemp.second = extendSeed(seed2, twinRead, seqV, EXTEND_BOTH, scoringScheme, dropFactor, UnGappedXDrop());
-        #endif
     } else
     {
-        #ifdef _GAPPED
         longestExtensionTemp.first = extendSeed(seed1, seqH, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
         longestExtensionTemp.second = extendSeed(seed2, seqH, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
-        #endif
-
-        #ifdef _UNGAPPED
-        longestExtensionTemp.first = extendSeed(seed1, seqH, seqV, EXTEND_BOTH, scoringScheme, dropFactor, UnGappedXDrop());
-        longestExtensionTemp.second = extendSeed(seed2, seqH, seqV, EXTEND_BOTH, scoringScheme, dropFactor, UnGappedXDrop());
-        #endif
     }
 
     if(longestExtensionTemp.first > longestExtensionTemp.second)
-    {
         longestExtensionScore = make_pair(longestExtensionTemp.first, seed1);
-    } else
-    {
-        longestExtensionScore = make_pair(longestExtensionTemp.second, seed2);
-    }
+    else longestExtensionScore = make_pair(longestExtensionTemp.second, seed2);
 
     return longestExtensionScore;
 }
 
-pair<int,Seed<Simple>> seqanAlOneAllKmer(std::string & row, std::string & col, int rlen, std::vector<std::pair<int,int>> vpos, int dropFactor) {
+std::pair<int,TSeed> seqanAlOneAllKmer(std::string & row, std::string & col, int rlen, std::vector<std::pair<int,int>> vpos, int dropFactor) {
 
     Score<int, Simple> scoringScheme(1, -1, -1);
 
@@ -154,7 +119,7 @@ pair<int,Seed<Simple>> seqanAlOneAllKmer(std::string & row, std::string & col, i
     Dna5String seedH;
     Dna5String seedV;
     int longestExtensionTemp;
-    std::pair<int,Seed<Simple>> longestExtensionScore;
+    std::pair<int,TSeed> longestExtensionScore;
 
     seqH = row;
     seqV = col;
@@ -162,7 +127,7 @@ pair<int,Seed<Simple>> seqanAlOneAllKmer(std::string & row, std::string & col, i
     std::vector<std::pair<int,int>>::iterator it;
     it = vpos.begin();
 
-    Seed<Simple> seed(it->first, it->second, it->first+KMER_LENGTH, it->second+KMER_LENGTH);
+    TSeed seed(it->first, it->second, it->first+KMER_LENGTH, it->second+KMER_LENGTH);
     seedH = infix(seqH, beginPositionH(seed), endPositionH(seed));
     seedV = infix(seqV, beginPositionV(seed), endPositionV(seed));
 
@@ -172,33 +137,18 @@ pair<int,Seed<Simple>> seqanAlOneAllKmer(std::string & row, std::string & col, i
     {
         Dna5StringReverseComplement twinRead(seqH);
         it->first = rlen-it->first-KMER_LENGTH;
-        Seed<Simple> seed(it->first, it->second, it->first+KMER_LENGTH, it->second+KMER_LENGTH);
+        TSeed seed(it->first, it->second, it->first+KMER_LENGTH, it->second+KMER_LENGTH);
 
         /* Perform match extension */
-        #ifdef _GAPPED
         longestExtensionTemp = extendSeed(seed, twinRead, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
-        #endif
 
-        #ifdef _UNGAPPED
-        longestExtensionTemp = extendSeed(seed, twinRead, seqV, EXTEND_BOTH, scoringScheme, dropFactor, UnGappedXDrop());
-        #endif
-    } else
-    {
-        /* Perform match extension */
-        #ifdef _GAPPED
-        longestExtensionTemp = extendSeed(seed, seqH, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
-        #endif
-
-        #ifdef _UNGAPPED
-        longestExtensionTemp = extendSeed(seed, seqH, seqV, EXTEND_BOTH, scoringScheme, dropFactor, UnGappedXDrop());
-        #endif
-    }
+    } else longestExtensionTemp = extendSeed(seed, seqH, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
 
     longestExtensionScore = make_pair(longestExtensionTemp, seed);
     return longestExtensionScore;
 }
-
-pair<int,Seed<Simple>> seqanAlGenAllKmer(std::string & row, std::string & col, int rlen, std::vector<std::pair<int,int>> vpos, int dropFactor) {
+// reword
+std::pair<int,TSeed> seqanAlGenAllKmer(std::string & row, std::string & col, int rlen, std::vector<std::pair<int,int>> vpos, int dropFactor) {
 
     Score<int, Simple> scoringScheme(1, -1, -1);
 
@@ -207,7 +157,7 @@ pair<int,Seed<Simple>> seqanAlGenAllKmer(std::string & row, std::string & col, i
     Dna5String seedH;
     Dna5String seedV;
     int tempScore;
-    std::pair<int,Seed<Simple>> longestExtensionScore;
+    std::pair<int,TSeed> longestExtensionScore;
 
     seqH = row;
     seqV = col;
@@ -216,7 +166,7 @@ pair<int,Seed<Simple>> seqanAlGenAllKmer(std::string & row, std::string & col, i
     for(std::vector<std::pair<int,int>>::iterator it=vpos.begin(); it!=vpos.end(); ++it)
     {   
 
-        Seed<Simple> seed(it->first, it->second, it->first+KMER_LENGTH, it->second+KMER_LENGTH);
+        TSeed seed(it->first, it->second, it->first+KMER_LENGTH, it->second+KMER_LENGTH);
         seedH = infix(seqH, beginPositionH(seed), endPositionH(seed));
         seedV = infix(seqV, beginPositionV(seed), endPositionV(seed));
     
@@ -227,26 +177,12 @@ pair<int,Seed<Simple>> seqanAlGenAllKmer(std::string & row, std::string & col, i
             Dna5StringReverseComplement twinRead(seqH);
 
             it->first = rlen-it->first-KMER_LENGTH;
-            Seed<Simple> seed(it->first, it->second, it->first+KMER_LENGTH, it->second+KMER_LENGTH);
+            TSeed seed(it->first, it->second, it->first+KMER_LENGTH, it->second+KMER_LENGTH);
     
             /* Perform match extension */
-            #ifdef _GAPPED
             tempScore = extendSeed(seed, twinRead, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
-            #endif
-    
-            #ifdef _UNGAPPED
-            tempScore = extendSeed(seed, twinRead, seqV, EXTEND_BOTH, scoringScheme, dropFactor, UnGappedXDrop());
-            #endif
-        } else
-        {
-            #ifdef _GAPPED
-            tempScore = extendSeed(seed, seqH, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
-            #endif
-    
-            #ifdef _UNGAPPED
-            tempScore = extendSeed(seed, seqH, seqV, EXTEND_BOTH, scoringScheme, dropFactor, UnGappedXDrop());
-            #endif
-        }
+
+        } else tempScore = extendSeed(seed, seqH, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
 
         if(tempScore > longestExtensionScore.first)
             longestExtensionScore = make_pair(tempScore, seed);
