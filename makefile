@@ -35,4 +35,3 @@ clean:
 	(cd mtspgemm2017/GTgraph; make clean; cd ../..)
 	rm -f *.o
 	rm -f parse
-	rm out.bella
