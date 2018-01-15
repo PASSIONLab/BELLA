@@ -1,5 +1,4 @@
 #include "CSC.h"
-#include "global.h"
 #include "alignment.h"
 #include "../kmercode/hash_funcs.h"
 #include "../kmercode/Kmer.hpp"
@@ -38,10 +37,8 @@ typedef SeedSet<TSeed> TSeedSet;
 #define PERCORECACHE (1024 * 1024)
 #define KMER_LENGTH 17
 #define _OSX
-#define _GAPPED
 #define MIN_SCORE 50
-//#define _ALLKMER
-// #define _UNGAPPED
+#define _ALLKMER
 
 #ifdef _OSX
 #include <mach/mach.h>
@@ -321,7 +318,6 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                 //    // The function knows there's just one shared k-mer    
                 //    longestExtensionScore = seqanAlOne(reads[rowids[j]].seq, reads[i+colStart[b]].seq, reads[rowids[j]].seq.length(), 
                 //                                    values[j]->pos[0], values[j]->pos[1], 3);
-//
                 //    if(longestExtensionScore.first >= MIN_SCORE)
                 //    {
                 //        myBatch << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << ' ' << values[j]->count << ' ' << longestExtensionScore.first << ' ' << beginPositionV(longestExtensionScore.second) << ' ' << 
@@ -331,8 +327,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                 //} 
                 //else 
                 if(values[j]->count == 2)
-                {       
-                    // The function knows there's more than one shared k-mers 
+                {   // The function knows there's more than one shared k-mers 
                     longestExtensionScore = seqanAlGen(reads[rowids[j]].seq, reads[i+colStart[b]].seq, reads[rowids[j]].seq.length(), values[j]->pos[0], values[j]->pos[1], values[j]->pos[2], values[j]->pos[3], 3);
 
                     if(longestExtensionScore.first >= MIN_SCORE)

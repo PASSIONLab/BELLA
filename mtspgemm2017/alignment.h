@@ -25,7 +25,7 @@ using namespace std;
 
 #define KMER_LENGTH 17
 
-typedef Seed<Simple>  TSeed;
+typedef Seed<Simple> TSeed;
 
 std::pair<int,TSeed> seqanAlOne(std::string & row, std::string & col, int rlen, int i, int j, int dropFactor) {
 

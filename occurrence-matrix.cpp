@@ -34,15 +34,14 @@
 #include "mtspgemm2017/CSC.h"
 #include "mtspgemm2017/CSR.h"
 #include "mtspgemm2017/IO.h"
-#include "mtspgemm2017/global.h"
 #include "mtspgemm2017/multiply.h"
 
 #define LSIZE 16000
 #define KMER_LENGTH 17
 #define ITERS 10
 #define DEPTH 30
-#define _SEEDED
-//#define _ALLKMER
+//#define _SEEDED
+#define _ALLKMER
 //#define _MULPTR
 
 using namespace std;
