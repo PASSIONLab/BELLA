@@ -40,8 +40,8 @@
 #define KMER_LENGTH 17
 #define ITERS 10
 #define DEPTH 30
-//#define _SEEDED
-#define _ALLKMER
+#define _SEEDED
+//#define _ALLKMER
 //#define _MULPTR
 
 using namespace std;
@@ -133,7 +133,7 @@ int main (int argc, char* argv[]) {
     if(argc < 3)
     {
         cout << "not enough parameters... usage: "<< endl;
-        cout << "./parse kmers-list reference-genome.fna listoffastqfiles.txt" << endl;
+        cout << "./parse kmers-list listoffastqfiles.txt" << endl;
     }
 
     std::ifstream filein(argv[1]);
@@ -325,7 +325,7 @@ int main (int argc, char* argv[]) {
     spmat.Sorted();
     transpmat.Sorted();
     cout << "spm and transpmat creation took " << omp_get_wtime()-matcreat << " seconds "<< endl;
-    double start = omp_get_wtime();
+    //double start = omp_get_wtime();
     
     #ifdef _MULPTR
     mult_ptr getvaluetype(make_shared<multcell>());
@@ -383,7 +383,7 @@ int main (int argc, char* argv[]) {
             }, reads, getvaluetype);
     #endif 
     
-    cout << "overlapper + seeded alignment took " << omp_get_wtime()-start << " sec" << endl;
+    //cout << "overlapper + seeded alignment took " << omp_get_wtime()-start << " sec" << endl;
     cout << "total time: " << omp_get_wtime()-all << " sec" << endl;
 
     return 0;
