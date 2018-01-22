@@ -110,7 +110,7 @@ void dictionaryCreation(dictionary &kmerdict, Kmers &kmervect)
 int main (int argc, char* argv[]) {
     if(argc < 3)
     {
-        cout << "not enough parameters... usage: "<< endl;
+        cout << "Not enough parameters. Usage: "<< endl;
         cout << "./parse kmers-list listoffastqfiles.txt" << endl;
     }
 
@@ -135,10 +135,10 @@ int main (int argc, char* argv[]) {
     vector<tuple<int,int,int>> occurrences;
     vector<tuple<int,int,int>> transtuples;
     
-    cout << "input k-mers file: " << argv[1] <<endl;
-    cout << "pbsim depth: " << DEPTH << "X" << endl;
+    cout << "Input k-mer file: " << argv[1] <<endl;
+    cout << "Depth: " << DEPTH << "X" << endl;
     cout << "k-mer length: " << KMER_LENGTH <<endl;
-    cout << "sample name: PBcR-PB-ec" << endl;
+    // cout << "Sample name: PBcR-PB-ec" << endl;
 
     double all = omp_get_wtime();
     double kdict = omp_get_wtime();
@@ -153,12 +153,12 @@ int main (int argc, char* argv[]) {
                 kmerfromstr.set_kmer(kmerstr.c_str());
                 kmervect.push_back(kmerfromstr);                                
             }
-    } else std::cout << "unable to open the input file\n";
+    } else std::cout << "Unable to open the input file\n";
     filein.close();
 
     dictionaryCreation(kmerdict, kmervect);
-    cout << "reliable k-mers = " << kmerdict.size() << endl;
-    cout << "kmer dictionary creation took " << omp_get_wtime()-kdict << "s" << endl;
+    cout << "Reliable k-mer: " << kmerdict.size() << endl;
+    cout << "k-mer dictionary creation took: " << omp_get_wtime()-kdict << "s" << endl;
     
     double parsefastq = omp_get_wtime();
     int read_id = 0; // read_id needs to be global (not just per file)
@@ -214,8 +214,8 @@ int main (int argc, char* argv[]) {
     // std::vector<string>().swap(seqs);   // free memory of seqs 
     
     std::vector<string>().swap(quals);     // free memory of quals
-    cout << "total number of reads: "<< read_id << endl;
-    cout << "parsing fastq took " << omp_get_wtime()-parsefastq << "s" << endl;
+    cout << "Total number of reads: "<< read_id << endl;
+    cout << "Parsing fastq took: " << omp_get_wtime()-parsefastq << "s" << endl;
     double matcreat = omp_get_wtime();
 
     #ifdef _ALLKMER
@@ -254,7 +254,7 @@ int main (int argc, char* argv[]) {
 
     spmat.Sorted();
     transpmat.Sorted();
-    cout << "spm and transpmat creation took " << omp_get_wtime()-matcreat << "s" << endl;
+    cout << "Spmat and Spmat^T creation took: " << omp_get_wtime()-matcreat << "s" << endl;
     
     #ifdef _ALLKMER
     spmatPtr_ getvaluetype(make_shared<spmatType_>());
@@ -291,7 +291,7 @@ int main (int argc, char* argv[]) {
             }, reads, getvaluetype);
     #endif 
     
-    cout << "total time: " << omp_get_wtime()-all << "s" << endl;
+    cout << "Total running time: " << omp_get_wtime()-all << "s" << endl;
 
     return 0;
 } 

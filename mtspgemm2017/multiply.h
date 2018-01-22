@@ -37,43 +37,8 @@ typedef SeedSet<TSeed> TSeedSet;
 
 #define PERCORECACHE (1024 * 1024)
 #define KMER_LENGTH 17
-#define _OSX
 #define MIN_SCORE 50
 //#define _ALLKMER
-
-#ifdef _OSX
-#include <mach/mach.h>
-#include <mach/vm_statistics.h>
-#include <mach/mach_types.h>
-#include <mach/mach_init.h>
-#include <mach/mach_host.h>
-#endif
-
-#ifdef _LINUX
-#include "sys/types.h"
-#include "sys/sysinfo.h"
-struct sysinfo info;
-#endif
-
-int getOverlap(int & i, int & j, std::string & row, std::string col) 
-{
-    /* Left margin passed as argument */
-    int right, left, len;           
-    int temp1, temp2;
-    
-    if(i <= j)
-        left = i;
-    else left = j;
-
-    temp1 = row.length() - i;   /* 1st value referred to A's row */
-    temp2 = col.length() - j;   /* 2nd value referred to B's col */
-
-    if(temp1 <= temp2)
-        right = temp1;
-    else right = temp2;
-
-    return len = left+right; /* Estimated overlap */
-}
 
 /* CSV containing CSC indices of the output sparse matrix*/
 void writeToFile(std::stringstream & myBatch, std::string filename)
@@ -166,62 +131,31 @@ void LocalSpGEMM(IT & start, IT & end, IT & ncols, const CSC<IT,NT> & A, const C
 template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation>
 void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, readVector_ & read, FT & getvaluetype)
 {   
-    #ifdef _OSX /* OSX-based memory consumption implementation */
-    vm_size_t page_size;
-    mach_port_t mach_port;
-    mach_msg_type_number_t count;
-    vm_statistics64_data_t vm_stats;
-    uint64_t free_memory, used_memory;
-
-    mach_port = mach_host_self();
-    count = sizeof(vm_stats) / sizeof(natural_t);
-
-    if (KERN_SUCCESS == host_page_size(mach_port, &page_size) &&
-                KERN_SUCCESS == host_statistics64(mach_port, HOST_VM_INFO,
-                                                (host_info64_t)&vm_stats, &count))
+    int numThreads;
+    #pragma omp parallel
     {
-        free_memory = (int64_t)vm_stats.free_count * (int64_t)page_size;
-        used_memory = ((int64_t)vm_stats.active_count +
-                      (int64_t)vm_stats.inactive_count +
-                      (int64_t)vm_stats.wire_count) * (int64_t)page_size;
-        /* It is good to note that just because Mac OS X may show very little actual free memory at times that it may 
-        not be a good indication of how much is ready to be used on short notice. */
-    } 
-    #endif
-    
-    #ifdef _LINUX /* LINUX-based memory consumption implementation */
-    if(sysinfo(&info) != 0)
-    {
-        return false;
-    }   
-    unsigned long free_memory = info.freeram * info.mem_unit;
-    free_memory += info.freeswap * info.mem_unit;
-    free_memory += info.bufferram * info.mem_unit;
-    #endif
+        numThreads = omp_get_num_threads();
+    }
 
-    uint64_t d = B.nnz/B.cols; // about d nnz each col
-    uint64_t rsv = B.nnz*d;    // worst case
-    uint64_t required_memory = (rsv)*sizeof(size_t);
     IT * rowids;
     FT * values;
     
-    int numBlocks = required_memory/free_memory;
-    int colsPerBlock = B.cols/numBlocks;                // define number of columns for each blocks
+    int colsPerBlock = B.cols/numThreads;                // define number of columns for each blocks
 
-    /* multi thread variable definition */
-    int * colStart = new int[numBlocks+1];              // need one block more for remaining cols
-    int * colEnd = new int[numBlocks+1];                // need one block more for remaining cols
-    int * numCols = new int[numBlocks+1];
+    // multithread variable definition
+    int * colStart = new int[numThreads+1];              // need one block more for remaining cols
+    int * colEnd = new int[numThreads+1];                // need one block more for remaining cols
+    int * numCols = new int[numThreads+1];
 
-    cout << "numBlocks " << numBlocks+1 << endl;
-    cout << "colsPerBlock " << colsPerBlock << endl;
+    cout << "numThreads: " << numThreads << endl;
+    cout << "colsPerThread: " << colsPerBlock << endl;
 
     colStart[0] = 0;
     colEnd[0] = 0;
     numCols[0] = 0;
 
     int colsTrace = 0;
-    for(int i = 0; i < numBlocks+1; ++i)
+    for(int i = 0; i < numThreads+1; ++i)
     {
         colStart[i] = colsTrace;
         if(colsTrace+colsPerBlock <= B.cols)
@@ -240,17 +174,17 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     //IT * colptr = new IT[B.cols+1]; 
     //colptr[0] = 0;
 
-    shared_ptr<readVector_> globalInstance = make_shared<readVector_>(read);
-    stringstream myBatch;
-    pair<int,Seed<Simple>> longestExtensionScore;
-    double ovlalign = omp_get_wtime();
+    shared_ptr<readVector_> globalInstance = make_shared<readVector_>(read); // shared pointer to access readVector_ in omp safe way
+    stringstream myBatch;                                                    // each thread saves its results in its provate stringstream variable
+    pair<int,TSeed> longestExtensionScore;
+    double ovlalign = omp_get_wtime();                                       // get overlap and alignment time
 
-    #pragma omp parallel for private(myBatch, longestExtensionScore) shared(colStart,colEnd,numCols, globalInstance)
-    for(int b = 0; b < numBlocks+1; ++b) 
+    #pragma omp parallel for private(myBatch, longestExtensionScore) shared(colStart,colEnd,numCols,globalInstance)
+    for(int b = 0; b < numThreads+1; ++b) 
     { 
-        shared_ptr<readVector_> localInstance = globalInstance;
-        vector<IT> * RowIdsofC = new vector<IT>[numCols[b]];  // row ids for each column of C (bunch of cols)
-        vector<FT> * ValuesofC = new vector<FT>[numCols[b]];  // values for each column of C (bunch of cols)
+        shared_ptr<readVector_> localInstance = globalInstance; // local pointer to readVector_
+        vector<IT> * RowIdsofC = new vector<IT>[numCols[b]];    // row ids for each column of C (bunch of cols)
+        vector<FT> * ValuesofC = new vector<FT>[numCols[b]];    // values for each column of C (bunch of cols)
         
         IT * colptr = new IT[numCols[b]+1];
         colptr[0] = 0;
@@ -278,7 +212,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         delete [] RowIdsofC;
         delete [] ValuesofC;
 
-        /* Local Alignment before write on stringstream */
+        // Local Alignment before write on stringstream 
         #ifdef _ALLKMER
         for(int i=0; i<numCols[b]; ++i) 
         {
@@ -286,9 +220,9 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
             {   
                 if(values[j]->count == 1)
                 {      
-                    // The function knows there's just one shared k-mer    
-                    longestExtensionScore = seqanAlOneAllKmer(read[rowids[j]].seq, read[i+colStart[b]].seq, read[rowids[j]].seq.length(), 
-                                                    values[j]->vpos, 3);
+                    // The alignment function knows there's just one shared k-mer    
+                    longestExtensionScore = seqanAlOneAllKmer(read[rowids[j]].seq, read[i+colStart[b]].seq, 
+                        read[rowids[j]].seq.length(), values[j]->vpos, 3);
                 
                     if(longestExtensionScore.first >= MIN_SCORE)
                     {
@@ -299,8 +233,9 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                 } 
                 else 
                 {       
-                    // The function knows there's more than one shared k-mers 
-                    longestExtensionScore = seqanAlGenAllKmer(read[rowids[j]].seq, read[i+colStart[b]].seq, read[rowids[j]].seq.length(), values[j]->vpos, 3);
+                    // The alignment function knows there's more than one shared k-mers 
+                    longestExtensionScore = seqanAlGenAllKmer(read[rowids[j]].seq, read[i+colStart[b]].seq, 
+                        read[rowids[j]].seq.length(), values[j]->vpos, 3);
                                 
                     if(longestExtensionScore.first >= MIN_SCORE)
                     {
@@ -318,9 +253,10 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
             {
                 if(values[j]->count == 1)
                 {      
-                    // The function knows there's just one shared k-mer    
-                    longestExtensionScore = seqanAlOne(localInstance->at(rowids[j]).seq, localInstance->at(i+colStart[b]).seq, localInstance->at(rowids[j]).seq.length(), 
-                                                    values[j]->pos[0], values[j]->pos[1], 3);
+                    // The alignment function knows there's just one shared k-mer    
+                    longestExtensionScore = seqanAlOne(localInstance->at(rowids[j]).seq, localInstance->at(i+colStart[b]).seq, 
+                        localInstance->at(rowids[j]).seq.length(), values[j]->pos[0], values[j]->pos[1], 3);
+
                     if(longestExtensionScore.first >= MIN_SCORE)
                     {
                         myBatch << localInstance->at(i+colStart[b]).nametag << ' ' << localInstance->at(rowids[j]).nametag << ' ' << values[j]->count << ' ' << longestExtensionScore.first << ' ' << beginPositionV(longestExtensionScore.second) << ' ' << 
@@ -329,8 +265,9 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                     }
                 } 
                 else 
-                {   // The function knows there's more than one shared k-mers 
-                    longestExtensionScore = seqanAlGen(localInstance->at(rowids[j]).seq, localInstance->at(i+colStart[b]).seq, localInstance->at(rowids[j]).seq.length(), values[j]->pos[0], values[j]->pos[1], values[j]->pos[2], values[j]->pos[3], 3);
+                {   // The alignment function knows there's more than one shared k-mers 
+                    longestExtensionScore = seqanAlGen(localInstance->at(rowids[j]).seq, localInstance->at(i+colStart[b]).seq, 
+                        localInstance->at(rowids[j]).seq.length(), values[j]->pos[0], values[j]->pos[1], values[j]->pos[2], values[j]->pos[3], 3);
 
                     if(longestExtensionScore.first >= MIN_SCORE)
                     {
@@ -359,7 +296,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         }
     }
 
-    cout << "ovelap detection and alignemnt time: " << omp_get_wtime()-ovlalign << "s" << endl;
+    cout << "Ovelap detection and Alignment time: " << omp_get_wtime()-ovlalign << "s" << endl;
 
     delete [] colStart;
     delete [] colEnd;
@@ -373,7 +310,7 @@ template <typename IT, typename NT, typename FT, typename MultiplyOperation, typ
 void HeapSpGEMM_gmalloc(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, CSC<IT,FT> & C )
 {
     
-    int numThread;
+    int numThreads;
 #pragma omp parallel
     {
         numThreads = omp_get_num_threads();
