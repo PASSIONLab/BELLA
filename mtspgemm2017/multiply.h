@@ -38,7 +38,8 @@ typedef SeedSet<TSeed> TSeedSet;
 #define PERCORECACHE (1024 * 1024)
 #define KMER_LENGTH 17
 #define MIN_SCORE 50
-//#define _ALLKMER
+#define TIMESTEP
+//#define ALLKMER
 
 /* CSV containing CSC indices of the output sparse matrix*/
 void writeToFile(std::stringstream & myBatch, std::string filename)
@@ -177,11 +178,15 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     shared_ptr<readVector_> globalInstance = make_shared<readVector_>(read); // shared pointer to access readVector_ in omp safe way
     stringstream myBatch;                                                    // each thread saves its results in its provate stringstream variable
     pair<int,TSeed> longestExtensionScore;
-    double ovlalign = omp_get_wtime();                                       // get overlap and alignment time
+
+    double ovlalign = omp_get_wtime(); // get overlap and alignment time
 
     #pragma omp parallel for private(myBatch, longestExtensionScore) shared(colStart,colEnd,numCols,globalInstance)
     for(int b = 0; b < numThreads+1; ++b) 
     { 
+        #ifdef TIMESTEP
+        double ovl = omp_get_wtime();
+        #endif
         shared_ptr<readVector_> localInstance = globalInstance; // local pointer to readVector_
         vector<IT> * RowIdsofC = new vector<IT>[numCols[b]];    // row ids for each column of C (bunch of cols)
         vector<FT> * ValuesofC = new vector<FT>[numCols[b]];    // values for each column of C (bunch of cols)
@@ -190,7 +195,15 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         colptr[0] = 0;
        
         LocalSpGEMM(colStart[b], colEnd[b], numCols[b], A, B, multop, addop, RowIdsofC, ValuesofC);
-    
+
+        #ifdef TIMESTEP
+        #pragma omp critical
+        {
+            cout << "Thread #" << omp_get_thread_num()+1 << ", ovelap time: " << omp_get_wtime()-ovl << "s" << endl;
+        }
+        double align = omp_get_wtime();
+        #endif
+
         int k=0;
         for(int i=0; i<numCols[b]; ++i) // for all edge lists (do NOT parallelize)
         {
@@ -213,7 +226,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         delete [] ValuesofC;
 
         // Local Alignment before write on stringstream 
-        #ifdef _ALLKMER
+        #ifdef ALLKMER
         for(int i=0; i<numCols[b]; ++i) 
         {
             for(int j=colptr[i]; j<colptr[i+1]; ++j) 
@@ -280,13 +293,20 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         }
         #endif
 
+        #ifdef TIMESTEP
+        #pragma omp critical
+        {
+            cout << "Thread #" << omp_get_thread_num()+1 << ", alignment time: " << omp_get_wtime()-align << "s" << endl;
+        }
+        #endif
+
         delete [] colptr;
         delete [] rowids;
         delete [] values;
 
         #pragma omp critical
         {
-            #ifdef _ALLKMER
+            #ifdef ALLKMER
             writeToFile(myBatch, "out-allkmer.bella");
             myBatch.str(std::string());
             #else
