@@ -350,7 +350,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         #pragma omp critical
         {
             #ifdef _ALLKMER
-            writeToFile(myBatch, "allkmer-out.bella");
+            writeToFile(myBatch, "out-allkmer.bella");
             myBatch.str(std::string());
             #else
             writeToFile(myBatch, "out.bella");
