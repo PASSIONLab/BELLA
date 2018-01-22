@@ -376,7 +376,7 @@ void HeapSpGEMM_gmalloc(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOper
     int numThread;
 #pragma omp parallel
     {
-        numThread = omp_get_num_threads();
+        numThreads = omp_get_num_threads();
     }
     
     // *************** Creating global space to store result, used by all thread *********************
@@ -406,8 +406,8 @@ void HeapSpGEMM_gmalloc(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOper
             flops += tflops;
         }
     } 
-    IT flopsPerThread = flops/numThread; // amount of work that will be assigned to each thread
-    IT colPerThread [numThread + 1]; // thread i will process columns from colPerThread[i] to colPerThread[i+1]-1
+    IT flopsPerThread = flops/numThreads; // amount of work that will be assigned to each thread
+    IT colPerThread [numThreads + 1]; // thread i will process columns from colPerThread[i] to colPerThread[i+1]-1
     
     IT* colStart = new IT[B.cols]; //start index in the global array for storing ith column of C
     IT* colEnd = new IT[B.cols]; //end index in the global array for storing ith column of C
@@ -431,9 +431,9 @@ void HeapSpGEMM_gmalloc(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOper
             nextflops += flopsPerThread;
         }
     }
-    while(curThread < numThread)
+    while(curThread < numThreads)
         colPerThread[curThread++] = B.cols;
-    colPerThread[numThread] = B.cols;
+    colPerThread[numThreads] = B.cols;
 
     
     
@@ -444,9 +444,9 @@ void HeapSpGEMM_gmalloc(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOper
     // ************************ End Creating global space *************************************
     
     
-    // *************** Creating global heap space to be used by all thread *********************
+    // *************** Creating global heap space to be used by all threads *********************
 
-    IT threadHeapSize[numThread];
+    IT threadHeapSize[numThreads];
 #pragma omp parallel
     {
         int thisThread = omp_get_thread_num();
@@ -460,13 +460,13 @@ void HeapSpGEMM_gmalloc(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOper
         threadHeapSize[thisThread] = localmax;
     }
     
-    IT threadHeapStart[numThread+1];
+    IT threadHeapStart[numThreads+1];
     threadHeapStart[0] = 0;
-    for(int i=0; i<numThread; i++) {
+    for(int i=0; i<numThreads; i++) {
         threadHeapStart[i+1] = threadHeapStart[i] + threadHeapSize[i];
     }
     
-    HeapEntry<IT,FT> * globalheap = new HeapEntry<IT,FT>[threadHeapStart[numThread]];
+    HeapEntry<IT,FT> * globalheap = new HeapEntry<IT,FT>[threadHeapStart[numThreads]];
     
     // ************************ End Creating global heap space *************************************
     
