@@ -39,6 +39,8 @@ typedef SeedSet<TSeed> TSeedSet;
 #define KMER_LENGTH 17
 #define MIN_SCORE 50
 #define TIMESTEP
+//#define THREADLIMIT
+//#define MAX_NUM_THREAD 4
 //#define ALLKMER
 
 /* CSV containing CSC indices of the output sparse matrix*/
@@ -132,6 +134,11 @@ void LocalSpGEMM(IT & start, IT & end, IT & ncols, const CSC<IT,NT> & A, const C
 template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation>
 void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, readVector_ & read, FT & getvaluetype)
 {   
+    #ifdef THREADLIMIT
+    omp_set_dynamic(0);                      // Explicitly disable dynamic teams
+    omp_set_num_threads(MAX_NUM_THREAD);     // Use MAX_NUM_THREAD threads for all consecutive parallel regions
+    #endif
+
     int numThreads;
     #pragma omp parallel
     {
