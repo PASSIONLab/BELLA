@@ -198,31 +198,6 @@ std::pair<int,TSeed> seqanAlGenAllKmer(std::string & row, std::string & col, int
                 longestExtensionScore = make_pair(tempScore, seed); 
         }  
     }
-
-    //for(std::vector<std::pair<int,int>>::iterator it=vpos.begin(); it!=vpos.end(); ++it)
-    //{   
-    //
-    //    TSeed seed(it->first, it->second, it->first+KMER_LENGTH, it->second+KMER_LENGTH);
-    //    seedH = infix(seqH, beginPositionH(seed), endPositionH(seed));
-    //    seedV = infix(seqV, beginPositionV(seed), endPositionV(seed));
-    //
-    //    Dna5StringReverseComplement twin(seedH);
-    //
-    //    if(twin == seedV)
-    //    {
-    //        Dna5StringReverseComplement twinRead(seqH);
-    //
-    //        it->first = rlen-it->first-KMER_LENGTH;
-    //        TSeed seed(it->first, it->second, it->first+KMER_LENGTH, it->second+KMER_LENGTH);
-    //
-    //        /* Perform match extension */
-    //        tempScore = extendSeed(seed, twinRead, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
-    //
-    //    } else tempScore = extendSeed(seed, seqH, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
-    //
-    //    if(tempScore > longestExtensionScore.first)
-    //        longestExtensionScore = make_pair(tempScore, seed);
-    //}
-
+    
     return longestExtensionScore;
 }
