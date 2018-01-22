@@ -1,5 +1,6 @@
 #include "CSC.h"
 #include "alignment.h"
+#include "global.h"
 #include "../kmercode/hash_funcs.h"
 #include "../kmercode/Kmer.hpp"
 #include "../kmercode/Buffer.h"
@@ -162,8 +163,8 @@ void LocalSpGEMM(IT & start, IT & end, IT & ncols, const CSC<IT,NT> & A, const C
   * Probably slower than HeapSpGEMM_gmalloc but likely to use less memory
  **/
 
-template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation, typename readsinfo>
-void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, std::vector<readsinfo> & reads, FT & getvaluetype)
+template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation>
+void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, readVector_ & read, FT & getvaluetype)
 {   
     #ifdef _OSX /* OSX-based memory consumption implementation */
     vm_size_t page_size;
@@ -239,12 +240,15 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     //IT * colptr = new IT[B.cols+1]; 
     //colptr[0] = 0;
 
-    std::stringstream myBatch;
-    std::pair<int,Seed<Simple>> longestExtensionScore;
+    shared_ptr<readVector_> globalInstance = make_shared<readVector_>(read);
+    stringstream myBatch;
+    pair<int,Seed<Simple>> longestExtensionScore;
+    double ovlalign = omp_get_wtime();
 
-    #pragma omp parallel for private(myBatch, longestExtensionScore) shared(colStart,colEnd,numCols,reads)
+    #pragma omp parallel for private(myBatch, longestExtensionScore) shared(colStart,colEnd,numCols, globalInstance)
     for(int b = 0; b < numBlocks+1; ++b) 
     { 
+        shared_ptr<readVector_> localInstance = globalInstance;
         vector<IT> * RowIdsofC = new vector<IT>[numCols[b]];  // row ids for each column of C (bunch of cols)
         vector<FT> * ValuesofC = new vector<FT>[numCols[b]];  // values for each column of C (bunch of cols)
         
@@ -283,26 +287,26 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                 if(values[j]->count == 1)
                 {      
                     // The function knows there's just one shared k-mer    
-                    longestExtensionScore = seqanAlOneAllKmer(reads[rowids[j]].seq, reads[i+colStart[b]].seq, reads[rowids[j]].seq.length(), 
+                    longestExtensionScore = seqanAlOneAllKmer(read[rowids[j]].seq, read[i+colStart[b]].seq, read[rowids[j]].seq.length(), 
                                                     values[j]->vpos, 3);
                 
                     if(longestExtensionScore.first >= MIN_SCORE)
                     {
-                        myBatch << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << ' ' << values[j]->count << ' ' << longestExtensionScore.first << ' ' << beginPositionV(longestExtensionScore.second) << ' ' << 
-                            endPositionV(longestExtensionScore.second) << ' ' << reads[i+colStart[b]].seq.length() << ' ' << beginPositionH(longestExtensionScore.second) << ' ' << endPositionH(longestExtensionScore.second) <<
-                                ' ' << reads[rowids[j]].seq.length() << endl;                          
+                        myBatch << read[i+colStart[b]].nametag << ' ' << read[rowids[j]].nametag << ' ' << values[j]->count << ' ' << longestExtensionScore.first << ' ' << beginPositionV(longestExtensionScore.second) << ' ' << 
+                            endPositionV(longestExtensionScore.second) << ' ' << read[i+colStart[b]].seq.length() << ' ' << beginPositionH(longestExtensionScore.second) << ' ' << endPositionH(longestExtensionScore.second) <<
+                                ' ' << read[rowids[j]].seq.length() << endl;                          
                     }
                 } 
                 else 
                 {       
                     // The function knows there's more than one shared k-mers 
-                    longestExtensionScore = seqanAlGenAllKmer(reads[rowids[j]].seq, reads[i+colStart[b]].seq, reads[rowids[j]].seq.length(), values[j]->vpos, 3);
+                    longestExtensionScore = seqanAlGenAllKmer(read[rowids[j]].seq, read[i+colStart[b]].seq, read[rowids[j]].seq.length(), values[j]->vpos, 3);
                                 
                     if(longestExtensionScore.first >= MIN_SCORE)
                     {
-                        myBatch << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << ' ' << values[j]->count << ' ' << longestExtensionScore.first << ' ' << beginPositionV(longestExtensionScore.second) << ' ' << 
-                            endPositionV(longestExtensionScore.second) << ' ' << reads[i+colStart[b]].seq.length() << ' ' << beginPositionH(longestExtensionScore.second) << ' ' << endPositionH(longestExtensionScore.second) <<
-                                ' ' << reads[rowids[j]].seq.length() << endl;
+                        myBatch << read[i+colStart[b]].nametag << ' ' << read[rowids[j]].nametag << ' ' << values[j]->count << ' ' << longestExtensionScore.first << ' ' << beginPositionV(longestExtensionScore.second) << ' ' << 
+                            endPositionV(longestExtensionScore.second) << ' ' << read[i+colStart[b]].seq.length() << ' ' << beginPositionH(longestExtensionScore.second) << ' ' << endPositionH(longestExtensionScore.second) <<
+                                ' ' << read[rowids[j]].seq.length() << endl;
                     }
                 }
             }
@@ -315,24 +319,24 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                 if(values[j]->count == 1)
                 {      
                     // The function knows there's just one shared k-mer    
-                    longestExtensionScore = seqanAlOne(reads[rowids[j]].seq, reads[i+colStart[b]].seq, reads[rowids[j]].seq.length(), 
+                    longestExtensionScore = seqanAlOne(localInstance->at(rowids[j]).seq, localInstance->at(i+colStart[b]).seq, localInstance->at(rowids[j]).seq.length(), 
                                                     values[j]->pos[0], values[j]->pos[1], 3);
                     if(longestExtensionScore.first >= MIN_SCORE)
                     {
-                        myBatch << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << ' ' << values[j]->count << ' ' << longestExtensionScore.first << ' ' << beginPositionV(longestExtensionScore.second) << ' ' << 
-                            endPositionV(longestExtensionScore.second) << ' ' << reads[i+colStart[b]].seq.length() << ' ' << beginPositionH(longestExtensionScore.second) << ' ' << endPositionH(longestExtensionScore.second) <<
-                                ' ' << reads[rowids[j]].seq.length() << endl;      
+                        myBatch << localInstance->at(i+colStart[b]).nametag << ' ' << localInstance->at(rowids[j]).nametag << ' ' << values[j]->count << ' ' << longestExtensionScore.first << ' ' << beginPositionV(longestExtensionScore.second) << ' ' << 
+                            endPositionV(longestExtensionScore.second) << ' ' << localInstance->at(i+colStart[b]).seq.length() << ' ' << beginPositionH(longestExtensionScore.second) << ' ' << endPositionH(longestExtensionScore.second) <<
+                                ' ' << localInstance->at(rowids[j]).seq.length() << endl;      
                     }
                 } 
                 else 
                 {   // The function knows there's more than one shared k-mers 
-                    longestExtensionScore = seqanAlGen(reads[rowids[j]].seq, reads[i+colStart[b]].seq, reads[rowids[j]].seq.length(), values[j]->pos[0], values[j]->pos[1], values[j]->pos[2], values[j]->pos[3], 3);
+                    longestExtensionScore = seqanAlGen(localInstance->at(rowids[j]).seq, localInstance->at(i+colStart[b]).seq, localInstance->at(rowids[j]).seq.length(), values[j]->pos[0], values[j]->pos[1], values[j]->pos[2], values[j]->pos[3], 3);
 
                     if(longestExtensionScore.first >= MIN_SCORE)
                     {
-                        myBatch << reads[i+colStart[b]].nametag << ' ' << reads[rowids[j]].nametag << ' ' << values[j]->count << ' ' << longestExtensionScore.first << ' ' << beginPositionV(longestExtensionScore.second) << ' ' << 
-                            endPositionV(longestExtensionScore.second) << ' ' << reads[i+colStart[b]].seq.length() << ' ' << beginPositionH(longestExtensionScore.second) << ' ' << endPositionH(longestExtensionScore.second) <<
-                                ' ' << reads[rowids[j]].seq.length() << endl;
+                        myBatch << localInstance->at(i+colStart[b]).nametag << ' ' << localInstance->at(rowids[j]).nametag << ' ' << values[j]->count << ' ' << longestExtensionScore.first << ' ' << beginPositionV(longestExtensionScore.second) << ' ' << 
+                            endPositionV(longestExtensionScore.second) << ' ' << localInstance->at(i+colStart[b]).seq.length() << ' ' << beginPositionH(longestExtensionScore.second) << ' ' << endPositionH(longestExtensionScore.second) <<
+                                ' ' << localInstance->at(rowids[j]).seq.length() << endl;
                     }
                 }
             }
@@ -354,6 +358,9 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
             #endif
         }
     }
+
+    cout << "ovelap detection and alignemnt time: " << omp_get_wtime()-ovlalign << "s" << endl;
+
     delete [] colStart;
     delete [] colEnd;
     delete [] numCols; 
@@ -366,13 +373,13 @@ template <typename IT, typename NT, typename FT, typename MultiplyOperation, typ
 void HeapSpGEMM_gmalloc(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, CSC<IT,FT> & C )
 {
     
-    int numThreads;
+    int numThread;
 #pragma omp parallel
     {
-        numThreads = omp_get_num_threads();
+        numThread = omp_get_num_threads();
     }
     
-    // *************** Creating global space to store result, used by all threads *********************
+    // *************** Creating global space to store result, used by all thread *********************
     IT* maxnnzc = new IT[B.cols]; // maximum number of nnz in each column of C
     IT flops = 0; // total flops (multiplication) needed to generate C
 #pragma omp parallel
@@ -399,8 +406,8 @@ void HeapSpGEMM_gmalloc(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOper
             flops += tflops;
         }
     } 
-    IT flopsPerThread = flops/numThreads; // amount of work that will be assigned to each thread
-    IT colPerThread [numThreads + 1]; // thread i will process columns from colPerThread[i] to colPerThread[i+1]-1
+    IT flopsPerThread = flops/numThread; // amount of work that will be assigned to each thread
+    IT colPerThread [numThread + 1]; // thread i will process columns from colPerThread[i] to colPerThread[i+1]-1
     
     IT* colStart = new IT[B.cols]; //start index in the global array for storing ith column of C
     IT* colEnd = new IT[B.cols]; //end index in the global array for storing ith column of C
@@ -424,9 +431,9 @@ void HeapSpGEMM_gmalloc(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOper
             nextflops += flopsPerThread;
         }
     }
-    while(curThread < numThreads)
+    while(curThread < numThread)
         colPerThread[curThread++] = B.cols;
-    colPerThread[numThreads] = B.cols;
+    colPerThread[numThread] = B.cols;
 
     
     
@@ -437,9 +444,9 @@ void HeapSpGEMM_gmalloc(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOper
     // ************************ End Creating global space *************************************
     
     
-    // *************** Creating global heap space to be used by all threads *********************
+    // *************** Creating global heap space to be used by all thread *********************
 
-    IT threadHeapSize[numThreads];
+    IT threadHeapSize[numThread];
 #pragma omp parallel
     {
         int thisThread = omp_get_thread_num();
@@ -453,13 +460,13 @@ void HeapSpGEMM_gmalloc(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOper
         threadHeapSize[thisThread] = localmax;
     }
     
-    IT threadHeapStart[numThreads+1];
+    IT threadHeapStart[numThread+1];
     threadHeapStart[0] = 0;
-    for(int i=0; i<numThreads; i++) {
+    for(int i=0; i<numThread; i++) {
         threadHeapStart[i+1] = threadHeapStart[i] + threadHeapSize[i];
     }
     
-    HeapEntry<IT,FT> * globalheap = new HeapEntry<IT,FT>[threadHeapStart[numThreads]];
+    HeapEntry<IT,FT> * globalheap = new HeapEntry<IT,FT>[threadHeapStart[numThread]];
     
     // ************************ End Creating global heap space *************************************
     

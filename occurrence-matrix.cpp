@@ -33,6 +33,7 @@
 #include "mtspgemm2017/utility.h"
 #include "mtspgemm2017/CSC.h"
 #include "mtspgemm2017/CSR.h"
+#include "mtspgemm2017/global.h"
 #include "mtspgemm2017/IO.h"
 #include "mtspgemm2017/multiply.h"
 
@@ -40,9 +41,7 @@
 #define KMER_LENGTH 17
 #define ITERS 10
 #define DEPTH 30
-#define _SEEDED
 //#define _ALLKMER
-//#define _MULPTR
 
 using namespace std;
 
@@ -82,27 +81,6 @@ std::vector<filedata>  GetFiles(char *filename) {
 typedef std::map<Kmer, int> dictionary; // <k-mer && reverse-complement, #kmers>
 typedef std::vector<Kmer> Kmers;
 
-#ifdef _MULPTR
-typedef std::pair<int, vector<int>> cellspmat;             // pair<kmer_id_j, vector<posix_in_read_i>>
-typedef std::vector<pair<int, pair<int, int>>> multcell;   // map<kmer_id, vector<posix_in_read_i, posix_in_read_j>>
-typedef shared_ptr<multcell> mult_ptr;                     // pointer to multcell
-#endif
-
-#ifdef _SEEDED
-struct spmatype {
-
-    int count = 0;   /* number of shared k-mers */
-    int pos[4] = {0};  /* pos1i, pos1j, pos2i, pos2j */
-};
-typedef shared_ptr<spmatype> spmat_ptr; // pointer to spmatype datastruct
-struct readsinfo {
-
-    std::string nametag;   
-    std::string seq; 
-
-};
-#endif
-
 #ifdef _ALLKMER
 struct spmatype {
 
@@ -110,12 +88,13 @@ struct spmatype {
     std::vector<std::pair<int,int>> vpos; /* wanna keep all the positions */
 };
 typedef shared_ptr<spmatype> spmat_ptr; // pointer to spmatype datastruct
-struct readsinfo {
+#else
+struct spmatype {
 
-    std::string nametag;   
-    std::string seq; 
-
+    int count = 0;   /* number of shared k-mers */
+    int pos[4] = {0};  /* pos1i, pos1j, pos2i, pos2j */
 };
+typedef shared_ptr<spmatype> spmat_ptr; // pointer to spmatype datastruct
 #endif
 
 // Function to create the dictionary
@@ -140,46 +119,28 @@ int main (int argc, char* argv[]) {
     FILE *fastafile;
     int elem;
     char *buffer;
-    std::string kmerstr;
-    std::string line;
+    string kmerstr;
+    string line;
     Kmer::set_k(KMER_LENGTH);
     dictionary kmerdict;
-    std::vector<filedata> allfiles = GetFiles(argv[2]);
+    vector<filedata> allfiles = GetFiles(argv[2]);
     size_t upperlimit = 10000000; // in bytes
     Kmer kmerfromstr;
     Kmers kmervect;
-    std::vector<string> seqs;
-    std::vector<string> quals;
-    std::vector<string> nametags;
-    std::vector<readsinfo> reads;
+    vector<string> seqs;
+    vector<string> quals;
+    vector<string> nametags;
+    readVector_ reads;
     int rangeStart;
     Kmers kmersfromreads;
 
-    #ifdef _MULPTR
-    std::vector<tuple<int,int,cellspmat>> occurrences;
-    std::vector<tuple<int,int,cellspmat>> transtuples;
-    #endif
-    #ifdef _ALLKMER
-    std::vector<tuple<int,int,int>> occurrences;
-    std::vector<tuple<int,int,int>> transtuples;
-    #endif
-    #ifdef _SEEDED
-    std::vector<tuple<int,int,int>> occurrences;
-    std::vector<tuple<int,int,int>> transtuples;
-    #endif
-    // #else
-    // std::vector<tuple<int,int,std::pair<int,int>>> occurrences; // I could need just int also in this light version to keep track of the k-mer position in the read
-    // std::vector<tuple<int,int,std::pair<int,int>>> transtuples;
-    // #endif
+    vector<tuple<int,int,int>> occurrences;
+    vector<tuple<int,int,int>> transtuples;
     
     cout << "input k-mers file: " << argv[1] <<endl;
     cout << "pbsim depth: " << DEPTH << "X" << endl;
     cout << "k-mer length: " << KMER_LENGTH <<endl;
     cout << "sample name: PBcR-PB-ec" << endl;
-
-    // #ifdef _MULPTR
-    // cout << "*** MULPTR version ***" << endl;
-    // #endif
 
     double all = omp_get_wtime();
     double kdict = omp_get_wtime();
@@ -199,7 +160,7 @@ int main (int argc, char* argv[]) {
 
     dictionaryCreation(kmerdict, kmervect);
     cout << "reliable k-mers = " << kmerdict.size() << endl;
-    cout << "kmer dictionary creation took " << omp_get_wtime()-kdict << " seconds "<< endl;
+    cout << "kmer dictionary creation took " << omp_get_wtime()-kdict << "s" << endl;
     
     double parsefastq = omp_get_wtime();
     int read_id = 0; // read_id needs to be global (not just per file)
@@ -207,7 +168,7 @@ int main (int argc, char* argv[]) {
 
         ParallelFASTQ *pfq = new ParallelFASTQ();
         pfq->open(itr->filename, false, itr->filesize);
-        readsinfo temp;
+        readType_ temp;
         
         size_t fillstatus = 1;
         while(fillstatus) { 
@@ -239,18 +200,8 @@ int main (int argc, char* argv[]) {
 
                     auto found = kmerdict.find(lexsmall);
                     if(found != kmerdict.end()) {
-                        #ifdef _MULPTR
-                        occurrences.push_back(std::make_tuple(read_id, found->second, make_pair(found->second, vector<int>(1,j)))); // vector<tuple<read_id,kmer_id,pair<kmer_id,pos_in_read>>
-                        transtuples.push_back(std::make_tuple(found->second, read_id, make_pair(found->second, vector<int>(1,j)))); // transtuples.push_back(col_id, row_id, value)
-                        #endif
-                        #ifdef _SEEDED
                         occurrences.push_back(std::make_tuple(read_id, found->second, j)); // vector<tuple<read_id,kmer_id,kmerpos>>
                         transtuples.push_back(std::make_tuple(found->second, read_id, j)); // transtuples.push_back(col_id, row_id, kmerpos)
-                        #endif
-                        #ifdef _ALLKMER
-                        occurrences.push_back(std::make_tuple(read_id, found->second, j)); // vector<tuple<read_id,kmer_id,kmerpos>>
-                        transtuples.push_back(std::make_tuple(found->second, read_id, j)); // transtuples.push_back(col_id, row_id, kmerpos)
-                        #endif
                     }
                 }
                 read_id++;
@@ -266,32 +217,14 @@ int main (int argc, char* argv[]) {
     
     std::vector<string>().swap(quals);     // free memory of quals
     cout << "total number of reads: "<< read_id << endl;
-    cout << "parsing fastq took " << omp_get_wtime()-parsefastq << " seconds "<< endl;
+    cout << "parsing fastq took " << omp_get_wtime()-parsefastq << "s" << endl;
     double matcreat = omp_get_wtime();
-    #ifdef _MULPTR
-    CSC<int, cellspmat> spmat(occurrences, read_id, kmervect.size(), 
-                            [] (cellspmat & c1, cellspmat & c2) 
-                            {   if(c1.first != c2.first) cout << "error in MergeDuplicates()" << endl;
-                                vector<int> merged;
-                                merge(c1.second.begin(), c1.second.end(), c2.second.begin(), c2.second.end(), back_inserter(merged));
-                                return make_pair(c1.first, merged);
-                            });
-    std::vector<tuple<int,int,cellspmat>>().swap(occurrences);    // remove memory of occurences
 
-    CSC<int, cellspmat> transpmat(transtuples, kmervect.size(), read_id, 
-                            [] (cellspmat & c1, cellspmat & c2) 
-                            {   if(c1.first != c2.first) cout << "error in MergeDuplicates()" << endl;
-                                vector<int> merged;
-                                merge(c1.second.begin(), c1.second.end(), c2.second.begin(), c2.second.end(), back_inserter(merged));
-                                return make_pair(c1.first, merged);
-                            });
-    std::vector<tuple<int,int,cellspmat>>().swap(transtuples); // remove memory of transtuples
-    #endif
-    #ifdef _SEEDED
+    #ifdef _ALLKMER
     CSC<int, int> spmat(occurrences, read_id, kmervect.size(), 
                             [] (int & p1, int & p2) 
-                            {   // I assume that there's no errors in MergeDuplicates (to fix)
-                                // I keep just the first position of that k-mer in that read
+                            {   // assume no errors in MergeDuplicates
+                                // keep just the first position of that k-mer in that read
                                 return p1;
                             });
     //std::cout << "spmat created with " << spmat.nnz << " nonzeros" << endl;
@@ -303,12 +236,11 @@ int main (int argc, char* argv[]) {
                             });
     //std::cout << "transpose(spmat) created" << endl;
     std::vector<tuple<int,int,int>>().swap(transtuples); // remove memory of transtuples
-    #endif
-    #ifdef _ALLKMER
+    #else
     CSC<int, int> spmat(occurrences, read_id, kmervect.size(), 
                             [] (int & p1, int & p2) 
-                            {   // I assume that there's no errors in MergeDuplicates (to fix)
-                                // I keep just the first position of that k-mer in that read
+                            {   // assume no errors in MergeDuplicates
+                                // keep just the first position of that k-mer in that read
                                 return p1;
                             });
     //std::cout << "spmat created with " << spmat.nnz << " nonzeros" << endl;
@@ -324,30 +256,24 @@ int main (int argc, char* argv[]) {
 
     spmat.Sorted();
     transpmat.Sorted();
-    cout << "spm and transpmat creation took " << omp_get_wtime()-matcreat << " seconds "<< endl;
-    //double start = omp_get_wtime();
+    cout << "spm and transpmat creation took " << omp_get_wtime()-matcreat << "s" << endl;
     
-    #ifdef _MULPTR
-    mult_ptr getvaluetype(make_shared<multcell>());
+    #ifdef _ALLKMER
+    spmat_ptr getvaluetype(make_shared<spmatype>());
     HeapSpGEMM(spmat, transpmat, 
-        [] (cellspmat & c1, cellspmat & c2)
-        {  if(c1.first != c2.first) cout << "error in multop()" << endl; 
-                mult_ptr value(make_shared<multcell>()); // only one allocation
-                for(int i=0; i<c1.second.size(); ++i) {
-                    for(int j=0; j<c2.second.size(); ++j) {
-                        pair<int, int> temp = make_pair(c1.second[i], c2.second[j]);
-                        value->push_back(make_pair(c1.first, temp));
-                    }
-                }
+            [] (int & pi, int & pj) // n-th k-mer positions on read i and on read j 
+            {   spmat_ptr value(make_shared<spmatype>());
+                value->count = 1;
+                value->vpos.push_back(make_pair(pi,pj));
                 return value;
-        }, 
-        [] (mult_ptr & h, mult_ptr & m)
-            {   m->insert(m->end(), h->begin(), h->end());
-            return m;
+            }, 
+            [] (spmat_ptr & m1, spmat_ptr & m2)
+            {   m2->count = m1->count+m2->count;
+                // insert control on independent k-mer
+                m2->vpos.insert(m2->vpos.end(), m1->vpos.begin(), m1->vpos.end());
+                return m2;
             }, reads, getvaluetype);
-    #endif
-    #ifdef _SEEDED
-    // DO NOT TOUCH THIS!
+    #else
     spmat_ptr getvaluetype(make_shared<spmatype>());
     HeapSpGEMM(spmat, transpmat, 
             [] (int & pi, int & pj) // n-th k-mer positions on read i and on read j 
@@ -365,26 +291,9 @@ int main (int argc, char* argv[]) {
                 m2->pos[3] = m1->pos[1]; // col
                 return m2;
             }, reads, getvaluetype);
-    #endif
-    #ifdef _ALLKMER
-    spmat_ptr getvaluetype(make_shared<spmatype>());
-    HeapSpGEMM(spmat, transpmat, 
-            [] (int & pi, int & pj) // n-th k-mer positions on read i and on read j 
-            {   spmat_ptr value(make_shared<spmatype>());
-                value->count = 1;
-                value->vpos.push_back(make_pair(pi,pj));
-                return value;
-            }, 
-            [] (spmat_ptr & m1, spmat_ptr & m2)
-            {   m2->count = m1->count+m2->count;
-                // insert control on independent k-mer
-                m2->vpos.insert(m2->vpos.end(), m1->vpos.begin(), m1->vpos.end());
-                return m2;
-            }, reads, getvaluetype);
     #endif 
     
-    //cout << "overlapper + seeded alignment took " << omp_get_wtime()-start << " sec" << endl;
-    cout << "total time: " << omp_get_wtime()-all << " sec" << endl;
+    cout << "total time: " << omp_get_wtime()-all << "s" << endl;
 
     return 0;
 } 
