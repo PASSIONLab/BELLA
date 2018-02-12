@@ -1,8 +1,9 @@
 RMATPATH = mtspgemm2017/GTgraph/R-MAT
 SPRNPATH = mtspgemm2017/GTgraph/sprng2.0-lite
-SEQANPATH = include-seq
+SEQANPATH = seqan-old
 include mtspgemm2017/GTgraph/Makefile.var
-INCLUDE = -I$(SPRNPATH)/include -I$(SEQANPATH)
+INCLUDE = -I$(SPRNPATH)/include
+SEQINCLUDE = -I$(SEQANPATH)
 MLKINCLUDE = -I/opt/intel/composer_xe_2015.0.039/mkl/include
 LIBPATH = -L/opt/intel/composer_xe_2015.0.039/mkl/lib
 COMPILER = g++
@@ -29,7 +30,7 @@ Kmer.o:	kmercode/Kmer.cpp
 
 # flags defined in mtspgemm2017/GTgraph/Makefile.var
 parse: occurrence-matrix.cpp hash_funcs.o fq_reader.o Buffer.o Kmer.o rmat
-	$(COMPILER) -std=c++14 $(INCLUDE) -g -O3 -fopenmp -fpermissive edlib/src/edlib.cpp -o parse hash_funcs.o Kmer.o Buffer.o fq_reader.o occurrence-matrix.cpp -I edlib/include ${TOCOMPILE} ${LIBS}
+	$(COMPILER) -std=c++14 $(INCLUDE) -g -O3 -fopenmp -fpermissive $(SEQINCLUDE) -o parse hash_funcs.o Kmer.o Buffer.o fq_reader.o occurrence-matrix.cpp ${TOCOMPILE} ${LIBS}
 
 clean:
 	(cd mtspgemm2017/GTgraph; make clean; cd ../..)
