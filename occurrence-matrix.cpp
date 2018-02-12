@@ -37,6 +37,8 @@
 #include "mtspgemm2017/IO.h"
 #include "mtspgemm2017/multiply.h"
 
+#include "libcuckoo/cuckoohash_map.hh"
+
 #define LSIZE 16000
 #define KMER_LENGTH 17
 #define ITERS 10
@@ -100,11 +102,11 @@ typedef std::vector<Kmer> Kmers;
 // assumption: kmervect has unique entries
 void dictionaryCreation(dictionary &kmerdict, Kmers &kmervect)
 {
+    //kmerdict.reserve(kmervect.size());	// only makes sense for std::unordered_map
     for(int i = 0; i<kmervect.size(); i++)
     {
         kmerdict.insert(make_pair(kmervect[i].rep(), i));
     }
-    
 }
 
 int main (int argc, char* argv[]) {
@@ -162,28 +164,46 @@ int main (int argc, char* argv[]) {
     
     double parsefastq = omp_get_wtime();
     int read_id = 0; // read_id needs to be global (not just per file)
+
+
+#ifdef _OPENMP
+	int numthreads = omp_get_max_threads();
+	cout << "Running with up to " << numthreads << " threads" << endl;
+#else
+	int numthreads = 1;
+#endif
+      
+        vector < vector<tuple<int,int,int>> > alloccurrences(numthreads);	
+        vector < vector<tuple<int,int,int>> > alltranstuples(numthreads);	
+	vector < readVector_ > allreads(numthreads);	
+
     for(auto itr=allfiles.begin(); itr!=allfiles.end(); itr++) {
 
         ParallelFASTQ *pfq = new ParallelFASTQ();
         pfq->open(itr->filename, false, itr->filesize);
-        readType_ temp;
-        
+
         size_t fillstatus = 1;
         while(fillstatus) { 
             double time1 = omp_get_wtime();
             fillstatus = pfq->fill_block(nametags, seqs, quals, upperlimit);
             int nreads = seqs.size();
-
-            // cout << "Filled " << nreads << " reads in " << time2-time1 << " seconds "<< endl; 
             
+	    #pragma omp parallel for
             for(int i=0; i<nreads; i++) 
             {
                 // remember that the last valid position is length()-1
                 int len = seqs[i].length();
+
+        	readType_ temp;
                 temp.nametag = nametags[i];
                 temp.seq = seqs[i];
                 // save reads for seeded alignment
-                reads.push_back(temp);
+#ifdef _OPENMP
+		int tid = omp_get_thread_num();
+#else
+		int tid = 0;
+#endif
+                allreads[tid].push_back(temp);
                 
                 // skip this sequence if the length is too short
                 if(len < KMER_LENGTH)
@@ -196,23 +216,47 @@ int main (int argc, char* argv[]) {
                     // remember to use only ::rep() when building kmerdict as well
                     Kmer lexsmall = mykmer.rep();      
 
+		    int out;
                     auto found = kmerdict.find(lexsmall);
-                    if(found != kmerdict.end()) {
-                        occurrences.push_back(std::make_tuple(read_id, found->second, j)); // vector<tuple<read_id,kmer_id,kmerpos>>
-                        transtuples.push_back(std::make_tuple(found->second, read_id, j)); // transtuples.push_back(col_id, row_id, kmerpos)
+		    if(found !=  kmerdict.end())
+                    {
+                        alloccurrences[tid].emplace_back(std::make_tuple(read_id+i,found->second, j)); // vector<tuple<read_id,kmer_id,kmerpos>>
+                        alltranstuples[tid].emplace_back(std::make_tuple(found->second, read_id+i, j)); // transtuples.push_back(col_id, row_id, kmerpos)
                     }
                 }
-                read_id++;
-            }
-        // cout << "processed reads in " << omp_get_wtime()-time2 << " seconds "<< endl; 
-        // cout << "total number of reads processed so far is " << read_id << endl;
-        } 
-    delete pfq;
-    }
+            } // for(int i=0; i<nreads; i++)
+	    read_id += nreads;
+            // cout << "processed reads in " << omp_get_wtime()-time2 << " seconds "<< endl; 
+            // cout << "total number of reads processed so far is " << read_id << endl;
 
-    // don't free this vector I need this information to align sequences 
-    // std::vector<string>().swap(seqs);   // free memory of seqs 
-    
+        } //while(fillstatus) 
+    delete pfq;
+    } // for all files
+
+    	size_t readcount = 0;
+	size_t tuplecount = 0;
+	for(int t=0; t<numthreads; ++t)
+	{
+		readcount += allreads[t].size();
+		tuplecount += alloccurrences[t].size();
+	}
+	reads.resize(readcount);
+	occurrences.resize(tuplecount);
+	transtuples.resize(tuplecount);
+
+	size_t readssofar = 0;
+	size_t tuplesofar = 0;
+	for(int t=0; t<numthreads; ++t)
+	{
+		copy(allreads[t].begin(), allreads[t].end(), reads.begin()+readssofar);
+		readssofar += allreads[t].size();
+
+		copy(alloccurrences[t].begin(), alloccurrences[t].end(), occurrences.begin() + tuplesofar);
+		copy(alltranstuples[t].begin(), alltranstuples[t].end(), transtuples.begin() + tuplesofar);
+		tuplesofar += alloccurrences[t].size();
+	}
+
+    std::vector<string>().swap(seqs);   // free memory of seqs  
     std::vector<string>().swap(quals);     // free memory of quals
     cout << "Total number of reads: "<< read_id << endl;
     cout << "Parsing fastq took: " << omp_get_wtime()-parsefastq << "s" << endl;
