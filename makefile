@@ -29,10 +29,11 @@ Kmer.o:	kmercode/Kmer.cpp
 	$(COMPILER) -std=c++11 -g -c -o Kmer.o Kmer.cpp
 
 # flags defined in mtspgemm2017/GTgraph/Makefile.var
-parse: occurrence-matrix.cpp hash_funcs.o fq_reader.o Buffer.o Kmer.o rmat
-	$(COMPILER) -std=c++14 $(INCLUDE) -g -O3 -fopenmp -fpermissive $(SEQINCLUDE) -o parse hash_funcs.o Kmer.o Buffer.o fq_reader.o occurrence-matrix.cpp ${TOCOMPILE} ${LIBS}
+parse: parallel-main.cpp hash_funcs.o fq_reader.o Buffer.o Kmer.o rmat
+	$(COMPILER) -std=c++14 $(INCLUDE) -g -O3 -fopenmp -fpermissive $(SEQINCLUDE) -o parse hash_funcs.o Kmer.o Buffer.o fq_reader.o parallel-main.cpp ${TOCOMPILE} ${LIBS}
 
 clean:
 	(cd mtspgemm2017/GTgraph; make clean; cd ../..)
+	rm out.bella
 	rm -f *.o
 	rm -f parse
