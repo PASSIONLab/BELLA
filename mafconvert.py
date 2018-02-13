@@ -88,7 +88,7 @@ def writeAxt(maf):
     alnStarts = imap(operator.add, maf.alnStarts, repeat(1))
     alnEnds = imap(operator.add, maf.alnStarts, maf.alnSizes)
 
-    rows = zip(maf.seqNames, alnStarts, alnEnds, maf.strands)
+    rows = zip(maf.seqNames, alnStarts, alnEnds) #, maf.strands)
     head, tail = rows[0], rows[1:]
 
     outWords = []

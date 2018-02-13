@@ -26,6 +26,7 @@
 
 #define ERR .15 
 #define THR 2000
+#define SIMULATED
 
 using namespace std;
 
@@ -37,6 +38,24 @@ double trueOv(ifstream & truth)
     vector<Interval<std::string>>::iterator q;
     double trueoverlaps;
 
+    #ifdef SIMULATED
+    if(truth.is_open()) {
+
+        std::string read;
+        std::string dontcare2;
+        std::string dontcare1;
+        std::string ref;
+        int start;
+        int end;
+        while(truth >> ref >> start >> end >> read >> dontcare1 >> dontcare2)
+        {
+            
+            intervals.push_back(Interval<std::string>(start, end, read));
+            queries.push_back(Interval<std::string>(start, end, read));
+        }
+
+    } else std::cout << "Error opening the ground truth file" << endl;
+    #else
     if(truth.is_open()) {
 
         std::string read;
@@ -50,6 +69,7 @@ double trueOv(ifstream & truth)
         }
 
     } else std::cout << "Error opening the ground truth file" << endl;
+    #endif
 
     IntervalTree<std::string> tree;
     vector<size_t> treecounts;
@@ -149,8 +169,28 @@ void benchmarkingAl(std::ifstream & groundtruth, std::ifstream & bella, std::ifs
     double ovlsblasr = 0, trueblasr = 0;
     double ovlsdal = 0, truedal = 0;
 
-    cout << "\nBuilding the ground truth from BWA-MEM filtered sam..." << endl;
+    cout << "\nBuilding the ground truth..." << endl;
 
+    #ifdef SIMULATED
+    if(groundtruth.is_open())
+    {
+        std::string ref;
+        std::string read;
+        std::string dontcare1;
+        std::string dontcare2;
+        int start;
+        int end;
+        std::pair<int,int> coords;
+        while(groundtruth >> ref >> start >> end >> read >> dontcare1 >> dontcare2)
+        {
+            std::string nametag = "@" + read;
+            int start_v = start;
+            int end_v = end;
+            coords = make_pair(start_v, end_v);
+            ovlsmap.insert(std::pair<std::string, std::pair<int, int>>(nametag,coords));
+        }
+    } else std::cout << "Error opening the ground truth file" << endl;
+    #else
     if(groundtruth.is_open())
     {
         std::string read;
@@ -166,6 +206,7 @@ void benchmarkingAl(std::ifstream & groundtruth, std::ifstream & bella, std::ifs
             ovlsmap.insert(std::pair<std::string, std::pair<int, int>>(nametag,coords));
         }
     } else std::cout << "Error opening the ground truth file" << endl;
+    #endif
 
     groundtruth.clear();
     groundtruth.seekg(0, ios::beg);
@@ -359,7 +400,7 @@ void benchmarkingAl(std::ifstream & groundtruth, std::ifstream & bella, std::ifs
     groundtruth.close();
 
     /* Ground Truth */
-    cout << "True overlapping from BWA-MEM = " << truetruth << "\n" << endl;
+    cout << "True overlapping from ground truth = " << truetruth << "\n" << endl;
     /* BELLA Recall and precision */
     cout << "Overlapping from BELLA = " << ovlsbella << endl;
     cout << "True overlapping from BELLA = " << truebella << endl;
