@@ -1,11 +1,11 @@
 # README #
 
-Repository containing BELLA source code, a long to long read aligner.
+Repository containing BELLA source code, a long read aligner to de novo genome assembly.
 
 The master contains the multithreaded code on single node.
 
-To compile BELLA: make parse
-To run BELLA: ./parse <kmers-file> <listoffastq.txt>
+To compile BELLA: make bella
+To run BELLA: ./bella <kmers-file> <listoffastq>
 
 The repository contains also the code to get the sensitivy of BELLA as well as other long-read aligners.
 
