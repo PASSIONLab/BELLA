@@ -37,13 +37,12 @@
 #include "mtspgemm2017/IO.h"
 #include "mtspgemm2017/multiply.h"
 
-#include "libcuckoo/cuckoohash_map.hh"
-#include "cxxopts/include/cxxopts.hpp" // command line parser
-
 #define LSIZE 16000
 #define KMER_LENGTH 17
 #define ITERS 10
-#define DEPTH 30
+#define X 3
+#define ALTHR 50
+//#define DEPTH 30
 //#define _ALLKMER
 
 using namespace std;
@@ -110,21 +109,59 @@ void dictionaryCreation(dictionary &kmerdict, Kmers &kmervect)
     }
 }
 
-int main (int argc, char* argv[]) {
+int main (int argc, char *argv[]) {
 
+    //
+    // Program name and purpose
+    //
+    cout << "\nBELLA - Long Read Aligner for De Novo Genome Assembly\n" << endl;
     //
     // Setup the input files
     //
 
-
-
-    if(argc < 3)
-    {
-        cout << "Not enough parameters. Usage: "<< endl;
-        cout << "./parse kmers-list listoffastqfiles.txt" << endl;
+    option_t *optList, *thisOpt;
+    // Get list of command line options and their arguments 
+    optList = NULL;
+    optList = GetOptList(argc, argv, (char*)"f:i:h");
+   
+    bool skip_algnmnt_krnl = false;
+    char fail[10000] = "";
+    char buf[100];
+    char *kmer_file = NULL;         // Reliable k-mer file from Jellyfish
+    char *all_inputs_fofn = NULL;   // List of fastq(s)
+    while (optList!=NULL) {
+        thisOpt = optList;
+        optList = optList->next;
+        switch (thisOpt->option) {
+            case 'f': {
+                kmer_file = strdup(thisOpt->argument);
+                break;
+            }
+            case 'i': {
+                all_inputs_fofn = strdup(thisOpt->argument);
+                break;
+            }
+            case 'h': {
+                printf("Usage:\n" );
+                printf(" -f : reliable k-mer list from Jellyfish\n");
+                printf(" -i : list of fastq(s)\n");
+                printf(" -h : print out command line options\n\n");
+                
+                FreeOptList(thisOpt); // Done with this list, free it
+                break;
+            }
+            // case 'z': skip_algnmnt_krnl = true; break; TO DO: add skip alignment
+            default:
+                sprintf(buf, "\tInvalid Option: %c\n", thisOpt->option);
+                strcat(fail, buf);
+                break;
+        }
     }
-
-    std::ifstream filein(argv[1]);
+    //
+    // Declarations 
+    //
+    ifstream filein(kmer_file);
+    vector<filedata> allfiles = GetFiles(all_inputs_fofn);
     FILE *fastafile;
     int elem;
     char *buffer;
@@ -132,7 +169,6 @@ int main (int argc, char* argv[]) {
     string line;
     Kmer::set_k(KMER_LENGTH);
     dictionary kmerdict;
-    vector<filedata> allfiles = GetFiles(argv[2]);
     size_t upperlimit = 10000000; // in bytes
     Kmer kmerfromstr;
     Kmers kmervect;
@@ -141,15 +177,21 @@ int main (int argc, char* argv[]) {
     vector<string> nametags;
     readVector_ reads;
     Kmers kmersfromreads;
-
     vector<tuple<int,int,int>> occurrences;
     vector<tuple<int,int,int>> transtuples;
     
-    cout << "Input k-mer file: " << argv[1] <<endl;
-    cout << "Depth: " << DEPTH << "X" << endl;
-    cout << "k-mer length: " << KMER_LENGTH <<endl;
-    // cout << "Sample name: PBcR-PB-ec" << endl;
+    // 
+    // File and setting used
+    //
+    cout << "Input k-mer file: " << kmer_file << endl;
+    cout << "k-mer length: " << KMER_LENGTH << endl;
+    cout << "Alignment x-drop: " << X << endl;
+    cout << "Alignment score threshold: " << ALTHR << "\n"<< endl;
+    //cout << "Depth: " << DEPTH << "X" << endl;
 
+    //
+    // Reliable k-mer file parsing and k-mer dictionary creation
+    //
     double all = omp_get_wtime();
     double kdict = omp_get_wtime();
     if(filein.is_open()) {
@@ -168,8 +210,11 @@ int main (int argc, char* argv[]) {
 
     dictionaryCreation(kmerdict, kmervect);
     cout << "Reliable k-mer: " << kmerdict.size() << endl;
-    cout << "k-mer dictionary creation took: " << omp_get_wtime()-kdict << "s" << endl;
+    cout << "k-mer dictionary creation took: " << omp_get_wtime()-kdict << "s\n" << endl;
     
+    //
+    // Fastq(s) parsing
+    //
     double parsefastq = omp_get_wtime();
     int read_id = 0; // read_id needs to be global (not just per file)
 
@@ -265,13 +310,17 @@ int main (int argc, char* argv[]) {
 		tuplesofar += alloccurrences[t].size();
 	}
 
-    std::sort(reads.begin(), reads.end()); // bool operator in global.h: sort by readid
+    std::sort(reads.begin(), reads.end());   // bool operator in global.h: sort by readid
 
-    std::vector<string>().swap(seqs);   // free memory of seqs  
-    std::vector<string>().swap(quals);     // free memory of quals
+    std::vector<string>().swap(seqs);        // free memory of seqs  
+    std::vector<string>().swap(quals);       // free memory of quals
     cout << "Total number of reads: "<< read_id << endl;
-    cout << "Parsing fastq took: " << omp_get_wtime()-parsefastq << "s" << endl;
+    cout << "Parsing fastq took: " << omp_get_wtime()-parsefastq << "s\n" << endl;
     double matcreat = omp_get_wtime();
+
+    //
+    // Sparse matrices construction
+    //
 
     #ifdef _ALLKMER
     CSC<int, int> spmat(occurrences, read_id, kmervect.size(), 
@@ -309,8 +358,12 @@ int main (int argc, char* argv[]) {
 
     spmat.Sorted();
     transpmat.Sorted();
-    cout << "Spmat and Spmat^T creation took: " << omp_get_wtime()-matcreat << "s" << endl;
+    cout << "Spmat and Spmat^T creation took: " << omp_get_wtime()-matcreat << "s\n" << endl;
     
+    //
+    // Overlap detection (sparse matrix multiplication) and seed-and-extend alignment
+    //
+
     #ifdef _ALLKMER
     spmatPtr_ getvaluetype(make_shared<spmatType_>());
     HeapSpGEMM(spmat, transpmat, 
@@ -345,8 +398,6 @@ int main (int argc, char* argv[]) {
                 return m2;
             }, reads, getvaluetype);
     #endif 
-    
-    cout << "Total running time: " << omp_get_wtime()-all << "s" << endl;
-
+    cout << "Total running time: " << omp_get_wtime()-all << "s\n" << endl;
     return 0;
 } 
