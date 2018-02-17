@@ -38,10 +38,7 @@
 #include "mtspgemm2017/multiply.h"
 
 #define LSIZE 16000
-#define KMER_LENGTH 17
 #define ITERS 10
-#define X 3
-#define ALTHR 50
 //#define DEPTH 30
 //#define _ALLKMER
 
@@ -122,13 +119,15 @@ int main (int argc, char *argv[]) {
     option_t *optList, *thisOpt;
     // Get list of command line options and their arguments 
     optList = NULL;
-    optList = GetOptList(argc, argv, (char*)"f:i:h");
+    optList = GetOptList(argc, argv, (char*)"f:i:o:hkazp");
    
     bool skip_algnmnt_krnl = false;
-    char fail[10000] = "";
-    char buf[100];
-    char *kmer_file = NULL;         // Reliable k-mer file from Jellyfish
+    char *kmer_file = NULL; // Reliable k-mer file from Jellyfish
     char *all_inputs_fofn = NULL;   // List of fastq(s)
+    char *out_file = NULL; // output filename
+    int kmer_len = 17;  // default k-mer length
+    int algnmnt_thr = 50;   // default alignment score threshold
+    int algnmnt_drop = 3;   // default alignment x-drop factor
 
     if(optList == NULL)
     {
@@ -161,18 +160,52 @@ int main (int argc, char *argv[]) {
                 all_inputs_fofn = strdup(thisOpt->argument);
                 break;
             }
-            // case 'z': skip_algnmnt_krnl = true; break; TO DO: add skip alignment
+            case 'o': {
+                if(thisOpt->argument == NULL)
+                {
+                    cout << "BELLA execution terminated: -o requires an argument" << endl;
+                    cout << "Run with -h to print out the command line options\n" << endl;
+                    return 0;
+                }
+                out_file = strdup(thisOpt->argument);
+                out_file = strcat(out_file,".bll");
+                break;
+            }
+            case 'z': skip_algnmnt_krnl = true; break; // TO DO: add skip alignment
+            case 'k': {
+                kmer_len = atoi(thisOpt->argument);
+                break;
+            }
+            case 'a': {
+                algnmnt_thr = atoi(thisOpt->argument);
+                break;
+            }
+            case 'p': {
+                algnmnt_drop = atoi(thisOpt->argument);
+                break;
+            }
             case 'h': {
                 cout << "Usage:\n" << endl;
                 cout << " -f : reliable k-mer list from Jellyfish (required)" << endl;
                 cout << " -i : list of fastq(s) (required)" << endl;
-                cout << " -h : print out command line options\n" << endl;
+                cout << " -o : output filename (required)" << endl;
+                cout << " -k : k-mer length (17)" << endl;
+                cout << " -a : alignment score threshold (50)" << endl;
+                cout << " -p : alignment x-drop factor (3)\n" << endl;
                 
                 FreeOptList(thisOpt); // Done with this list, free it
                 return 0;
             }
         }
     }
+
+    if(kmer_file == NULL || all_inputs_fofn == NULL || out_file == NULL)
+    {
+        cout << "BELLA execution terminated: missing arguments" << endl;
+        cout << "Run with -h to print out the command line options\n" << endl;
+        return 0;
+    }
+
     free(optList);
     free(thisOpt);
 
@@ -186,7 +219,7 @@ int main (int argc, char *argv[]) {
     char *buffer;
     string kmerstr;
     string line;
-    Kmer::set_k(KMER_LENGTH);
+    Kmer::set_k(kmer_len);
     dictionary kmerdict;
     size_t upperlimit = 10000000; // in bytes
     Kmer kmerfromstr;
@@ -203,9 +236,13 @@ int main (int argc, char *argv[]) {
     // File and setting used
     //
     cout << "Input k-mer file: " << kmer_file << endl;
-    cout << "k-mer length: " << KMER_LENGTH << endl;
-    cout << "Alignment x-drop: " << X << endl;
-    cout << "Alignment score threshold: " << ALTHR << "\n"<< endl;
+    cout << "Output file: " << out_file << endl;
+    cout << "k-mer length: " << kmer_len << endl;
+    if(skip_algnmnt_krnl)
+        cout << "Compute alignment: false" << endl;
+    else cout << "Compute alignment: true" << endl;
+    cout << "Alignment x-drop factor: " << algnmnt_drop << endl;
+    cout << "Alignment score threshold: " << algnmnt_thr << "\n"<< endl;
     //cout << "Depth: " << DEPTH << "X" << endl;
 
     //
@@ -279,12 +316,12 @@ int main (int argc, char *argv[]) {
                 allreads[tid].push_back(temp);
                 
                 // skip this sequence if the length is too short
-                if(len < KMER_LENGTH)
+                if(len < kmer_len)
                     continue;
 
-                for(int j=0; j<=len-KMER_LENGTH; j++)  
+                for(int j=0; j<=len-kmer_len; j++)  
                 {
-                    std::string kmerstrfromfastq = seqs[i].substr(j, KMER_LENGTH);
+                    std::string kmerstrfromfastq = seqs[i].substr(j, kmer_len);
                     Kmer mykmer(kmerstrfromfastq.c_str());
                     // remember to use only ::rep() when building kmerdict as well
                     Kmer lexsmall = mykmer.rep();      
@@ -397,7 +434,7 @@ int main (int argc, char *argv[]) {
                 // insert control on independent k-mer
                 m2->vpos.insert(m2->vpos.end(), m1->vpos.begin(), m1->vpos.end());
                 return m2;
-            }, reads, getvaluetype);
+            }, reads, getvaluetype, kmer_len, algnmnt_drop, algnmnt_thr, out_file, skip_algnmnt_krnl);
     #else
     spmatPtr_ getvaluetype(make_shared<spmatType_>());
     HeapSpGEMM(spmat, transpmat, 
@@ -415,7 +452,7 @@ int main (int argc, char *argv[]) {
                 m2->pos[2] = m1->pos[0]; // row 
                 m2->pos[3] = m1->pos[1]; // col
                 return m2;
-            }, reads, getvaluetype);
+            }, reads, getvaluetype, kmer_len, algnmnt_drop, algnmnt_thr, out_file, skip_algnmnt_krnl);
     #endif 
     cout << "Total running time: " << omp_get_wtime()-all << "s\n" << endl;
     return 0;
