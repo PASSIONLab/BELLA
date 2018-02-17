@@ -1,13 +1,16 @@
 DEST_DIR = ./bin
 
+CC=gcc
 CFLAGS = -O3 -Wall -Wextra -Wno-unused-result -fno-strict-aliasing
 
-ALL= ondaligner.o
+ALL= ondaligner
 
 all: $(ALL)
+	mkdir $(DEST_DIR)
+	mv $(ALL) $(DEST_DIR)
 
-ondaligner.o: align.c align.h
-	gcc $(CFLAGS) -lm -o $@ $<
+ondaligner: driver.c align.c align.h
+	$(CC) $(CFLAGS) -lm -o $@ driver.c align.c
 
 clean:
-	rm $(ALL)
+	rm -r $(DEST_DIR)

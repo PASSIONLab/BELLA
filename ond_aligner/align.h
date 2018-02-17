@@ -20,6 +20,35 @@
 #ifndef ALIGN_H_
 #define ALIGN_H_
 
+/*
+ * originally located in DB.h
+ */
+#define EPRINTF fprintf
+#define EPLACE  stderr
+#define EXIT(x) exit (1)
+
+typedef unsigned char      uint8;
+typedef unsigned short     uint16;
+typedef unsigned int       uint32;
+typedef unsigned long long uint64;
+typedef signed char        int8;
+typedef signed short       int16;
+typedef signed int         int32;
+typedef signed long long   int64;
+
+/*******************************************************************************************
+ *
+ *  UTILITIES
+ *
+ * originally in DB.h
+ ********************************************************************************************/
+
+//  The following general utilities return NULL if any of their input pointers are NULL, or if they
+//    could not perform their function (in which case they also print an error to stderr).
+
+void *Malloc(int64 size, char *mesg);      				//  Guarded versions of malloc, realloc              //  Guarded versions of malloc, realloc
+void *Realloc(void *object, int64 size, char *mesg);     //  and strdup, that output "mesg" to
+
 /*** PATH ABSTRACTION:
 
      Coordinates are *between* characters where 0 is the tick just before the first char,

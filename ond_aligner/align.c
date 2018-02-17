@@ -17,6 +17,7 @@
  *  Date  :  July 2013
  *
  ********************************************************************************************/
+#include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
@@ -25,6 +26,38 @@
 #include <limits.h>
 
 #include "align.h"
+
+/*******************************************************************************************
+ *
+ *  GENERAL UTILITIES
+ *
+ *  originally located in DB.c
+ ********************************************************************************************/
+char Prog_Name[] = "O(Nd) alignment kernel";
+
+void *Malloc(int64 size, char *mesg)
+{ void *p;
+
+  if ((p = malloc(size)) == NULL)
+    { if (mesg == NULL)
+        EPRINTF(EPLACE,"%s: Out of memory\n",Prog_Name);
+      else
+        EPRINTF(EPLACE,"%s: Out of memory (%s)\n",Prog_Name,mesg);
+    }
+  return (p);
+}
+
+void *Realloc(void *p, int64 size, char *mesg)
+{ if (size <= 0)
+    size = 1;
+  if ((p = realloc(p,size)) == NULL)
+    { if (mesg == NULL)
+        EPRINTF(EPLACE,"%s: Out of memory\n",Prog_Name);
+      else
+        EPRINTF(EPLACE,"%s: Out of memory (%s)\n",Prog_Name,mesg);
+    }
+  return (p);
+}
 
 /****************************************************************************************\
 *                                                                                        *
