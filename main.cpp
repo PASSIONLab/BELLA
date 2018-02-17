@@ -168,7 +168,7 @@ int main (int argc, char *argv[]) {
                     return 0;
                 }
                 out_file = strdup(thisOpt->argument);
-                out_file = strcat(out_file,".bll");
+                out_file = strcat(out_file,".bla"); 
                 break;
             }
             case 'z': skip_algnmnt_krnl = true; break; // TO DO: add skip alignment
@@ -189,9 +189,10 @@ int main (int argc, char *argv[]) {
                 cout << " -f : reliable k-mer list from Jellyfish (required)" << endl;
                 cout << " -i : list of fastq(s) (required)" << endl;
                 cout << " -o : output filename (required)" << endl;
-                cout << " -k : k-mer length (17)" << endl;
-                cout << " -a : alignment score threshold (50)" << endl;
-                cout << " -p : alignment x-drop factor (3)\n" << endl;
+                cout << " -k : k-mer length [17]" << endl;
+                cout << " -a : alignment score threshold [50]" << endl;
+                cout << " -p : alignment x-drop factor [3]" << endl;
+                cout << " -z : skip the alignment [false]\n" << endl;
                 
                 FreeOptList(thisOpt); // Done with this list, free it
                 return 0;
