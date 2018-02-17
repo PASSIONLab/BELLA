@@ -129,34 +129,53 @@ int main (int argc, char *argv[]) {
     char buf[100];
     char *kmer_file = NULL;         // Reliable k-mer file from Jellyfish
     char *all_inputs_fofn = NULL;   // List of fastq(s)
+
+    if(optList == NULL)
+    {
+        cout << "BELLA execution terminated: not enough parameters or invalid option" << endl;
+        cout << "Run with -h to print out the command line options\n" << endl;
+        return 0;
+    }
+
     while (optList!=NULL) {
         thisOpt = optList;
         optList = optList->next;
         switch (thisOpt->option) {
             case 'f': {
+                if(thisOpt->argument == NULL)
+                {
+                    cout << "BELLA execution terminated: -f requires an argument" << endl;
+                    cout << "Run with -h to print out the command line options\n" << endl;
+                    return 0;
+                }
                 kmer_file = strdup(thisOpt->argument);
                 break;
             }
             case 'i': {
+                if(thisOpt->argument == NULL)
+                {
+                    cout << "BELLA execution terminated: -i requires an argument" << endl;
+                    cout << "Run with -h to print out the command line options\n" << endl;
+                    return 0;
+                }
                 all_inputs_fofn = strdup(thisOpt->argument);
                 break;
             }
+            // case 'z': skip_algnmnt_krnl = true; break; TO DO: add skip alignment
             case 'h': {
-                printf("Usage:\n" );
-                printf(" -f : reliable k-mer list from Jellyfish\n");
-                printf(" -i : list of fastq(s)\n");
-                printf(" -h : print out command line options\n\n");
+                cout << "Usage:\n" << endl;
+                cout << " -f : reliable k-mer list from Jellyfish (required)" << endl;
+                cout << " -i : list of fastq(s) (required)" << endl;
+                cout << " -h : print out command line options\n" << endl;
                 
                 FreeOptList(thisOpt); // Done with this list, free it
                 return 0;
             }
-            // case 'z': skip_algnmnt_krnl = true; break; TO DO: add skip alignment
-            default:
-                sprintf(buf, "\tInvalid Option: %c\n", thisOpt->option);
-                strcat(fail, buf);
-                return 0;
         }
     }
+    free(optList);
+    free(thisOpt);
+
     //
     // Declarations 
     //
