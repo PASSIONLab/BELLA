@@ -39,9 +39,26 @@ typedef SeedSet<TSeed> TSeedSet;
 #define KMER_LENGTH 17
 #define MIN_SCORE 50
 #define TIMESTEP
+#define RAM
+#define OSX
+//#define LINUX
 //#define THREADLIMIT
 //#define MAX_NUM_THREAD 4
 //#define ALLKMER
+
+#ifdef OSX
+#include <mach/mach.h>
+#include <mach/vm_statistics.h>
+#include <mach/mach_types.h>
+#include <mach/mach_init.h>
+#include <mach/mach_host.h>
+#endif
+
+#ifdef LINUX
+#include "sys/types.h"
+#include "sys/sysinfo.h"
+struct sysinfo info;
+#endif
 
 /* CSV containing CSC indices of the output sparse matrix*/
 void writeToFile(std::stringstream & myBatch, std::string filename)
@@ -134,6 +151,83 @@ void LocalSpGEMM(IT & start, IT & end, IT & ncols, const CSC<IT,NT> & A, const C
 template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation>
 void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, readVector_ & read, FT & getvaluetype)
 {   
+    #ifdef RAM // number of cols depends on available RAM
+    cout << "Cols subdivision depending on available RAM\n" << endl;
+
+    #ifdef OSX // OSX-based memory consumption implementation 
+    vm_size_t page_size;
+    mach_port_t mach_port;
+    mach_msg_type_number_t count;
+    vm_statistics64_data_t vm_stats;
+    uint64_t free_memory, used_memory;
+
+    mach_port = mach_host_self();
+    count = sizeof(vm_stats) / sizeof(natural_t);
+
+    if (KERN_SUCCESS == host_page_size(mach_port, &page_size) &&
+                KERN_SUCCESS == host_statistics64(mach_port, HOST_VM_INFO,
+                                                (host_info64_t)&vm_stats, &count))
+    {
+        free_memory = (int64_t)vm_stats.free_count * (int64_t)page_size;
+        used_memory = ((int64_t)vm_stats.active_count +
+                      (int64_t)vm_stats.inactive_count +
+                      (int64_t)vm_stats.wire_count) * (int64_t)page_size;
+        /* It is good to note that just because Mac OS X may show very little actual free memory at times that it may 
+        not be a good indication of how much is ready to be used on short notice. */
+    } 
+    #endif
+    
+    #ifdef LINUX // LINUX-based memory consumption implementation 
+    if(sysinfo(&info) != 0)
+    {
+        return false;
+    }   
+    unsigned long free_memory = info.freeram * info.mem_unit;
+    free_memory += info.freeswap * info.mem_unit;
+    free_memory += info.bufferram * info.mem_unit;
+    #endif
+
+    uint64_t d = B.nnz/B.cols; // about d nnz each col
+    uint64_t rsv = B.nnz*d;    // worst case
+    uint64_t required_memory = (rsv)*sizeof(int);
+    IT * rowids;
+    FT * values;
+    
+    // here numThreads actually represents the number of blocks based on available RAM
+    int numThreads = required_memory/free_memory; 
+    int colsPerBlock = B.cols/numThreads;                 // define number of columns for each blocks
+
+    // multi thread variable definition 
+    int * colStart = new int[numThreads+1];              // need one block more for remaining cols
+    int * colEnd = new int[numThreads+1];                // need one block more for remaining cols
+    int * numCols = new int[numThreads+1];
+
+    cout << "numBlocks " << numThreads+1 << endl;
+    cout << "colsPerBlock " << colsPerBlock << "\n" << endl;
+
+    colStart[0] = 0;
+    colEnd[0] = 0;
+    numCols[0] = 0;
+
+    int colsTrace = 0;
+    for(int i = 0; i < numThreads+1; ++i)
+    {
+        colStart[i] = colsTrace;
+        if(colsTrace+colsPerBlock <= B.cols)
+        {
+            colEnd[i] = colStart[i]+colsPerBlock;
+            numCols[i] = colsPerBlock;
+
+        } else 
+        {
+            colEnd[i] = B.cols;
+            numCols[i] = B.cols-colsTrace;
+        }
+        colsTrace = colsTrace+numCols[i];
+    }
+    #else // number of cols depends on number of threads
+    cout << "Cols subdivision depending on number of threads\n" << endl;
+
     #ifdef THREADLIMIT
     omp_set_dynamic(0);                      // Explicitly disable dynamic teams
     omp_set_num_threads(MAX_NUM_THREAD);     // Use MAX_NUM_THREAD threads for all consecutive parallel regions
@@ -156,7 +250,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     int * numCols = new int[numThreads+1];
 
     cout << "numThreads: " << numThreads << endl;
-    cout << "colsPerThread: " << colsPerBlock << endl;
+    cout << "colsPerThread: " << colsPerBlock << "\n" << endl;
 
     colStart[0] = 0;
     colEnd[0] = 0;
@@ -178,6 +272,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         }
         colsTrace = colsTrace+numCols[i];
     }
+    #endif
 
     //IT * colptr = new IT[B.cols+1]; 
     //colptr[0] = 0;
@@ -238,6 +333,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         {
             for(int j=colptr[i]; j<colptr[i+1]; ++j) 
             {   
+                myBatch << read[i+colStart[b]].nametag << ' ' << read[rowids[j]].nametag << ' ' << values[j]->count << endl;
                 if(values[j]->count == 1)
                 {      
                     // The alignment function knows there's just one shared k-mer    

@@ -148,13 +148,13 @@ int main (int argc, char *argv[]) {
                 printf(" -h : print out command line options\n\n");
                 
                 FreeOptList(thisOpt); // Done with this list, free it
-                break;
+                return 0;
             }
             // case 'z': skip_algnmnt_krnl = true; break; TO DO: add skip alignment
             default:
                 sprintf(buf, "\tInvalid Option: %c\n", thisOpt->option);
                 strcat(fail, buf);
-                break;
+                return 0;
         }
     }
     //
