@@ -10,5 +10,6 @@ To run BELLA: ./bella -f <kmers-file> -i <listoffastq> -o <out-filename> [-k <km
 	
 The repository contains also the code to get the sensitivy of BELLA as well as other long-read aligners.
 
-To compile: g++ mtspgemm2017/benchmark.cpp -o <exe>
-Tu run: ./exe <ground-truth-file> <bella-output> [<minimap-output>] [<mhap-output>] [<blasr-output>] [<daligner-output>]
+To compile: cd analysis && make benchmark 
+Tu run: ./benchmark -g <ground-truth-file> -n <nreads> -b <bella-output> [-m <minimap-output>] [-p <mhap-output>] [-l <blasr-output>] [-d <daligner-output>] [-z]
+	-h will show the usage
