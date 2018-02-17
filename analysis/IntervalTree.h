@@ -6,9 +6,6 @@
 #include <iostream>
 #include <memory>
 
-#define KMER_LENGTH 17
-#define THRI 2000
-
 using namespace std;
 
 template <class T, typename K = std::size_t>
@@ -163,7 +160,7 @@ public:
 	return ov;
     }
 
-    void findOverlapping(K start, K stop, intervalVector& overlapping) const {
+    void findOverlapping(K start, K stop, intervalVector& overlapping, int thr) const {
         if (!intervals.empty() && ! (stop < intervals.front().start)) {
             for (typename intervalVector::const_iterator i = intervals.begin(); i != intervals.end(); ++i) {
                 const interval& interval = *i;
@@ -182,9 +179,9 @@ public:
                    alignment = min((stop - interval.start), (interval.stop - interval.start)); 
                 } 
                
-                if(alignment >= THRI) 
+                if(alignment >= thr) 
                 {    
-                    if (interval.stop >= start && interval.start <= stop && ((interval.start-stop >= THRI) || (start-interval.stop >= THRI))) {
+                    if (interval.stop >= start && interval.start <= stop && ((interval.start-stop >= thr) || (start-interval.stop >= thr))) {
                       overlapping.push_back(interval);
                     }
                 }
@@ -192,11 +189,11 @@ public:
         }
 
         if (left && start <= center) {
-            left->findOverlapping(start, stop, overlapping);
+            left->findOverlapping(start, stop, overlapping, thr);
         }
 
         if (right && stop >= center) {
-            right->findOverlapping(start, stop, overlapping);
+            right->findOverlapping(start, stop, overlapping, thr);
         }
     }
 
