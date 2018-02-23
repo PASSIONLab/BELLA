@@ -9,6 +9,7 @@
 #include <sys/mman.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <time.h>
 #include <stdint.h>
 #include <errno.h>
 #include <sys/time.h>
