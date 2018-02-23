@@ -19,19 +19,19 @@ rmat:	sprng
 TOCOMPILE = $(RMATPATH)/graph.o $(RMATPATH)/utils.o $(RMATPATH)/init.o $(RMATPATH)/globals.o 
 
 Buffer.o: kmercode/Buffer.c
-	gcc -g -c -o Buffer.o Buffer.c
+	gcc -g -c -o Buffer.o kmercode/Buffer.c
 
 fq_reader.o: kmercode/fq_reader.c
-	gcc -std=gnu99 -g -c -o fq_reader.o fq_reader.c
+	gcc -std=gnu99 -g -c -o fq_reader.o kmercode/fq_reader.c
 
 hash_funcs.o: kmercode/hash_funcs.c
-	gcc -g -c -o hash_funcs.o hash_funcs.c
+	gcc -g -c -o hash_funcs.o kmercode/hash_funcs.c
 
 optlist.o:	optlist/optlist.c optlist/optlist.h
 	$(CC) $(CFLAGS) $<
 
 Kmer.o:	kmercode/Kmer.cpp
-	$(COMPILER) -std=c++11 -g -c -o Kmer.o Kmer.cpp
+	$(COMPILER) -std=c++11 -g -c -o Kmer.o kmercode/Kmer.cpp
 
 # flags defined in mtspgemm2017/GTgraph/Makefile.var
 bella: main.cpp hash_funcs.o fq_reader.o Buffer.o Kmer.o optlist.o rmat
