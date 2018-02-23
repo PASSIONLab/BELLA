@@ -150,10 +150,10 @@ template <typename IT, typename NT, typename FT, typename MultiplyOperation, typ
 void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, readVector_ & read, 
     FT & getvaluetype, int kmer_len, int algnmnt_drop, int algnmnt_thr, char* filename, bool skip_algnmnt_krnl)
 {   
-    #ifdef RAM // number of cols depends on available RAM
+#ifdef RAM // number of cols depends on available RAM
     cout << "Cols subdivision based on available RAM\n" << endl;
 
-    #ifdef OSX // OSX-based memory consumption implementation 
+#ifdef OSX // OSX-based memory consumption implementation 
     vm_size_t page_size;
     mach_port_t mach_port;
     mach_msg_type_number_t count;
@@ -174,9 +174,9 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         /* It is good to note that just because Mac OS X may show very little actual free memory at times that it may 
         not be a good indication of how much is ready to be used on short notice. */
     } 
-    #endif
+#endif
     
-    #ifdef LINUX // LINUX-based memory consumption implementation 
+#ifdef LINUX // LINUX-based memory consumption implementation 
     if(sysinfo(&info) != 0)
     {
         return false;
@@ -184,11 +184,37 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     unsigned long free_memory = info.freeram * info.mem_unit;
     free_memory += info.freeswap * info.mem_unit;
     free_memory += info.bufferram * info.mem_unit;
-    #endif
+#endif
+
+    IT flops = 0; // total flops (multiplication) needed to generate C
+#pragma omp parallel 
+    {
+        IT tflops=0; //thread private flops
+#pragma omp for
+        for(int i=0; i < B.cols; ++i)        // for all columns of B
+        {
+            IT locmax = 0;
+            for(IT j=B.colptr[i]; j < B.colptr[i+1]; ++j)    // For all the nonzeros of the ith column
+            {
+        //cout << B.colptr[i] << " B.colptr[i]" << endl;
+                IT inner = B.rowids[j];             // get the row id of B (or column id of A)
+                IT npins = A.colptr[inner+1] - A.colptr[inner]; // get the number of nonzeros in A's corresponding column
+        //cout << npins << " npins" << endl;
+                locmax += npins;
+            }
+
+            tflops += locmax; 
+        }
+#pragma omp critical
+        {
+            flops += tflops;
+        }
+    }
+    cout << "Flops: " << flops << endl; 
 
     uint64_t d = B.nnz/B.cols; // about d nnz each col
     uint64_t rsv = B.nnz*d;    // worst case
-    uint64_t required_memory = (rsv)*sizeof(int);
+    uint64_t required_memory = (rsv)*sizeof(FT);
     IT * rowids;
     FT * values;
     
@@ -224,16 +250,42 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         }
         colsTrace = colsTrace+numCols[i];
     }
-    #else // number of cols depends on number of threads
+#else // number of cols depends on number of threads
     cout << "Cols subdivision based on number of threads\n" << endl;
 
-    #ifdef THREADLIMIT
+    IT flops = 0; // total flops (multiplication) needed to generate C
+#pragma omp parallel 
+    {
+        IT tflops=0; //thread private flops
+#pragma omp for
+        for(int i=0; i < B.cols; ++i)        // for all columns of B
+        {
+            IT locmax = 0;
+            for(IT j=B.colptr[i]; j < B.colptr[i+1]; ++j)    // For all the nonzeros of the ith column
+            {
+        //cout << B.colptr[i] << " B.colptr[i]" << endl;
+                IT inner = B.rowids[j];             // get the row id of B (or column id of A)
+                IT npins = A.colptr[inner+1] - A.colptr[inner]; // get the number of nonzeros in A's corresponding column
+        //cout << npins << " npins" << endl;
+                locmax += npins;
+            }
+
+            tflops += locmax; 
+        }
+#pragma omp critical
+        {
+            flops += tflops;
+        }
+    }
+    cout << "Flops: " << flops << endl; 
+
+#ifdef THREADLIMIT
     omp_set_dynamic(0);                      // Explicitly disable dynamic teams
     omp_set_num_threads(MAX_NUM_THREAD);     // Use MAX_NUM_THREAD threads for all consecutive parallel regions
-    #endif
+#endif
 
     int numThreads;
-    #pragma omp parallel
+#pragma omp parallel
     {
         numThreads = omp_get_num_threads();
     }
@@ -282,12 +334,12 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
 
     double ovlalign = omp_get_wtime(); // get overlap and alignment time
 
-    #pragma omp parallel for private(myBatch, longestExtensionScore) shared(colStart,colEnd,numCols,globalInstance)
+#pragma omp parallel for private(myBatch, longestExtensionScore) shared(colStart,colEnd,numCols,globalInstance)
     for(int b = 0; b < numThreads+1; ++b) 
     { 
-        #ifdef TIMESTEP
+#ifdef TIMESTEP
         double ovl = omp_get_wtime();
-        #endif
+#endif
         
         vector<IT> * RowIdsofC = new vector<IT>[numCols[b]];    // row ids for each column of C (bunch of cols)
         vector<FT> * ValuesofC = new vector<FT>[numCols[b]];    // values for each column of C (bunch of cols)
@@ -297,13 +349,13 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
        
         LocalSpGEMM(colStart[b], colEnd[b], numCols[b], A, B, multop, addop, RowIdsofC, ValuesofC);
 
-        #ifdef TIMESTEP
-        #pragma omp critical
+#ifdef TIMESTEP
+#pragma omp critical
         {
             cout << "Thread #" << omp_get_thread_num()+1 << ", ovelap time: " << omp_get_wtime()-ovl << "s" << endl;
         }
         double align = omp_get_wtime();
-        #endif
+#endif
 
         int k=0;
         for(int i=0; i<numCols[b]; ++i) // for all edge lists (do NOT parallelize)
@@ -327,7 +379,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         delete [] ValuesofC;
 
         // Local Alignment before write on stringstream 
-        #ifdef ALLKMER
+#ifdef ALLKMER
         for(int i=0; i<numCols[b]; ++i) 
         {
             for(int j=colptr[i]; j<colptr[i+1]; ++j) 
@@ -368,7 +420,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                 }
             }
         }
-        #else
+#else
         for(int i=0; i<numCols[b]; ++i) 
         {
             for(int j=colptr[i]; j<colptr[i+1]; ++j) 
@@ -408,28 +460,28 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                 }
             }
         }
-        #endif
+#endif
 
-        #ifdef TIMESTEP
-        #pragma omp critical
+#ifdef TIMESTEP
+#pragma omp critical
         {
             cout << "Thread #" << omp_get_thread_num()+1 << ", alignment time: " << omp_get_wtime()-align << "s" << endl;
         }
-        #endif
+#endif
 
         delete [] colptr;
         delete [] rowids;
         delete [] values;
 
-        #pragma omp critical
+#pragma omp critical
         {
-            #ifdef ALLKMER
+#ifdef ALLKMER
             writeToFile(myBatch, filename);
             myBatch.str(std::string());
-            #else
+#else
             writeToFile(myBatch, filename);
             myBatch.str(std::string());
-            #endif
+#endif
         }
     }
 
