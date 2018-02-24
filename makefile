@@ -21,6 +21,9 @@ TOCOMPILE = $(RMATPATH)/graph.o $(RMATPATH)/utils.o $(RMATPATH)/init.o $(RMATPAT
 Buffer.o: kmercode/Buffer.c
 	gcc -g -c -o Buffer.o kmercode/Buffer.c
 
+rbounds.o: kmercode/rbounds.cpp
+	gcc -g -c -o rbounds.o kmercode/rbounds.cpp
+
 fq_reader.o: kmercode/fq_reader.c
 	gcc -std=gnu99 -g -c -o fq_reader.o kmercode/fq_reader.c
 
@@ -34,8 +37,8 @@ Kmer.o:	kmercode/Kmer.cpp
 	$(COMPILER) -std=c++11 -g -c -o Kmer.o kmercode/Kmer.cpp
 
 # flags defined in mtspgemm2017/GTgraph/Makefile.var
-bella: main.cpp hash_funcs.o fq_reader.o Buffer.o Kmer.o optlist.o rmat
-	$(COMPILER) -std=c++14 $(INCLUDE) -g -O3 -fopenmp -fpermissive $(SEQINCLUDE) -o bella hash_funcs.o Kmer.o Buffer.o fq_reader.o optlist.o main.cpp ${TOCOMPILE} ${LIBS}
+bella: main.cpp hash_funcs.o fq_reader.o Buffer.o Kmer.o rbounds.o optlist.o rmat
+	$(COMPILER) -std=c++14 $(INCLUDE) -g -O3 -fopenmp -fpermissive $(SEQINCLUDE) -o bella hash_funcs.o Kmer.o Buffer.o fq_reader.o rbounds.o optlist.o main.cpp ${TOCOMPILE} ${LIBS}
 
 clean:
 	(cd mtspgemm2017/GTgraph; make clean; cd ../..)
