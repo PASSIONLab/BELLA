@@ -29,6 +29,7 @@
 #include "kmercode/common.h"
 #include "kmercode/fq_reader.h"
 #include "kmercode/ParallelFASTQ.h"
+#include "kmercode/rbounds.hpp"
 
 #include "mtspgemm2017/utility.h"
 #include "mtspgemm2017/CSC.h"
@@ -119,7 +120,7 @@ int main (int argc, char *argv[]) {
     option_t *optList, *thisOpt;
     // Get list of command line options and their arguments 
     optList = NULL;
-    optList = GetOptList(argc, argv, (char*)"f:i:o:hkazp");
+    optList = GetOptList(argc, argv, (char*)"f:i:o:d:hkazep");
    
     bool skip_algnmnt_krnl = false;
     char *kmer_file = NULL; // Reliable k-mer file from Jellyfish
@@ -128,6 +129,8 @@ int main (int argc, char *argv[]) {
     int kmer_len = 17;  // default k-mer length
     int algnmnt_thr = 50;   // default alignment score threshold
     int algnmnt_drop = 3;   // default alignment x-drop factor
+    float erate = 0.15; // default error rate
+    int depth = 0; // depth/coverage required
 
     if(optList == NULL)
     {
@@ -171,9 +174,23 @@ int main (int argc, char *argv[]) {
                 out_file = strcat(out_file,".bla"); 
                 break;
             }
+            case 'd': {
+                if(thisOpt->argument == NULL)
+                {
+                    cout << "BELLA execution terminated: -d requires an argument" << endl;
+                    cout << "Run with -h to print out the command line options\n" << endl;
+                    return 0;
+                }
+                depth = atoi(thisOpt->argument);  
+                break;
+            }
             case 'z': skip_algnmnt_krnl = true; break; // TO DO: add skip alignment
             case 'k': {
                 kmer_len = atoi(thisOpt->argument);
+                break;
+            }
+            case 'e': {
+                erate = stof(thisOpt->argument);
                 break;
             }
             case 'a': {
@@ -186,12 +203,14 @@ int main (int argc, char *argv[]) {
             }
             case 'h': {
                 cout << "Usage:\n" << endl;
-                cout << " -f : reliable k-mer list from Jellyfish (required)" << endl;
+                cout << " -f : k-mer list from Jellyfish (required)" << endl; // the reliable k-mers are selected by bella
                 cout << " -i : list of fastq(s) (required)" << endl;
                 cout << " -o : output filename (required)" << endl;
+                cout << " -d : depth/coverage (required)" << endl; // TO DO: add depth estimation
                 cout << " -k : k-mer length [17]" << endl;
                 cout << " -a : alignment score threshold [50]" << endl;
                 cout << " -p : alignment x-drop factor [3]" << endl;
+                cout << " -e : error rate [0.15]" << endl;
                 cout << " -z : skip the alignment [false]\n" << endl;
                 
                 FreeOptList(thisOpt); // Done with this list, free it
@@ -200,13 +219,12 @@ int main (int argc, char *argv[]) {
         }
     }
 
-    if(kmer_file == NULL || all_inputs_fofn == NULL || out_file == NULL)
+    if(kmer_file == NULL || all_inputs_fofn == NULL || out_file == NULL || depth == 0)
     {
         cout << "BELLA execution terminated: missing arguments" << endl;
         cout << "Run with -h to print out the command line options\n" << endl;
         return 0;
     }
-
     free(optList);
     free(thisOpt);
 
@@ -217,6 +235,8 @@ int main (int argc, char *argv[]) {
     vector<filedata> allfiles = GetFiles(all_inputs_fofn);
     FILE *fastafile;
     int elem;
+    int lower = 2; // reliable range lower bound (fixed)
+    int upper;     // reliable range upper bound
     char *buffer;
     string kmerstr;
     string line;
@@ -243,11 +263,20 @@ int main (int argc, char *argv[]) {
         cout << "Compute alignment: false" << endl;
     else cout << "Compute alignment: true" << endl;
     cout << "Alignment x-drop factor: " << algnmnt_drop << endl;
-    cout << "Alignment score threshold: " << algnmnt_thr << "\n"<< endl;
-    //cout << "Depth: " << DEPTH << "X" << endl;
+    cout << "Alignment score threshold: " << algnmnt_thr << endl;
+    cout << "Depth: " << depth << "X" << endl;
+
+    //
+    // Reliable bounds computation
+    //
+    upper = rbounds(depth,erate,kmer_len);
+
+    cout << "Reliable lower bound: " << lower << endl;
+    cout << "Reliable upper bound: " << upper << "\n" << endl;
 
     //
     // Reliable k-mer file parsing and k-mer dictionary creation
+    // NOTE: this will be replaced by HipMer k-mer counting
     //
     double all = omp_get_wtime();
     double kdict = omp_get_wtime();
@@ -258,9 +287,12 @@ int main (int argc, char *argv[]) {
 
                 string substring = line.substr(1);
                 elem = stoi(substring);
-                getline(filein, kmerstr);   
-                kmerfromstr.set_kmer(kmerstr.c_str());
-                kmervect.push_back(kmerfromstr);                                
+                if(elem >= lower && elem <= upper) // keep just the kmers within the reliable bounds
+                {
+                    getline(filein, kmerstr);   
+                    kmerfromstr.set_kmer(kmerstr.c_str());
+                    kmervect.push_back(kmerfromstr);
+                }                                
             }
     } else std::cout << "Unable to open the input file\n";
     filein.close();
