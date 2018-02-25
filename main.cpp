@@ -120,7 +120,7 @@ int main (int argc, char *argv[]) {
     option_t *optList, *thisOpt;
     // Get list of command line options and their arguments 
     optList = NULL;
-    optList = GetOptList(argc, argv, (char*)"f:i:o:d:hkazep");
+    optList = GetOptList(argc, argv, (char*)"f:i:o:d:hkaze:p");
    
     bool skip_algnmnt_krnl = false;
     char *kmer_file = NULL; // Reliable k-mer file from Jellyfish
@@ -129,7 +129,7 @@ int main (int argc, char *argv[]) {
     int kmer_len = 17;  // default k-mer length
     int algnmnt_thr = 50;   // default alignment score threshold
     int algnmnt_drop = 3;   // default alignment x-drop factor
-    float erate = 0.15; // default error rate
+    double erate = 0.15; // default error rate
     int depth = 0; // depth/coverage required
 
     if(optList == NULL)
@@ -190,7 +190,7 @@ int main (int argc, char *argv[]) {
                 break;
             }
             case 'e': {
-                erate = stof(thisOpt->argument);
+                erate = strtod(thisOpt->argument, NULL);
                 break;
             }
             case 'a': {
@@ -225,6 +225,7 @@ int main (int argc, char *argv[]) {
         cout << "Run with -h to print out the command line options\n" << endl;
         return 0;
     }
+    cout << erate << endl;
     free(optList);
     free(thisOpt);
 

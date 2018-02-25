@@ -11,6 +11,6 @@ int bincoef(int n, int k);
 //
 // Function to select the reliable upper bound
 //
-int rbounds(int depth, float erate, int klen);
+int rbounds(int depth, double erate, int klen);
 
 #endif

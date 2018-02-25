@@ -49,10 +49,10 @@ int bincoef(int n, int k)
 //
 // Upper bound selection function, the lower bound is fixed and equal to 2 so far
 //
-int rbounds(int d, float e, int k)
+int rbounds(int d, double e, int k)
 {
 	int m = 2; 			// multiplicity in the fastq(s)
-	float uprob = 1.0; 	// max probability 
+	double uprob = 1.0; 	// max probability 
 
 	while(uprob >= MIN_PROB) 
 	{
