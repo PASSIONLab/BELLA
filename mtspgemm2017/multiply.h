@@ -333,6 +333,8 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     pair<int,TSeed> longestExtensionScore;
 
     double ovlalign = omp_get_wtime(); // get overlap and alignment time
+    intmax_t novl = 0; // debug counting overlaps
+    intmax_t naln = 0; // debug counting alignments
 
 #pragma omp parallel for private(myBatch, longestExtensionScore) shared(colStart,colEnd,numCols,globalInstance)
     for(int b = 0; b < numThreads+1; ++b) 
@@ -375,6 +377,9 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
             ++k;
         }
 
+        intmax_t tovl = 0; // debug counting overlaps per thread
+        intmax_t taln = 0; // debug counting alignments per thread
+
         delete [] RowIdsofC;
         delete [] ValuesofC;
 
@@ -384,6 +389,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         {
             for(int j=colptr[i]; j<colptr[i+1]; ++j) 
             {   
+                ++tovl; // debug
                 if(skip_algnmnt_krnl)
                 {
                     myBatch << read[i+colStart[b]].nametag << ' ' << read[rowids[j]].nametag << ' ' << values[j]->count << ' ' << 
@@ -399,6 +405,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                     
                         if(longestExtensionScore.first >= algnmnt_thr)
                         {
+                            ++taln; // debug
                             myBatch << read[i+colStart[b]].nametag << ' ' << read[rowids[j]].nametag << ' ' << values[j]->count << ' ' << longestExtensionScore.first << ' ' << beginPositionV(longestExtensionScore.second) << ' ' << 
                                 endPositionV(longestExtensionScore.second) << ' ' << read[i+colStart[b]].seq.length() << ' ' << beginPositionH(longestExtensionScore.second) << ' ' << endPositionH(longestExtensionScore.second) <<
                                     ' ' << read[rowids[j]].seq.length() << endl;                          
@@ -412,6 +419,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                                     
                         if(longestExtensionScore.first >= algnmnt_thr)
                         {
+                            ++taln; // debug
                             myBatch << read[i+colStart[b]].nametag << ' ' << read[rowids[j]].nametag << ' ' << values[j]->count << ' ' << longestExtensionScore.first << ' ' << beginPositionV(longestExtensionScore.second) << ' ' << 
                                 endPositionV(longestExtensionScore.second) << ' ' << read[i+colStart[b]].seq.length() << ' ' << beginPositionH(longestExtensionScore.second) << ' ' << endPositionH(longestExtensionScore.second) <<
                                     ' ' << read[rowids[j]].seq.length() << endl;
@@ -425,6 +433,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         {
             for(int j=colptr[i]; j<colptr[i+1]; ++j) 
             {
+                ++tovl; // debug
                 if(skip_algnmnt_krnl)
                 {
                     myBatch << read[i+colStart[b]].nametag << ' ' << read[rowids[j]].nametag << ' ' << values[j]->count << ' ' << 
@@ -440,6 +449,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     
                         if(longestExtensionScore.first >= algnmnt_thr)
                         {
+                            ++taln; // debug
                             myBatch << globalInstance->at(i+colStart[b]).nametag << ' ' << globalInstance->at(rowids[j]).nametag << ' ' << values[j]->count << ' ' << longestExtensionScore.first << ' ' << beginPositionV(longestExtensionScore.second) << ' ' << 
                                 endPositionV(longestExtensionScore.second) << ' ' << globalInstance->at(i+colStart[b]).seq.length() << ' ' << beginPositionH(longestExtensionScore.second) << ' ' << endPositionH(longestExtensionScore.second) <<
                                     ' ' << globalInstance->at(rowids[j]).seq.length() << endl;      
@@ -452,6 +462,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     
                         if(longestExtensionScore.first >= algnmnt_thr)
                         {
+                            ++taln; // debug
                             myBatch << globalInstance->at(i+colStart[b]).nametag << ' ' << globalInstance->at(rowids[j]).nametag << ' ' << values[j]->count << ' ' << longestExtensionScore.first << ' ' << beginPositionV(longestExtensionScore.second) << ' ' << 
                                 endPositionV(longestExtensionScore.second) << ' ' << globalInstance->at(i+colStart[b]).seq.length() << ' ' << beginPositionH(longestExtensionScore.second) << ' ' << endPositionH(longestExtensionScore.second) <<
                                     ' ' << globalInstance->at(rowids[j]).seq.length() << endl;
@@ -475,6 +486,15 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
 
 #pragma omp critical
         {
+            naln += taln;
+        }
+#pragma omp critical
+        {
+            novl += tovl;
+        }
+
+#pragma omp critical
+        {
 #ifdef ALLKMER
             writeToFile(myBatch, filename);
             myBatch.str(std::string());
@@ -485,6 +505,8 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         }
     }
 
+    cout << "nOverlap: " << novl << endl;
+    cout << "nAlignment: " << naln << endl;
     cout << "Ovelap detection and Alignment time: " << omp_get_wtime()-ovlalign << "s" << endl;
 
     delete [] colStart;
