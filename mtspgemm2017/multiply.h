@@ -186,10 +186,10 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     free_memory += info.bufferram * info.mem_unit;
 #endif
 
-    IT flops = 0; // total flops (multiplication) needed to generate C
+    intmax_t flops = 0; // total flops (multiplication) needed to generate C
 #pragma omp parallel 
     {
-        IT tflops=0; //thread private flops
+        intmax_t tflops=0; //thread private flops
 #pragma omp for
         for(int i=0; i < B.cols; ++i)        // for all columns of B
         {
@@ -203,7 +203,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                 locmax += npins;
             }
 
-            tflops += locmax; 
+            tflops += (intmax_t)locmax; 
         }
 #pragma omp critical
         {
@@ -253,10 +253,10 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
 #else // number of cols depends on number of threads
     cout << "Cols subdivision based on number of threads\n" << endl;
 
-    IT flops = 0; // total flops (multiplication) needed to generate C
+    intmax_t flops = 0; // total flops (multiplication) needed to generate C
 #pragma omp parallel 
     {
-        IT tflops=0; //thread private flops
+        intmax_t tflops=0; //thread private flops
 #pragma omp for
         for(int i=0; i < B.cols; ++i)        // for all columns of B
         {
@@ -270,7 +270,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                 locmax += npins;
             }
 
-            tflops += locmax; 
+            tflops += (intmax_t)locmax; 
         }
 #pragma omp critical
         {
