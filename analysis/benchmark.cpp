@@ -38,7 +38,7 @@ int main (int argc, char* argv[]) {
     option_t *optList, *thisOpt;
     // Get list of command line options and their arguments 
     optList = NULL;
-    optList = GetOptList(argc, argv, (char*)"g:n:b:mpdhlz");
+    optList = GetOptList(argc, argv, (char*)"g:n:b:m:p:d:hl:z");
    
     int nreads = 0;
     int ovl_len = 2000;
