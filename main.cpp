@@ -225,7 +225,7 @@ int main (int argc, char *argv[]) {
         cout << "Run with -h to print out the command line options\n" << endl;
         return 0;
     }
-    cout << erate << endl;
+  
     free(optList);
     free(thisOpt);
 
@@ -288,12 +288,10 @@ int main (int argc, char *argv[]) {
 
                 string substring = line.substr(1);
                 elem = stoi(substring);
+                getline(filein, kmerstr);   
+                kmerfromstr.set_kmer(kmerstr.c_str());
                 if(elem >= lower && elem <= upper) // keep just the kmers within the reliable bounds
-                {
-                    getline(filein, kmerstr);   
-                    kmerfromstr.set_kmer(kmerstr.c_str());
-                    kmervect.push_back(kmerfromstr);
-                }                                
+                    kmervect.push_back(kmerfromstr);                               
             }
     } else std::cout << "Unable to open the input file\n";
     filein.close();
