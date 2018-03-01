@@ -120,7 +120,7 @@ int main (int argc, char *argv[]) {
     option_t *optList, *thisOpt;
     // Get list of command line options and their arguments 
     optList = NULL;
-    optList = GetOptList(argc, argv, (char*)"f:i:o:d:hkaze:p");
+    optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:a:ze:p:");
    
     bool skip_algnmnt_krnl = false;
     char *kmer_file = NULL; // Reliable k-mer file from Jellyfish
