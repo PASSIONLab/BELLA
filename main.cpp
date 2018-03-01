@@ -170,8 +170,21 @@ int main (int argc, char *argv[]) {
                     cout << "Run with -h to print out the command line options\n" << endl;
                     return 0;
                 }
-                out_file = strdup(thisOpt->argument);
-                out_file = strcat(out_file,".bla"); 
+                char* line1 = strdup(thisOpt->argument);
+                char* line2 = strdup(".bla");
+                size_t len1 = strlen(line1);
+                size_t len2 = strlen(line2);
+
+                out_file = (char*)malloc(len1 + len2 + 1);
+                if (!out_file) abort();
+
+                memcpy(out_file, line1, len1);
+                memcpy(out_file + len1, line2, len2);
+                out_file[len1 + len2] = '\0';
+
+                delete line1;
+                delete line2;
+
                 break;
             }
             case 'd': {
