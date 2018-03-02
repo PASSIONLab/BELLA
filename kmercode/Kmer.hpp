@@ -8,6 +8,7 @@
 #include <string>
 #include <array>
 #include <vector>
+#include <iostream>
 #include <functional>
 #include <cstdint>
 
@@ -54,6 +55,7 @@ class Kmer {
 
   void set_kmer(const char *s);
   uint64_t hash() const;
+  
 
   Kmer twin() const;
   Kmer rep() const; // ABAB: return the smaller of itself (lexicographically) or its reversed-complement (i.e. twin)
@@ -139,7 +141,8 @@ namespace std
         typedef std::size_t result_type;
         result_type operator()(Kmer const& km) const
         {
-            return km.hash();
+            auto myhash = km.hash();
+            return myhash;
         }
     };
     template<> struct hash<Kmer::MERARR>

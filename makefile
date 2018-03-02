@@ -6,8 +6,8 @@ INCLUDE = -I$(SPRNPATH)/include
 SEQINCLUDE = -I$(SEQANPATH)
 MLKINCLUDE = -I/opt/intel/composer_xe_2015.0.039/mkl/include
 LIBPATH = -L/opt/intel/composer_xe_2015.0.039/mkl/lib
-COMPILER = g++
-CC = gcc 
+COMPILER = g++-6
+CC = gcc-6
 CFLAGS = -I. -O3 -Wall -Wextra -pedantic -ansi -c
 
 sprng:	
@@ -19,16 +19,16 @@ rmat:	sprng
 TOCOMPILE = $(RMATPATH)/graph.o $(RMATPATH)/utils.o $(RMATPATH)/init.o $(RMATPATH)/globals.o 
 
 Buffer.o: kmercode/Buffer.c
-	gcc -g -c -o Buffer.o kmercode/Buffer.c
+	$(CC) -g -c -o Buffer.o kmercode/Buffer.c
 
 rbounds.o: kmercode/rbounds.cpp
-	gcc -g -c -o rbounds.o kmercode/rbounds.cpp
+	$(CC) -g -c -o rbounds.o kmercode/rbounds.cpp
 
 fq_reader.o: kmercode/fq_reader.c
-	gcc -std=gnu99 -g -c -o fq_reader.o kmercode/fq_reader.c
+	$(CC) -std=gnu99 -g -c -o fq_reader.o kmercode/fq_reader.c
 
 hash_funcs.o: kmercode/hash_funcs.c
-	gcc -g -c -o hash_funcs.o kmercode/hash_funcs.c
+	$(CC) -g -c -o hash_funcs.o kmercode/hash_funcs.c
 
 optlist.o:	optlist/optlist.c optlist/optlist.h
 	$(CC) $(CFLAGS) $<

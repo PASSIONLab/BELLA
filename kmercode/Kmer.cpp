@@ -296,10 +296,11 @@ std::vector<Kmer> Kmer::getKmers(std::string seq) {
 // pre:   
 // post: i is the hash value of km 
 uint64_t Kmer::hash() const {
-  uint64_t ret;
   assert(k_bytes>0);
-  return MurmurHash3_x64_64((const void*)bytes.data(),k_bytes);
+  return MurmurHash3_x64_64((const void*)bytes.data(),N_BYTES);
 }
+
+
 
 
 // use:  rep = km.rep();

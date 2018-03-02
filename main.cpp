@@ -16,12 +16,14 @@
 #include <functional>
 #include <cstring>
 #include <string.h>
+#include <math.h>
 #include <cassert>
 #include <ios>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/sysctl.h>
 #include <map>
+#include <unordered_map>
 #include <omp.h>
 #include "kmercode/hash_funcs.h"
 #include "kmercode/Kmer.hpp"
@@ -37,6 +39,7 @@
 #include "mtspgemm2017/global.h"
 #include "mtspgemm2017/IO.h"
 #include "mtspgemm2017/multiply.h"
+
 
 #define LSIZE 16000
 #define ITERS 10
@@ -93,14 +96,14 @@ std::vector<filedata>  GetFiles(char *filename) {
 }
 
 typedef shared_ptr<spmatType_> spmatPtr_; // pointer to spmatType_ datastruct
-typedef std::map<Kmer, int> dictionary; // <k-mer && reverse-complement, #kmers>
+typedef std::unordered_map<Kmer, int> dictionary; // <k-mer && reverse-complement, #kmers>
 typedef std::vector<Kmer> Kmers;
 
 // Function to create the dictionary
 // assumption: kmervect has unique entries
 void dictionaryCreation(dictionary &kmerdict, Kmers &kmervect)
 {
-    //kmerdict.reserve(kmervect.size());	// only makes sense for std::unordered_map
+    kmerdict.reserve(kmervect.size());	// only makes sense for std::unordered_map
     for(int i = 0; i<kmervect.size(); i++)
     {
         kmerdict.insert(make_pair(kmervect[i].rep(), i));
@@ -292,6 +295,68 @@ int main (int argc, char *argv[]) {
     // Reliable k-mer file parsing and k-mer dictionary creation
     // NOTE: this will be replaced by HipMer k-mer counting
     //
+    //
+    
+    /* Quotient filter	
+    QF cf;
+    QFi cfi; // qf iterator
+    double quotient_filter_error = 0.01;
+    double expected_num_elements = 140000000; // this should be ~ total size of the fastq files divided by 2
+    uint64_t qbits = log2(expected_num_elements/quotient_filter_error); // per https://www3.cs.stonybrook.edu/~ppandey/files/p775-pandey.pdf
+    uint64_t nhashbits = qbits + 8;
+    uint64_t nslots = (1ULL << qbits);
+    uint64_t nvals = 250*nslots/1000;
+    uint64_t *vals;
+    
+    // Initialise the CQF 
+    qf_init(&cf, nslots, nhashbits, 0); */
+
+
+    /*
+    for(auto itr=allfiles.begin(); itr!=allfiles.end(); itr++) {
+
+        ParallelFASTQ *pfq = new ParallelFASTQ();
+        pfq->open(itr->filename, false, itr->filesize);
+
+        size_t fillstatus = 1;
+        while(fillstatus) { 
+            double time1 = omp_get_wtime();
+            fillstatus = pfq->fill_block(nametags, seqs, quals, upperlimit);
+            int nreads = seqs.size();
+            
+	    #pragma omp parallel for
+            for(int i=0; i<nreads; i++) 
+            {
+                // remember that the last valid position is length()-1
+                int len = seqs[i].length();
+
+#ifdef _OPENMP
+		int tid = omp_get_thread_num();
+#else
+		int tid = 0;
+#endif
+           
+                for(int j=0; j<=len-kmer_len; j++)  
+                {
+                    std::string kmerstrfromfastq = seqs[i].substr(j, kmer_len);
+                    Kmer mykmer(kmerstrfromfastq.c_str());
+                    // remember to use only ::rep() when building kmerdict as well
+                    Kmer lexsmall = mykmer.rep();      
+
+		    // void qf_insert(QF *qf, uint64_t key, uint64_t value, uint64_t count);
+		    // Increment the counter for this key/value pair by count.  
+		    qf_insert(&cf, vals[i], 0, 1);
+
+		}
+            } // for(int i=0; i<nreads; i++)
+	    read_id += nreads;
+            // cout << "processed reads in " << omp_get_wtime()-time2 << " seconds "<< endl; 
+            // cout << "total number of reads processed so far is " << read_id << endl;
+        } //while(fillstatus) 
+    delete pfq;
+    } // for all files
+ */
+
     double all = omp_get_wtime();
     double kdict = omp_get_wtime();
     if(filein.is_open()) {
@@ -326,7 +391,9 @@ int main (int argc, char *argv[]) {
 #else
 	int numthreads = 1;
 #endif
-      
+
+
+       
         vector < vector<tuple<int,int,int>> > alloccurrences(numthreads);	
         vector < vector<tuple<int,int,int>> > alltranstuples(numthreads);	
 	vector < readVector_ > allreads(numthreads);	
@@ -360,10 +427,6 @@ int main (int argc, char *argv[]) {
 #endif
                 allreads[tid].push_back(temp);
                 
-                // skip this sequence if the length is too short
-                if(len < kmer_len)
-                    continue;
-
                 for(int j=0; j<=len-kmer_len; j++)  
                 {
                     std::string kmerstrfromfastq = seqs[i].substr(j, kmer_len);
