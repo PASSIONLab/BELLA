@@ -25,6 +25,9 @@
 #include <map>
 #include <unordered_map>
 #include <omp.h>
+
+#include "libcuckoo/cuckoohash_map.hh"
+
 #include "kmercode/hash_funcs.h"
 #include "kmercode/Kmer.hpp"
 #include "kmercode/Buffer.h"
@@ -96,7 +99,8 @@ std::vector<filedata>  GetFiles(char *filename) {
 }
 
 typedef shared_ptr<spmatType_> spmatPtr_; // pointer to spmatType_ datastruct
-typedef std::unordered_map<Kmer, int> dictionary; // <k-mer && reverse-complement, #kmers>
+// typedef std::unordered_map<Kmer, int> dictionary; // <k-mer && reverse-complement, #kmers>
+typedef cuckoohash_map<Kmer, int> dictionary; // <k-mer && reverse-complement, #kmers>
 typedef std::vector<Kmer> Kmers;
 
 // Function to create the dictionary
@@ -106,7 +110,9 @@ void dictionaryCreation(dictionary &kmerdict, Kmers &kmervect)
     kmerdict.reserve(kmervect.size());	// only makes sense for std::unordered_map
     for(int i = 0; i<kmervect.size(); i++)
     {
-        kmerdict.insert(make_pair(kmervect[i].rep(), i));
+        // kmerdict.insert(make_pair(kmervect[i].rep(), i));
+        kmerdict.insert(kmervect[i].rep(), i);
+	
     }
 }
 
@@ -293,26 +299,14 @@ int main (int argc, char *argv[]) {
 
     //
     // Reliable k-mer file parsing and k-mer dictionary creation
-    // NOTE: this will be replaced by HipMer k-mer counting
+    // NOTE: this will be replaced by our k-mer counting
     //
     //
-    
-    /* Quotient filter	
-    QF cf;
-    QFi cfi; // qf iterator
-    double quotient_filter_error = 0.01;
-    double expected_num_elements = 140000000; // this should be ~ total size of the fastq files divided by 2
-    uint64_t qbits = log2(expected_num_elements/quotient_filter_error); // per https://www3.cs.stonybrook.edu/~ppandey/files/p775-pandey.pdf
-    uint64_t nhashbits = qbits + 8;
-    uint64_t nslots = (1ULL << qbits);
-    uint64_t nvals = 250*nslots/1000;
-    uint64_t *vals;
-    
-    // Initialise the CQF 
-    qf_init(&cf, nslots, nhashbits, 0); */
 
+#ifdef DENOVOCOUNT
+    double denovocount = omp_get_wtime();
+    dictionary countsdenovo;
 
-    /*
     for(auto itr=allfiles.begin(); itr!=allfiles.end(); itr++) {
 
         ParallelFASTQ *pfq = new ParallelFASTQ();
@@ -323,6 +317,8 @@ int main (int argc, char *argv[]) {
             double time1 = omp_get_wtime();
             fillstatus = pfq->fill_block(nametags, seqs, quals, upperlimit);
             int nreads = seqs.size();
+
+	    auto updatecount = [](int &num) { ++num; };
             
 	    #pragma omp parallel for
             for(int i=0; i<nreads; i++) 
@@ -343,19 +339,22 @@ int main (int argc, char *argv[]) {
                     // remember to use only ::rep() when building kmerdict as well
                     Kmer lexsmall = mykmer.rep();      
 
-		    // void qf_insert(QF *qf, uint64_t key, uint64_t value, uint64_t count);
-		    // Increment the counter for this key/value pair by count.  
-		    qf_insert(&cf, vals[i], 0, 1);
+		    // If the number is already in the table, it will increment its count by one. 
+		    // Otherwise it will insert a new entry in the table with count one.
+		    countsdenovo.upsert(lexsmall, updatecount, 1);
 
 		}
             } // for(int i=0; i<nreads; i++)
-	    read_id += nreads;
-            // cout << "processed reads in " << omp_get_wtime()-time2 << " seconds "<< endl; 
-            // cout << "total number of reads processed so far is " << read_id << endl;
-        } //while(fillstatus) 
+	} //while(fillstatus) 
     delete pfq;
-    } // for all files
- */
+    }  
+    cout << "denovo counting took: " << omp_get_wtime()-denovocount << "s\n" << endl;
+    // Print some information about the table
+    cout << "Table size: " << countsdenovo.size() << std::endl;
+    cout << "Bucket count: " << countsdenovo.bucket_count() << std::endl;
+    cout << "Load factor: " << countsdenovo.load_factor() << std::endl;
+    
+#endif
 
     double all = omp_get_wtime();
     double kdict = omp_get_wtime();
@@ -435,11 +434,12 @@ int main (int argc, char *argv[]) {
                     Kmer lexsmall = mykmer.rep();      
 
 		    int out;
-                    auto found = kmerdict.find(lexsmall);
-		    if(found !=  kmerdict.end())
+                    // auto found = kmerdict.find(lexsmall);
+		    auto found = kmerdict.find(lexsmall, out);
+		    if(found)
                     {
-                        alloccurrences[tid].emplace_back(std::make_tuple(read_id+i,found->second, j)); // vector<tuple<read_id,kmer_id,kmerpos>>
-                        alltranstuples[tid].emplace_back(std::make_tuple(found->second, read_id+i, j)); // transtuples.push_back(col_id, row_id, kmerpos)
+                        alloccurrences[tid].emplace_back(std::make_tuple(read_id+i,out, j)); // vector<tuple<read_id,kmer_id,kmerpos>>
+                        alltranstuples[tid].emplace_back(std::make_tuple(out, read_id+i, j)); // transtuples.push_back(col_id, row_id, kmerpos)
                     }
                 }
             } // for(int i=0; i<nreads; i++)
