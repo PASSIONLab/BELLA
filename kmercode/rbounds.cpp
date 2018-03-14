@@ -27,23 +27,15 @@
 #include "rbounds.hpp"
 
 //
-// Binomial coefficient function
+// Factorial function
 //
-int bincoef(int n, int k)
+
+double factorial(double n)
 {
-    int num = 1;
- 
-    // C(n, k) = C(n, n-k)
-    if (k > n-k)
-        k = n - k;
- 
-    // Calculate value of [n*(n-1) * --- * (n-k+1)]/[k*(k-1)* ---- *1]
-    for (int i = 0; i < k; ++i)
-    {
-        num *= (n-i);
-        num /= (i+1);
-    }
-    return num;
+    if(n > 1)
+        return n * factorial(n - 1);
+    else
+        return 1;
 }
 
 //
@@ -51,15 +43,19 @@ int bincoef(int n, int k)
 //
 int rbounds(int d, double e, int k)
 {
-	int m = 2; 			// multiplicity in the fastq(s)
-	double uprob = 1.0; 	// max probability 
+    double a,b,c;
+    double probability = 1;
+    int m = 2;
 
-	while(uprob >= MIN_PROB) 
-	{
-		++m;
-		uprob = bincoef(d,m)*pow(1-e,m*k)*pow(1-pow(1-e,k),d-m);
-	}
-	--m; 
-	return m;
+    while(probability >= MIN_PROB)
+    {
+        m++;
+        a = factorial(d)/(factorial(m)*factorial(d-m)); // it's fine 
+        b = pow(1-e,(m*k));
+        c = pow(1-pow(1-e,k),(d-m));
+        
+        probability = a*b*c;
+    }
+    return (m-1);
 }
 
