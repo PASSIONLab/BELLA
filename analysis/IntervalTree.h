@@ -160,40 +160,46 @@ public:
 	return ov;
     }
 
-    void findOverlapping(K start, K stop, intervalVector& overlapping, int thr) const {
+    void findOverlapping(K start, K stop, T value, intervalVector& overlapping, int thr) const {
         if (!intervals.empty() && ! (stop < intervals.front().start)) {
             for (typename intervalVector::const_iterator i = intervals.begin(); i != intervals.end(); ++i) {
+
                 const interval& interval = *i;
                 size_t alignment = 0;
+
+                if(i->value != value) // do not count self alignment 
+                {
+                    if(interval.start <= start) {
+                        if(interval.stop >= start) {
+                            alignment = min((interval.stop - start), (stop - start));
+                        }
+                    }   
+                    else if (interval.start > start) {
+                        if(stop > interval.start) {
+                            alignment = min((stop - interval.start), (interval.stop - interval.start));
+                        }
+                    } else 
+                    { 
+                        alignment = min((stop - interval.start), (interval.stop - interval.start)); 
+                    } 
                
-                if(interval.start < start) {
-                   if(interval.stop > start) {
-                       alignment = min((interval.stop - start), (stop - start));
-                   }
-                }
-                else if (interval.start > start) {
-                   if(stop > interval.start) {
-                       alignment = min((stop - interval.start), (interval.stop - interval.start));
-                   }
-                } else { 
-                   alignment = min((stop - interval.start), (interval.stop - interval.start)); 
-                } 
-               
-                if(alignment >= thr) 
-                {    
-                    if (interval.stop >= start && interval.start <= stop && ((interval.start-stop >= thr) || (start-interval.stop >= thr))) {
-                      overlapping.push_back(interval);
+                    if(alignment >= thr) 
+                    {    
+                        if(interval.stop >= start && interval.start <= stop && ((interval.start-stop >= thr) || (start-interval.stop >= thr))) 
+                        {
+                            overlapping.push_back(interval);
+                        }
                     }
                 }
             }
         }
 
         if (left && start <= center) {
-            left->findOverlapping(start, stop, overlapping, thr);
+            left->findOverlapping(start, stop, value, overlapping, thr);
         }
 
         if (right && stop >= center) {
-            right->findOverlapping(start, stop, overlapping, thr);
+            right->findOverlapping(start, stop, value, overlapping, thr);
         }
     }
 
