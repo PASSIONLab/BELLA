@@ -53,6 +53,7 @@ double trueOv(vector<vectInfo> & truthInfo, bool simulated, int minOvl)
     vector<vectInfo>::iterator oit; // outer iterator
     vectInfo::iterator iit; // inner iterator
     double trueOvls = 0;
+    ofstream ofs("test-truth.txt", ofstream::out);
 
     for(oit=truthInfo.begin(); oit!=truthInfo.end(); ++oit)
     {
@@ -70,7 +71,7 @@ double trueOv(vector<vectInfo> & truthInfo, bool simulated, int minOvl)
          for (q = queries.begin(); q != queries.end(); ++q) // tree search for a given reference
          {
              vector<Interval<string>> results;
-             tree.findOverlapping(q->start, q->stop, q->value, results, minOvl);
+             tree.findOverlapping(q->start, q->stop, q->value, results, minOvl, ofs);
              treeCount.push_back(results.size());
          }
          
@@ -81,8 +82,8 @@ double trueOv(vector<vectInfo> & truthInfo, bool simulated, int minOvl)
 
          intervals.clear();
          queries.clear();
-    }          
-
+    }  
+    ofs.close();        
     return trueOvls;
 }
 
@@ -106,29 +107,21 @@ int computeLength(unordered_map<string,readInfo> & readMap, string & col_nametag
         //cout << "ref ==" << endl;
         if(iit->second.start < jit->second.start) {
             if(iit->second.end > jit->second.start)
-            {
                 alignment_length = min((iit->second.end - jit->second.start), (jit->second.end - jit->second.start));
-            }
         }
         else if(iit->second.start > jit->second.start) 
         {
             if(jit->second.end > iit->second.start)
-            {
                 alignment_length = min((jit->second.end - iit->second.start), (iit->second.end - iit->second.start));
-            }
-
         } 
-        else
-        {
-            alignment_length = min((jit->second.end - iit->second.start), (iit->second.end - iit->second.start)); 
-        }
+        else alignment_length = min((jit->second.end - iit->second.start), (iit->second.end - iit->second.start)); 
     } 
     //else cout << "!ref" << endl;
     return alignment_length;
 }
 
 void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap, ifstream & mhap, 
-    ifstream & blasr, ifstream & daligner, bool simulated, int minOvl, int nread) // add blasr && daligner && mhap && bella
+    ifstream & blasr, ifstream & daligner, bool simulated, int minOvl) // add blasr && daligner && mhap && bella
 {
     vector<vectInfo> truthInfo;
     unordered_map<string,readInfo> readMap;
@@ -170,7 +163,6 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
                 perRead.start = start;
                 perRead.end = end;
                 readMap.insert(make_pair("@"+read,perRead));
-
                 //cout << "read: " << read << endl;
 
                 ovlInfo.ref = ref;
@@ -179,16 +171,22 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
                 ovlInfo.end = end;
                 vectOf.push_back(ovlInfo); // all the element of a chromosome
 
-                if(ref != prev)
+                if(ref != prev && !prev.empty())
                 {
+                    //cout << prev << endl;
+                    //cout << ref << endl;
                     truthInfo.push_back(vectOf); // its size should be the number of different references i.e. chromosomes
                     vectOf.clear();
                 }
-
                 prev = ref;
             }
+            truthInfo.push_back(vectOf); // insert the last chromosome
             cout << "num reads: " << readMap.size() << endl;
             cout << "num chromosomes: " << truthInfo.size() << endl;
+
+            //for(int i = 0; i < truthInfo.size(); ++i)
+            //    cout << "size chromosome: " << truthInfo.at(i).size() << endl;
+
         } else cout << "Error opening the ground truth file" << endl;
     }
     else // sam file
@@ -222,16 +220,22 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
                     truthInfo.push_back(vectOf); // its size should be the number of different references i.e. chromosomes
                     vectOf.clear();
                 }
-
                 prev = ref;
             }
-        } else std::cout << "Error opening the ground truth file" << endl;
+            cout << "num reads: " << readMap.size() << endl;
+            cout << "num chromosomes: " << truthInfo.size() << endl;
+
+            for(int i = 0; i < truthInfo.size(); ++i)
+                cout << "size chromosome: " << truthInfo.at(i).size() << endl;
+
+        } else cout << "Error opening the ground truth file" << endl;
     }
     
     groundtruth.clear();
     groundtruth.seekg(0, ios::beg);
 
     cout << "computing BELLA recall/precision" << endl;
+    //ofstream ofs("test.txt", ofstream::out);
     if(bella.is_open())
     {
         string line;
@@ -253,16 +257,18 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
                 if(it == checkBella.end())
                 {       
                     checkBella.insert(make_pair(make_pair(col_nametag, row_nametag), true));
-                    /* Compute the overlap length between potential overlapping reads pairs */
+                    // Compute the overlap length between potential overlapping reads pairs 
             
-                    alignment_length = computeLength(readMap, col_nametag, row_nametag); // change function
+                    alignment_length = computeLength(readMap, col_nametag, row_nametag); 
                     if(alignment_length >= minOvl)
+                    {
+                        // ofs << col_nametag << " " << row_nametag << endl;
                         truebella++;
-                        //cout << "aln: " << truebella << endl;
+                    }
                 }
             }
         }
-    }
+    } //ofs.close();
 
     cout << "computing Minimap recall/precision" << endl;
     if(minimap.is_open())
@@ -292,7 +298,7 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
                 if(it == checkMinimap.end())
                 {
                     checkMinimap.insert(make_pair(make_pair(col_nametag, row_nametag), true));
-                    /* Compute the overlap length between potential overlapping reads pairs */
+                    // Compute the overlap length between potential overlapping reads pairs 
                     alignment_length = computeLength(readMap, col_nametag, row_nametag);
                     if(alignment_length >= minOvl)
                         trueminimap++;
@@ -325,7 +331,7 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
                 if(it == checkMhap.end())
                 {
                     checkMhap.insert(make_pair(make_pair(col_nametag, row_nametag), true));
-                    /* Compute the overlap length between potential overlapping reads pairs */
+                    // Compute the overlap length between potential overlapping reads pairs 
                     alignment_length = computeLength(readMap, col_nametag, row_nametag);
                     if(alignment_length >= minOvl)
                         truemhap++;
@@ -358,7 +364,7 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
                 if(it == checkBlasr.end())
                 {
                     checkBlasr.insert(make_pair(make_pair(col_nametag, row_nametag), true));
-                    /* Compute the overlap length between potential overlapping reads pairs */
+                    // Compute the overlap length between potential overlapping reads pairs 
                     alignment_length = computeLength(readMap, col_nametag, row_nametag);
                     if(alignment_length >= minOvl)
                         trueblasr++;
@@ -391,7 +397,7 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
                 if(it == checkBlasr.end())
                 {
                     checkBlasr.insert(make_pair(make_pair(col_nametag, row_nametag), true));
-                    /* Compute the overlap length between potential overlapping reads pairs */
+                    // Compute the overlap length between potential overlapping reads pairs 
                     alignment_length = computeLength(readMap, col_nametag, row_nametag);
                     if(alignment_length >= minOvl)
                         trueblasr++;
@@ -407,7 +413,7 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
     // as -S option count overlaps only once 
     // (A ov B, but not B ov A), while all other 
     // (included the ground truth) count all ovls and the self-ovls
-    double trueminimap_tuned = trueminimap*2;
+    // trueminimap = trueminimap*2; do this directly when compute recall
 
     bella.close();
     minimap.close();
@@ -416,31 +422,31 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
     daligner.close();
     groundtruth.close();
 
-    /* Ground Truth */
-    cout << "True overlapping from ground truth = " << truetruth << "\n" << endl;
-    /* BELLA Recall and precision */
-    cout << "Overlapping from BELLA = " << ovlsbella << endl;
-    cout << "True overlapping from BELLA = " << truebella << endl;
-    cout << "Recall BELLA = " << truebella/truetruth << endl;
-    cout << "Precision BELLA = " << truebella/ovlsbella << "\n" << endl;
-    /* Minimap Recall and precision */ 
-    cout << "Overlapping from minimap = " << ovlsminimap << endl;
-    cout << "True overlapping from minimap = " << trueminimap << endl;
-    cout << "Recall minimap = " << trueminimap_tuned/truetruth << endl;
-    cout << "Precision minimap = " << trueminimap/ovlsminimap << "\n" << endl;
-    /* MHAP Recall and precision */ 
-    cout << "Overlapping from MHAP = " << ovlsmhap << endl;
-    cout << "True overlapping from MHAP= " << truemhap << endl;
-    cout << "Recall MHAP = " << truemhap/truetruth << endl;
-    cout << "Precision MHAP = " << truemhap/ovlsmhap << "\n" << endl;
-    /* BLASR Recall and precision */ 
-    cout << "Overlapping from BLASR = " << ovlsblasr << endl;
-    cout << "True overlapping from BLASR = " << trueblasr << endl;
-    cout << "Recall BLASR = " << trueblasr/truetruth << endl;
-    cout << "Precision BLASR = " << trueblasr/ovlsblasr << "\n" << endl;
-    /* DALIGNER Recall and precision */ 
-    cout << "Overlapping from DALIGNER = " << ovlsdal << endl;
-    cout << "True overlapping from DALIGNER = " << truedal << endl;
-    cout << "Recall DALIGNER = " << truedal/truetruth << endl;
-    cout << "Precision DALIGNER = " << truedal/ovlsdal << "\n" << endl;
+    // Ground Truth 
+    cout << "true overlapping from ground truth = " << truetruth << "\n" << endl;
+    // BELLA Recall and precision 
+    cout << "overlapping from BELLA = " << ovlsbella << endl;
+    cout << "true overlapping from BELLA = " << truebella << endl;
+    cout << "recall BELLA = " << truebella/truetruth << endl;
+    cout << "precision BELLA = " << truebella/ovlsbella << "\n" << endl;
+    // Minimap Recall and precision 
+    cout << "pverlapping from minimap = " << ovlsminimap << endl;
+    cout << "true overlapping from minimap = " << trueminimap << endl;
+    cout << "recall minimap = " << (trueminimap*2)/truetruth << endl;
+    cout << "precision minimap = " << trueminimap/ovlsminimap << "\n" << endl;
+    // MHAP Recall and precision 
+    cout << "overlapping from MHAP = " << ovlsmhap << endl;
+    cout << "true overlapping from MHAP= " << truemhap << endl;
+    cout << "recall MHAP = " << truemhap/truetruth << endl;
+    cout << "precision MHAP = " << truemhap/ovlsmhap << "\n" << endl;
+    // BLASR Recall and precision 
+    cout << "overlapping from BLASR = " << ovlsblasr << endl;
+    cout << "true overlapping from BLASR = " << trueblasr << endl;
+    cout << "recall BLASR = " << trueblasr/truetruth << endl;
+    cout << "precision BLASR = " << trueblasr/ovlsblasr << "\n" << endl;
+    // DALIGNER Recall and precision 
+    cout << "overlapping from DALIGNER = " << ovlsdal << endl;
+    cout << "true overlapping from DALIGNER = " << truedal << endl;
+    cout << "recall DALIGNER = " << truedal/truetruth << endl;
+    cout << "precision DALIGNER = " << truedal/ovlsdal << "\n" << endl;
 }
