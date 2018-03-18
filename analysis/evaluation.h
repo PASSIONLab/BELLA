@@ -54,53 +54,35 @@ double trueOv(vector<vectInfo> & truthInfo, bool simulated, int minOvl)
     vectInfo::iterator iit; // inner iterator
     double trueOvls = 0;
 
-    if(simulated)
+    for(oit=truthInfo.begin(); oit!=truthInfo.end(); ++oit)
     {
-       for(oit=truthInfo.begin(); oit!=truthInfo.end(); ++oit)
-       {
-            for(iit=oit->begin(); iit!=oit->end(); ++iit)
-            {
-                intervals.push_back(Interval<string>(iit->start, iit->end, iit->read));
-                queries.push_back(Interval<string>(iit->start, iit->end, iit->read));
-            }
+         for(iit=oit->begin(); iit!=oit->end(); ++iit)
+         {
+             intervals.push_back(Interval<string>(iit->start, iit->end, iit->read));
+             queries.push_back(Interval<string>(iit->start, iit->end, iit->read));
+         }
 
-            IntervalTree<string> tree;
-            vector<size_t> treeCount;
-            
-            tree = IntervalTree<string>(intervals); // reference 
-            
-            for (q = queries.begin(); q != queries.end(); ++q) // tree search for a given reference
-            {
-                vector<Interval<string>> results;
-                tree.findOverlapping(q->start, q->stop, q->value, results, minOvl);
-                treeCount.push_back(results.size());
-            }
-            
-            for(size_t t = 0; t < treeCount.size(); ++t) // count for a given reference
-            { 
-                trueOvls = trueOvls + (double)treeCount[t];  // cumulative
-            }
+         IntervalTree<string> tree;
+         vector<size_t> treeCount;
+         
+         tree = IntervalTree<string>(intervals); // reference 
+         
+         for (q = queries.begin(); q != queries.end(); ++q) // tree search for a given reference
+         {
+             vector<Interval<string>> results;
+             tree.findOverlapping(q->start, q->stop, q->value, results, minOvl);
+             treeCount.push_back(results.size());
+         }
+         
+         for(size_t t = 0; t < treeCount.size(); ++t) // count for a given reference
+         { 
+             trueOvls = trueOvls + (double)treeCount[t];  // cumulative
+         }
 
-            intervals.clear();
-            queries.clear();
-       }          
-    }
-    //else // need to understand how to handle real truth from bwamem
-    //{
-    //    if(truth.is_open()) {
-    //
-    //        std::string read;
-    //        int start;
-    //        int end;
-    //        while(truth >> read >> start >> end)
-    //        {
-    //            
-    //            intervals.push_back(Interval<std::string>(start, end, read));
-    //            queries.push_back(Interval<std::string>(start, end, read));
-    //        }
-    //
-    //    } else std::cout << "Error opening the ground truth file" << endl;
-    //}
+         intervals.clear();
+         queries.clear();
+    }          
+
     return trueOvls;
 }
 
@@ -136,16 +118,12 @@ int computeLength(unordered_map<string,readInfo> & readMap, string & col_nametag
             }
 
         } 
-        //else if(iit->second.start > jit->second.end) // to avoid R1.begin - R2. end >= THR and the length of R2 is >= THR
-        //{
-        //    alignment_length = 0;
-        //}
         else
         {
             alignment_length = min((jit->second.end - iit->second.start), (iit->second.end - iit->second.start)); 
         }
-    } //else cout << "!ref" << endl;
-    //cout << alignment_length << endl;
+    } 
+    //else cout << "!ref" << endl;
     return alignment_length;
 }
 
@@ -213,24 +191,42 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
             cout << "num chromosomes: " << truthInfo.size() << endl;
         } else cout << "Error opening the ground truth file" << endl;
     }
-    //else // check how real data output is (sam file)
-    //{
-    //    if(groundtruth.is_open())
-    //    {
-    //        string read;
-    //        int start;
-    //        int end;
-    //
-    //        while(groundtruth >> read >> start >> end)
-    //        {
-    //            std::string nametag = "@" + read;
-    //            int start_v = start;
-    //            int end_v = end;
-    //            coords = make_pair(start_v, end_v);
-    //            ovlsmap.insert(std::pair<std::string, std::pair<int, int>>(nametag,coords));
-    //        }
-    //    } else std::cout << "Error opening the ground truth file" << endl;
-    //}
+    else // sam file
+    {
+        if(groundtruth.is_open())
+        {
+            refInfo ovlInfo;
+            readInfo perRead;
+            vectInfo vectOf;
+            string prev;
+            string read;
+            string ref;
+            int start;
+            int end;
+    
+            while(groundtruth >> ref >> read >> start >> end)
+            {
+                perRead.ref = ref;
+                perRead.start = start;
+                perRead.end = end;
+                readMap.insert(make_pair("@"+read,perRead));
+
+                ovlInfo.ref = ref;
+                ovlInfo.read = "@" + read;
+                ovlInfo.start = start;
+                ovlInfo.end = end;
+                vectOf.push_back(ovlInfo); // all the element of a chromosome
+
+                if(ref != prev)
+                {
+                    truthInfo.push_back(vectOf); // its size should be the number of different references i.e. chromosomes
+                    vectOf.clear();
+                }
+
+                prev = ref;
+            }
+        } else std::cout << "Error opening the ground truth file" << endl;
+    }
     
     groundtruth.clear();
     groundtruth.seekg(0, ios::beg);
