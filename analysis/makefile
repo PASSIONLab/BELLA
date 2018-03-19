@@ -6,9 +6,9 @@ optlist.o:	../optlist/optlist.c ../optlist/optlist.h
 	$(CC) $(CFLAGS) $<
 
 # flags defined in mtspgemm2017/GTgraph/Makefile.var
-benchmark: benchmark.cpp optlist.o 
-	$(COMPILER) -o benchmark optlist.o benchmark.cpp
+check: evaluation.cpp optlist.o 
+	$(COMPILER) -o evaluation optlist.o evaluation.cpp
 
 clean:
 	rm -f *.o
-	rm -f benchmark
+	rm -f check
