@@ -90,7 +90,6 @@ double trueOv(vector<vectInfo> & truthInfo, bool simulated, int minOvl)
 /* Compute the overlap length between potential overlapping reads pairs */
 int computeLength(unordered_map<string,readInfo> & readMap, string & col_nametag, string & row_nametag) 
 {
-
     int alignment_length = 0;
 
     unordered_map<string,readInfo>::const_iterator jit;
@@ -98,9 +97,8 @@ int computeLength(unordered_map<string,readInfo> & readMap, string & col_nametag
 
     jit = readMap.find(col_nametag); // col name
     iit = readMap.find(row_nametag); // row name 
-
-    //cout << "ref 1: " << iit->second.ref << endl;
-    //cout << "ref 2: " << jit->second.ref << endl;
+    cout << "1: " << col_nametag << endl;
+    cout << "2: " << row_nametag << endl;
 
     if(iit->second.ref == jit->second.ref)
     {
@@ -242,12 +240,14 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
         while(getline(bella, line))
         {
             ovlsbella++;
+            cout << "a: "<< ovlsbella << endl;
             //cout << "#" << ovlsbella << endl;
             stringstream lineStream(line);
             string col_nametag, row_nametag;
 
             getline(lineStream, col_nametag, ' ');
             getline(lineStream, row_nametag, ' ');
+            //cout << col_nametag << " " << row_nametag << endl;
                                            // remove self aligned paired from bella output
             if(col_nametag == row_nametag) // to be sure to not count self aligned pairs
                 ovlsbella--;
@@ -264,6 +264,7 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
                     {
                         // ofs << col_nametag << " " << row_nametag << endl;
                         truebella++;
+                        cout << "b: "<< truebella << endl;
                     }
                 }
             }

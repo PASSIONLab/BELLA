@@ -38,9 +38,8 @@ int main (int argc, char* argv[]) {
     option_t *optList, *thisOpt;
     // Get list of command line options and their arguments 
     optList = NULL;
-    optList = GetOptList(argc, argv, (char*)"g:n:b:m:p:d:hl:z");
+    optList = GetOptList(argc, argv, (char*)"g:b:m:p:d:hl:z");
    
-    int nreads = 0;
     int ovl_len = 2000;
     bool simulated = false;
     char *truth = NULL;
@@ -69,16 +68,6 @@ int main (int argc, char* argv[]) {
                     return 0;
                 }
                 truth = strdup(thisOpt->argument);
-                break;
-            }
-            case 'n': {
-                if(thisOpt->argument == NULL)
-                {
-                    cout << "\nProgram execution terminated: -n requires the number of reads of fastq(s)" << endl;
-                    cout << "Run with -h to print out the command line options\n" << endl;
-                    return 0;
-                }
-                nreads = atoi(thisOpt->argument);
                 break;
             }
             case 'b': {
@@ -133,7 +122,7 @@ int main (int argc, char* argv[]) {
         }
     }
 
-    if(truth == NULL || bellafile == NULL || nreads == 0)
+    if(truth == NULL || bellafile == NULL)
     {
         cout << "\nProgram execution terminated: missing arguments" << endl;
         cout << "Run with -h to print out the command line options\n" << endl;
@@ -150,6 +139,6 @@ int main (int argc, char* argv[]) {
     std::ifstream blasr(blasrfile);
     std::ifstream daligner(dalignerfile);
 
-    benchmarkingAl(ground, bella, minimap, mhap, blasr, daligner, simulated, ovl_len, nreads);  
+    benchmarkingAl(ground, bella, minimap, mhap, blasr, daligner, simulated, ovl_len);  
 
 }
