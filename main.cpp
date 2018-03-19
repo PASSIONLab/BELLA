@@ -50,14 +50,13 @@
 //#define DEPTH 30
 //#define _ALLKMER
 
-
 using namespace std;
 
 #ifdef _ALLKMER
 struct spmatType_ {
 
     int count = 0;   /* number of shared k-mers */
-    std::vector<std::pair<int,int>> vpos; /* wanna keep all the positions */
+    vector<std::pair<int,int>> vpos; /* wanna keep all the positions */
 };
 #else
 struct spmatType_ {
@@ -113,7 +112,7 @@ void dictionaryCreation(dictionary &kmerdict, Kmers &kmervect)
     for(int i = 0; i<kmervect.size(); i++)
     {
         // kmerdict.insert(make_pair(kmervect[i].rep(), i));
-        kmerdict.insert(kmervect[i].rep(), i);
+        kmerdict.insert(kmervect[i].rep(), i); // insert in the dictionary only the lexsmall
 	
     }
 }
@@ -266,7 +265,6 @@ int main (int argc, char *argv[]) {
     string kmerstr;
     string line;
     Kmer::set_k(kmer_len);
-    dictionary kmerdict;
     size_t upperlimit = 10000000; // in bytes
     Kmer kmerfromstr;
     Kmers kmervect;
@@ -362,7 +360,10 @@ int main (int argc, char *argv[]) {
     auto lt = countsdenovo.lock_table();
     for (const auto &it : lt) {
       if (it.second >= lower && it.second <= upper)
-	      tokeep.push_back(make_pair(it.first, it.second));      	
+      {
+	      tokeep.push_back(make_pair(it.first, it.second));
+          ++keep;      	
+      }
     }
     sort(tokeep.begin(), tokeep.end());
 
@@ -375,7 +376,11 @@ int main (int argc, char *argv[]) {
 
     double all = omp_get_wtime();
     double kdict = omp_get_wtime();
-    if(filein.is_open()) {
+    // Jellyfish file contains all the k-mers from fastq(s)
+    // It is not filtered beforehand
+    // A k-mer and its reverse complement are counted separately
+    dictionary countsjelly;
+    if(filein.is_open()) { 
             while(getline(filein, line)) {
                 if(line.length() == 0)
                     break;
@@ -384,16 +389,41 @@ int main (int argc, char *argv[]) {
                 elem = stoi(substring);
                 getline(filein, kmerstr);   
                 kmerfromstr.set_kmer(kmerstr.c_str());
-                if(elem >= lower && elem <= upper) // keep just the kmers within the reliable bounds
-		{
-                    kmervect.push_back(kmerfromstr); 
 
-                    Kmer mykmer(kmerstr.c_str());	// Aydin: remove after check	        
-	    	    verify.push_back(make_pair (mykmer.rep(), elem) ); // Aydin: remove after check
-		}		    
+                auto updatecountjelly = [&elem](int &num) { num+=elem; };
+                // If the number is already in the table, it will increment its count by the occurrence of the new element. 
+                // Otherwise it will insert a new entry in the table with the corresponding k-mer occurrence.
+                countsjelly.upsert(kmerfromstr.rep(), updatecountjelly, elem);
+
+                if(elem >= lower && elem <= upper) // keep just the kmers within the reliable bounds
+                    kmervect.push_back(kmerfromstr); // here we do not check for lexsmall reverse complement
+
+                Kmer mykmer(kmerstr.c_str());	// Aydin: remove after check	        
+                verify.push_back(make_pair (mykmer.rep(), elem)); // Aydin: remove after check
+                //}		    
             }
     } else std::cout << "Unable to open the input file\n";
     filein.close();
+
+    /* <begin>: remove after check */
+    vector < pair<Kmer, int> > tokeepjelly;
+    int64_t keepjelly = 0;
+
+    auto ltj = countsjelly.lock_table();
+    for (const auto &it : ltj) {
+      if (it.second >= lower && it.second <= upper)
+      {
+          tokeepjelly.push_back(make_pair(it.first, it.second)); 
+          keepjelly++;        
+      }
+    }
+    sort(tokeepjelly.begin(), tokeepjelly.end());
+
+    cout << "Table size Jellyfish: " << countsjelly.size() << std::endl;
+    cout << "Entries within reliable range Jellyfish: " << keepjelly << std::endl;    
+    cout << "Bucket count Jellyfish: " << countsjelly.bucket_count() << std::endl;
+    cout << "Load factor Jellyfish: " << countsjelly.load_factor() << std::endl;
+    /* <end>: remove after check */
 
     /* <begin> Aydin: remove after check */
     sort(verify.begin(), verify.end()); 
@@ -403,10 +433,9 @@ int main (int argc, char *argv[]) {
     }
     /* <end> Aydin: remove after check */
 
-
-    dictionaryCreation(kmerdict, kmervect);
-    cout << "Reliable k-mer: " << kmerdict.size() << endl;
-    cout << "k-mer dictionary creation took: " << omp_get_wtime()-kdict << "s\n" << endl;
+    //dictionaryCreation(kmerdict, kmervect);
+    //cout << "Reliable k-mer: " << kmerdict.size() << endl;
+    //cout << "k-mer dictionary creation took: " << omp_get_wtime()-kdict << "s\n" << endl;
     
     //
     // Fastq(s) parsing
@@ -466,7 +495,7 @@ int main (int argc, char *argv[]) {
 
 		    int out;
                     // auto found = kmerdict.find(lexsmall);
-		    auto found = kmerdict.find(lexsmall, out);
+		    auto found = countsjelly.find(lexsmall, out);
 		    if(found)
                     {
                         alloccurrences[tid].emplace_back(std::make_tuple(read_id+i,out, j)); // vector<tuple<read_id,kmer_id,kmerpos>>
