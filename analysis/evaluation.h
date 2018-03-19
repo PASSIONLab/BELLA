@@ -89,7 +89,7 @@ double trueOv(vector<vectInfo> & truthInfo, bool simulated, int minOvl)
 
 /* Compute the overlap length between potential overlapping reads pairs */
 int computeLength(unordered_map<string,readInfo> & readMap, string & col_nametag, string & row_nametag) 
-{
+{ // invalid memory read here 
     int alignment_length = 0;
 
     unordered_map<string,readInfo>::const_iterator jit;
@@ -97,24 +97,26 @@ int computeLength(unordered_map<string,readInfo> & readMap, string & col_nametag
 
     jit = readMap.find(col_nametag); // col name
     iit = readMap.find(row_nametag); // row name 
-    cout << "1: " << col_nametag << endl;
-    cout << "2: " << row_nametag << endl;
 
-    if(iit->second.ref == jit->second.ref)
+    if(iit != readMap.end() && jit != readMap.end()) // needed as handling real dataset the aligned reads in sam file could be != the original number of reads
     {
-        //cout << "ref ==" << endl;
-        if(iit->second.start < jit->second.start) {
-            if(iit->second.end > jit->second.start)
-                alignment_length = min((iit->second.end - jit->second.start), (jit->second.end - jit->second.start));
-        }
-        else if(iit->second.start > jit->second.start) 
-        {
-            if(jit->second.end > iit->second.start)
-                alignment_length = min((jit->second.end - iit->second.start), (iit->second.end - iit->second.start));
+        if(iit->second.ref == jit->second.ref)
+        {   
+            //cout << iit->second.start << endl;
+            //cout << jit->second.start << endl;
+            if(iit->second.start < jit->second.start) {
+                if(iit->second.end > jit->second.start)
+                    alignment_length = min((iit->second.end - jit->second.start), (jit->second.end - jit->second.start));
+            }
+            else if(iit->second.start > jit->second.start) 
+            {
+                if(jit->second.end > iit->second.start)
+                    alignment_length = min((jit->second.end - iit->second.start), (iit->second.end - iit->second.start));
+            } 
+            else alignment_length = min((jit->second.end - iit->second.start), (iit->second.end - iit->second.start)); 
         } 
-        else alignment_length = min((jit->second.end - iit->second.start), (iit->second.end - iit->second.start)); 
-    } 
-    //else cout << "!ref" << endl;
+    }
+    //cout << alignment_length << endl;
     return alignment_length;
 }
 
@@ -171,8 +173,6 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
 
                 if(ref != prev && !prev.empty())
                 {
-                    //cout << prev << endl;
-                    //cout << ref << endl;
                     truthInfo.push_back(vectOf); // its size should be the number of different references i.e. chromosomes
                     vectOf.clear();
                 }
@@ -181,7 +181,6 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
             truthInfo.push_back(vectOf); // insert the last chromosome
             cout << "num reads: " << readMap.size() << endl;
             cout << "num chromosomes: " << truthInfo.size() << endl;
-
             //for(int i = 0; i < truthInfo.size(); ++i)
             //    cout << "size chromosome: " << truthInfo.at(i).size() << endl;
 
@@ -223,8 +222,8 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
             cout << "num reads: " << readMap.size() << endl;
             cout << "num chromosomes: " << truthInfo.size() << endl;
 
-            for(int i = 0; i < truthInfo.size(); ++i)
-                cout << "size chromosome: " << truthInfo.at(i).size() << endl;
+            //for(int i = 0; i < truthInfo.size(); ++i)
+                //cout << "size chromosome: " << truthInfo.at(i).size() << endl;
 
         } else cout << "Error opening the ground truth file" << endl;
     }
@@ -240,14 +239,12 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
         while(getline(bella, line))
         {
             ovlsbella++;
-            cout << "a: "<< ovlsbella << endl;
-            //cout << "#" << ovlsbella << endl;
+
             stringstream lineStream(line);
             string col_nametag, row_nametag;
 
             getline(lineStream, col_nametag, ' ');
             getline(lineStream, row_nametag, ' ');
-            //cout << col_nametag << " " << row_nametag << endl;
                                            // remove self aligned paired from bella output
             if(col_nametag == row_nametag) // to be sure to not count self aligned pairs
                 ovlsbella--;
@@ -261,11 +258,7 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
             
                     alignment_length = computeLength(readMap, col_nametag, row_nametag); 
                     if(alignment_length >= minOvl)
-                    {
-                        // ofs << col_nametag << " " << row_nametag << endl;
                         truebella++;
-                        cout << "b: "<< truebella << endl;
-                    }
                 }
             }
         }
