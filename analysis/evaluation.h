@@ -207,18 +207,19 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
                 readMap.insert(make_pair("@"+read,perRead));
 
                 ovlInfo.ref = ref;
-                ovlInfo.read = "@" + read;
+                ovlInfo.read = "@"+read;
                 ovlInfo.start = start;
                 ovlInfo.end = end;
                 vectOf.push_back(ovlInfo); // all the element of a chromosome
 
-                if(ref != prev)
+                if(ref != prev && !prev.empty())
                 {
                     truthInfo.push_back(vectOf); // its size should be the number of different references i.e. chromosomes
                     vectOf.clear();
                 }
                 prev = ref;
             }
+            truthInfo.push_back(vectOf); // insert the last chromosome
             cout << "num reads: " << readMap.size() << endl;
             cout << "num chromosomes: " << truthInfo.size() << endl;
 
