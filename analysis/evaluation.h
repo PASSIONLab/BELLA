@@ -89,7 +89,7 @@ double trueOv(vector<vectInfo> & truthInfo, bool simulated, int minOvl)
 
 /* Compute the overlap length between potential overlapping reads pairs */
 int computeLength(unordered_map<string,readInfo> & readMap, string & col_nametag, string & row_nametag) 
-{ // invalid memory read here 
+{
     int alignment_length = 0;
 
     unordered_map<string,readInfo>::const_iterator jit;
@@ -102,8 +102,6 @@ int computeLength(unordered_map<string,readInfo> & readMap, string & col_nametag
     {
         if(iit->second.ref == jit->second.ref)
         {   
-            //cout << iit->second.start << endl;
-            //cout << jit->second.start << endl;
             if(iit->second.start < jit->second.start) {
                 if(iit->second.end > jit->second.start)
                     alignment_length = min((iit->second.end - jit->second.start), (jit->second.end - jit->second.start));
@@ -116,7 +114,6 @@ int computeLength(unordered_map<string,readInfo> & readMap, string & col_nametag
             else alignment_length = min((jit->second.end - iit->second.start), (iit->second.end - iit->second.start)); 
         } 
     }
-    //cout << alignment_length << endl;
     return alignment_length;
 }
 
@@ -163,7 +160,6 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
                 perRead.start = start;
                 perRead.end = end;
                 readMap.insert(make_pair("@"+read,perRead));
-                //cout << "read: " << read << endl;
 
                 ovlInfo.ref = ref;
                 ovlInfo.read = "@" + read;
@@ -186,7 +182,7 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
 
         } else cout << "Error opening the ground truth file" << endl;
     }
-    else // sam file
+    else // from sam file
     {
         if(groundtruth.is_open())
         {
@@ -222,7 +218,6 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
             truthInfo.push_back(vectOf); // insert the last chromosome
             cout << "num reads: " << readMap.size() << endl;
             cout << "num chromosomes: " << truthInfo.size() << endl;
-
             //for(int i = 0; i < truthInfo.size(); ++i)
                 //cout << "size chromosome: " << truthInfo.at(i).size() << endl;
 
@@ -233,7 +228,6 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
     groundtruth.seekg(0, ios::beg);
 
     cout << "computing BELLA recall/precision" << endl;
-    //ofstream ofs("test.txt", ofstream::out);
     if(bella.is_open())
     {
         string line;
@@ -256,14 +250,13 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
                 {       
                     checkBella.insert(make_pair(make_pair(col_nametag, row_nametag), true));
                     // Compute the overlap length between potential overlapping reads pairs 
-            
                     alignment_length = computeLength(readMap, col_nametag, row_nametag); 
                     if(alignment_length >= minOvl)
                         truebella++;
                 }
             }
         }
-    } //ofs.close();
+    } 
 
     cout << "computing Minimap recall/precision" << endl;
     if(minimap.is_open())
@@ -405,11 +398,6 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
     groundtruth.seekg(0, ios::beg);
     double truetruth = trueOv(truthInfo, simulated, minOvl);
 
-    // as -S option count overlaps only once 
-    // (A ov B, but not B ov A), while all other 
-    // (included the ground truth) count all ovls and the self-ovls
-    // trueminimap = trueminimap*2; do this directly when compute recall
-
     bella.close();
     minimap.close();
     mhap.close();
@@ -425,6 +413,9 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
     cout << "recall BELLA = " << truebella/truetruth << endl;
     cout << "precision BELLA = " << truebella/ovlsbella << "\n" << endl;
     // Minimap Recall and precision 
+    // as -S option count overlaps only once 
+    // (A ov B, but not B ov A), while all other 
+    // (included the ground truth) count all ovls and the self-ovls
     cout << "pverlapping from minimap = " << ovlsminimap << endl;
     cout << "true overlapping from minimap = " << trueminimap << endl;
     cout << "recall minimap = " << (trueminimap*2)/truetruth << endl;
