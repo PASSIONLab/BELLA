@@ -46,8 +46,10 @@
 
 #define LSIZE 16000
 #define ITERS 10
+#define DENOVOCOUNT
 //#define DEPTH 30
 //#define _ALLKMER
+
 
 using namespace std;
 
@@ -346,11 +348,26 @@ int main (int argc, char *argv[]) {
 		}
             } // for(int i=0; i<nreads; i++)
 	} //while(fillstatus) 
-    delete pfq;
+    	delete pfq;
     }  
     cout << "denovo counting took: " << omp_get_wtime()-denovocount << "s\n" << endl;
     // Print some information about the table
+    
+    int64_t keep = 0;
+    vector < pair<Kmer, int> > tokeep;
+    vector < pair<Kmer, int> > verify;	// Aydin: remove after check
+    vector < pair<Kmer, int> > errors;  // Aydin: remove after check
+    
+    
+    auto lt = countsdenovo.lock_table();
+    for (const auto &it : lt) {
+      if (it.second >= lower && it.second <= upper)
+	      tokeep.push_back(make_pair(it.first, it.second));      	
+    }
+    sort(tokeep.begin(), tokeep.end());
+
     cout << "Table size: " << countsdenovo.size() << std::endl;
+    cout << "Entries within reliable range: " << keep << std::endl;    
     cout << "Bucket count: " << countsdenovo.bucket_count() << std::endl;
     cout << "Load factor: " << countsdenovo.load_factor() << std::endl;
     
@@ -368,10 +385,24 @@ int main (int argc, char *argv[]) {
                 getline(filein, kmerstr);   
                 kmerfromstr.set_kmer(kmerstr.c_str());
                 if(elem >= lower && elem <= upper) // keep just the kmers within the reliable bounds
-                    kmervect.push_back(kmerfromstr);                               
+		{
+                    kmervect.push_back(kmerfromstr); 
+
+                    Kmer mykmer(kmerstr.c_str());	// Aydin: remove after check	        
+	    	    verify.push_back(make_pair (mykmer.rep(), elem) ); // Aydin: remove after check
+		}		    
             }
     } else std::cout << "Unable to open the input file\n";
     filein.close();
+
+    /* <begin> Aydin: remove after check */
+    sort(verify.begin(), verify.end()); 
+    set_difference( tokeep.begin(), tokeep.end(), verify.begin(), verify.end(), back_inserter( errors ) );     for(const auto & it : errors)
+    {
+	    cout << it.first.toString() << " " << it.second << endl;
+    }
+    /* <end> Aydin: remove after check */
+
 
     dictionaryCreation(kmerdict, kmervect);
     cout << "Reliable k-mer: " << kmerdict.size() << endl;
