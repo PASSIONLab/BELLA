@@ -101,21 +101,8 @@ std::vector<filedata>  GetFiles(char *filename) {
 
 typedef shared_ptr<spmatType_> spmatPtr_; // pointer to spmatType_ datastruct
 // typedef std::unordered_map<Kmer, int> dictionary; // <k-mer && reverse-complement, #kmers>
-typedef cuckoohash_map<Kmer, int> dictionary; // <k-mer && reverse-complement, #kmers>
+typedef cuckoohash_map<Kmer, int> dictionary_t; // <k-mer && reverse-complement, #kmers>
 typedef std::vector<Kmer> Kmers;
-
-// Function to create the dictionary
-// assumption: kmervect has unique entries
-void dictionaryCreation(dictionary &kmerdict, Kmers &kmervect)
-{
-    kmerdict.reserve(kmervect.size());	// only makes sense for std::unordered_map
-    for(int i = 0; i<kmervect.size(); i++)
-    {
-        // kmerdict.insert(make_pair(kmervect[i].rep(), i));
-        kmerdict.insert(kmervect[i].rep(), i); // insert in the dictionary only the lexsmall
-	
-    }
-}
 
 int main (int argc, char *argv[]) {
 
@@ -305,7 +292,7 @@ int main (int argc, char *argv[]) {
 
 #ifdef DENOVOCOUNT
     double denovocount = omp_get_wtime();
-    dictionary countsdenovo;
+    dictionary_t countsdenovo;
 
     for(auto itr=allfiles.begin(); itr!=allfiles.end(); itr++) {
 
@@ -349,28 +336,26 @@ int main (int argc, char *argv[]) {
     	delete pfq;
     }  
     cout << "denovo counting took: " << omp_get_wtime()-denovocount << "s\n" << endl;
+    //
+    // Reliable k-mer filter on countsdenovo
+    //
+    dictionary_t countsreliable_denovo; 
+    int kmer_id_denovo = 0;
+    
+    auto lt = countsdenovo.lock_table(); // our counting
+    for (const auto &it : lt) 
+        if (it.second >= lower && it.second <= upper)
+        {
+            countsreliable_denovo.insert(it.first,kmer_id_denovo);
+            ++kmer_id_denovo;
+        }
+    lt.unlock(); // unlock the table
     // Print some information about the table
-    
-    int64_t keep = 0;
-    vector < pair<Kmer, int> > tokeep;
-    vector < pair<Kmer, int> > verify;	// Aydin: remove after check
-    vector < pair<Kmer, int> > errors;  // Aydin: remove after check
-    
-    
-    auto lt = countsdenovo.lock_table();
-    for (const auto &it : lt) {
-      if (it.second >= lower && it.second <= upper)
-      {
-	      tokeep.push_back(make_pair(it.first, it.second));
-          ++keep;      	
-      }
-    }
-    sort(tokeep.begin(), tokeep.end());
-
     cout << "Table size: " << countsdenovo.size() << std::endl;
-    cout << "Entries within reliable range: " << keep << std::endl;    
+    cout << "Entries within reliable range: " << countsreliable_denovo.size() << std::endl;    
     cout << "Bucket count: " << countsdenovo.bucket_count() << std::endl;
     cout << "Load factor: " << countsdenovo.load_factor() << std::endl;
+    countsdenovo.clear(); // free
     
 #endif
 
@@ -379,8 +364,9 @@ int main (int argc, char *argv[]) {
     // Jellyfish file contains all the k-mers from fastq(s)
     // It is not filtered beforehand
     // A k-mer and its reverse complement are counted separately
-    dictionary countsjelly;
-    if(filein.is_open()) { 
+    dictionary_t countsjelly;
+    if(filein.is_open()) 
+    { 
             while(getline(filein, line)) {
                 if(line.length() == 0)
                     break;
@@ -393,49 +379,32 @@ int main (int argc, char *argv[]) {
                 auto updatecountjelly = [&elem](int &num) { num+=elem; };
                 // If the number is already in the table, it will increment its count by the occurrence of the new element. 
                 // Otherwise it will insert a new entry in the table with the corresponding k-mer occurrence.
-                countsjelly.upsert(kmerfromstr.rep(), updatecountjelly, elem);
-
-                if(elem >= lower && elem <= upper) // keep just the kmers within the reliable bounds
-                    kmervect.push_back(kmerfromstr); // here we do not check for lexsmall reverse complement
-
-                Kmer mykmer(kmerstr.c_str());	// Aydin: remove after check	        
-                verify.push_back(make_pair (mykmer.rep(), elem)); // Aydin: remove after check
-                //}		    
+                countsjelly.upsert(kmerfromstr.rep(), updatecountjelly, elem);	    
             }
     } else std::cout << "Unable to open the input file\n";
     filein.close();
+    cout << "\njellyfish file parsing took: " << omp_get_wtime()-kdict << "s" << endl;
 
-    /* <begin>: remove after check */
-    vector < pair<Kmer, int> > tokeepjelly;
-    int64_t keepjelly = 0;
+    //
+    // Reliable k-mer filter on countsjelly
+    //
+    dictionary_t countsreliable_jelly; 
+    int kmer_id = 0;
 
-    auto ltj = countsjelly.lock_table();
-    for (const auto &it : ltj) {
-      if (it.second >= lower && it.second <= upper)
-      {
-          tokeepjelly.push_back(make_pair(it.first, it.second)); 
-          keepjelly++;        
-      }
-    }
-    sort(tokeepjelly.begin(), tokeepjelly.end());
-
+    auto ltj = countsjelly.lock_table(); // jellyfish counting
+    for (const auto &it : ltj) 
+        if (it.second >= lower && it.second <= upper)
+        {
+            countsreliable_jelly.insert(it.first,kmer_id);
+            ++kmer_id;
+        }
+    ltj.unlock(); // unlock the table
+    // Print some information about the table
     cout << "Table size Jellyfish: " << countsjelly.size() << std::endl;
-    cout << "Entries within reliable range Jellyfish: " << keepjelly << std::endl;    
+    cout << "Entries within reliable range Jellyfish: " << countsreliable_jelly.size() << std::endl;    
     cout << "Bucket count Jellyfish: " << countsjelly.bucket_count() << std::endl;
     cout << "Load factor Jellyfish: " << countsjelly.load_factor() << std::endl;
-    /* <end>: remove after check */
-
-    /* <begin> Aydin: remove after check */
-    sort(verify.begin(), verify.end()); 
-    set_difference( tokeep.begin(), tokeep.end(), verify.begin(), verify.end(), back_inserter( errors ) );     for(const auto & it : errors)
-    {
-	    cout << it.first.toString() << " " << it.second << endl;
-    }
-    /* <end> Aydin: remove after check */
-
-    //dictionaryCreation(kmerdict, kmervect);
-    //cout << "Reliable k-mer: " << kmerdict.size() << endl;
-    //cout << "k-mer dictionary creation took: " << omp_get_wtime()-kdict << "s\n" << endl;
+    countsjelly.clear(); // free 
     
     //
     // Fastq(s) parsing
@@ -443,21 +412,18 @@ int main (int argc, char *argv[]) {
     double parsefastq = omp_get_wtime();
     int read_id = 0; // read_id needs to be global (not just per file)
 
-
 #ifdef _OPENMP
 	int numthreads = omp_get_max_threads();
-	cout << "Running with up to " << numthreads << " threads" << endl;
+	cout << "\nRunning with up to " << numthreads << " threads" << endl;
 #else
 	int numthreads = 1;
 #endif
-
-
        
         vector < vector<tuple<int,int,int>> > alloccurrences(numthreads);	
         vector < vector<tuple<int,int,int>> > alltranstuples(numthreads);	
-	vector < readVector_ > allreads(numthreads);	
+        vector < readVector_ > allreads(numthreads);	
 
-    for(auto itr=allfiles.begin(); itr!=allfiles.end(); itr++) {
+        for(auto itr=allfiles.begin(); itr!=allfiles.end(); itr++) {
 
         ParallelFASTQ *pfq = new ParallelFASTQ();
         pfq->open(itr->filename, false, itr->filesize);
@@ -468,13 +434,13 @@ int main (int argc, char *argv[]) {
             fillstatus = pfq->fill_block(nametags, seqs, quals, upperlimit);
             int nreads = seqs.size();
             
-	    #pragma omp parallel for
+        #pragma omp parallel for
             for(int i=0; i<nreads; i++) 
             {
                 // remember that the last valid position is length()-1
                 int len = seqs[i].length();
-
-        	readType_ temp;
+                
+                readType_ temp;
                 temp.nametag = nametags[i];
                 temp.seq = seqs[i];
                 temp.readid = read_id+i;
@@ -482,7 +448,7 @@ int main (int argc, char *argv[]) {
 #ifdef _OPENMP
 		int tid = omp_get_thread_num();
 #else
-		int tid = 0;
+        int tid = 0;
 #endif
                 allreads[tid].push_back(temp);
                 
@@ -493,20 +459,17 @@ int main (int argc, char *argv[]) {
                     // remember to use only ::rep() when building kmerdict as well
                     Kmer lexsmall = mykmer.rep();      
 
-		    int out;
-                    // auto found = kmerdict.find(lexsmall);
-		    auto found = countsjelly.find(lexsmall, out);
-		    if(found)
+                    int idx; // kmer_id
+                    auto found = countsreliable_jelly.find(lexsmall,idx);
+                    if(found)
                     {
-                        alloccurrences[tid].emplace_back(std::make_tuple(read_id+i,out, j)); // vector<tuple<read_id,kmer_id,kmerpos>>
-                        alltranstuples[tid].emplace_back(std::make_tuple(out, read_id+i, j)); // transtuples.push_back(col_id, row_id, kmerpos)
+                        alloccurrences[tid].emplace_back(std::make_tuple(read_id+i,idx,j)); // vector<tuple<read_id,kmer_id,kmerpos>>
+                        alltranstuples[tid].emplace_back(std::make_tuple(idx,read_id+i,j)); // transtuples.push_back(col_id,row_id,kmerpos)
                     }
                 }
             } // for(int i=0; i<nreads; i++)
-	    read_id += nreads;
-            // cout << "processed reads in " << omp_get_wtime()-time2 << " seconds "<< endl; 
-            // cout << "total number of reads processed so far is " << read_id << endl;
-
+            read_id += nreads;
+            //cout << "total number of reads processed so far is " << read_id << endl;
         } //while(fillstatus) 
     delete pfq;
     } // for all files
@@ -538,8 +501,8 @@ int main (int argc, char *argv[]) {
 
     std::vector<string>().swap(seqs);        // free memory of seqs  
     std::vector<string>().swap(quals);       // free memory of quals
-    cout << "Total number of reads: "<< read_id << endl;
-    cout << "Parsing fastq took: " << omp_get_wtime()-parsefastq << "s\n" << endl;
+    cout << "\nTotal number of reads: "<< read_id << endl;
+    cout << "fastq(s) parsing fastq took: " << omp_get_wtime()-parsefastq << "s" << endl;
     double matcreat = omp_get_wtime();
 
     //
@@ -547,7 +510,7 @@ int main (int argc, char *argv[]) {
     //
 
     #ifdef _ALLKMER
-    CSC<int, int> spmat(occurrences, read_id, kmervect.size(), 
+    CSC<int, int> spmat(occurrences, read_id, countsreliable_jelly.size(), 
                             [] (int & p1, int & p2) 
                             {   // assume no errors in MergeDuplicates
                                 // keep just the first position of that k-mer in that read
@@ -556,14 +519,14 @@ int main (int argc, char *argv[]) {
     //std::cout << "spmat created with " << spmat.nnz << " nonzeros" << endl;
     std::vector<tuple<int,int,int>>().swap(occurrences);    // remove memory of occurences
 
-    CSC<int, int> transpmat(transtuples, kmervect.size(), read_id, 
+    CSC<int, int> transpmat(transtuples, countsreliable_jelly.size(), read_id, 
                             [] (int & p1, int & p2) 
                             {  return p1;
                             });
     //std::cout << "transpose(spmat) created" << endl;
     std::vector<tuple<int,int,int>>().swap(transtuples); // remove memory of transtuples
     #else
-    CSC<int, int> spmat(occurrences, read_id, kmervect.size(), 
+    CSC<int, int> spmat(occurrences, read_id, countsreliable_jelly.size(), 
                             [] (int & p1, int & p2) 
                             {   // assume no errors in MergeDuplicates
                                 // keep just the first position of that k-mer in that read
@@ -572,7 +535,7 @@ int main (int argc, char *argv[]) {
     //std::cout << "spmat created with " << spmat.nnz << " nonzeros" << endl;
     std::vector<tuple<int,int,int>>().swap(occurrences);    // remove memory of occurences
 
-    CSC<int, int> transpmat(transtuples, kmervect.size(), read_id, 
+    CSC<int, int> transpmat(transtuples, countsreliable_jelly.size(), read_id, 
                             [] (int & p1, int & p2) 
                             {  return p1;
                             });
@@ -582,7 +545,7 @@ int main (int argc, char *argv[]) {
 
     spmat.Sorted();
     transpmat.Sorted();
-    cout << "Spmat and Spmat^T creation took: " << omp_get_wtime()-matcreat << "s\n" << endl;
+    cout << "spmat and spmat^T creation took: " << omp_get_wtime()-matcreat << "s" << endl;
     
     //
     // Overlap detection (sparse matrix multiplication) and seed-and-extend alignment
@@ -622,6 +585,6 @@ int main (int argc, char *argv[]) {
                 return m2;
             }, reads, getvaluetype, kmer_len, algnmnt_drop, algnmnt_thr, out_file, skip_algnmnt_krnl);
     #endif 
-    cout << "Total running time: " << omp_get_wtime()-all << "s\n" << endl;
+    cout << "total running time: " << omp_get_wtime()-all << "s\n" << endl;
     return 0;
 } 
