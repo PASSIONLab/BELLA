@@ -6,9 +6,14 @@ The master contains the multithreaded code on single node.
 #
 To compile BELLA: make bella
 #
+If #DEFINE Jellyfish (Jellyfish k-mer counting requires Jellyfish k-mer file)
 To run BELLA: ./bella -f <kmers-file> -i <listoffastq> -o <out-filename> [-k <kmer-length>] [-a <alignment-score-thr>] [-p <alignment-xdrop-factor>] [-z]
 	-h will show the usage
-#	
+#
+Otherwise our k-mer counting is used:
+#
+To run BELLA: ./bella -i <listoffastq> -o <out-filename> [-k <kmer-length>] [-a <alignment-score-thr>] [-p <alignment-xdrop-factor>] [-z]
+	-h will show the usage
 The repository contains also the code to get the sensitivy of BELLA as well as other long-read aligners.
 #
 To compile: cd analysis && make check
