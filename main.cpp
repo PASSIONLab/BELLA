@@ -212,7 +212,7 @@ int main (int argc, char *argv[]) {
             }
             case 'h': {
                 cout << "Usage:\n" << endl;
-                cout << " -f : k-mer list from Jellyfish (required)" << endl; // the reliable k-mers are selected by bella
+                cout << " -f : k-mer list from Jellyfish (required if Jellyfish k-mer counting is used)" << endl; // the reliable k-mers are selected by bella
                 cout << " -i : list of fastq(s) (required)" << endl;
                 cout << " -o : output filename (required)" << endl;
                 cout << " -d : depth/coverage (required)" << endl; // TO DO: add depth estimation
