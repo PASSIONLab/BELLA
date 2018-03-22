@@ -26,10 +26,11 @@
 #include <omp.h>
 #include "rbounds.hpp"
 
-//
-// Factorial function
-//
-
+/**
+ * @brief factorial
+ * @param n
+ * @return
+ */
 double factorial(double n)
 {
     if(n > 1)
@@ -38,9 +39,14 @@ double factorial(double n)
         return 1;
 }
 
-//
-// Upper bound selection function, the lower bound is fixed and equal to 2 so far
-//
+/**
+ * @brief rbounds does upper bound selection,
+ * the lower bound is fixed and equal to 2
+ * @param d is the coverage
+ * @param e is the error rate
+ * @param k is the k-mer length
+ * @return upper bound
+ */
 int rbounds(int d, double e, int k)
 {
     double a,b,c;
@@ -58,4 +64,3 @@ int rbounds(int d, double e, int k)
     }
     return (m-1);
 }
-

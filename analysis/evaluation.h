@@ -44,7 +44,13 @@ struct readInfo {
 
 typedef vector<refInfo> vectInfo;
 
-/* Compute the number of true overlapping reads */
+/**
+ * @brief trueOv omputes the number of true overlapping reads
+ * @param truthInfo
+ * @param simulated (default false)
+ * @param minOvl
+ * @return number of true overlapping pairs
+ */
 double trueOv(vector<vectInfo> & truthInfo, bool simulated, int minOvl) 
 {
     vector<Interval<std::string>> intervals;
@@ -87,7 +93,14 @@ double trueOv(vector<vectInfo> & truthInfo, bool simulated, int minOvl)
     return trueOvls;
 }
 
-/* Compute the overlap length between potential overlapping reads pairs */
+/**
+ * @brief computeLength computes the overlap length between
+ * potential overlapping reads pairs
+ * @param readMap
+ * @param col_nametag
+ * @param row_nametag
+ * @return alignment length
+ */
 int computeLength(unordered_map<string,readInfo> & readMap, string & col_nametag, string & row_nametag) 
 {
     int alignment_length = 0;
@@ -117,6 +130,17 @@ int computeLength(unordered_map<string,readInfo> & readMap, string & col_nametag
     return alignment_length;
 }
 
+/**
+ * @brief benchmarkingAl retrives recall/precision values
+ * @param groundtruth (input file)
+ * @param bella (file containing bella alignments)
+ * @param minimap (file containing minimap overlaps)
+ * @param mhap (file containing mhap overlaps)
+ * @param blasr (file containing blasr alignments)
+ * @param daligner (file containing daligner alignments)
+ * @param simulated (default false)
+ * @param minOvl
+ */
 void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap, ifstream & mhap, 
     ifstream & blasr, ifstream & daligner, bool simulated, int minOvl) // add blasr && daligner && mhap && bella
 {

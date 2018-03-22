@@ -58,7 +58,12 @@ typedef SeedSet<TSeed> TSeedSet;
 struct sysinfo info;
 #endif
 
-/* CSV containing CSC indices of the output sparse matrix*/
+/**
+ * @brief writeToFile writes a CSV containing
+ * CSC indices of the output sparse matrix
+ * @param myBatch
+ * @param filename
+ */
 void writeToFile(std::stringstream & myBatch, std::string filename)
 {  
     std::string myString = myBatch.str();  
@@ -141,11 +146,11 @@ void LocalSpGEMM(IT & start, IT & end, IT & ncols, const CSC<IT,NT> & A, const C
         delete [] mergeheap;
     }
 } 
+
 /**
   * Sparse multithreaded GEMM.
   * Probably slower than HeapSpGEMM_gmalloc but likely to use less memory
  **/
-
 template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation>
 void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, readVector_ & read, 
     FT & getvaluetype, int kmer_len, int algnmnt_drop, int algnmnt_thr, char* filename, bool skip_algnmnt_krnl)
