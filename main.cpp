@@ -27,6 +27,7 @@
 #include <omp.h>
 
 #include "libcuckoo/cuckoohash_map.hh"
+#include "kmercount.h"
 
 #include "kmercode/hash_funcs.h"
 #include "kmercode/Kmer.hpp"
@@ -64,41 +65,7 @@ struct spmatType_ {
 };
 #endif
 
-struct filedata {
-
-    char filename[MAX_FILE_PATH];
-    size_t filesize;
-};
-
-std::vector<filedata>  GetFiles(char *filename) {
-    int64_t totalsize = 0;
-    int numfiles = 0;
-    std::vector<filedata> filesview;
-    
-    filedata fdata;
-    ifstream allfiles(filename);
-    if(!allfiles.is_open()) {
-        cerr << "could not open " << filename << endl;
-        exit(1);
-    }
-    allfiles.getline(fdata.filename,MAX_FILE_PATH);
-    while(!allfiles.eof())
-    {
-        struct stat st;
-        stat(fdata.filename, &st);
-        fdata.filesize = st.st_size;
-        
-        filesview.push_back(fdata);
-        cout << filesview.back().filename << " : " << filesview.back().filesize / (1024*1024) << " MB" << endl;
-        allfiles.getline(fdata.filename,MAX_FILE_PATH);
-        totalsize += fdata.filesize;
-        numfiles++;
-    }
-    return filesview;
-}
-
 typedef shared_ptr<spmatType_> spmatPtr_; // pointer to spmatType_ datastruct
-typedef cuckoohash_map<Kmer, int> dictionary_t; // <k-mer && reverse-complement, #kmers>
 typedef std::vector<Kmer> Kmers;
 
 int main (int argc, char *argv[]) {
@@ -250,20 +217,13 @@ int main (int argc, char *argv[]) {
     //
     // Declarations 
     //
-#ifdef JELLYFISH
-    ifstream filein(kmer_file);
-#endif
     vector<filedata> allfiles = GetFiles(all_inputs_fofn);
     FILE *fastafile;
-    int elem;
     int lower = 2; // reliable range lower bound (fixed)
     int upper;     // reliable range upper bound
     char *buffer;
-    string kmerstr;
-    string line;
     Kmer::set_k(kmer_len);
     size_t upperlimit = 10000000; // in bytes
-    Kmer kmerfromstr;
     Kmers kmervect;
     vector<string> seqs;
     vector<string> quals;
@@ -303,116 +263,11 @@ int main (int argc, char *argv[]) {
     // NOTE: this will be replaced by our k-mer counting
     //
     //
+    dictionary_t countsreliable;    
 #ifdef JELLYFISH
-    // double kdict = omp_get_wtime();
-    // Jellyfish file contains all the k-mers from fastq(s)
-    // It is not filtered beforehand
-    // A k-mer and its reverse complement are counted separately
-    dictionary_t countsjelly;
-    if(filein.is_open()) 
-    { 
-            while(getline(filein, line)) {
-                if(line.length() == 0)
-                    break;
-
-                string substring = line.substr(1);
-                elem = stoi(substring);
-                getline(filein, kmerstr);   
-                kmerfromstr.set_kmer(kmerstr.c_str());
-
-                auto updatecountjelly = [&elem](int &num) { num+=elem; };
-                // If the number is already in the table, it will increment its count by the occurrence of the new element. 
-                // Otherwise it will insert a new entry in the table with the corresponding k-mer occurrence.
-                countsjelly.upsert(kmerfromstr.rep(), updatecountjelly, elem);      
-            }
-    } else std::cout << "Unable to open the input file\n";
-    filein.close();
-    cout << "jellyfish file parsing took: " << omp_get_wtime()-kdict << "s" << endl;
-    //
-    // Reliable k-mer filter on countsjelly
-    //
-    dictionary_t countsreliable_jelly; 
-    int kmer_id = 0;
-
-    auto ltj = countsjelly.lock_table(); // jellyfish counting
-    for (const auto &it : ltj) 
-        if (it.second >= lower && it.second <= upper)
-        {
-            countsreliable_jelly.insert(it.first,kmer_id);
-            ++kmer_id;
-        }
-    ltj.unlock(); // unlock the table
-    // Print some information about the table
-    cout << "Table size Jellyfish: " << countsjelly.size() << std::endl;
-    cout << "Entries within reliable range Jellyfish: " << countsreliable_jelly.size() << std::endl;    
-    cout << "Bucket count Jellyfish: " << countsjelly.bucket_count() << std::endl;
-    cout << "Load factor Jellyfish: " << countsjelly.load_factor() << std::endl;
-    countsjelly.clear(); // free 
+    JellyFishCount(kmer_file, countsreliable, lower, upper);
 #else
-    double denovocount = omp_get_wtime();
-    dictionary_t countsdenovo;
-
-    for(auto itr=allfiles.begin(); itr!=allfiles.end(); itr++) {
-
-        ParallelFASTQ *pfq = new ParallelFASTQ();
-        pfq->open(itr->filename, false, itr->filesize);
-
-        size_t fillstatus = 1;
-        while(fillstatus) { 
-            fillstatus = pfq->fill_block(nametags, seqs, quals, upperlimit);
-            int nreads = seqs.size();
-
-        auto updatecount = [](int &num) { ++num; };
-            
-        #pragma omp parallel for
-            for(int i=0; i<nreads; i++) 
-            {
-                // remember that the last valid position is length()-1
-                int len = seqs[i].length();
-
-#ifdef _OPENMP
-        int tid = omp_get_thread_num();
-#else
-        int tid = 0;
-#endif
-           
-                for(int j=0; j<=len-kmer_len; j++)  
-                {
-                    std::string kmerstrfromfastq = seqs[i].substr(j, kmer_len);
-                    Kmer mykmer(kmerstrfromfastq.c_str());
-                    // remember to use only ::rep() when building kmerdict as well
-                    Kmer lexsmall = mykmer.rep();      
-
-            // If the number is already in the table, it will increment its count by one. 
-            // Otherwise it will insert a new entry in the table with count one.
-            countsdenovo.upsert(lexsmall, updatecount, 1);
-
-        }
-            } // for(int i=0; i<nreads; i++)
-    } //while(fillstatus) 
-        delete pfq;
-    }  
-    cout << "\ndenovo counting took: " << omp_get_wtime()-denovocount << "s" << endl;
-    //
-    // Reliable k-mer filter on countsdenovo
-    //
-    dictionary_t countsreliable_denovo; 
-    int kmer_id_denovo = 0;
-    
-    auto lt = countsdenovo.lock_table(); // our counting
-    for (const auto &it : lt) 
-        if (it.second >= lower && it.second <= upper)
-        {
-            countsreliable_denovo.insert(it.first,kmer_id_denovo);
-            ++kmer_id_denovo;
-        }
-    lt.unlock(); // unlock the table
-    // Print some information about the table
-    cout << "Table size: " << countsdenovo.size() << std::endl;
-    cout << "Entries within reliable range: " << countsreliable_denovo.size() << std::endl;    
-    cout << "Bucket count: " << countsdenovo.bucket_count() << std::endl;
-    cout << "Load factor: " << countsdenovo.load_factor() << std::endl;
-    countsdenovo.clear(); // free   
+    DeNovoCount(allfiles, countsreliable, lower, upper, kmer_len, upperlimit);
 #endif   
     //
     // Fastq(s) parsing
@@ -467,12 +322,8 @@ int main (int argc, char *argv[]) {
                         Kmer lexsmall = mykmer.rep();      
         
                         int idx; // kmer_id
-            #ifdef JELLYFISH
-                        auto found = countsreliable_jelly.find(lexsmall,idx);
-            #else
-                        auto found = countsreliable_denovo.find(lexsmall,idx);
-            #endif
-                        if(found)
+			auto found = countsreliable.find(lexsmall,idx);
+			if(found)
                         {
                             alloccurrences[tid].emplace_back(std::make_tuple(read_id+i,idx,j)); // vector<tuple<read_id,kmer_id,kmerpos>>
                             alltranstuples[tid].emplace_back(std::make_tuple(idx,read_id+i,j)); // transtuples.push_back(col_id,row_id,kmerpos)
@@ -520,11 +371,7 @@ int main (int argc, char *argv[]) {
     // Sparse matrices construction
     //
 
-#ifdef JELLYFISH
-    int nkmer = countsreliable_jelly.size();
-#else
-    int nkmer = countsreliable_denovo.size();
-#endif
+    int nkmer = countsreliable.size();
 
     CSC<int, int> spmat(occurrences, read_id, nkmer, 
                             [] (int & p1, int & p2) 
