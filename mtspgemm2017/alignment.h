@@ -27,7 +27,18 @@ using namespace std;
 
 typedef Seed<Simple> TSeed;
 
-std::pair<int,TSeed> seqanAlOne(std::string & row, std::string & col, int rlen, int i, int j, int dropFactor) {
+/**
+ * @brief seqanAlOne does the seed-and-extend alignment
+ * when ony one shared k-mer exists
+ * @param row
+ * @param col
+ * @param rlen is the length of the row sequence
+ * @param i is the starting position of the k-mer on the first read
+ * @param j is the starting position of the k-mer on the second read
+ * @param dropFactor
+ * @return alignment score and extended seed
+ */
+pair<int,TSeed> seqanAlOne(std::string & row, std::string & col, int rlen, int i, int j, int dropFactor) {
 
     Score<int, Simple> scoringScheme(1, -1, -1);
 
@@ -61,8 +72,20 @@ std::pair<int,TSeed> seqanAlOne(std::string & row, std::string & col, int rlen, 
     longestExtensionScore = make_pair(longestExtensionTemp, seed1);
     return longestExtensionScore;
 }
-
-std::pair<int,Seed<Simple>> seqanAlGen(std::string & row, std::string & col, int rlen, int i, int j, int l, int m, int dropFactor) {
+/**
+ * @brief seqanAlGen does the seed-and-extend alignment
+ * when two shared k-mers exist
+ * @param row
+ * @param col
+ * @param rlen is the length of the row sequence
+ * @param i is the starting position of the first k-mer on the first read
+ * @param j is the starting position of the first k-mer on the second read
+ * @param l is the starting position of the second k-mer on the first read
+ * @param m is the starting position of the second k-mer on the second read
+ * @param dropFactor
+ * @return alignment score and extended seed
+ */
+pair<int,Seed<Simple>> seqanAlGen(std::string & row, std::string & col, int rlen, int i, int j, int l, int m, int dropFactor) {
 
     Score<int, Simple> scoringScheme(1, -1, -1);
 
@@ -109,8 +132,17 @@ std::pair<int,Seed<Simple>> seqanAlGen(std::string & row, std::string & col, int
 
     return longestExtensionScore;
 }
-
-std::pair<int,TSeed> seqanAlOneAllKmer(std::string & row, std::string & col, int rlen, std::vector<std::pair<int,int>> vpos, int dropFactor) {
+/**
+ * @brief seqanAlOneAllKmer does the seed-and-extend alignment
+ * when only one shared k-mer exists
+ * @param row
+ * @param col
+ * @param rlen is the length of the row sequence
+ * @param vpos is a vector containing the starting position of k-mer
+ * @param dropFactor
+ * @return alignment score and extended seed
+ */
+pair<int,TSeed> seqanAlOneAllKmer(std::string & row, std::string & col, int rlen, std::vector<std::pair<int,int>> vpos, int dropFactor) {
 
     Score<int, Simple> scoringScheme(1, -1, -1);
 
@@ -147,8 +179,17 @@ std::pair<int,TSeed> seqanAlOneAllKmer(std::string & row, std::string & col, int
     longestExtensionScore = make_pair(longestExtensionTemp, seed);
     return longestExtensionScore;
 }
-
-std::pair<int,TSeed> seqanAlGenAllKmer(std::string & row, std::string & col, int rlen, std::vector<std::pair<int,int>> vpos, int dropFactor) {
+/**
+ * @brief seqanAlGenAllKmer does the seed-and-extend alignment
+ * when shared k-mers > 1
+ * @param row
+ * @param col
+ * @param rlen
+ * @param vpos
+ * @param dropFactor
+ * @return alignment score and extended seed
+ */
+pair<int,TSeed> seqanAlGenAllKmer(std::string & row, std::string & col, int rlen, std::vector<std::pair<int,int>> vpos, int dropFactor) {
 
     Score<int, Simple> scoringScheme(1, -1, -1);
 

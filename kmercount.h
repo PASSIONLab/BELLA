@@ -1,7 +1,6 @@
 #ifndef BELLA_KMERCOUNT_H_
 #define BELLA_KMERCOUNT_H_
 
-
 #include <iostream>
 #include <cstdio>
 #include <cstdlib>
@@ -49,6 +48,11 @@ struct filedata {
     size_t filesize;
 };
 
+/**
+ * @brief GetFiles
+ * @param filename
+ * @return
+ */
 std::vector<filedata>  GetFiles(char *filename) {
     int64_t totalsize = 0;
     int numfiles = 0;
@@ -76,7 +80,13 @@ std::vector<filedata>  GetFiles(char *filename) {
     return filesview;
 }
 
-
+/**
+ * @brief JellyFishCount
+ * @param kmer_file
+ * @param countsreliable_jelly
+ * @param lower
+ * @param upper
+ */
 void JellyFishCount(char *kmer_file, dictionary_t & countsreliable_jelly, int lower, int upper) 
 {
     double kdict = omp_get_wtime();
@@ -132,6 +142,15 @@ void JellyFishCount(char *kmer_file, dictionary_t & countsreliable_jelly, int lo
     countsjelly.clear(); // free 
 }
 
+/**
+ * @brief DeNovoCount
+ * @param allfiles
+ * @param countsreliable_denovo
+ * @param lower
+ * @param upper
+ * @param kmer_len
+ * @param upperlimit
+ */
 void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_denovo, int lower, int upper, int kmer_len, size_t upperlimit /* memory limit */)
 {
     vector<string> seqs;

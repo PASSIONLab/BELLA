@@ -142,3 +142,4 @@ int main (int argc, char* argv[]) {
     benchmarkingAl(ground, bella, minimap, mhap, blasr, daligner, simulated, ovl_len);  
 
 }
+
