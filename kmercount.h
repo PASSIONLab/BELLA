@@ -39,6 +39,7 @@
 #include "kmercode/fq_reader.h"
 #include "kmercode/ParallelFASTQ.h"
 #include "kmercode/rbounds.hpp"
+#include "kmercode/hyperloglog.hpp"
 
 typedef cuckoohash_map<Kmer, int> dictionary_t; // <k-mer && reverse-complement, #kmers>
 
@@ -137,6 +138,8 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
     vector<string> quals;
     vector<string> nametags;
     vector<Kmer> allkmers;
+    HyperLogLog hll(12);
+    
     
     double denovocount = omp_get_wtime();
     dictionary_t countsdenovo;
@@ -172,7 +175,8 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
                     Kmer mykmer(kmerstrfromfastq.c_str());
                     // remember to use only ::rep() when building kmerdict as well
                     Kmer lexsmall = mykmer.rep();  
-		    allkmers.push_back(lexsmall);    
+
+		    // hll.add((const char*) lexsmall.getBytes(), lexsmall.getNumBytes());   ABAB: trivial to make this multithreaded, but what about bloom filter?
 		    
 		    // If the number is already in the table, it will increment its count by one. 
 		    // Otherwise it will insert a new entry in the table with count one.
@@ -202,5 +206,8 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
     cout << "Bucket count: " << countsdenovo.bucket_count() << std::endl;
     cout << "Load factor: " << countsdenovo.load_factor() << std::endl;
     countsdenovo.clear(); // free  
+ 
+    double cardinality = hll.estimate();
+    cout << "Cardinality estimate is " << cardinality << endl;
 }
 #endif
