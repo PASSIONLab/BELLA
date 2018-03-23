@@ -8,6 +8,7 @@
 #include <strings.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <omp.h>
 
 #define MAX_KMER_SIZE 32
 
