@@ -47,23 +47,16 @@
 
 #define LSIZE 16000
 #define ITERS 10
+//#define PRINT
 //#define JELLYFISH
 
 using namespace std;
 
-#ifdef _ALLKMER
-struct spmatType_ {
-
-    int count = 0;   /* number of shared k-mers */
-    vector<std::pair<int,int>> vpos; /* wanna keep all the positions */
-};
-#else
 struct spmatType_ {
 
     int count = 0;   /* number of shared k-mers */
     int pos[4] = {0};  /* pos1i, pos1j, pos2i, pos2j */
 };
-#endif
 
 typedef shared_ptr<spmatType_> spmatPtr_; // pointer to spmatType_ datastruct
 typedef std::vector<Kmer> Kmers;
@@ -236,6 +229,7 @@ int main (int argc, char *argv[]) {
     // 
     // File and setting used
     //
+#ifdef PRINT
 #ifdef JELLYFISH
     cout << "k-mer counting: Jellyfish" << endl;
     cout << "Input k-mer file: " << kmer_file << endl;
@@ -249,14 +243,16 @@ int main (int argc, char *argv[]) {
     cout << "Alignment x-drop factor: " << algnmnt_drop << endl;
     cout << "Alignment score threshold: " << algnmnt_thr << endl;
     cout << "Depth: " << depth << "X" << endl;
-
+#endif
     //
     // Reliable bounds computation
     //
     double all = omp_get_wtime();
     upper = rbounds(depth,erate,kmer_len);
+#ifdef PRINT
     cout << "Reliable lower bound: " << lower << endl;
     cout << "Reliable upper bound: " << upper << "\n" << endl;
+#endif
 
     //
     // Reliable k-mer file parsing and k-mer dictionary creation
@@ -267,6 +263,7 @@ int main (int argc, char *argv[]) {
 #ifdef JELLYFISH
     JellyFishCount(kmer_file, countsreliable, lower, upper);
 #else
+    cout << "\nRunning with up to " << MAXTHREADS << " threads" << endl;
     DeNovoCount(allfiles, countsreliable, lower, upper, kmer_len, upperlimit);
 #endif   
     //
@@ -274,8 +271,6 @@ int main (int argc, char *argv[]) {
     //
     double parsefastq = omp_get_wtime();
     int read_id = 0; // read_id needs to be global (not just per file)
-
-
     cout << "\nRunning with up to " << MAXTHREADS << " threads" << endl;
 
 
@@ -329,7 +324,6 @@ int main (int argc, char *argv[]) {
         } //while(fillstatus) 
     delete pfq;
     } // for all files
-    cout << "global vector filling took: " << omp_get_wtime()-time1 << "s" << endl;
 
     size_t readcount = 0;
     size_t tuplecount = 0;
@@ -385,7 +379,9 @@ int main (int argc, char *argv[]) {
 
     spmat.Sorted();
     transpmat.Sorted();
+#ifdef PRINT
     cout << "spmat and spmat^T creation took: " << omp_get_wtime()-matcreat << "s" << endl;
+#endif
     
     //
     // Overlap detection (sparse matrix multiplication) and seed-and-extend alignment

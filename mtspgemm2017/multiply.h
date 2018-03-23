@@ -37,6 +37,7 @@ typedef SeedSet<TSeed> TSeedSet;
 
 #define PERCORECACHE (1024 * 1024)
 #define TIMESTEP
+//#define PRINT
 //#define RAM
 //#define OSX
 //#define LINUX
@@ -231,10 +232,10 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     int * colStart = new int[numThreads+1];              // need one block more for remaining cols
     int * colEnd = new int[numThreads+1];                // need one block more for remaining cols
     int * numCols = new int[numThreads+1];
-
+#ifdef PRINT
     cout << "numBlocks " << numThreads+1 << endl;
     cout << "colsPerBlock " << colsPerBlock << "\n" << endl;
-
+#endif
     colStart[0] = 0;
     colEnd[0] = 0;
     numCols[0] = 0;
@@ -304,10 +305,10 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     int * colStart = new int[numThreads+1];              // need one block more for remaining cols
     int * colEnd = new int[numThreads+1];                // need one block more for remaining cols
     int * numCols = new int[numThreads+1];
-
+#ifdef PRINT
     cout << "numThreads: " << numThreads << endl;
     cout << "colsPerThread: " << colsPerBlock << "\n" << endl;
-
+#endif
     colStart[0] = 0;
     colEnd[0] = 0;
     numCols[0] = 0;
@@ -359,7 +360,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
 #ifdef TIMESTEP
 #pragma omp critical
         {
-            cout << "Thread #" << omp_get_thread_num()+1 << ", ovelap time: " << omp_get_wtime()-ovl << "s" << endl;
+            cout << "#" << omp_get_thread_num()+1 << ", ovelap time: " << omp_get_wtime()-ovl << "s" << endl;
         }
         double align = omp_get_wtime();
 #endif
@@ -481,7 +482,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
 #ifdef TIMESTEP
 #pragma omp critical
         {
-            cout << "Thread #" << omp_get_thread_num()+1 << ", alignment time: " << omp_get_wtime()-align << "s" << endl;
+            cout << "#" << omp_get_thread_num()+1 << ", alignment time: " << omp_get_wtime()-align << "s" << endl;
         }
 #endif
 
@@ -509,10 +510,11 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
 #endif
         }
     }
-
+#ifdef PRINT
     cout << "nOverlap: " << novl << endl;
     cout << "nAlignment: " << naln << endl;
     cout << "Ovelap detection and Alignment time: " << omp_get_wtime()-ovlalign << "s" << endl;
+#endif
 
     delete [] colStart;
     delete [] colEnd;

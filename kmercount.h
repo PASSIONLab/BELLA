@@ -121,7 +121,7 @@ void JellyFishCount(char *kmer_file, dictionary_t & countsreliable_jelly, int lo
             }
     } else std::cout << "Unable to open the input file\n";
     filein.close();
-    cout << "jellyfish file parsing took: " << omp_get_wtime()-kdict << "s" << endl;
+    //cout << "jellyfish file parsing took: " << omp_get_wtime()-kdict << "s" << endl;
     //
     // Reliable k-mer filter on countsjelly
     //
@@ -136,10 +136,10 @@ void JellyFishCount(char *kmer_file, dictionary_t & countsreliable_jelly, int lo
         }
     ltj.unlock(); // unlock the table
     // Print some information about the table
-    cout << "Table size Jellyfish: " << countsjelly.size() << std::endl;
-    cout << "Entries within reliable range Jellyfish: " << countsreliable_jelly.size() << std::endl;    
-    cout << "Bucket count Jellyfish: " << countsjelly.bucket_count() << std::endl;
-    cout << "Load factor Jellyfish: " << countsjelly.load_factor() << std::endl;
+    //cout << "Table size Jellyfish: " << countsjelly.size() << std::endl;
+    //cout << "Entries within reliable range Jellyfish: " << countsreliable_jelly.size() << std::endl;    
+    //cout << "Bucket count Jellyfish: " << countsjelly.bucket_count() << std::endl;
+    //cout << "Load factor Jellyfish: " << countsjelly.load_factor() << std::endl;
     countsjelly.clear(); // free 
 }
 
@@ -154,12 +154,12 @@ void JellyFishCount(char *kmer_file, dictionary_t & countsreliable_jelly, int lo
  */
 void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_denovo, int lower, int upper, int kmer_len, size_t upperlimit /* memory limit */)
 {
-        vector < vector<Kmer> > allkmers(MAXTHREADS);
+    vector < vector<Kmer> > allkmers(MAXTHREADS);
     vector < HyperLogLog > hlls(MAXTHREADS, HyperLogLog(12));	// std::vector fill constructor    
     
     double denovocount = omp_get_wtime();
     dictionary_t countsdenovo;
-
+    //cout << "\nRunning with up to " << MAXTHREADS << " threads" << endl;
     size_t totreads = 0;
     for(auto itr=allfiles.begin(); itr!=allfiles.end(); itr++) 
     {
@@ -202,7 +202,7 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
 		#pragma omp critical
 		totreads += tlreads;
 	}
-	cout << "There were " << totreads << " reads" << endl;
+	//cout << "There were " << totreads << " reads" << endl;
     }  
 
     // HLL reduction (serial for now)
@@ -211,15 +211,15 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
 	    std::transform(hlls[0].M.begin(), hlls[0].M.end(), hlls[i].M.begin(), hlls[0].M.begin(), [](uint8_t c1, uint8_t c2) -> uint8_t{ return std::max(c1, c2); });
     }
     double cardinality = hlls[0].estimate();
-    cout << "Cardinality estimate is " << cardinality << endl;
+    //cout << "Cardinality estimate is " << cardinality << endl;
 
 
     unsigned int random_seed = 0xA57EC3B2;
     const double desired_probability_of_false_positive = 0.05;
     struct bloom * bm = (struct bloom*) malloc(sizeof(struct bloom));
     bloom_init64(bm, cardinality * 1.1, desired_probability_of_false_positive);
-    cout << "Table size is: " << bm->bits << " bits, " << ((double)bm->bits)/8/1024/1024 << " MB" << endl;
-    cout << "Optimal number of hash functions is : " << bm->hashes << endl;
+    //cout << "Table size is: " << bm->bits << " bits, " << ((double)bm->bits)/8/1024/1024 << " MB" << endl;
+    //cout << "Optimal number of hash functions is : " << bm->hashes << endl;
 
     #pragma omp parallel
     {	    
@@ -267,10 +267,10 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
         }
     lt.unlock(); // unlock the table
     // Print some information about the table
-    cout << "Table size: " << countsdenovo.size() << std::endl;
-    cout << "Entries within reliable range: " << countsreliable_denovo.size() << std::endl;    
-    cout << "Bucket count: " << countsdenovo.bucket_count() << std::endl;
-    cout << "Load factor: " << countsdenovo.load_factor() << std::endl;
+    //cout << "Table size: " << countsdenovo.size() << std::endl;
+    //cout << "Entries within reliable range: " << countsreliable_denovo.size() << std::endl;    
+    //cout << "Bucket count: " << countsdenovo.bucket_count() << std::endl;
+    //cout << "Load factor: " << countsdenovo.load_factor() << std::endl;
     countsdenovo.clear(); // free  
  
 }
