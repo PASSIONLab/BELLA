@@ -43,7 +43,7 @@ $(BUILD)/libbloom.a: $(BUILD)/murmurhash2.o $(BUILD)/bloom.o
 $(BUILD)/test-libbloom: $(BUILD)/libbloom.a $(BUILD)/test.o
 	(cd $(BUILD) && $(CC) test.o -L$(BUILD) -lbloom -o test-libbloom)
 
-$(BUILD)/%.o: %.c
+$(BUILD)/%.o: %.cpp
 	mkdir -p $(BUILD)
 	$(CC) $(INC) -c $< -o $@
 
@@ -66,5 +66,5 @@ gcov:
 	(cd $(BUILD) && \
 		cp ../*.c . && \
 		./test-libbloom && \
-		gcov -bf bloom.c)
+		gcov -bf bloom.cpp)
 	@echo Remember to make clean to remove instrumented objects
