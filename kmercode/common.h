@@ -24,9 +24,15 @@ typedef long long unsigned llu;
 #endif
 
 #ifdef _OPENMP
-#define THREADS omp_get_max_threads()
+#define THREADS omp_get_num_threads()
 #else
 #define THREADS 1
+#endif
+
+#ifdef _OPENMP
+#define MAXTHREADS omp_get_max_threads()
+#else
+#define MAXTHREADS 1
 #endif
 
 #define serial_printf printf

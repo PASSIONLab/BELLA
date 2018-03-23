@@ -9,6 +9,14 @@
 #define _BLOOM64_H
 
 #include <stdint.h>
+#include <atomic>
+
+#ifdef _OPENMP
+	typedef std::atomic_uchar bf_type;
+#else
+	typedef unsigned char bf_type;
+#endif
+
 
 /** ***************************************************************************
  * Structure to keep track of one bloom filter.  Caller needs to
@@ -31,7 +39,8 @@ struct bloom
   // change incompatibly at any moment. Client code MUST NOT access or rely
   // on these.
   double bpe;
-  unsigned char * bf;
+
+  bf_type * bf;
   int ready;
 };
 
@@ -83,6 +92,8 @@ int bloom_init64(struct bloom * bloom, int64_t entries, double error);
  *
  */
 int bloom_check(struct bloom * bloom, const void * buffer, int len);
+
+
 
 
 /** ***************************************************************************

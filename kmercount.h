@@ -30,6 +30,7 @@
 #include <omp.h>
 
 #include "libcuckoo/cuckoohash_map.hh"
+#include "libbloom/bloom64.h"
 
 #include "kmercode/hash_funcs.h"
 #include "kmercode/Kmer.hpp"
@@ -156,9 +157,8 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
     vector<string> seqs;
     vector<string> quals;
     vector<string> nametags;
-    vector<Kmer> allkmers;
-    HyperLogLog hll(12);
-    
+    vector < vector<Kmer> > allkmers(MAXTHREADS);
+    vector < HyperLogLog > hlls(MAXTHREADS, HyperLogLog(12));	// std::vector fill constructor    
     
     double denovocount = omp_get_wtime();
     dictionary_t countsdenovo;
@@ -174,19 +174,12 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
 	{ 
             fillstatus = pfq->fill_block(nametags, seqs, quals, upperlimit);
             int nreads = seqs.size();
-	    auto updatecount = [](int &num) { ++num; };
             
        	    #pragma omp parallel for
             for(int i=0; i<nreads; i++) 
             {
                 // remember that the last valid position is length()-1
                 int len = seqs[i].length();
-
-#ifdef _OPENMP
-		int tid = omp_get_thread_num();
-#else
-		int tid = 0;
-#endif
            
                 for(int j=0; j<=len-kmer_len; j++)  
                 {
@@ -194,19 +187,54 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
                     Kmer mykmer(kmerstrfromfastq.c_str());
                     // remember to use only ::rep() when building kmerdict as well
                     Kmer lexsmall = mykmer.rep();  
-		    //allkmers.push_back(lexsmall);
+		    allkmers[MYTHREAD].push_back(lexsmall);
 
-		    hll.add((const char*) lexsmall.getBytes(), lexsmall.getNumBytes());   //ABAB: trivial to make this multithreaded, but what about bloom filter?
-		    
-		    // If the number is already in the table, it will increment its count by one. 
-		    // Otherwise it will insert a new entry in the table with count one.
-		    countsdenovo.upsert(lexsmall, updatecount, 1);
+		    hlls[MYTHREAD].add((const char*) lexsmall.getBytes(), lexsmall.getNumBytes());   
 		}
             } // for(int i=0; i<nreads; i++)
 	} //while(fillstatus) 
 	delete pfq;
     }  
+
+    // HLL reduction (serial for now)
+    for (int i=1;i< MAXTHREADS; i++) 
+    {
+	    std::transform(hlls[0].M.begin(), hlls[0].M.end(), hlls[i].M.begin(), hlls[0].M.begin(), [](uint8_t c1, uint8_t c2) -> uint8_t{ return std::max(c1, c2); });
+    }
+    double cardinality = hlls[0].estimate();
+    cout << "Cardinality estimate is " << cardinality << endl;
+
+
+    unsigned int random_seed = 0xA57EC3B2;
+    const double desired_probability_of_false_positive = 0.05;
+    struct bloom * bm = (struct bloom*) malloc(sizeof(struct bloom));
+    bloom_init64(bm, cardinality * 1.1, desired_probability_of_false_positive);
+    cout << "Table size is: " << bm->bits << " bits, " << ((double)bm->bits)/8/1024/1024 << " MB" << endl;
+    cout << "Optimal number of hash functions is : " << bm->hashes << endl;
+
+    auto updatecount = [](int &num) { ++num; };
+    #pragma omp parallel
+    {	    
+	for(auto v:allkmers[MYTHREAD])
+	{
+		bool inBloom = (bool) bloom_check(bm, v.getBytes(), v.getNumBytes());
+
+		if(inBloom)
+		{
+			// upsert: If the number is already in the table, it will increment its count by one. 
+			// Otherwise it will insert a new entry in the table with count 1 (as it is passing bloom filter).
+			countsdenovo.upsert(v, updatecount, 2);
+		}
+		else
+		{
+			bloom_add(bm, v.getBytes(), v.getNumBytes());
+		}
+	}
+    }
+
     cout << "\ndenovo counting took: " << omp_get_wtime()-denovocount << "s" << endl;
+
+
     //
     // Reliable k-mer filter on countsdenovo
     //
@@ -227,7 +255,5 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
     cout << "Load factor: " << countsdenovo.load_factor() << std::endl;
     countsdenovo.clear(); // free  
  
-    double cardinality = hll.estimate();
-    cout << "Cardinality estimate is " << cardinality << endl;
 }
 #endif

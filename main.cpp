@@ -275,15 +275,13 @@ int main (int argc, char *argv[]) {
     double parsefastq = omp_get_wtime();
     int read_id = 0; // read_id needs to be global (not just per file)
 
-#ifdef _OPENMP
-    int numthreads = omp_get_max_threads();
-    cout << "\nRunning with up to " << numthreads << " threads" << endl;
-#else
-    int numthreads = 1;
-#endif       
-        vector < vector<tuple<int,int,int>> > alloccurrences(numthreads);   
-        vector < vector<tuple<int,int,int>> > alltranstuples(numthreads);   
-        vector < readVector_ > allreads(numthreads);
+
+    cout << "\nRunning with up to " << MAXTHREADS << " threads" << endl;
+
+
+        vector < vector<tuple<int,int,int>> > alloccurrences(MAXTHREADS);   
+        vector < vector<tuple<int,int,int>> > alltranstuples(MAXTHREADS);   
+        vector < readVector_ > allreads(MAXTHREADS);
 
         double time1 = omp_get_wtime();
 
@@ -307,12 +305,8 @@ int main (int argc, char *argv[]) {
                     temp.nametag = nametags[i];
                     temp.seq = seqs[i]; // save reads for seeded alignment
                     temp.readid = read_id+i;
-#ifdef _OPENMP
-        int tid = omp_get_thread_num();
-#else
-        int tid = 0;
-#endif
-                    allreads[tid].push_back(temp);
+
+		    allreads[MYTHREAD].push_back(temp);
                     
                     for(int j=0; j<=len-kmer_len; j++)  
                     {
@@ -325,8 +319,8 @@ int main (int argc, char *argv[]) {
 			auto found = countsreliable.find(lexsmall,idx);
 			if(found)
                         {
-                            alloccurrences[tid].emplace_back(std::make_tuple(read_id+i,idx,j)); // vector<tuple<read_id,kmer_id,kmerpos>>
-                            alltranstuples[tid].emplace_back(std::make_tuple(idx,read_id+i,j)); // transtuples.push_back(col_id,row_id,kmerpos)
+                            alloccurrences[MYTHREAD].emplace_back(std::make_tuple(read_id+i,idx,j)); // vector<tuple<read_id,kmer_id,kmerpos>>
+                            alltranstuples[MYTHREAD].emplace_back(std::make_tuple(idx,read_id+i,j)); // transtuples.push_back(col_id,row_id,kmerpos)
                         }
                     }
                 }   // for(int i=0; i<nreads; i++)
@@ -339,7 +333,7 @@ int main (int argc, char *argv[]) {
 
     size_t readcount = 0;
     size_t tuplecount = 0;
-    for(int t=0; t<numthreads; ++t)
+    for(int t=0; t<MAXTHREADS; ++t)
     {
         readcount += allreads[t].size();
         tuplecount += alloccurrences[t].size();
@@ -350,7 +344,7 @@ int main (int argc, char *argv[]) {
 
     size_t readssofar = 0;
     size_t tuplesofar = 0;
-    for(int t=0; t<numthreads; ++t)
+    for(int t=0; t<MAXTHREADS; ++t)
     {
         copy(allreads[t].begin(), allreads[t].end(), reads.begin()+readssofar);
         readssofar += allreads[t].size();

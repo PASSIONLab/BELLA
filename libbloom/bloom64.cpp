@@ -22,14 +22,7 @@
 #include "bloom64.h"
 #include "murmurhash2.h"
 
-#ifndef UPC_ALLOCATOR
-#define UPC_ALLOCATOR 0
-#endif
 
-#if UPC_ALLOCATOR
-#include "../../../common/upc_allocator.h"
-//#pragma message("using upc_allocator.h for bloom")
-#endif
 
 static int bloom_check_add(struct bloom * bloom,
                            const void * buffer, int len, int add)
@@ -101,13 +94,14 @@ int bloom_init64(struct bloom * bloom, int64_t entries, double error)
 
   bloom->hashes = (int)ceil(0.693147180559945 * bloom->bpe);  // ln(2)
 
-#if UPC_ALLOCATOR
-  upc_allocator_startUPC();
-  bloom->bf = (unsigned char *) upc_allocator_alloc(bloom->bytes * sizeof(unsigned char));
-  upc_allocator_endUPC();
-#else
-  bloom->bf = (unsigned char *)calloc(bloom->bytes, sizeof(unsigned char));
+
+  bloom->bf = new bf_type[bloom->bytes]();
+  
+#ifdef _OPENMP
+  for(size_t i=0; i< bloom->bytes; ++i)
+  	std::atomic_init(bloom->bf+i);
 #endif
+
   if (bloom->bf == NULL) {
     return 1;
   }
@@ -144,13 +138,7 @@ void bloom_print(struct bloom * bloom)
 void bloom_free(struct bloom * bloom)
 {
   if (bloom->ready) {
-#if UPC_ALLOCATOR
-    upc_allocator_startUPC();
-    upc_allocator_free(bloom->bf);
-    upc_allocator_endUPC();
-#else
-    free(bloom->bf);
-#endif
+    delete [] bloom->bf;
     bloom->bf = NULL;
   }
   bloom->ready = 0;
