@@ -202,20 +202,20 @@ static int64_t get_fptr_for_next_record(fq_reader_t fqr, int64_t offset)
 {
     if (offset == 0) return 0; // first record is the first record, include it.  Every other partition will be at least 1 full record after offset.
 #ifndef NO_GZIP
-    if(fqr->gz || !fqr->f) printf(stderr,"Can not fseek in a compressed file! (%s)\n", fqr->name);
+    if(fqr->gz || !fqr->f) fprintf(stderr,"Can not fseek in a compressed file! (%s)\n", fqr->name);
 #else
-    if(!fqr->f) printf(stderr,"Must fseek in an open file! (%s)\n", fqr->name);
+    if(!fqr->f) fprintf(stderr,"Must fseek in an open file! (%s)\n", fqr->name);
 #endif
     char lastName[256];
     lastName[0] = '\0';
     if (offset >= fqr->size) return fqr->size;
     int ret = fseek(fqr->f, offset, SEEK_SET);
     if (ret != 0) {
-        printf(stderr,"fseek could not execute on %s to %lld: %s", fqr->name, (lld) offset, strerror(errno));
+        fprintf(stderr,"fseek could not execute on %s to %lld: %s", fqr->name, (lld) offset, strerror(errno));
         return -1;
     }
 
-    printf(stdout,"Finding fptr for next record of %s after %lld\n", fqr->name, (lld) offset);
+    //fprintf(stdout,"Finding fptr for next record of %s after %lld\n", fqr->name, (lld) offset);
 
     // skip first (likely parial) line after this offset to ensure we start at the beginning of a line
     if (!fgetsBuffer(fqr->buf, 2047, fqr->f)) 
