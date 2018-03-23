@@ -6,8 +6,8 @@ INCLUDE = -I$(SPRNPATH)/include
 SEQINCLUDE = -I$(SEQANPATH)
 MLKINCLUDE = -I/opt/intel/composer_xe_2015.0.039/mkl/include
 LIBPATH = -L/opt/intel/composer_xe_2015.0.039/mkl/lib
-COMPILER = g++
-CC = gcc
+COMPILER = g++-6
+CC = gcc-6
 CFLAGS = -I. -O3 -Wall -Wextra -pedantic -ansi -c
 
 sprng:	

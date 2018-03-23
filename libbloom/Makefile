@@ -34,10 +34,10 @@ OPT=-O3
 endif
 
 
-all: $(BUILD)/libbloom.a $(BUILD)/test-libbloom
+all: $(BUILD)/libbloom.a 
 
-$(BUILD)/libbloom.a: $(BUILD)/murmurhash2.o $(BUILD)/bloom.o
-	(cd $(BUILD) && ar rcs libbloom.a bloom.o murmurhash2.o)
+$(BUILD)/libbloom.a: $(BUILD)/murmurhash2.o $(BUILD)/bloom64.o
+	(cd $(BUILD) && ar rcs libbloom.a bloom64.o murmurhash2.o)
 	ranlib $(BUILD)/libbloom.a
 
 $(BUILD)/test-libbloom: $(BUILD)/libbloom.a $(BUILD)/test.o
@@ -66,5 +66,5 @@ gcov:
 	(cd $(BUILD) && \
 		cp ../*.c . && \
 		./test-libbloom && \
-		gcov -bf bloom.cpp)
+		gcov -bf bloom64.cpp)
 	@echo Remember to make clean to remove instrumented objects
