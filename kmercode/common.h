@@ -17,8 +17,18 @@
 typedef long long int lld;
 typedef long long unsigned llu;
 
+#ifdef _OPENMP
+#define MYTHREAD omp_get_thread_num()
+#else
 #define MYTHREAD 0
+#endif
+
+#ifdef _OPENMP
+#define THREADS omp_get_max_threads()
+#else
 #define THREADS 1
+#endif
+
 #define serial_printf printf
 #define WARN printf
 

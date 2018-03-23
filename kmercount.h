@@ -176,7 +176,7 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
             int nreads = seqs.size();
 	    auto updatecount = [](int &num) { ++num; };
             
-        #pragma omp parallel for
+       	    #pragma omp parallel for
             for(int i=0; i<nreads; i++) 
             {
                 // remember that the last valid position is length()-1
@@ -194,8 +194,9 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
                     Kmer mykmer(kmerstrfromfastq.c_str());
                     // remember to use only ::rep() when building kmerdict as well
                     Kmer lexsmall = mykmer.rep();  
+		    //allkmers.push_back(lexsmall);
 
-		    // hll.add((const char*) lexsmall.getBytes(), lexsmall.getNumBytes());   ABAB: trivial to make this multithreaded, but what about bloom filter?
+		    hll.add((const char*) lexsmall.getBytes(), lexsmall.getNumBytes());   //ABAB: trivial to make this multithreaded, but what about bloom filter?
 		    
 		    // If the number is already in the table, it will increment its count by one. 
 		    // Otherwise it will insert a new entry in the table with count one.
