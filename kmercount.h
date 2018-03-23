@@ -154,46 +154,55 @@ void JellyFishCount(char *kmer_file, dictionary_t & countsreliable_jelly, int lo
  */
 void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_denovo, int lower, int upper, int kmer_len, size_t upperlimit /* memory limit */)
 {
-    vector<string> seqs;
-    vector<string> quals;
-    vector<string> nametags;
-    vector < vector<Kmer> > allkmers(MAXTHREADS);
+        vector < vector<Kmer> > allkmers(MAXTHREADS);
     vector < HyperLogLog > hlls(MAXTHREADS, HyperLogLog(12));	// std::vector fill constructor    
     
     double denovocount = omp_get_wtime();
     dictionary_t countsdenovo;
 
+    size_t totreads = 0;
     for(auto itr=allfiles.begin(); itr!=allfiles.end(); itr++) 
     {
 
-        ParallelFASTQ *pfq = new ParallelFASTQ();
-        pfq->open(itr->filename, false, itr->filesize);
+	#pragma omp parallel
+	{
+		ParallelFASTQ *pfq = new ParallelFASTQ();
+        	pfq->open(itr->filename, false, itr->filesize);
 
-        size_t fillstatus = 1;
-        while(fillstatus) 
-	{ 
-            fillstatus = pfq->fill_block(nametags, seqs, quals, upperlimit);
-            int nreads = seqs.size();
+		vector<string> seqs;
+    		vector<string> quals;
+    		vector<string> nametags;
+		size_t tlreads = 0;	// thread local reads
+
+        	size_t fillstatus = 1;
+        	while(fillstatus) 
+		{ 
+            		fillstatus = pfq->fill_block(nametags, seqs, quals, upperlimit);
+            		size_t nreads = seqs.size();
             
-       	    #pragma omp parallel for
-            for(int i=0; i<nreads; i++) 
-            {
-                // remember that the last valid position is length()-1
-                int len = seqs[i].length();
+       	    		//#pragma omp parallel for
+			for(int i=0; i<nreads; i++) 
+			{
+                		// remember that the last valid position is length()-1
+                		int len = seqs[i].length();
            
-                for(int j=0; j<=len-kmer_len; j++)  
-                {
-                    std::string kmerstrfromfastq = seqs[i].substr(j, kmer_len);
-                    Kmer mykmer(kmerstrfromfastq.c_str());
-                    // remember to use only ::rep() when building kmerdict as well
-                    Kmer lexsmall = mykmer.rep();  
-		    allkmers[MYTHREAD].push_back(lexsmall);
+                		for(int j=0; j<=len-kmer_len; j++)  
+                		{
+                    			std::string kmerstrfromfastq = seqs[i].substr(j, kmer_len);
+                   			Kmer mykmer(kmerstrfromfastq.c_str());
+                    			Kmer lexsmall = mykmer.rep();  
+		    			allkmers[MYTHREAD].push_back(lexsmall);
+		   			hlls[MYTHREAD].add((const char*) lexsmall.getBytes(), lexsmall.getNumBytes());   
+				}
+			} // for(int i=0; i<nreads; i++)
+			tlreads += nreads;
+            	} //while(fillstatus) 
+		delete pfq;
 
-		    hlls[MYTHREAD].add((const char*) lexsmall.getBytes(), lexsmall.getNumBytes());   
-		}
-            } // for(int i=0; i<nreads; i++)
-	} //while(fillstatus) 
-	delete pfq;
+		#pragma omp critical
+		totreads += tlreads;
+	}
+	cout << "There were " << totreads << " reads" << endl;
     }  
 
     // HLL reduction (serial for now)
@@ -212,7 +221,6 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
     cout << "Table size is: " << bm->bits << " bits, " << ((double)bm->bits)/8/1024/1024 << " MB" << endl;
     cout << "Optimal number of hash functions is : " << bm->hashes << endl;
 
-    auto updatecount = [](int &num) { ++num; };
     #pragma omp parallel
     {	    
 	for(auto v:allkmers[MYTHREAD])
@@ -221,14 +229,24 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
 
 		if(inBloom)
 		{
-			// upsert: If the number is already in the table, it will increment its count by one. 
-			// Otherwise it will insert a new entry in the table with count 1 (as it is passing bloom filter).
-			countsdenovo.upsert(v, updatecount, 2);
+			countsdenovo.insert(v, 0);
 		}
 		else
 		{
 			bloom_add(bm, v.getBytes(), v.getNumBytes());
 		}
+	}
+    }
+
+
+    // in this pass, only use entries that already are in the hash table
+    auto updatecount = [](int &num) { ++num; };
+    #pragma omp parallel
+    {	    
+	for(auto v:allkmers[MYTHREAD])
+	{
+		// does nothing if the entry doesn't exist in the table
+		countsdenovo.update_fn(v,updatecount);
 	}
     }
 

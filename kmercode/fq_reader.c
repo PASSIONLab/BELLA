@@ -148,8 +148,11 @@ int get_fq_name_dirn(char *header, char **name, int *end)
     return 1;
 }
 
+
+
+
 // returns 0 for unpaired (offset to '@'), or the offset to '1' or '2' for paired
-static int get_pairidx_from_name_line(char *s)
+static int8_t get_pairidx_from_name_line(char *s)
 {
     // Supports two types of paired formats:
     //
@@ -181,7 +184,10 @@ static int get_pairidx_from_name_line(char *s)
     // something is wrong - the line is too short
     if (endIdx <= 3)
         return 0; 
-    // Illumina
+    // Illumina with random comment
+    if (spaceIdx > 3 && s[spaceIdx - 2] == '/' && (s[spaceIdx - 1] == '1' || s[spaceIdx - 1] == '2'))
+        return spaceIdx - 1;
+    // Illumina without comment
     if (s[endIdx - 2] == '/' && (s[endIdx - 1] == '1' || s[endIdx - 1] == '2'))
         return endIdx - 1;
     // Casava
@@ -194,28 +200,34 @@ static int get_pairidx_from_name_line(char *s)
 
 static int64_t get_fptr_for_next_record(fq_reader_t fqr, int64_t offset)
 {
+    if (offset == 0) return 0; // first record is the first record, include it.  Every other partition will be at least 1 full record after offset.
 #ifndef NO_GZIP
-    if(fqr->gz || !fqr->f) fprintf(stderr, "Can not fseek in a compressed file! (%s)\n", fqr->name);
+    if(fqr->gz || !fqr->f) printf(stderr,"Can not fseek in a compressed file! (%s)\n", fqr->name);
 #else
-    if(!fqr->f) fprintf(stderr, "Must fseek in an open file! (%s)\n", fqr->name);
+    if(!fqr->f) printf(stderr,"Must fseek in an open file! (%s)\n", fqr->name);
 #endif
     char lastName[256];
     lastName[0] = '\0';
     if (offset >= fqr->size) return fqr->size;
     int ret = fseek(fqr->f, offset, SEEK_SET);
     if (ret != 0) {
-        fprintf(stderr, "fseek could not execute on %s to %lld: %s", fqr->name, (lld) offset, strerror(errno));
+        printf(stderr,"fseek could not execute on %s to %lld: %s", fqr->name, (lld) offset, strerror(errno));
         return -1;
     }
 
-    //fprintf(stdout,"Finding fptr for next record of %s after %lld\n", fqr->name, (lld) offset);
-    // clear from this offset to ensure we start at the beginning of a line
+    printf(stdout,"Finding fptr for next record of %s after %lld\n", fqr->name, (lld) offset);
+
+    // skip first (likely parial) line after this offset to ensure we start at the beginning of a line
     if (!fgetsBuffer(fqr->buf, 2047, fqr->f)) 
         return ftell(fqr->f);
     int64_t new_offset = 0;
     int count = 0, last_pair_line = 0;
     char prev_pair = 0;
     int64_t prev_offset = ftell(fqr->f);
+    Buffer readLines = initBuffer(4096);
+    printfBuffer(readLines, "%s", getStartBuffer(fqr->buf));
+    int possibleHeaderLine = -1;
+    char prevName[256]; prevName[0] = '\0';
     while (1) {
         new_offset = ftell(fqr->f);
         resetBuffer(fqr->buf);
@@ -223,43 +235,77 @@ static int64_t get_fptr_for_next_record(fq_reader_t fqr, int64_t offset)
             break;
         count++;
         char *buf = getStartBuffer(fqr->buf);
-        // //fprintf(stdout,"Read line of %lld length at offset %lld count %d: '%s'\n", (lld) getLengthBuffer(fqr->buf), (lld) prev_offset, count, buf);
+        printfBuffer(readLines, "%s", buf);
+        //fprintf(stdout, "Read line of %lld length at offset %lld count %d: %s", (lld) getLengthBuffer(fqr->buf), (lld) prev_offset, count, buf);
         if (buf[0] == '@') {
+            // '@' immediately after newline yields two possiblities: This is a header line or a quality line (or the file is invalid).  Use logic to determine 
+            // if it is a quality line, the next line must be a header
+            // if it is a header line the 4 lines from now will be a header too (3 lines may also be a quality line with starting '@' too)
+            // once the first header is determined, look for interleaved pairs, but allow unpaired reads
+            if (possibleHeaderLine > 0 && count == possibleHeaderLine + 1) {
+               // possibleHeaderLine was actually a quality line.  so this MUST be a header line
+               possibleHeaderLine = count; // the next header line we expect will be 4 after (and should never come back here)
+               //LOGF("header line after quality line at offset=%lld count=%d: %s", (lld) new_offset, count, buf);
+               prev_pair = 0; // reset any bogus pair
+               prevName[0] = '\0'; // reset the previous name
+            } else if (possibleHeaderLine > 0 && count == possibleHeaderLine + 4) {
+               // the first possibleHeaderLine was actualy a header.  good from here. this MUST be a header line
+               possibleHeaderLine = count; // the next header line we expect will be 4 after (and will hit here again)
+               //LOGF("header line after 4 lines after first header at offset=%lld count=%d: %s", (lld) new_offset, count, buf);
+            } else if (possibleHeaderLine > 0 && count == possibleHeaderLine + 3) {
+               // this must be a quality line after a real header line
+               //LOGF("Found quality line after 3 lines after the first header offset=%lld count=%d: %s", (lld) new_offset, count, buf);
+               continue; // not interested in this
+            } else {
+               // first '@' line this could be either header or quality lets skip it
+               if (possibleHeaderLine > 0) fprintf(stderr,"This should not happen!  possibleHeaderLine=%d at %lld.  Read from %lld offset: '%s'\n", possibleHeaderLine, (lld) new_offset, (lld) offset, getStartBuffer(readLines));
+               possibleHeaderLine = count;
+               //LOGF("possibleHeaderLine may be quality line at offset=%lld count=%d: %s\n", (lld) new_offset, count, buf);
+               // Try to use this line anyway, even if it happens to be quality
+            }
+            // now look to pairs (or not)
             strncpy(lastName, buf, 255);
             int pairIdx = get_pairidx_from_name_line(buf);
-            // not paired! could be a quality line
-            if (pairIdx == 0)  {
-                // //fprintf(stdout,"possible quality line at %lld offset: '%s'\n", (lld) new_offset, buf);
-                continue; 
+            char pair = 'X'; // 'X' for unpaired, '\0' for not assigned yet, '1', '2' for read 1, read 2 respectively
+            if (pairIdx) {
+              pair = buf[pairIdx];
             }
-            char pair = buf[pairIdx];
+            //LOGF("Discovered pair: '%c' lastName=%s prevName=%s\n", pair, lastName, prevName);
             if (!prev_pair) {
                 prev_pair = pair;
                 prev_offset = new_offset;
                 last_pair_line = count;
-                //fprintf(stdout,"no prev_par at count %d\n", count);
+                //DBG("no prev_par at count %d\n", count);
             } else {
                 if (last_pair_line + 1 == count) {
                     // last pair was actually a quality line
                     prev_pair = pair;
                     prev_offset = new_offset;
                     last_pair_line = count;
-                    // fprintf(stdout,"Last line was actually a quality line using next at %lld: '%s'\n", (lld) new_offset, buf);
+                    //LOGF("Last line was actually a quality line using next at %lld: '%s'\n", (lld) new_offset, buf);
+                    fprintf(stderr, "This should no longer happen! %s\n", getStartBuffer(readLines));
                 } else if (last_pair_line + 4 == count) {
                     // not interleaved or interleaved and prev pair was 1 and this is 2
-                    if (pair == prev_pair || (prev_pair == '1' && pair == '2') )  {
+                    if (prev_pair == '1' && pair == '2' && strcmp(prevName, lastName) == 0)  {
                         new_offset = prev_offset;
-                        //fprintf(stdout,"Interleaved this record completes the pair, using prev_offset %lld at count %d, lastName: %s\n", (lld) prev_offset, count, lastName);
+                        //LOGF("Interleaved this record completes the pair, using prev_offset %lld at count %d, lastName: %s prevName: %s\n", (lld) prev_offset, count, lastName, prevName);
+                    } else if (prev_pair == '2' && pair == '1' && strcmp(prevName, lastName) != 0) {
+                        //LOGF("Interleaved this record starts a new pair, using new_offset %lld at count %d, lastName: %s prevName: %s\n", (lld) new_offset, count, lastName, prevName);
                     } else {
-                        //fprintf(stdout,"Not interleaved at count %d, lastName: %s\n", count, lastName);
+                        new_offset = prev_offset;
+                        //LOGF("Not interleaved at count %d, using prev_offset %lld, lastName: %s prevName: %s\n", count, (lld) prev_offset, lastName, prevName);
                     }
                     break;
                 }
             }
+            strncpy(prevName, lastName, 255);
         }
-        if (count > 9) 
-            fprintf(stderr, "Could not find a valid line in the fastq file %s, last line: %s\n", fqr->name, buf);
+        if (count > 13) 
+            fprintf(stderr,"Could not find a valid line in the fastq file %s, last line: %s\n", fqr->name, buf);
     }
+    assert(new_offset >= offset);
+    //fprintf(stdout,"Found record at %lld (count=%d %lld bytes after requested offset=%lld):\n%s...Skipped: %.*s\n", (lld) new_offset, count, (lld) (new_offset - offset), (lld) offset, getStartBuffer(readLines) + (new_offset - offset), (int) (new_offset - offset), getStartBuffer(readLines));
+    freeBuffer(readLines);
     // for interleawed, make sure to the next record starts with a /1
     //fprintf(stdout,"Chose %lld as my offset '%s' (prev_offset: %lld, startOffset: %lld)\n", (lld) new_offset, lastName, (lld) prev_offset, (lld) offset);
     return new_offset;
@@ -268,49 +314,26 @@ static int64_t get_fptr_for_next_record(fq_reader_t fqr, int64_t offset)
 void open_fq(fq_reader_t fqr, const char *fname, int cached_io) {
     fqr->line = 0;
     fqr->max_read_len = 0;
-    if (cached_io) {
-        // in this case, we have one file per thread
-        char bname[MAX_FILE_PATH];
-#ifndef NO_GZIP
-        sprintf(fqr->name, "/dev/shm/%s.gz", get_rank_path(get_basename(bname, fname), MYTHREAD));
-        fqr->f = NULL;
-        fqr->gz = gzopen_chk(fqr->name, "r");
-
-        // get the size from a secondary file
-        char fname2[MAX_FILE_PATH];
-        sprintf(fname2, "%s.uncompressedSize", fqr->name);
-        FILE *f = fopen_chk(fname2, "r");
-        if (fread(&(fqr->size), sizeof(int64_t), 1, f) != 1) fprintf(stderr, "Invalid uncompressedSize file: %s\n", fname2);
-        fclose_track(f);
-        fqr->start_read = 0;
-        fqr->end_read = fqr->size;
-        fqr->fpos = fqr->start_read;
-        return;
-#else
-        sprintf(fqr->name, "/dev/shm/%s", get_rank_path(get_basename(bname, fname), MYTHREAD));
-        fqr->size = get_file_size(fqr->name);
-#endif
-    } else {
-        // in this case, we have a single file for all threads
-        strcpy(fqr->name, fname);
-        fqr->size = get_file_size(fqr->name);
-    }
+    // we have a single file for all threads
+    strcpy(fqr->name, fname);
+    fqr->size = get_file_size(fqr->name);
+ 
 
     fqr->f = fopen_chk(fqr->name, "r");
-    if (cached_io) {
-        fqr->start_read = 0;
-        fqr->end_read = fqr->size;
-    } else {
-        int64_t read_block = INT_CEIL(fqr->size, THREADS);
-        fqr->start_read = read_block * MYTHREAD;
-        fqr->end_read = read_block * (MYTHREAD + 1);
-        if (MYTHREAD > 0) 
-            fqr->start_read = get_fptr_for_next_record(fqr, fqr->start_read);
-        if (MYTHREAD == THREADS - 1)
+    int64_t read_block = INT_CEIL(fqr->size, THREADS);
+    fqr->start_read = read_block * MYTHREAD;
+    fqr->end_read = read_block * (MYTHREAD + 1);
+    if (MYTHREAD > 0) 
+	    fqr->start_read = get_fptr_for_next_record(fqr, fqr->start_read);
+    if (MYTHREAD == THREADS - 1)
             fqr->end_read = fqr->size;
-        else 
+    else 
             fqr->end_read = get_fptr_for_next_record(fqr, fqr->end_read);
-    }
+
+    //long long int start_read = fqr->start_read;
+    //long long int end_read = fqr->end_read;    	
+    //fprintf(stdout,"thread %d of %d and max of %d start block %lld and end block %lld out of file size %lld, each read block is %lld \n",MYTHREAD, THREADS, MAXTHREADS, start_read, end_read, fqr->size, read_block );
+    
     
     assert(fqr->end_read >= fqr->start_read);
     if (setvbuf(fqr->f, NULL, _IOFBF, FQ_READER_BUFFER_SIZE) != 0) 
