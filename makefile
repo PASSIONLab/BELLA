@@ -6,8 +6,8 @@ INCLUDE = -I$(SPRNPATH)/include
 SEQINCLUDE = -I$(SEQANPATH)
 MLKINCLUDE = -I/opt/intel/composer_xe_2015.0.039/mkl/include
 LIBPATH = -L/opt/intel/composer_xe_2015.0.039/mkl/lib
-COMPILER = g++-6
-CC = gcc-6
+COMPILER = g++
+CC = gcc
 CFLAGS = -I. -O3 -Wall -Wextra -pedantic -ansi -c
 
 sprng:	
@@ -41,7 +41,7 @@ Kmer.o:	kmercode/Kmer.cpp
 
 # flags defined in mtspgemm2017/GTgraph/Makefile.var
 bella: main.cpp hash_funcs.o fq_reader.o Buffer.o Kmer.o rbounds.o optlist.o rmat bloomlib
-	$(COMPILER) -std=c++14 $(INCLUDE) -O3 -fopenmp -fpermissive $(SEQINCLUDE) -o bella hash_funcs.o Kmer.o Buffer.o fq_reader.o rbounds.o optlist.o main.cpp ${LIBS} 
+	$(COMPILER) -std=c++14 $(INCLUDE) -O3 -march=native -fopenmp -fpermissive $(SEQINCLUDE) -o bella hash_funcs.o Kmer.o Buffer.o fq_reader.o rbounds.o optlist.o main.cpp ${LIBS} 
 
 clean:
 	(cd mtspgemm2017/GTgraph; make clean; cd ../..)
