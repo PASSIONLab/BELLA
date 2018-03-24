@@ -51,22 +51,22 @@ typedef vector<refInfo> vectInfo;
  * @param minOvl
  * @return number of true overlapping pairs
  */
-double trueOv(vector<vectInfo> & truthInfo, bool simulated, int minOvl) 
+double trueOv(map<string,vectInfo> & truthInfo, bool simulated, int minOvl) 
 {
     vector<Interval<std::string>> intervals;
     vector<Interval<std::string>> queries;
     vector<Interval<std::string>>::iterator q;
-    vector<vectInfo>::iterator oit; // outer iterator
-    vectInfo::iterator iit; // inner iterator
+    map<string,vectInfo>::iterator key; // outer iterator
+    vectInfo::iterator it; // inner iterator
     double trueOvls = 0;
-    ofstream ofs("test-truth.txt", ofstream::out);
+    ofstream ofs("current-ev.txt", ofstream::out);
 
-    for(oit=truthInfo.begin(); oit!=truthInfo.end(); ++oit)
+    for(key = truthInfo.begin(); key != truthInfo.end(); ++key)
     {
-         for(iit=oit->begin(); iit!=oit->end(); ++iit)
+         for(it = key->second.begin(); it != key->second.end(); ++it)
          {
-             intervals.push_back(Interval<string>(iit->start, iit->end, iit->read));
-             queries.push_back(Interval<string>(iit->start, iit->end, iit->read));
+             intervals.push_back(Interval<string>(it->start, it->end, it->read));
+             queries.push_back(Interval<string>(it->start, it->end, it->read));
          }
 
          IntervalTree<string> tree;
@@ -144,7 +144,8 @@ int computeLength(unordered_map<string,readInfo> & readMap, string & col_nametag
 void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap, ifstream & mhap, 
     ifstream & blasr, ifstream & daligner, bool simulated, int minOvl) // add blasr && daligner && mhap && bella
 {
-    vector<vectInfo> truthInfo;
+    map<string,vectInfo> isInThere;
+    map<string,vectInfo>::iterator iter;
     unordered_map<string,readInfo> readMap;
     map<pair<string,string>, bool> checkBella;
     map<pair<string,string>, bool> checkMinimap;
@@ -174,7 +175,6 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
             string dontcare2;
             refInfo ovlInfo;
             readInfo perRead;
-            vectInfo vectOf;
             int start;
             int end;
 
@@ -189,18 +189,23 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
                 ovlInfo.read = "@" + read;
                 ovlInfo.start = start;
                 ovlInfo.end = end;
-                vectOf.push_back(ovlInfo); // all the element of a chromosome
-
-                if(ref != prev && !prev.empty())
+                
+                iter = isInThere.find(ref);
+                if(iter == isInThere.end())
                 {
-                    truthInfo.push_back(vectOf); // its size should be the number of different references i.e. chromosomes
-                    vectOf.clear();
+                    vectInfo temp;
+                    temp.push_back(ovlInfo); // all the element of a chromosome
+                    isInThere.insert(map<string,vectInfo>::value_type(ref,temp));
                 }
-                prev = ref;
+                else
+                {
+                    iter->second.push_back(ovlInfo);
+                    isInThere[ref] = iter->second;
+                }
             }
-            truthInfo.push_back(vectOf); // insert the last chromosome
+            //isInThere.push_back(vectOf); // insert the last chromosome
             cout << "num reads: " << readMap.size() << endl;
-            cout << "num chromosomes: " << truthInfo.size() << endl;
+            cout << "num chromosomes: " << isInThere.size() << endl;
             //for(int i = 0; i < truthInfo.size(); ++i)
             //    cout << "size chromosome: " << truthInfo.at(i).size() << endl;
 
@@ -212,7 +217,6 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
         {
             refInfo ovlInfo;
             readInfo perRead;
-            vectInfo vectOf;
             string prev;
             string read;
             string ref;
@@ -227,21 +231,26 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
                 readMap.insert(make_pair("@"+read,perRead));
 
                 ovlInfo.ref = ref;
-                ovlInfo.read = "@"+read;
+                ovlInfo.read = "@" + read;
                 ovlInfo.start = start;
                 ovlInfo.end = end;
-                vectOf.push_back(ovlInfo); // all the element of a chromosome
-
-                if(ref != prev && !prev.empty())
+                
+                iter = isInThere.find(ref);
+                if(iter == isInThere.end())
                 {
-                    truthInfo.push_back(vectOf); // its size should be the number of different references i.e. chromosomes
-                    vectOf.clear();
+                    vectInfo temp;
+                    temp.push_back(ovlInfo); // all the element of a chromosome
+                    isInThere.insert(map<string,vectInfo>::value_type(ref,temp));
                 }
-                prev = ref;
+                else
+                {
+                    iter->second.push_back(ovlInfo);
+                    isInThere[ref] = iter->second;
+                }
             }
-            truthInfo.push_back(vectOf); // insert the last chromosome
+            //isInThere.push_back(vectOf); // insert the last chromosome
             cout << "num reads: " << readMap.size() << endl;
-            cout << "num chromosomes: " << truthInfo.size() << endl;
+            cout << "num chromosomes: " << isInThere.size() << endl;
             //for(int i = 0; i < truthInfo.size(); ++i)
                 //cout << "size chromosome: " << truthInfo.at(i).size() << endl;
 
@@ -420,7 +429,7 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
 
     groundtruth.clear();
     groundtruth.seekg(0, ios::beg);
-    double truetruth = trueOv(truthInfo, simulated, minOvl);
+    double truetruth = trueOv(isInThere, simulated, minOvl);
 
     bella.close();
     minimap.close();
