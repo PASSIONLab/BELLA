@@ -24,7 +24,7 @@
 
 
 
-static int bloom_check_add(struct bloom * bloom,
+int bloom_check_add(struct bloom * bloom,
                            const void * buffer, int len, int add)
 {
   if (bloom->ready == 0) {

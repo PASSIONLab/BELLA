@@ -225,16 +225,14 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
     {	    
 	for(auto v:allkmers[MYTHREAD])
 	{
-		bool inBloom = (bool) bloom_check(bm, v.getBytes(), v.getNumBytes());
+		// ABAB: race condition here
+		// thread-1 can start checking and find a zero bit in kth hash for item t, 
+		// but then thread-2 takes over and finds a zero bit in (k+i)th hash for the same item t
+		// both threads will think bloom filter never saw t yet, and will not insert into the 
+		// hash table; potentially causing the item (k-mer) t to be lost. 
+		bool inBloom = (bool) bloom_check_add(bm, v.getBytes(), v.getNumBytes(),1);
 
-		if(inBloom)
-		{
-			countsdenovo.insert(v, 0);
-		}
-		else
-		{
-			bloom_add(bm, v.getBytes(), v.getNumBytes());
-		}
+		if(inBloom) countsdenovo.insert(v, 0);
 	}
     }
 

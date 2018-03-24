@@ -95,6 +95,7 @@ int bloom_check(struct bloom * bloom, const void * buffer, int len);
 
 
 
+int bloom_check_add(struct bloom * bloom, const void * buffer, int len, int add);
 
 /** ***************************************************************************
  * Add the given element to the bloom filter.
