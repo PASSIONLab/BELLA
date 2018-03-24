@@ -266,7 +266,7 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
     lt.unlock(); // unlock the table
     // Print some information about the table
     //cout << "Table size: " << countsdenovo.size() << std::endl;
-    //cout << "Entries within reliable range: " << countsreliable_denovo.size() << std::endl;    
+    cout << "Entries within reliable range: " << countsreliable_denovo.size() << std::endl;    
     //cout << "Bucket count: " << countsdenovo.bucket_count() << std::endl;
     //cout << "Load factor: " << countsdenovo.load_factor() << std::endl;
     countsdenovo.clear(); // free  
