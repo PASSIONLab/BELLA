@@ -271,8 +271,8 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
             stringstream lineStream(line);
             string col_nametag, row_nametag;
 
-            getline(lineStream, col_nametag, ' ');
-            getline(lineStream, row_nametag, ' ');
+            getline(lineStream, col_nametag, '\t');
+            getline(lineStream, row_nametag, '\t');
                                            // remove self aligned paired from bella output
             if(col_nametag == row_nametag) // to be sure to not count self aligned pairs
                 ovlsbella--;
