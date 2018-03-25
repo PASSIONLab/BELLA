@@ -74,7 +74,7 @@ int main (int argc, char *argv[]) {
     option_t *optList, *thisOpt;
     // Get list of command line options and their arguments 
     optList = NULL;
-    optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:a:ze:p:");
+    optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:a:ze:p:w:");
    
     bool skip_algnmnt_krnl = false;
     char *kmer_file = NULL; // Reliable k-mer file from Jellyfish
@@ -82,6 +82,7 @@ int main (int argc, char *argv[]) {
     char *out_file = NULL; // output filename
     int kmer_len = 17;  // default k-mer length
     int algnmnt_thr = 50;   // default alignment score threshold
+    int ovl_thr = 0;   // default evaluation overlap threshold
     int algnmnt_drop = 3;   // default alignment x-drop factor
     double erate = 0.15; // default error rate
     int depth = 0; // depth/coverage required
@@ -166,6 +167,10 @@ int main (int argc, char *argv[]) {
                 algnmnt_thr = atoi(thisOpt->argument);
                 break;
             }
+            case 'w': {
+                ovl_thr = atoi(thisOpt->argument);
+                break;
+            }
             case 'p': {
                 algnmnt_drop = atoi(thisOpt->argument);
                 break;
@@ -181,6 +186,7 @@ int main (int argc, char *argv[]) {
                 cout << " -p : alignment x-drop factor [3]" << endl;
                 cout << " -e : error rate [0.15]" << endl;
                 cout << " -z : skip the alignment [false]\n" << endl;
+                cout << " -w : evaluation overlap threshold [0]\n" << endl;
                 
                 FreeOptList(thisOpt); // Done with this list, free it
                 return 0;
@@ -242,6 +248,7 @@ int main (int argc, char *argv[]) {
     else cout << "Compute alignment: true" << endl;
     cout << "Alignment x-drop factor: " << algnmnt_drop << endl;
     cout << "Alignment score threshold: " << algnmnt_thr << endl;
+    cout << "Evaluation overlap threshold: " << ovl_thr << endl;
     cout << "Depth: " << depth << "X" << endl;
 #endif
     //
@@ -403,7 +410,7 @@ int main (int argc, char *argv[]) {
                 m2->pos[2] = m1->pos[0]; // row 
                 m2->pos[3] = m1->pos[1]; // col
                 return m2;
-            }, reads, getvaluetype, kmer_len, algnmnt_drop, algnmnt_thr, out_file, skip_algnmnt_krnl); 
+            }, reads, getvaluetype, kmer_len, algnmnt_drop, algnmnt_thr, ovl_thr, out_file, skip_algnmnt_krnl); 
     cout << "total running time: " << omp_get_wtime()-all << "s\n" << endl;
     return 0;
 } 
