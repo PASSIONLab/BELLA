@@ -44,6 +44,17 @@ struct readInfo {
 
 typedef vector<refInfo> vectInfo;
 
+int estimeOvl(int colStart, int colEnd, int colLen, int rowStart, int rowEnd, int rowLen)
+{
+    int diffCol = colEnd-colStart;
+    int diffRow = rowEnd-rowStart;
+    int minLeft = min(colStart, rowStart);
+    int minRight = min(colLen-colEnd, rowLen-rowEnd);
+
+    int result = minLeft+minRight+(diffCol+diffRow)/2;
+    return result;
+}
+
 /**
  * @brief trueOv omputes the number of true overlapping reads
  * @param truthInfo
@@ -97,19 +108,19 @@ double trueOv(map<string,vectInfo> & truthInfo, bool simulated, int minOvl)
  * @brief computeLength computes the overlap length between
  * potential overlapping reads pairs
  * @param readMap
- * @param col_nametag
- * @param row_nametag
+ * @param colName
+ * @param rowName
  * @return alignment length
  */
-int computeLength(unordered_map<string,readInfo> & readMap, string & col_nametag, string & row_nametag) 
+int computeLength(unordered_map<string,readInfo> & readMap, string & colName, string & rowName) 
 {
     int alignment_length = 0;
 
     unordered_map<string,readInfo>::const_iterator jit;
     unordered_map<string,readInfo>::const_iterator iit;
 
-    jit = readMap.find(col_nametag); // col name
-    iit = readMap.find(row_nametag); // row name 
+    jit = readMap.find(colName); // col name
+    iit = readMap.find(rowName); // row name 
 
     if(iit != readMap.end() && jit != readMap.end()) // needed as handling real dataset the aligned reads in sam file could be != the original number of reads
     {
@@ -155,6 +166,7 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
     map<pair<string,string>, bool>::iterator it;
     
     int alignment_length;
+    int ovlThr = 2000;
     
     double ovlsbella = 0, truebella = 0;
     double ovlsminimap = 0, trueminimap = 0;
@@ -205,7 +217,7 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
             }
             //isInThere.push_back(vectOf); // insert the last chromosome
             cout << "num reads: " << readMap.size() << endl;
-            cout << "num chromosomes: " << isInThere.size() << endl;
+            cout << "num sub-references: " << isInThere.size() << endl;
             //for(int i = 0; i < truthInfo.size(); ++i)
             //    cout << "size chromosome: " << truthInfo.at(i).size() << endl;
 
@@ -250,7 +262,7 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
             }
             //isInThere.push_back(vectOf); // insert the last chromosome
             cout << "num reads: " << readMap.size() << endl;
-            cout << "num chromosomes: " << isInThere.size() << endl;
+            cout << "num sub-references: " << isInThere.size() << endl;
             //for(int i = 0; i < truthInfo.size(); ++i)
                 //cout << "size chromosome: " << truthInfo.at(i).size() << endl;
 
@@ -265,29 +277,82 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
     {
         string line;
         while(getline(bella, line))
-        {
-            ovlsbella++;
-
+        {   // option (b)
             stringstream lineStream(line);
-            string col_nametag, row_nametag;
+            string colName, rowName, nkmer, score;
+            string colStart, colEnd, colLen, rowStart, rowEnd, rowLen;
 
-            getline(lineStream, col_nametag, '\t');
-            getline(lineStream, row_nametag, '\t');
-                                           // remove self aligned paired from bella output
-            if(col_nametag == row_nametag) // to be sure to not count self aligned pairs
-                ovlsbella--;
-            else
+            getline(lineStream, colName, '\t');
+            getline(lineStream, rowName, '\t');
+            getline(lineStream, nkmer, '\t');
+            getline(lineStream, score, '\t');
+            getline(lineStream, colStart, '\t');
+            getline(lineStream, colEnd, '\t');
+            getline(lineStream, colLen, '\t');
+            getline(lineStream, rowStart, '\t');
+            getline(lineStream, rowEnd, '\t');
+            getline(lineStream, rowLen, '\t');
+
+            int ovlEstime = estimeOvl(stoi(colStart), stoi(colEnd), stoi(colLen), stoi(rowStart), stoi(rowEnd), stoi(rowLen));
+            if (ovlEstime >= ovlThr)
             {
-                it = checkBella.find(make_pair(col_nametag, row_nametag));
-                if(it == checkBella.end())
-                {       
-                    checkBella.insert(make_pair(make_pair(col_nametag, row_nametag), true));
-                    // Compute the overlap length between potential overlapping reads pairs 
-                    alignment_length = computeLength(readMap, col_nametag, row_nametag); 
-                    if(alignment_length >= minOvl)
-                        truebella++;
+                ovlsbella++; // nEntries
+
+                if(colName == rowName) // to be sure to not count self aligned pairs
+                    ovlsbella--;
+                else
+                {
+                    it = checkBella.find(make_pair(colName, rowName));
+                    if(it == checkBella.end())
+                    {       
+                        checkBella.insert(make_pair(make_pair(colName, rowName), true));
+                        // Compute the overlap length between potential overlapping reads pairs 
+                        alignment_length = computeLength(readMap, colName, rowName);
+
+                        if(alignment_length >= minOvl)
+                            truebella++;
+                    }
                 }
             }
+            // option (a)                 
+            //ovlsbella++;
+            //
+            //stringstream lineStream(line);
+            //string colName, rowName, nkmer, score;
+            //string colStart, colEnd, colLen, rowStart, rowEnd, rowLen;
+            //
+            //getline(lineStream, colName, '\t');
+            //getline(lineStream, rowName, '\t');
+            //getline(lineStream, nkmer, '\t');
+            //getline(lineStream, score, '\t');
+            //getline(lineStream, colStart, '\t');
+            //getline(lineStream, colEnd, '\t');
+            //getline(lineStream, colLen, '\t');
+            //getline(lineStream, rowStart, '\t');
+            //getline(lineStream, rowEnd, '\t');
+            //getline(lineStream, rowLen, '\t');
+            //                    
+            //if(colName == rowName) // to be sure to not count self aligned pairs
+            //    ovlsbella--;
+            //else
+            //{
+            //    it = checkBella.find(make_pair(colName, rowName));
+            //    if(it == checkBella.end())
+            //    {       
+            //        checkBella.insert(make_pair(make_pair(colName, rowName), true));
+            //        // Compute the overlap length between potential overlapping reads pairs 
+            //        alignment_length = computeLength(readMap, colName, rowName);
+            //
+            //        if(alignment_length >= minOvl)
+            //            truebella++;
+            //        else 
+            //        {
+            //            int ovlEstime = estimeOvl(stoi(colStart), stoi(colEnd), stoi(colLen), stoi(rowStart), stoi(rowEnd), stoi(rowLen));
+            //            if (ovlEstime < ovlThr)
+            //                ovlsbella--;
+            //        }
+            //    }
+            //}
         }
     } 
 
@@ -299,28 +364,28 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
         {
             ovlsminimap++;
             stringstream lineStream(line);
-            string col_nametag, row_nametag, dontcare1, dontcare2, dontcare3, dontcare4;
+            string colName, rowName, dontcare1, dontcare2, dontcare3, dontcare4;
     
-            getline(lineStream, col_nametag, '\t' );
+            getline(lineStream, colName, '\t' );
             getline(lineStream, dontcare1, '\t' );
             getline(lineStream, dontcare2, '\t' );
             getline(lineStream, dontcare3, '\t' );
             getline(lineStream, dontcare4, '\t' );
-            getline(lineStream, row_nametag, '\t' );
+            getline(lineStream, rowName, '\t' );
     
-            col_nametag = "@" + col_nametag;
-            row_nametag = "@" + row_nametag;
+            colName = "@" + colName;
+            rowName = "@" + rowName;
 
-            if(col_nametag == row_nametag) // to be sure to not count self aligned pairs
+            if(colName == rowName) // to be sure to not count self aligned pairs
                 ovlsminimap--;
             else
             {
-                it = checkMinimap.find(make_pair(col_nametag, row_nametag));
+                it = checkMinimap.find(make_pair(colName, rowName));
                 if(it == checkMinimap.end())
                 {
-                    checkMinimap.insert(make_pair(make_pair(col_nametag, row_nametag), true));
+                    checkMinimap.insert(make_pair(make_pair(colName, rowName), true));
                     // Compute the overlap length between potential overlapping reads pairs 
-                    alignment_length = computeLength(readMap, col_nametag, row_nametag);
+                    alignment_length = computeLength(readMap, colName, rowName);
                     if(alignment_length >= minOvl)
                         trueminimap++;
                 }
@@ -336,24 +401,24 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
         {
             ovlsmhap++;
             stringstream lineStream(line);
-            string col_nametag, row_nametag;
+            string colName, rowName;
 
-            getline(lineStream, col_nametag, ' ');
-            getline(lineStream, row_nametag, ' ');
+            getline(lineStream, colName, ' ');
+            getline(lineStream, rowName, ' ');
 
-            col_nametag = "@" + col_nametag;
-            row_nametag = "@" + row_nametag;
+            colName = "@" + colName;
+            rowName = "@" + rowName;
 
-            if(col_nametag == row_nametag) // to be sure to not count self aligned pairs
+            if(colName == rowName) // to be sure to not count self aligned pairs
                 ovlsmhap--;
             else
             {
-                it = checkMhap.find(make_pair(col_nametag, row_nametag));
+                it = checkMhap.find(make_pair(colName, rowName));
                 if(it == checkMhap.end())
                 {
-                    checkMhap.insert(make_pair(make_pair(col_nametag, row_nametag), true));
+                    checkMhap.insert(make_pair(make_pair(colName, rowName), true));
                     // Compute the overlap length between potential overlapping reads pairs 
-                    alignment_length = computeLength(readMap, col_nametag, row_nametag);
+                    alignment_length = computeLength(readMap, colName, rowName);
                     if(alignment_length >= minOvl)
                         truemhap++;
                 }
@@ -369,24 +434,24 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
         {
             ovlsblasr++;
             stringstream lineStream(line);
-            string col_nametag, row_nametag;
+            string colName, rowName;
 
-            getline(lineStream, col_nametag, ' ');
-            getline(lineStream, row_nametag, ' ');
+            getline(lineStream, colName, ' ');
+            getline(lineStream, rowName, ' ');
 
-            col_nametag = "@" + col_nametag;
-            row_nametag = "@" + row_nametag;
+            colName = "@" + colName;
+            rowName = "@" + rowName;
 
-            if(col_nametag == row_nametag) // to be sure to not count self aligned pairs
+            if(colName == rowName) // to be sure to not count self aligned pairs
                 ovlsblasr--;
             else
             {
-                it = checkBlasr.find(make_pair(col_nametag, row_nametag));
+                it = checkBlasr.find(make_pair(colName, rowName));
                 if(it == checkBlasr.end())
                 {
-                    checkBlasr.insert(make_pair(make_pair(col_nametag, row_nametag), true));
+                    checkBlasr.insert(make_pair(make_pair(colName, rowName), true));
                     // Compute the overlap length between potential overlapping reads pairs 
-                    alignment_length = computeLength(readMap, col_nametag, row_nametag);
+                    alignment_length = computeLength(readMap, colName, rowName);
                     if(alignment_length >= minOvl)
                         trueblasr++;
                 }
@@ -402,24 +467,24 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
         {
             ovlsdal++;
             stringstream lineStream(line);
-            string col_nametag, row_nametag;
+            string colName, rowName;
 
-            getline(lineStream, col_nametag, ' ');
-            getline(lineStream, row_nametag, ' ');
+            getline(lineStream, colName, ' ');
+            getline(lineStream, rowName, ' ');
 
-            col_nametag = col_nametag;
-            row_nametag = row_nametag;
+            colName = colName;
+            rowName = rowName;
 
-            if(col_nametag == row_nametag) // to be sure to not count self aligned pairs
+            if(colName == rowName) // to be sure to not count self aligned pairs
                 ovlsblasr--;
             else
             {
-                it = checkBlasr.find(make_pair(col_nametag, row_nametag));
+                it = checkBlasr.find(make_pair(colName, rowName));
                 if(it == checkBlasr.end())
                 {
-                    checkBlasr.insert(make_pair(make_pair(col_nametag, row_nametag), true));
+                    checkBlasr.insert(make_pair(make_pair(colName, rowName), true));
                     // Compute the overlap length between potential overlapping reads pairs 
-                    alignment_length = computeLength(readMap, col_nametag, row_nametag);
+                    alignment_length = computeLength(readMap, colName, rowName);
                     if(alignment_length >= minOvl)
                         trueblasr++;
                 }

@@ -82,7 +82,6 @@ int main (int argc, char *argv[]) {
     char *out_file = NULL; // output filename
     int kmer_len = 17;  // default k-mer length
     int algnmnt_thr = 50;   // default alignment score threshold
-    int ovl_thr = 0;   // default evaluation overlap threshold
     int algnmnt_drop = 3;   // default alignment x-drop factor
     double erate = 0.15; // default error rate
     int depth = 0; // depth/coverage required
@@ -167,10 +166,6 @@ int main (int argc, char *argv[]) {
                 algnmnt_thr = atoi(thisOpt->argument);
                 break;
             }
-            case 'w': {
-                ovl_thr = atoi(thisOpt->argument);
-                break;
-            }
             case 'p': {
                 algnmnt_drop = atoi(thisOpt->argument);
                 break;
@@ -186,8 +181,7 @@ int main (int argc, char *argv[]) {
                 cout << " -p : alignment x-drop factor [3]" << endl;
                 cout << " -e : error rate [0.15]" << endl;
                 cout << " -z : skip the alignment [false]\n" << endl;
-                cout << " -w : evaluation overlap threshold [0]\n" << endl;
-                
+
                 FreeOptList(thisOpt); // Done with this list, free it
                 return 0;
             }
