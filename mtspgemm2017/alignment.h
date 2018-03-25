@@ -193,10 +193,10 @@ pair<int,TSeed> seqanAlOneAllKmer(std::string & row, std::string & col, int rlen
 
 int estimeOvl(pair<int,TSeed> & longestExtensionScore, int LEN1, int LEN2)
 {
-    int diff1 = endPositionH(longestExtensionScore.second)-beginPositionH(longestExtensionScore.second);
-    int diff2 = endPositionV(longestExtensionScore.second)-beginPositionV(longestExtensionScore.second);
-    int minLeft = min(beginPositionH(longestExtensionScore.second),beginPositionV(longestExtensionScore.second));
-    int minRight = min(LEN1-endPositionH(longestExtensionScore.second), LEN2-endPositionV(longestExtensionScore.second));
+    int diff1 = endPositionV(longestExtensionScore.second)-beginPositionV(longestExtensionScore.second);
+    int diff2 = endPositionH(longestExtensionScore.second)-beginPositionH(longestExtensionScore.second);
+    int minLeft = min(beginPositionV(longestExtensionScore.second),beginPositionH(longestExtensionScore.second));
+    int minRight = min(LEN1-endPositionV(longestExtensionScore.second), LEN2-endPositionH(longestExtensionScore.second));
 
     int result = minLeft+minRight+(diff1+diff2)/2;
     return result;
