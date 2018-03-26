@@ -127,7 +127,7 @@ int main (int argc, char *argv[]) {
                     return 0;
                 }
                 char* line1 = strdup(thisOpt->argument);
-                char* line2 = strdup(".bla");
+                char* line2 = strdup(".out");
                 size_t len1 = strlen(line1);
                 size_t len2 = strlen(line2);
 
