@@ -70,7 +70,7 @@ double trueOv(map<string,vectInfo> & truthInfo, bool simulated, int minOvl)
     map<string,vectInfo>::iterator key; // outer iterator
     vectInfo::iterator it; // inner iterator
     double trueOvls = 0;
-    ofstream ofs("current-ev.txt", ofstream::out);
+    //ofstream ofs("current-ev.txt", ofstream::out);
 
     for(key = truthInfo.begin(); key != truthInfo.end(); ++key)
     {
@@ -88,7 +88,7 @@ double trueOv(map<string,vectInfo> & truthInfo, bool simulated, int minOvl)
          for (q = queries.begin(); q != queries.end(); ++q) // tree search for a given reference
          {
              vector<Interval<string>> results;
-             tree.findOverlapping(q->start, q->stop, q->value, results, minOvl, ofs);
+             tree.findOverlapping(q->start, q->stop, q->value, results, minOvl);
              treeCount.push_back(results.size());
          }
          
@@ -100,7 +100,7 @@ double trueOv(map<string,vectInfo> & truthInfo, bool simulated, int minOvl)
          intervals.clear();
          queries.clear();
     }  
-    ofs.close();        
+    //ofs.close();        
     return trueOvls;
 }
 
@@ -472,7 +472,7 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
     // as -S option count overlaps only once 
     // (A ov B, but not B ov A), while all other 
     // (included the ground truth) count all ovls and the self-ovls
-    cout << "pverlapping from minimap = " << ovlsminimap << endl;
+    cout << "overlapping from minimap = " << ovlsminimap << endl;
     cout << "true overlapping from minimap = " << trueminimap << endl;
     cout << "recall minimap = " << (trueminimap*2)/truetruth << endl;
     cout << "precision minimap = " << trueminimap/ovlsminimap << "\n" << endl;
