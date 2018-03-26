@@ -36,7 +36,7 @@ typedef Seed<Simple>  TSeed;
 typedef SeedSet<TSeed> TSeedSet;
 
 #define PERCORECACHE (1024 * 1024)
-#define TIMESTEP
+//#define TIMESTEP
 //#define PRINT
 //#define RAM
 //#define OSX
@@ -154,7 +154,7 @@ void LocalSpGEMM(IT & start, IT & end, IT & ncols, const CSC<IT,NT> & A, const C
  **/
 template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation>
 void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, readVector_ & read, 
-    FT & getvaluetype, int kmer_len, int algnmnt_drop, int algnmnt_thr, int ovl_thr, char* filename, bool skip_algnmnt_krnl)
+    FT & getvaluetype, int kmer_len, int algnmnt_drop, int algnmnt_thr, char* filename, bool skip_algnmnt_krnl)
 {   
 #ifdef RAM // number of cols depends on available RAM
     cout << "Cols subdivision based on available RAM\n" << endl;

@@ -404,7 +404,7 @@ int main (int argc, char *argv[]) {
                 m2->pos[2] = m1->pos[0]; // row 
                 m2->pos[3] = m1->pos[1]; // col
                 return m2;
-            }, reads, getvaluetype, kmer_len, algnmnt_drop, algnmnt_thr, ovl_thr, out_file, skip_algnmnt_krnl); 
+            }, reads, getvaluetype, kmer_len, algnmnt_drop, algnmnt_thr, out_file, skip_algnmnt_krnl); 
     cout << "total running time: " << omp_get_wtime()-all << "s\n" << endl;
     return 0;
 } 
