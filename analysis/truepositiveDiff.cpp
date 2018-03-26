@@ -53,14 +53,14 @@ int main (int argc, char* argv[])
 	cout << count << endl;
 	count = 0;
 	ofstream truepositiveDiff;
-    truepositiveDiff.open("diff-truepositives-bella.out", std::ofstream::out | std::ofstream::app);
+    truepositiveDiff.open("diff-truepositives-bella.txt", std::ofstream::out | std::ofstream::app);
 
 	if(truepositive.is_open())
 	{
 		string line;
         while(getline(truepositive, line))
         {           
-        count++;     
+        	count++;     
             stringstream lineStream(line);
             string colName, rowName, nkmer, score;
             string colStart, colEnd, colLen, rowStart, rowEnd, rowLen;
@@ -78,7 +78,7 @@ int main (int argc, char* argv[])
 
             it = checkBella.find(make_pair(colName, rowName));
             if(it == checkBella.end()) 
-            	truepositiveDiff << colName << "\t" << rowName << "\t" << nkmer << "\t" << score << "\t" << colStart  << "\t" << colEnd  << "\t" << colEnd  << "\t" << 
+            	truepositiveDiff << colName << "\t" << rowName << "\t" << nkmer << "\t" << score << "\t" << colStart  << "\t" << colEnd  << "\t" << colLen  << "\t" << 
                             rowStart  << "\t" << rowEnd  << "\t" << rowLen << endl;  
         }
 	}
