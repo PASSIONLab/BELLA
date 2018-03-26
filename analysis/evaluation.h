@@ -119,14 +119,14 @@ int computeLength(multimap<string,readInfo> & readMap, string & colName, string 
 {
     int length = 0, maxlength = 0;
 
-    // It returns a pair representing the range of elements with key equal to the one we want
-    pair<MMAPIterator, MMAPIterator> colRange = readMap.equal_range(colName);
-    pair<MMAPIterator, MMAPIterator> rowRange = readMap.equal_range(rowName);
+    MMAPIterator checkCol = readMap.find(colName); // col name
+    MMAPIterator checkRow = readMap.find(rowName); // row name 
 
-    // If there are no elements not less than key, past-the-end (see end()) iterator is returned as the first element. 
-    // Similarly if there are no elements greater than key, past-the-end iterator is returned as the second element.
-    if(colRange.first != readMap.end() && colRange.second != readMap.end() && rowRange.first != readMap.end() && rowRange.second != readMap.end()) // needed as handling real dataset the aligned reads in sam file could be != the original number of reads
+    if(checkCol != readMap.end() && checkRow != readMap.end()) // needed as handling real dataset the aligned reads in sam file could be != the original number of reads
     {
+        // It returns a pair representing the range of elements with key equal to the one we want
+        pair<MMAPIterator, MMAPIterator> colRange = readMap.equal_range(colName);
+        pair<MMAPIterator, MMAPIterator> rowRange = readMap.equal_range(rowName);
         // Iterate over the range
         for (MMAPIterator itC = colRange.first; itC != colRange.second; itC++)
         {
