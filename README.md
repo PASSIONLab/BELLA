@@ -26,4 +26,8 @@ SAMparser.py allow to transform the BWA-MEM .sam outfile in a simpler format usa
 Requirement: simplesam package, it can be installed via pip: pip install simplesam
 To run: python SAMparser.py <bwamem-output>
 #
+ovlParser.py is a post-processing script to throw out entries with estimated overlap smaller than a threshold in Bella's output.
+#
+To run: python3 ovlParser.py <bella-standard-output> <name-output-file> <threshold>
+#
 Analysis folder contains also the code related to the Markov model.
