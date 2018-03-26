@@ -407,7 +407,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                     {      
                         // The alignment function knows there's just one shared k-mer    
                         longestExtensionScore = seqanAlOneAllKmer(read[rowids[j]].seq, read[i+colStart[b]].seq, 
-                            read[rowids[j]].seq.length(), values[j]->vpos, algnmnt_drop);
+                            read[rowids[j]].seq.length(), values[j]->vpos, algnmnt_drop, kmer_len);
                     
                         if(longestExtensionScore.first >= algnmnt_thr)
                         {
@@ -421,7 +421,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                     {       
                         // The alignment function knows there's more than one shared k-mers 
                         longestExtensionScore = seqanAlGenAllKmer(read[rowids[j]].seq, read[i+colStart[b]].seq, 
-                            read[rowids[j]].seq.length(), values[j]->vpos, algnmnt_drop);
+                            read[rowids[j]].seq.length(), values[j]->vpos, algnmnt_drop, kmer_len);
                                     
                         if(longestExtensionScore.first >= algnmnt_thr)
                         {
@@ -451,7 +451,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                     {      
                         // The alignment function knows there's just one shared k-mer    
                         longestExtensionScore = seqanAlOne(globalInstance->at(rowids[j]).seq, globalInstance->at(i+colStart[b]).seq, 
-                            globalInstance->at(rowids[j]).seq.length(), values[j]->pos[0], values[j]->pos[1], algnmnt_drop);
+                            globalInstance->at(rowids[j]).seq.length(), values[j]->pos[0], values[j]->pos[1], algnmnt_drop, kmer_len);
     
                         if(longestExtensionScore.first >= algnmnt_thr)
                         {
@@ -464,7 +464,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                     else 
                     {   // The alignment function knows there's more than one shared k-mers 
                         longestExtensionScore = seqanAlGen(globalInstance->at(rowids[j]).seq, globalInstance->at(i+colStart[b]).seq, 
-                            globalInstance->at(rowids[j]).seq.length(), values[j]->pos[0], values[j]->pos[1], values[j]->pos[2], values[j]->pos[3], algnmnt_drop);
+                            globalInstance->at(rowids[j]).seq.length(), values[j]->pos[0], values[j]->pos[1], values[j]->pos[2], values[j]->pos[3], algnmnt_drop, kmer_len);
                         
                         if(longestExtensionScore.first >= algnmnt_thr)
                         {

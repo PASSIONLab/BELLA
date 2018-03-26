@@ -277,11 +277,14 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
     {
         string line;
         while(getline(bella, line))
-        {   // option (b)
+        {   
+            // option (a)                 
+            ovlsbella++;
+            
             stringstream lineStream(line);
             string colName, rowName, nkmer, score;
             string colStart, colEnd, colLen, rowStart, rowEnd, rowLen;
-
+            
             getline(lineStream, colName, '\t');
             getline(lineStream, rowName, '\t');
             getline(lineStream, nkmer, '\t');
@@ -292,67 +295,22 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
             getline(lineStream, rowStart, '\t');
             getline(lineStream, rowEnd, '\t');
             getline(lineStream, rowLen, '\t');
-
-            int ovlEstime = estimeOvl(stoi(colStart), stoi(colEnd), stoi(colLen), stoi(rowStart), stoi(rowEnd), stoi(rowLen));
-            if (ovlEstime >= ovlThr)
+                                
+            if(colName == rowName) // to be sure to not count self aligned pairs
+                ovlsbella--;
+            else
             {
-                ovlsbella++; // nEntries
-
-                if(colName == rowName) // to be sure to not count self aligned pairs
-                    ovlsbella--;
-                else
-                {
-                    it = checkBella.find(make_pair(colName, rowName));
-                    if(it == checkBella.end())
-                    {       
-                        checkBella.insert(make_pair(make_pair(colName, rowName), true));
-                        // Compute the overlap length between potential overlapping reads pairs 
-                        alignment_length = computeLength(readMap, colName, rowName);
-
-                        if(alignment_length >= minOvl)
-                            truebella++;
-                    }
+                it = checkBella.find(make_pair(colName, rowName));
+                if(it == checkBella.end())
+                {       
+                    checkBella.insert(make_pair(make_pair(colName, rowName), true));
+                    // Compute the overlap length between potential overlapping reads pairs 
+                    alignment_length = computeLength(readMap, colName, rowName);
+            
+                    if(alignment_length >= minOvl)
+                        truebella++;
                 }
             }
-            // option (a)                 
-            //ovlsbella++;
-            //
-            //stringstream lineStream(line);
-            //string colName, rowName, nkmer, score;
-            //string colStart, colEnd, colLen, rowStart, rowEnd, rowLen;
-            //
-            //getline(lineStream, colName, '\t');
-            //getline(lineStream, rowName, '\t');
-            //getline(lineStream, nkmer, '\t');
-            //getline(lineStream, score, '\t');
-            //getline(lineStream, colStart, '\t');
-            //getline(lineStream, colEnd, '\t');
-            //getline(lineStream, colLen, '\t');
-            //getline(lineStream, rowStart, '\t');
-            //getline(lineStream, rowEnd, '\t');
-            //getline(lineStream, rowLen, '\t');
-            //                    
-            //if(colName == rowName) // to be sure to not count self aligned pairs
-            //    ovlsbella--;
-            //else
-            //{
-            //    it = checkBella.find(make_pair(colName, rowName));
-            //    if(it == checkBella.end())
-            //    {       
-            //        checkBella.insert(make_pair(make_pair(colName, rowName), true));
-            //        // Compute the overlap length between potential overlapping reads pairs 
-            //        alignment_length = computeLength(readMap, colName, rowName);
-            //
-            //        if(alignment_length >= minOvl)
-            //            truebella++;
-            //        else 
-            //        {
-            //            int ovlEstime = estimeOvl(stoi(colStart), stoi(colEnd), stoi(colLen), stoi(rowStart), stoi(rowEnd), stoi(rowLen));
-            //            if (ovlEstime < ovlThr)
-            //                ovlsbella--;
-            //        }
-            //    }
-            //}
         }
     } 
 

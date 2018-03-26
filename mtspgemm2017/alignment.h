@@ -23,7 +23,7 @@
 using namespace seqan;
 using namespace std;
 
-#define KMER_LENGTH 17
+//#define kmer_len 17 // this has to be defined by the user
 
 typedef Seed<Simple> TSeed;
 /**
@@ -37,7 +37,7 @@ typedef Seed<Simple> TSeed;
  * @param dropFactor
  * @return alignment score and extended seed
  */
-pair<int,TSeed> seqanAlOne(std::string & row, std::string & col, int rlen, int i, int j, int dropFactor) {
+pair<int,TSeed> seqanAlOne(std::string & row, std::string & col, int rlen, int i, int j, int dropFactor, int kmer_len) {
 
     Score<int, Simple> scoringScheme(1, -1, -1);
 
@@ -51,7 +51,7 @@ pair<int,TSeed> seqanAlOne(std::string & row, std::string & col, int rlen, int i
     seqH = row;
     seqV = col;
 
-    TSeed seed1(i, j, i+KMER_LENGTH, j+KMER_LENGTH);
+    TSeed seed1(i, j, i+kmer_len, j+kmer_len);
     seedH = infix(seqH, beginPositionH(seed1), endPositionH(seed1));
     seedV = infix(seqV, beginPositionV(seed1), endPositionV(seed1));
 
@@ -60,12 +60,12 @@ pair<int,TSeed> seqanAlOne(std::string & row, std::string & col, int rlen, int i
     if(twin == seedV)
     {
         Dna5StringReverseComplement twinRead(seqH);
-        i = rlen-i-KMER_LENGTH;
+        i = rlen-i-kmer_len;
         
         setBeginPositionH(seed1, i);
         setBeginPositionV(seed1, j);
-        setEndPositionH(seed1, i+KMER_LENGTH);
-        setEndPositionV(seed1, j+KMER_LENGTH);
+        setEndPositionH(seed1, i+kmer_len);
+        setEndPositionV(seed1, j+kmer_len);
 
         /* Perform match extension */
         longestExtensionTemp = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
@@ -88,7 +88,7 @@ pair<int,TSeed> seqanAlOne(std::string & row, std::string & col, int rlen, int i
  * @param dropFactor
  * @return alignment score and extended seed
  */
-pair<int,Seed<Simple>> seqanAlGen(std::string & row, std::string & col, int rlen, int i, int j, int l, int m, int dropFactor) {
+pair<int,Seed<Simple>> seqanAlGen(std::string & row, std::string & col, int rlen, int i, int j, int l, int m, int dropFactor, int kmer_len) {
 
     Score<int, Simple> scoringScheme(1, -1, -1);
 
@@ -102,8 +102,8 @@ pair<int,Seed<Simple>> seqanAlGen(std::string & row, std::string & col, int rlen
     seqH = row;
     seqV = col;
 
-    TSeed seed1(i, j, i+KMER_LENGTH, j+KMER_LENGTH);
-    TSeed seed2(l, m, l+KMER_LENGTH, m+KMER_LENGTH);
+    TSeed seed1(i, j, i+kmer_len, j+kmer_len);
+    TSeed seed2(l, m, l+kmer_len, m+kmer_len);
     seedH = infix(seqH, beginPositionH(seed1), endPositionH(seed1));
     seedV = infix(seqV, beginPositionV(seed1), endPositionV(seed1));
 
@@ -113,18 +113,18 @@ pair<int,Seed<Simple>> seqanAlGen(std::string & row, std::string & col, int rlen
     {
         Dna5StringReverseComplement twinRead(seqH);
 
-        i = rlen-i-KMER_LENGTH;
-        l = rlen-l-KMER_LENGTH;
+        i = rlen-i-kmer_len;
+        l = rlen-l-kmer_len;
 
         setBeginPositionH(seed1, i);
         setBeginPositionV(seed1, j);
-        setEndPositionH(seed1, i+KMER_LENGTH);
-        setEndPositionV(seed1, j+KMER_LENGTH);
+        setEndPositionH(seed1, i+kmer_len);
+        setEndPositionV(seed1, j+kmer_len);
 
         setBeginPositionH(seed2, l);
         setBeginPositionV(seed2, m);
-        setEndPositionH(seed2, l+KMER_LENGTH);
-        setEndPositionV(seed2, m+KMER_LENGTH);
+        setEndPositionH(seed2, l+kmer_len);
+        setEndPositionV(seed2, m+kmer_len);
 
         /* Perform match extension */
         longestExtensionTemp.first = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
@@ -153,7 +153,7 @@ pair<int,Seed<Simple>> seqanAlGen(std::string & row, std::string & col, int rlen
  * @return alignment score and extended seed
  * DO NOT USE IT UNTIL THE SEED POSITION DEFINITION WILL BE CORRECTED AND UPDATED
  */
-pair<int,TSeed> seqanAlOneAllKmer(std::string & row, std::string & col, int rlen, std::vector<std::pair<int,int>> vpos, int dropFactor) {
+pair<int,TSeed> seqanAlOneAllKmer(std::string & row, std::string & col, int rlen, std::vector<std::pair<int,int>> vpos, int dropFactor, int kmer_len) {
 
     Score<int, Simple> scoringScheme(1, -1, -1);
 
@@ -170,7 +170,7 @@ pair<int,TSeed> seqanAlOneAllKmer(std::string & row, std::string & col, int rlen
     std::vector<std::pair<int,int>>::iterator it;
     it = vpos.begin();
 
-    TSeed seed(it->first, it->second, it->first+KMER_LENGTH, it->second+KMER_LENGTH);
+    TSeed seed(it->first, it->second, it->first+kmer_len, it->second+kmer_len);
     seedH = infix(seqH, beginPositionH(seed), endPositionH(seed));
     seedV = infix(seqV, beginPositionV(seed), endPositionV(seed));
 
@@ -179,8 +179,8 @@ pair<int,TSeed> seqanAlOneAllKmer(std::string & row, std::string & col, int rlen
     if(twin == seedV)
     {
         Dna5StringReverseComplement twinRead(seqH);
-        it->first = rlen-it->first-KMER_LENGTH;
-        TSeed seed(it->first, it->second, it->first+KMER_LENGTH, it->second+KMER_LENGTH); // In this way the seed is not globally updated
+        it->first = rlen-it->first-kmer_len;
+        TSeed seed(it->first, it->second, it->first+kmer_len, it->second+kmer_len); // In this way the seed is not globally updated
 
         /* Perform match extension */
         longestExtensionTemp = extendSeed(seed, twinRead, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
@@ -202,7 +202,7 @@ pair<int,TSeed> seqanAlOneAllKmer(std::string & row, std::string & col, int rlen
  * @return alignment score and extended seed
  * DO NOT USE IT UNTIL THE SEED POSITION DEFINITION WILL BE CORRECTED AND UPDATED
  */
-pair<int,TSeed> seqanAlGenAllKmer(std::string & row, std::string & col, int rlen, std::vector<std::pair<int,int>> vpos, int dropFactor) {
+pair<int,TSeed> seqanAlGenAllKmer(std::string & row, std::string & col, int rlen, std::vector<std::pair<int,int>> vpos, int dropFactor, int kmer_len) {
 
     Score<int, Simple> scoringScheme(1, -1, -1);
 
@@ -219,7 +219,7 @@ pair<int,TSeed> seqanAlGenAllKmer(std::string & row, std::string & col, int rlen
     longestExtensionScore.first = 0;
     fit = vpos.begin();
 
-    TSeed seed(fit->first, fit->second, fit->first+KMER_LENGTH, fit->second+KMER_LENGTH);
+    TSeed seed(fit->first, fit->second, fit->first+kmer_len, fit->second+kmer_len);
     seedH = infix(seqH, beginPositionH(seed), endPositionH(seed));
     seedV = infix(seqV, beginPositionV(seed), endPositionV(seed));
     
@@ -230,9 +230,9 @@ pair<int,TSeed> seqanAlGenAllKmer(std::string & row, std::string & col, int rlen
         Dna5StringReverseComplement twinRead(seqH);
         for(std::vector<std::pair<int,int>>::iterator it=vpos.begin(); it!=vpos.end(); ++it)
         {   /* Update position on reversed seq */
-            it->first = rlen-it->first-KMER_LENGTH;
+            it->first = rlen-it->first-kmer_len;
             /* Seed creation */
-            TSeed seed(it->first, it->second, it->first+KMER_LENGTH, it->second+KMER_LENGTH); // In this way the seed is not globally updated
+            TSeed seed(it->first, it->second, it->first+kmer_len, it->second+kmer_len); // In this way the seed is not globally updated
             /* Perform match extension */
             tempScore = extendSeed(seed, twinRead, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
             /* Keep the best score */
@@ -244,7 +244,7 @@ pair<int,TSeed> seqanAlGenAllKmer(std::string & row, std::string & col, int rlen
     {
         for(std::vector<std::pair<int,int>>::iterator it=vpos.begin(); it!=vpos.end(); ++it)
         {   /* Seed creation */
-            TSeed seed(it->first, it->second, it->first+KMER_LENGTH, it->second+KMER_LENGTH);
+            TSeed seed(it->first, it->second, it->first+kmer_len, it->second+kmer_len);
             /* Perform match extension */
             tempScore = extendSeed(seed, seqH, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
             /* Keep the best score */
