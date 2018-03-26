@@ -161,7 +161,7 @@ public:
 	return ov;
     }
 
-    void findOverlapping(K start, K stop, T value, intervalVector& overlapping, int thr, ofstream & ofs) const {
+    void findOverlapping(K start, K stop, T value, intervalVector& overlapping, int thr) const {
         if (!intervals.empty() && ! (stop < intervals.front().start)) {
             for (typename intervalVector::const_iterator i = intervals.begin(); i != intervals.end(); ++i)
             {
@@ -186,8 +186,6 @@ public:
                
                     if(alignment >= thr)
                     {
-                        //cout << i->value << " " << value << endl;
-                        ofs << i->value << " " << value << endl;
                         overlapping.push_back(interval);
                     } 
                 }
@@ -195,11 +193,11 @@ public:
         }
 
         if (left && start <= center) {
-            left->findOverlapping(start, stop, value, overlapping, thr, ofs);
+            left->findOverlapping(start, stop, value, overlapping, thr);
         }
 
         if (right && stop >= center) {
-            right->findOverlapping(start, stop, value, overlapping, thr, ofs);
+            right->findOverlapping(start, stop, value, overlapping, thr);
         }
     }
 
