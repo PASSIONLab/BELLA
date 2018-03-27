@@ -27,6 +27,7 @@
 #include <memory>
 
 using namespace std;
+#define MULTIMAPPED
 
 struct refInfo {
 
@@ -71,7 +72,6 @@ double trueOv(map<string,vectInfo> & truthInfo, bool simulated, int minOvl)
     map<string,vectInfo>::iterator key; // outer iterator
     vectInfo::iterator it; // inner iterator
     double trueOvls = 0;
-    //ofstream ofs("current-ev.txt", ofstream::out);
 
     for(key = truthInfo.begin(); key != truthInfo.end(); ++key)
     {
@@ -101,7 +101,6 @@ double trueOv(map<string,vectInfo> & truthInfo, bool simulated, int minOvl)
          intervals.clear();
          queries.clear();
     }  
-    //ofs.close();        
     return trueOvls;
 }
 
@@ -113,7 +112,7 @@ double trueOv(map<string,vectInfo> & truthInfo, bool simulated, int minOvl)
  * @param rowName
  * @return alignment length
  */
-//#ifdef MULTIMAPPED
+#ifdef MULTIMAPPED
 typedef multimap<string,readInfo>::iterator MMAPIterator;
 int computeLength(multimap<string,readInfo> & readMap, string & colName, string & rowName) 
 {
@@ -154,36 +153,36 @@ int computeLength(multimap<string,readInfo> & readMap, string & colName, string 
     }
     return maxlength;
 }
-//#else
-//int computeLength(unordered_map<string,readInfo> & readMap, string & colName, string & rowName) 
-//{
-//    int alignment_length = 0;
-//
-//    unordered_map<string,readInfo>::iterator jit;
-//    unordered_map<string,readInfo>::iterator iit;
-//
-//    jit = readMap.find(colName); // col name
-//    iit = readMap.find(rowName); // row name 
-//
-//    if(iit != readMap.end() && jit != readMap.end()) // needed as handling real dataset the aligned reads in sam file could be != the original number of reads
-//    {
-//        if(iit->second.ref == jit->second.ref)
-//        {   
-//            if(iit->second.start < jit->second.start) {
-//                if(iit->second.end > jit->second.start)
-//                    alignment_length = min((iit->second.end - jit->second.start), (jit->second.end - jit->second.start));
-//            }
-//            else if(iit->second.start > jit->second.start) 
-//            {
-//                if(jit->second.end > iit->second.start)
-//                    alignment_length = min((jit->second.end - iit->second.start), (iit->second.end - iit->second.start));
-//            } 
-//            else alignment_length = min((jit->second.end - iit->second.start), (iit->second.end - iit->second.start)); 
-//        } 
-//    }
-//    return alignment_length;
-//}
-//#endif
+#else
+int computeLength(unordered_map<string,readInfo> & readMap, string & colName, string & rowName) 
+{
+    int alignment_length = 0;
+
+    unordered_map<string,readInfo>::iterator jit;
+    unordered_map<string,readInfo>::iterator iit;
+
+    jit = readMap.find(colName); // col name
+    iit = readMap.find(rowName); // row name 
+
+    if(iit != readMap.end() && jit != readMap.end()) // needed as handling real dataset the aligned reads in sam file could be != the original number of reads
+    {
+        if(iit->second.ref == jit->second.ref)
+        {   
+            if(iit->second.start < jit->second.start) {
+                if(iit->second.end > jit->second.start)
+                    alignment_length = min((iit->second.end - jit->second.start), (jit->second.end - jit->second.start));
+            }
+            else if(iit->second.start > jit->second.start) 
+            {
+                if(jit->second.end > iit->second.start)
+                    alignment_length = min((jit->second.end - iit->second.start), (iit->second.end - iit->second.start));
+            } 
+            else alignment_length = min((jit->second.end - iit->second.start), (iit->second.end - iit->second.start)); 
+        } 
+    }
+    return alignment_length;
+}
+#endif
 /**
  * @brief benchmarkingAl retrives recall/precision values
  * @param groundtruth (input file)
@@ -196,11 +195,15 @@ int computeLength(multimap<string,readInfo> & readMap, string & colName, string 
  * @param minOvl
  */
 void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap, ifstream & mhap, 
-    ifstream & blasr, ifstream & daligner, bool simulated, int minOvl) // add blasr && daligner && mhap && bella
+    ifstream & blasr, ifstream & daligner, bool simulated, int minOvl) 
 {
     map<string,vectInfo> isInThere;
     map<string,vectInfo>::iterator iter;
+#ifdef MULTIMAPPED
     multimap<string,readInfo> readMap;
+#else
+    unordered_map<string,readInfo> readMap;
+#endif
     map<pair<string,string>, bool> checkBella;
     map<pair<string,string>, bool> checkMinimap;
     map<pair<string,string>, bool> checkMhap;
@@ -313,8 +316,8 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
     
     groundtruth.clear();
     groundtruth.seekg(0, ios::beg);
-    ofstream truePositivesBella;
-    truePositivesBella.open("truepositives-bella.out", std::ofstream::out | std::ofstream::app);
+    //ofstream truePositivesBella;
+    //truePositivesBella.open("truepositives-bella.out", std::ofstream::out | std::ofstream::app);
 
     cout << "computing BELLA recall/precision" << endl;
     if(bella.is_open())
@@ -322,8 +325,6 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
         string line;
         while(getline(bella, line))
         {   
-            ovlsbella++;
-            
             stringstream lineStream(line);
             string colName, rowName, nkmer, score;
             string colStart, colEnd, colLen, rowStart, rowEnd, rowLen;
@@ -345,7 +346,8 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
             {
                 it = checkBella.find(make_pair(colName, rowName));
                 if(it == checkBella.end())
-                {       
+                {   
+                    ovlsbella++;
                     checkBella.insert(make_pair(make_pair(colName, rowName), true));
                     // Compute the overlap length between potential overlapping reads pairs 
                     alignment_length = computeLength(readMap, colName, rowName);
@@ -362,7 +364,7 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
             }
         }
     } 
-    truePositivesBella.close();
+    //truePositivesBella.close();
 
     cout << "computing Minimap recall/precision" << endl;
     if(minimap.is_open())
@@ -370,7 +372,6 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
         string line;
         while(getline(minimap, line))
         {
-            ovlsminimap++;
             stringstream lineStream(line);
             string colName, rowName, colStart, colEnd, rowLen, colLen;
             string strand, rowStart, rowEnd;
@@ -395,6 +396,7 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
                 it = checkMinimap.find(make_pair(colName, rowName));
                 if(it == checkMinimap.end())
                 {
+                    ovlsminimap++;
                     checkMinimap.insert(make_pair(make_pair(colName, rowName), true));
                     // Compute the overlap length between potential overlapping reads pairs 
                     alignment_length = computeLength(readMap, colName, rowName);
@@ -417,12 +419,23 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
         string line;
         while(getline(mhap, line))
         {
-            ovlsmhap++;
             stringstream lineStream(line);
-            string colName, rowName;
+            string colName, rowName, error, shared, colStart, colEnd, colLen;
+            string rowLen, rowEnd, rowStart, rowStrand, colStrand;
 
+            // [A ID] [B ID] [% error] [# shared min-mers] [0=A fwd, 1=A rc] [A start] [A end] [A length] [0=B fwd, 1=B rc] [B start] [B end] [B length]
             getline(lineStream, colName, ' ');
             getline(lineStream, rowName, ' ');
+            getline(lineStream, error, ' ');
+            getline(lineStream, shared, ' ');
+            getline(lineStream, colStrand, ' ');
+            getline(lineStream, colStart, ' ');
+            getline(lineStream, colEnd, ' ');
+            getline(lineStream, colLen, ' ');
+            getline(lineStream, rowStrand, ' ');
+            getline(lineStream, rowStart, ' ');
+            getline(lineStream, rowEnd, ' ');
+            getline(lineStream, rowLen, ' ');
 
             colName = "@" + colName;
             rowName = "@" + rowName;
@@ -434,17 +447,18 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
                 it = checkMhap.find(make_pair(colName, rowName));
                 if(it == checkMhap.end())
                 {
+                    ovlsmhap++;
                     checkMhap.insert(make_pair(make_pair(colName, rowName), true));
                     // Compute the overlap length between potential overlapping reads pairs 
                     alignment_length = computeLength(readMap, colName, rowName);
                     if(alignment_length >= minOvl)
                         truemhap++;
-                    //else 
-                    //{
-                    //    int ovlEstime = estimeOvl(stoi(colStart), stoi(colEnd), stoi(colLen), stoi(rowStart), stoi(rowEnd), stoi(rowLen));
-                    //    if (ovlEstime < minOvl)
-                    //        ovlsmhap--;
-                    //}
+                    else 
+                    {
+                        int ovlEstime = estimeOvl(stoi(colStart), stoi(colEnd), stoi(colLen), stoi(rowStart), stoi(rowEnd), stoi(rowLen));
+                        if (ovlEstime < minOvl)
+                            ovlsmhap--;
+                    }
                 }
             }
         }
@@ -456,12 +470,24 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
         string line;
         while(getline(blasr, line))
         {
-            ovlsblasr++;
             stringstream lineStream(line);
-            string colName, rowName;
+            string colName, rowName, score, similarity, colStart, colEnd, colLen;
+            string rowLen, rowEnd, rowStart, rowStrand, colStrand, mapQV;
 
+            // qName tName score percentSimilarity qStrand qStart qEnd qLength tStrand tStart tEnd tLength mapQV
             getline(lineStream, colName, ' ');
             getline(lineStream, rowName, ' ');
+            getline(lineStream, score, ' ');
+            getline(lineStream, similarity, ' ');
+            getline(lineStream, colStrand, ' ');
+            getline(lineStream, colStart, ' ');
+            getline(lineStream, colEnd, ' ');
+            getline(lineStream, colLen, ' ');
+            getline(lineStream, rowStrand, ' ');
+            getline(lineStream, rowStart, ' ');
+            getline(lineStream, rowEnd, ' ');
+            getline(lineStream, rowLen, ' ');
+            getline(lineStream, mapQV, ' ');
 
             colName = "@" + colName;
             rowName = "@" + rowName;
@@ -473,17 +499,18 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
                 it = checkBlasr.find(make_pair(colName, rowName));
                 if(it == checkBlasr.end())
                 {
+                    ovlsblasr++;
                     checkBlasr.insert(make_pair(make_pair(colName, rowName), true));
                     // Compute the overlap length between potential overlapping reads pairs 
                     alignment_length = computeLength(readMap, colName, rowName);
                     if(alignment_length >= minOvl)
                         trueblasr++;
-                    //else 
-                    //{
-                    //    int ovlEstime = estimeOvl(stoi(colStart), stoi(colEnd), stoi(colLen), stoi(rowStart), stoi(rowEnd), stoi(rowLen));
-                    //    if (ovlEstime < minOvl)
-                    //        ovlsblasr--;
-                    //}
+                    else 
+                    {
+                        int ovlEstime = estimeOvl(stoi(colStart), stoi(colEnd), stoi(colLen), stoi(rowStart), stoi(rowEnd), stoi(rowLen));
+                        if (ovlEstime < minOvl)
+                            ovlsblasr--;
+                    }
                 }
             }
         }
@@ -495,7 +522,6 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
         string line;
         while(getline(daligner, line))
         {
-            ovlsdal++;
             stringstream lineStream(line);
             string colName, rowName;
 
@@ -506,17 +532,18 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
             rowName = rowName;
 
             if(colName == rowName) // to be sure to not count self aligned pairs
-                ovlsblasr--;
+                ovlsdal--;
             else
             {
                 it = checkBlasr.find(make_pair(colName, rowName));
                 if(it == checkBlasr.end())
                 {
+                    ovlsdal++;
                     checkBlasr.insert(make_pair(make_pair(colName, rowName), true));
                     // Compute the overlap length between potential overlapping reads pairs 
                     alignment_length = computeLength(readMap, colName, rowName);
                     if(alignment_length >= minOvl)
-                        trueblasr++;
+                        truedal++;
                     //else 
                     //{
                     //    int ovlEstime = estimeOvl(stoi(colStart), stoi(colEnd), stoi(colLen), stoi(rowStart), stoi(rowEnd), stoi(rowLen));
