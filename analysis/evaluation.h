@@ -524,7 +524,7 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
         {
             stringstream lineStream(line);
             string colName, rowName;
-
+            // Output format?
             getline(lineStream, colName, ' ');
             getline(lineStream, rowName, ' ');
 
