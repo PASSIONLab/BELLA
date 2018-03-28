@@ -266,6 +266,5 @@ pair<int,TSeed> seqanAlGenAllKmer(std::string & row, std::string & col, int rlen
                 longestExtensionScore = make_pair(tempScore, seed); 
         }  
     }
-    
     return longestExtensionScore;
 }

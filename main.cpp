@@ -54,12 +54,12 @@
 using namespace std;
 
 #ifdef _ALLKMER
- struct spmatType_ {
+struct spmatType_ {
  
      int count = 0;   /* number of shared k-mers */
      vector<std::pair<int,int>> vpos; /* wanna keep all the positions */
  };
- #else
+#else
 struct spmatType_ {
 
     int count = 0;   /* number of shared k-mers */
@@ -370,8 +370,6 @@ int main (int argc, char *argv[]) {
 
     int nkmer = countsreliable.size();
 
-    //std::cout << "spmat created with " << spmat.nnz << " nonzeros" << endl;
-    std::vector<tuple<int,int,int>>().swap(occurrences);    // remove memory of occurences
     CSC<int, int> spmat(occurrences, read_id, nkmer, 
                             [] (int & p1, int & p2) 
                             {   // assume no errors in MergeDuplicates
