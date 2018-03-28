@@ -180,7 +180,13 @@ pair<int,TSeed> seqanAlOneAllKmer(std::string & row, std::string & col, int rlen
     {
         Dna5StringReverseComplement twinRead(seqH);
         it->first = rlen-it->first-kmer_len;
-        TSeed seed(it->first, it->second, it->first+kmer_len, it->second+kmer_len); // In this way the seed is not globally updated
+
+        setBeginPositionH(seed, it->first);
+        setBeginPositionV(seed, it->second);
+        setEndPositionH(seed, it->first+kmer_len);
+        setEndPositionV(seed, it->second+kmer_len);
+
+        //TSeed seed(it->first, it->second, it->first+kmer_len, it->second+kmer_len); // In this way the seed is not globally updated
 
         /* Perform match extension */
         longestExtensionTemp = extendSeed(seed, twinRead, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
@@ -231,8 +237,12 @@ pair<int,TSeed> seqanAlGenAllKmer(std::string & row, std::string & col, int rlen
         for(std::vector<std::pair<int,int>>::iterator it=vpos.begin(); it!=vpos.end(); ++it)
         {   /* Update position on reversed seq */
             it->first = rlen-it->first-kmer_len;
-            /* Seed creation */
-            TSeed seed(it->first, it->second, it->first+kmer_len, it->second+kmer_len); // In this way the seed is not globally updated
+            /* Seed unpdate */
+            setBeginPositionH(seed, it->first);
+            setBeginPositionV(seed, it->second);
+            setEndPositionH(seed, it->first+kmer_len);
+            setEndPositionV(seed, it->second+kmer_len);
+            //TSeed seed(it->first, it->second, it->first+kmer_len, it->second+kmer_len); // In this way the seed is not globally updated
             /* Perform match extension */
             tempScore = extendSeed(seed, twinRead, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
             /* Keep the best score */
@@ -243,8 +253,12 @@ pair<int,TSeed> seqanAlGenAllKmer(std::string & row, std::string & col, int rlen
     else
     {
         for(std::vector<std::pair<int,int>>::iterator it=vpos.begin(); it!=vpos.end(); ++it)
-        {   /* Seed creation */
-            TSeed seed(it->first, it->second, it->first+kmer_len, it->second+kmer_len);
+        {   /* Seed update */
+            setBeginPositionH(seed, it->first);
+            setBeginPositionV(seed, it->second);
+            setEndPositionH(seed, it->first+kmer_len);
+            setEndPositionV(seed, it->second+kmer_len);
+            //TSeed seed(it->first, it->second, it->first+kmer_len, it->second+kmer_len);
             /* Perform match extension */
             tempScore = extendSeed(seed, seqH, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
             /* Keep the best score */

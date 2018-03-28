@@ -43,7 +43,7 @@ typedef SeedSet<TSeed> TSeedSet;
 //#define LINUX
 //#define THREADLIMIT
 //#define MAX_NUM_THREAD 4
-//#define ALLKMER
+#define ALLKMER
 
 #ifdef OSX
 #include <mach/mach.h>

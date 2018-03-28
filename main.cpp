@@ -47,17 +47,25 @@
 
 #define LSIZE 16000
 #define ITERS 10
+#define _ALLKMER
 //#define PRINT
 //#define JELLYFISH
 
 using namespace std;
 
+#ifdef _ALLKMER
+ struct spmatType_ {
+ 
+     int count = 0;   /* number of shared k-mers */
+     vector<std::pair<int,int>> vpos; /* wanna keep all the positions */
+ };
+ #else
 struct spmatType_ {
 
     int count = 0;   /* number of shared k-mers */
     int pos[4] = {0};  /* pos1i, pos1j, pos2i, pos2j */
 };
-
+#endif
 typedef shared_ptr<spmatType_> spmatPtr_; // pointer to spmatType_ datastruct
 typedef std::vector<Kmer> Kmers;
 
@@ -362,6 +370,8 @@ int main (int argc, char *argv[]) {
 
     int nkmer = countsreliable.size();
 
+    //std::cout << "spmat created with " << spmat.nnz << " nonzeros" << endl;
+    std::vector<tuple<int,int,int>>().swap(occurrences);    // remove memory of occurences
     CSC<int, int> spmat(occurrences, read_id, nkmer, 
                             [] (int & p1, int & p2) 
                             {   // assume no errors in MergeDuplicates
@@ -387,7 +397,22 @@ int main (int argc, char *argv[]) {
     //
     // Overlap detection (sparse matrix multiplication) and seed-and-extend alignment
     //
-
+#ifdef _ALLKMER
+    spmatPtr_ getvaluetype(make_shared<spmatType_>());
+    HeapSpGEMM(spmat, transpmat, 
+           [] (int & pi, int & pj) // n-th k-mer positions on read i and on read j 
+           {   spmatPtr_ value(make_shared<spmatType_>());
+               value->count = 1;
+               value->vpos.push_back(make_pair(pi,pj));
+               return value;
+           }, 
+           [] (spmatPtr_ & m1, spmatPtr_ & m2)
+           {   m2->count = m1->count+m2->count;
+               // insert control on independent k-mer
+               m2->vpos.insert(m2->vpos.end(), m1->vpos.begin(), m1->vpos.end());
+               return m2;
+           }, reads, getvaluetype, kmer_len, algnmnt_drop, algnmnt_thr, out_file, skip_algnmnt_krnl);
+#else
     spmatPtr_ getvaluetype(make_shared<spmatType_>());
     HeapSpGEMM(spmat, transpmat, 
             [] (int & pi, int & pj) // n-th k-mer positions on read i and on read j 
@@ -405,6 +430,7 @@ int main (int argc, char *argv[]) {
                 m2->pos[3] = m1->pos[1]; // col
                 return m2;
             }, reads, getvaluetype, kmer_len, algnmnt_drop, algnmnt_thr, out_file, skip_algnmnt_krnl); 
+#endif
     cout << "total running time: " << omp_get_wtime()-all << "s\n" << endl;
     return 0;
 } 
