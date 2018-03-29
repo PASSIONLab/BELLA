@@ -34,6 +34,7 @@
 #include <typeinfo>
 
 using namespace std;
+#define MOREINFO
 
 struct refInfo {
 
@@ -49,6 +50,21 @@ struct readInfo {
     int start;
     int end;
 };
+
+#ifdef MOREINFO
+struct myStruct {
+
+    int state;
+    string aStart;
+    string aEnd;
+    string aLen;
+    string bStart;
+    string bEnd;
+    string bLen;
+    string skmer;
+    string score;
+};
+#endif
 
 typedef vector<refInfo> vectInfo;
 
@@ -177,8 +193,14 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
     map<string,vectInfo> isInThere;
     map<string,vectInfo>::iterator iter;
     multimap<string,readInfo> readMap;
-    
+
+#ifdef MOREINFO
+    map<pair<string,string>, myStruct> checkBella;
+    map<pair<string,string>, myStruct>::iterator extraIt;
+    myStruct extraInfo;
+#else
     map<pair<string,string>, int> checkBella;
+#endif
     map<pair<string,string>, int> checkMinimap;
     map<pair<string,string>, int> checkMhap;
     map<pair<string,string>, int> checkBlasr;
@@ -192,6 +214,8 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
     double ovlsmhap = 0, truemhap = 0;
     double ovlsblasr = 0, trueblasr = 0;
     double ovlsdal = 0, truedal = 0;
+
+    ofstream output("evalOutput.out");
 
     cout << "\nbuilding the ground truth" << endl;
 
@@ -319,15 +343,36 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
                 // value == 0 ==> pass alignment threshold
                 // value == 1 ==> doesn't pass alignment threshold AND pass overlap estimate
                 // value == 2 ==> doesn't pass alignment threshold AND doesn't pass overlap estimate
+            #ifdef MOREINFO
+                extraIt = checkBella.find(make_pair(colName, rowName));
+            #else
                 it = checkBella.find(make_pair(colName, rowName));
+            #endif
+            #ifdef MOREINFO
+                if(extraIt == checkBella.end())
+            #else
                 if(it == checkBella.end())
+            #endif
                 {
                     ovlsbella++;
                     // Compute the overlap length between potential overlapping reads pairs 
                     alignment_length = computeLength(readMap, colName, rowName);
                     if(alignment_length >= minOvl)
                     {
+                #ifdef MOREINFO
+                        extraInfo.aStart = colStart;
+                        extraInfo.aEnd = colEnd;
+                        extraInfo.aLen = colLen;
+                        extraInfo.bStart = rowStart;
+                        extraInfo.bEnd = rowEnd;
+                        extraInfo.bLen = rowLen;
+                        extraInfo.skmer = nkmer;
+                        extraInfo.score = score;
+                        extraInfo.state = 0;
+                        checkBella.insert(make_pair(make_pair(colName, rowName), extraInfo));
+                #else
                         checkBella.insert(make_pair(make_pair(colName, rowName), 0));
+                #endif
                         truebella++;
                     }
                     else 
@@ -335,17 +380,54 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
                         int ovlEstime = estimeOvl(stoi(colStart), stoi(colEnd), stoi(colLen), stoi(rowStart), stoi(rowEnd), stoi(rowLen));
                         if (ovlEstime < minOvl)
                         {
+                #ifdef MOREINFO
+                            extraInfo.aStart = colStart;
+                            extraInfo.aEnd = colEnd;
+                            extraInfo.aLen = colLen;
+                            extraInfo.bStart = rowStart;
+                            extraInfo.bEnd = rowEnd;
+                            extraInfo.bLen = rowLen;
+                            extraInfo.skmer = nkmer;
+                            extraInfo.score = score;
+                            extraInfo.state = 2;
+                            checkBella.insert(make_pair(make_pair(colName, rowName), extraInfo));
+                #else
                             checkBella.insert(make_pair(make_pair(colName, rowName), 2));
+                #endif
                             ovlsbella--;
-                        } else checkBella.insert(make_pair(make_pair(colName, rowName), 1));
+                        } else
+                        {
+                #ifdef MOREINFO
+                            extraInfo.aStart = colStart;
+                            extraInfo.aEnd = colEnd;
+                            extraInfo.aLen = colLen;
+                            extraInfo.bStart = rowStart;
+                            extraInfo.bEnd = rowEnd;
+                            extraInfo.bLen = rowLen;
+                            extraInfo.skmer = nkmer;
+                            extraInfo.score = score;
+                            extraInfo.state = 1;
+                            checkBella.insert(make_pair(make_pair(colName, rowName), extraInfo));
+                #else
+                            checkBella.insert(make_pair(make_pair(colName, rowName), 1));
+                #endif
+                        } 
                     }
                 }
-                else if(it->second == 1)
+            #ifdef MOREINFO
+                else if(extraIt->second.state == 1)
+            #else
+                else if(it->second == 1) 
+            #endif
                 {
                     alignment_length = computeLength(readMap, colName, rowName);
                     if(alignment_length >= minOvl)
                     {
+                #ifdef MOREINFO
+                        checkBella[make_pair(colName, rowName)].state = 0;
+                #else
                         checkBella[make_pair(colName, rowName)] = 0;
+                #endif
                         truebella++;
                     }
                     else 
@@ -353,17 +435,36 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
                         int ovlEstime = estimeOvl(stoi(colStart), stoi(colEnd), stoi(colLen), stoi(rowStart), stoi(rowEnd), stoi(rowLen));
                         if (ovlEstime < minOvl)
                         {
+                #ifdef MOREINFO
+                            checkBella[make_pair(colName, rowName)].state = 2;
+                #else
                             checkBella[make_pair(colName, rowName)] = 2;
+                #endif
                             ovlsbella--;
-                        } else checkBella[make_pair(colName, rowName)] = 1;
+                        } else
+                        {
+                #ifdef MOREINFO
+                            checkBella[make_pair(colName, rowName)].state = 1;
+                #else
+                            checkBella[make_pair(colName, rowName)] = 1;
+                #endif
+                        } 
                     }
                 }
-                else if(it->second == 2)
+            #ifdef MOREINFO
+                else if(extraIt->second.state == 2)
+            #else
+                else if(it->second == 2) 
+            #endif
                 {
                     alignment_length = computeLength(readMap, colName, rowName);
                     if(alignment_length >= minOvl)
                     {
+                #ifdef MOREINFO
+                        checkBella[make_pair(colName, rowName)].state = 0;
+                #else
                         checkBella[make_pair(colName, rowName)] = 0;
+                #endif
                         truebella++;
                         ovlsbella++;
                     }
@@ -371,10 +472,20 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
                     {
                         int ovlEstime = estimeOvl(stoi(colStart), stoi(colEnd), stoi(colLen), stoi(rowStart), stoi(rowEnd), stoi(rowLen));
                         if (ovlEstime < minOvl)
+                        {
+                #ifdef MOREINFO
+                            checkBella[make_pair(colName, rowName)].state = 2;
+                #else
                             checkBella[make_pair(colName, rowName)] = 2;
+                #endif
+                        }
                         else
                         {
+                #ifdef MOREINFO
+                            checkBella[make_pair(colName, rowName)].state = 1;
+                #else            
                             checkBella[make_pair(colName, rowName)] = 1;
+                #endif
                             ovlsbella++;
                         } 
                     }
@@ -716,8 +827,8 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
             getline(lineStream, colLen, ' ');
             getline(lineStream, rowLen, ' ');
 
-            colName = colName; // check if add @
-            rowName = rowName; // check if add @
+            colName = "@" + colName;
+            rowName = "@" + rowName;
 
             if(colName != rowName) // to be sure to not count self aligned pairs
             {    
