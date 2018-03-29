@@ -1,3 +1,9 @@
+/**
+* Evaluation code to compare long read-to-read aligner recall/precision
+* 
+* @author: Giulia Guidi
+*
+*/
 #include "IntervalTree.h"
 #include <omp.h>
 #include <fstream>
@@ -25,6 +31,7 @@
 #include <sstream>
 #include <set>
 #include <memory>
+#include <typeinfo>
 
 using namespace std;
 #define MULTIMAPPED
@@ -204,12 +211,12 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
 #else
     unordered_map<string,readInfo> readMap;
 #endif
-    map<pair<string,string>, bool> checkBella;
-    map<pair<string,string>, bool> checkMinimap;
-    map<pair<string,string>, bool> checkMhap;
-    map<pair<string,string>, bool> checkBlasr;
-    map<pair<string,string>, bool> checkDaligner;
-    map<pair<string,string>, bool>::iterator it;
+    map<pair<string,string>, int> checkBella;
+    map<pair<string,string>, int> checkMinimap;
+    map<pair<string,string>, int> checkMhap;
+    map<pair<string,string>, int> checkBlasr;
+    map<pair<string,string>, int> checkDaligner;
+    map<pair<string,string>, int>::iterator it;
     
     int alignment_length;
     
@@ -339,9 +346,12 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
             getline(lineStream, rowStart, '\t');
             getline(lineStream, rowEnd, '\t');
             getline(lineStream, rowLen, '\t');
-                                
+
             if(colName != rowName) // to be sure to not count self aligned pairs
             {
+                // value == 0 ==> pass alignment threshold
+                // value == 1 ==> doesn't pass alignment threshold AND pass overlap estimate
+                // value == 2 ==> doesn't pass alignment threshold AND doesn't pass overlap estimate
                 it = checkBella.find(make_pair(colName, rowName));
                 if(it == checkBella.end())
                 {
@@ -350,31 +360,56 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
                     alignment_length = computeLength(readMap, colName, rowName);
                     if(alignment_length >= minOvl)
                     {
-                        checkBella.insert(make_pair(make_pair(colName, rowName), true));
+                        checkBella.insert(make_pair(make_pair(colName, rowName), 0));
                         truebella++;
                     }
                     else 
                     {
-                        checkBella.insert(make_pair(make_pair(colName, rowName), false));
                         int ovlEstime = estimeOvl(stoi(colStart), stoi(colEnd), stoi(colLen), stoi(rowStart), stoi(rowEnd), stoi(rowLen));
                         if (ovlEstime < minOvl)
+                        {
+                            checkBella.insert(make_pair(make_pair(colName, rowName), 2));
                             ovlsbella--;
+                        } else checkBella.insert(make_pair(make_pair(colName, rowName), 1));
                     }
                 }
-                else if(it->second == false)
+                else if(it->second == 1)
                 {
                     alignment_length = computeLength(readMap, colName, rowName);
                     if(alignment_length >= minOvl)
                     {
-                        checkBella[make_pair(colName, rowName)] = true;
+                        checkBella[make_pair(colName, rowName)] = 0;
                         truebella++;
                     }
                     else 
                     {
-                        checkBella[make_pair(colName, rowName)] = false;
                         int ovlEstime = estimeOvl(stoi(colStart), stoi(colEnd), stoi(colLen), stoi(rowStart), stoi(rowEnd), stoi(rowLen));
                         if (ovlEstime < minOvl)
+                        {
+                            checkBella[make_pair(colName, rowName)] = 2;
                             ovlsbella--;
+                        } else checkBella[make_pair(colName, rowName)] = 1;
+                    }
+                }
+                else if(it->second == 2)
+                {
+                    alignment_length = computeLength(readMap, colName, rowName);
+                    if(alignment_length >= minOvl)
+                    {
+                        checkBella[make_pair(colName, rowName)] = 0;
+                        truebella++;
+                        ovlsbella++;
+                    }
+                    else 
+                    {
+                        int ovlEstime = estimeOvl(stoi(colStart), stoi(colEnd), stoi(colLen), stoi(rowStart), stoi(rowEnd), stoi(rowLen));
+                        if (ovlEstime < minOvl)
+                            checkBella[make_pair(colName, rowName)] = 2;
+                        else
+                        {
+                            checkBella[make_pair(colName, rowName)] = 1;
+                            ovlsbella++;
+                        } 
                     }
                 }
             }
@@ -407,6 +442,9 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
 
             if(colName != rowName) // to be sure to not count self aligned pairs
             {
+                // value == 0 ==> pass alignment threshold
+                // value == 1 ==> doesn't pass alignment threshold AND pass overlap estimate
+                // value == 2 ==> doesn't pass alignment threshold AND doesn't pass overlap estimate
                 it = checkMinimap.find(make_pair(colName, rowName));
                 if(it == checkMinimap.end())
                 {
@@ -415,31 +453,56 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
                     alignment_length = computeLength(readMap, colName, rowName);
                     if(alignment_length >= minOvl)
                     {
-                        checkMinimap.insert(make_pair(make_pair(colName, rowName), true));
+                        checkMinimap.insert(make_pair(make_pair(colName, rowName), 0));
                         trueminimap++;
                     }
                     else 
                     {
-                        checkMinimap.insert(make_pair(make_pair(colName, rowName), false));
                         int ovlEstime = estimeOvl(stoi(colStart), stoi(colEnd), stoi(colLen), stoi(rowStart), stoi(rowEnd), stoi(rowLen));
                         if (ovlEstime < minOvl)
+                        {
+                            checkMinimap.insert(make_pair(make_pair(colName, rowName), 2));
                             ovlsminimap--;
+                        } else checkMinimap.insert(make_pair(make_pair(colName, rowName), 1));
                     }
                 }
-                else if(it->second == false)
+                else if(it->second == 1)
                 {
                     alignment_length = computeLength(readMap, colName, rowName);
                     if(alignment_length >= minOvl)
                     {
-                        checkMinimap[make_pair(colName,rowName)] = true;
+                        checkMinimap[make_pair(colName, rowName)] = 0;
                         trueminimap++;
                     }
                     else 
                     {
-                        checkMinimap[make_pair(colName,rowName)] = false;
                         int ovlEstime = estimeOvl(stoi(colStart), stoi(colEnd), stoi(colLen), stoi(rowStart), stoi(rowEnd), stoi(rowLen));
                         if (ovlEstime < minOvl)
+                        {
+                            checkMinimap[make_pair(colName, rowName)] = 2;
                             ovlsminimap--;
+                        } else checkMinimap[make_pair(colName, rowName)] = 1;
+                    }
+                }
+                else if(it->second == 2)
+                {
+                    alignment_length = computeLength(readMap, colName, rowName);
+                    if(alignment_length >= minOvl)
+                    {
+                        checkMinimap[make_pair(colName, rowName)] = 0;
+                        trueminimap++;
+                        ovlsminimap++;
+                    }
+                    else 
+                    {
+                        int ovlEstime = estimeOvl(stoi(colStart), stoi(colEnd), stoi(colLen), stoi(rowStart), stoi(rowEnd), stoi(rowLen));
+                        if (ovlEstime < minOvl)
+                            checkMinimap[make_pair(colName, rowName)] = 2;
+                        else
+                        {
+                            checkMinimap[make_pair(colName, rowName)] = 1;
+                            ovlsminimap++;
+                        } 
                     }
                 }
             }
@@ -475,6 +538,9 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
 
             if(colName != rowName) // to be sure to not count self aligned pairs
             {
+                // value == 0 ==> pass alignment threshold
+                // value == 1 ==> doesn't pass alignment threshold AND pass overlap estimate
+                // value == 2 ==> doesn't pass alignment threshold AND doesn't pass overlap estimate
                 it = checkMhap.find(make_pair(colName, rowName));
                 if(it == checkMhap.end())
                 {
@@ -483,31 +549,56 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
                     alignment_length = computeLength(readMap, colName, rowName);
                     if(alignment_length >= minOvl)
                     {
-                        checkMhap.insert(make_pair(make_pair(colName, rowName), true));
+                        checkMhap.insert(make_pair(make_pair(colName, rowName), 0));
                         truemhap++;
                     }
                     else 
                     {
-                        checkMhap.insert(make_pair(make_pair(colName, rowName), false));
                         int ovlEstime = estimeOvl(stoi(colStart), stoi(colEnd), stoi(colLen), stoi(rowStart), stoi(rowEnd), stoi(rowLen));
                         if (ovlEstime < minOvl)
+                        {
+                            checkMhap.insert(make_pair(make_pair(colName, rowName), 2));
                             ovlsmhap--;
+                        } else checkMhap.insert(make_pair(make_pair(colName, rowName), 1));
                     }
                 }
-                else if(it->second == false)
+                else if(it->second == 1)
                 {
                     alignment_length = computeLength(readMap, colName, rowName);
                     if(alignment_length >= minOvl)
                     {
-                        checkMhap[make_pair(colName,rowName)] = true;
+                        checkMhap[make_pair(colName, rowName)] = 0;
                         truemhap++;
                     }
                     else 
                     {
-                        checkMhap[make_pair(colName,rowName)] = false;
                         int ovlEstime = estimeOvl(stoi(colStart), stoi(colEnd), stoi(colLen), stoi(rowStart), stoi(rowEnd), stoi(rowLen));
                         if (ovlEstime < minOvl)
+                        {
+                            checkMhap[make_pair(colName, rowName)] = 2;
                             ovlsmhap--;
+                        } else checkMhap[make_pair(colName, rowName)] = 1;
+                    }
+                }
+                else if(it->second == 2)
+                {
+                    alignment_length = computeLength(readMap, colName, rowName);
+                    if(alignment_length >= minOvl)
+                    {
+                        checkMhap[make_pair(colName, rowName)] = 0;
+                        truemhap++;
+                        ovlsmhap++;
+                    }
+                    else 
+                    {
+                        int ovlEstime = estimeOvl(stoi(colStart), stoi(colEnd), stoi(colLen), stoi(rowStart), stoi(rowEnd), stoi(rowLen));
+                        if (ovlEstime < minOvl)
+                            checkMhap[make_pair(colName, rowName)] = 2;
+                        else
+                        {
+                            checkMhap[make_pair(colName, rowName)] = 1;
+                            ovlsmhap++;
+                        } 
                     }
                 }
             }
@@ -544,6 +635,9 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
 
             if(colName != rowName) // to be sure to not count self aligned pairs
             {
+                // value == 0 ==> pass alignment threshold
+                // value == 1 ==> doesn't pass alignment threshold AND pass overlap estimate
+                // value == 2 ==> doesn't pass alignment threshold AND doesn't pass overlap estimate
                 it = checkBlasr.find(make_pair(colName, rowName));
                 if(it == checkBlasr.end())
                 {
@@ -552,31 +646,56 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
                     alignment_length = computeLength(readMap, colName, rowName);
                     if(alignment_length >= minOvl)
                     {
-                        checkBlasr.insert(make_pair(make_pair(colName, rowName), true));
+                        checkBlasr.insert(make_pair(make_pair(colName, rowName), 0));
                         trueblasr++;
                     }
                     else 
                     {
-                        checkBlasr.insert(make_pair(make_pair(colName, rowName), false));
                         int ovlEstime = estimeOvl(stoi(colStart), stoi(colEnd), stoi(colLen), stoi(rowStart), stoi(rowEnd), stoi(rowLen));
                         if (ovlEstime < minOvl)
+                        {
+                            checkBlasr.insert(make_pair(make_pair(colName, rowName), 2));
                             ovlsblasr--;
+                        } else checkBlasr.insert(make_pair(make_pair(colName, rowName), 1));
                     }
                 }
-                else if(it->second == false)
+                else if(it->second == 1)
                 {
                     alignment_length = computeLength(readMap, colName, rowName);
                     if(alignment_length >= minOvl)
                     {
-                        checkBlasr[make_pair(colName,rowName)] = true;
+                        checkBlasr[make_pair(colName, rowName)] = 0;
                         trueblasr++;
                     }
                     else 
                     {
-                        checkBlasr[make_pair(colName,rowName)] = false;
                         int ovlEstime = estimeOvl(stoi(colStart), stoi(colEnd), stoi(colLen), stoi(rowStart), stoi(rowEnd), stoi(rowLen));
                         if (ovlEstime < minOvl)
+                        {
+                            checkBlasr[make_pair(colName, rowName)] = 2;
                             ovlsblasr--;
+                        } else checkBlasr[make_pair(colName, rowName)] = 1;
+                    }
+                }
+                else if(it->second == 2)
+                {
+                    alignment_length = computeLength(readMap, colName, rowName);
+                    if(alignment_length >= minOvl)
+                    {
+                        checkBlasr[make_pair(colName, rowName)] = 0;
+                        trueblasr++;
+                        ovlsblasr++;
+                    }
+                    else 
+                    {
+                        int ovlEstime = estimeOvl(stoi(colStart), stoi(colEnd), stoi(colLen), stoi(rowStart), stoi(rowEnd), stoi(rowLen));
+                        if (ovlEstime < minOvl)
+                            checkBlasr[make_pair(colName, rowName)] = 2;
+                        else
+                        {
+                            checkBlasr[make_pair(colName, rowName)] = 1;
+                            ovlsblasr++;
+                        } 
                     }
                 }
             }
@@ -598,44 +717,72 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
             colName = colName;
             rowName = rowName;
 
-            //if(colName != rowName) // to be sure to not count self aligned pairs
-            //{
-            //    it = checkDaligner.find(make_pair(colName, rowName));
-            //    if(it == checkDaligner.end())
-            //    {
-            //        ovlsdal++;
-            //        // Compute the overlap length between potential overlapping reads pairs 
-            //        alignment_length = computeLength(readMap, colName, rowName);
-            //        if(alignment_length >= minOvl)
-            //        {
-            //            checkDaligner.insert(make_pair(make_pair(colName, rowName), true));
-            //            truedal++;
-            //        }
-            //        else 
-            //        {
-            //            checkDaligner.insert(make_pair(make_pair(colName, rowName), false));
-            //            int ovlEstime = estimeOvl(stoi(colStart), stoi(colEnd), stoi(colLen), stoi(rowStart), stoi(rowEnd), stoi(rowLen));
-            //            if (ovlEstime < minOvl)
-            //                ovlsdal--;
-            //        }
-            //    }
-            //    else if(it->second == false)
-            //    {
-            //        alignment_length = computeLength(readMap, colName, rowName);
-            //        if(alignment_length >= minOvl)
-            //        {
-            //            checkDaligner[make_pair(colName,rowName)] = true;
-            //            truedal++;
-            //        }
-            //        else 
-            //        {
-            //            checkDaligner[make_pair(colName,rowName)] = false;
-            //            int ovlEstime = estimeOvl(stoi(colStart), stoi(colEnd), stoi(colLen), stoi(rowStart), stoi(rowEnd), stoi(rowLen));
-            //            if (ovlEstime < minOvl)
-            //                ovlsdal--;
-            //        }
-            //    }
-            //}
+            if(colName != rowName) // to be sure to not count self aligned pairs
+            {    
+                // value == 0 ==> pass alignment threshold
+                // value == 1 ==> doesn't pass alignment threshold AND pass overlap estimate
+                // value == 2 ==> doesn't pass alignment threshold AND doesn't pass overlap estimate
+                //it = checkDaligner.find(make_pair(colName, rowName));
+                //if(it == checkDaligner.end())
+                //{
+                //    ovlsdal++;
+                //    // Compute the overlap length between potential overlapping reads pairs 
+                //    alignment_length = computeLength(readMap, colName, rowName);
+                //    if(alignment_length >= minOvl)
+                //    {
+                //        checkDaligner.insert(make_pair(make_pair(colName, rowName), 0));
+                //        truedal++;
+                //    }
+                //    else 
+                //    {
+                //        int ovlEstime = estimeOvl(stoi(colStart), stoi(colEnd), stoi(colLen), stoi(rowStart), stoi(rowEnd), stoi(rowLen));
+                //        if (ovlEstime < minOvl)
+                //        {
+                //            checkDaligner.insert(make_pair(make_pair(colName, rowName), 2));
+                //            ovlsdal--;
+                //        } else checkDaligner.insert(make_pair(make_pair(colName, rowName), 1));
+                //    }
+                //}
+                //else if(it->second == 1)
+                //{
+                //    alignment_length = computeLength(readMap, colName, rowName);
+                //    if(alignment_length >= minOvl)
+                //    {
+                //        checkDaligner[make_pair(colName, rowName)] = 0;
+                //        truedal++;
+                //    }
+                //    else 
+                //    {
+                //        int ovlEstime = estimeOvl(stoi(colStart), stoi(colEnd), stoi(colLen), stoi(rowStart), stoi(rowEnd), stoi(rowLen));
+                //        if (ovlEstime < minOvl)
+                //        {
+                //            checkDaligner[make_pair(colName, rowName)] = 2;
+                //            ovlsdal--;
+                //        } else checkDaligner[make_pair(colName, rowName)] = 1;
+                //    }
+                //}
+                //else if(it->second == 2)
+                //{
+                //    alignment_length = computeLength(readMap, colName, rowName);
+                //    if(alignment_length >= minOvl)
+                //    {
+                //        checkDaligner[make_pair(colName, rowName)] = 0;
+                //        truedal++;
+                //        ovlsdal++;
+                //    }
+                //    else 
+                //    {
+                //        int ovlEstime = estimeOvl(stoi(colStart), stoi(colEnd), stoi(colLen), stoi(rowStart), stoi(rowEnd), stoi(rowLen));
+                //        if (ovlEstime < minOvl)
+                //            checkDaligner[make_pair(colName, rowName)] = 2;
+                //        else
+                //        {
+                //            checkDaligner[make_pair(colName, rowName)] = 1;
+                //            ovlsdal++;
+                //        } 
+                //    }
+                //}
+            }
         }
     }
 
