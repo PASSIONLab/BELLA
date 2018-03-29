@@ -215,8 +215,6 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
     double ovlsblasr = 0, trueblasr = 0;
     double ovlsdal = 0, truedal = 0;
 
-    ofstream output("evalOutput.out");
-
     cout << "\nbuilding the ground truth" << endl;
 
     if(simulated)
@@ -493,8 +491,21 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
             }
         }
     } 
-    //truePositivesBella.close();
 
+#ifdef MOREINFO
+    ofstream output("postEvaluationBella.out");
+    if(output.is_open())
+    {
+        // State, shared k-mer, score, nameA, nameB, startA, endA, lenA, startB, endB, lenB
+        for(extraIt = checkBella.begin(); extraIt != checkBella.end(); ++extraIt)
+        {
+            output << extraIt->second.state << '\t' << extraIt->second.skmer << '\t' << extraIt->second.score << '\t' <<  extraIt->first.first << '\t' << extraIt->first.second << '\t' << extraIt->second.aStart 
+                << '\t' << extraIt->second.aEnd << '\t' << extraIt->second.aLen << '\t' << extraIt->second.bStart << '\t' << extraIt->second.bEnd 
+                    << '\t' << extraIt->second.bLen << endl; 
+        }
+    }
+    output.close();
+#endif
     cout << "computing Minimap recall/precision" << endl;
     if(minimap.is_open())
     {
