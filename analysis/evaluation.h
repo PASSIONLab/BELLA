@@ -34,7 +34,6 @@
 #include <typeinfo>
 
 using namespace std;
-#define MULTIMAPPED
 
 struct refInfo {
 
@@ -119,7 +118,7 @@ double trueOv(map<string,vectInfo> & truthInfo, bool simulated, int minOvl)
  * @param rowName
  * @return alignment length
  */
-#ifdef MULTIMAPPED
+
 typedef multimap<string,readInfo>::iterator MMAPIterator;
 int computeLength(multimap<string,readInfo> & readMap, string & colName, string & rowName) 
 {
@@ -160,36 +159,7 @@ int computeLength(multimap<string,readInfo> & readMap, string & colName, string 
     }
     return maxlength;
 }
-#else
-int computeLength(unordered_map<string,readInfo> & readMap, string & colName, string & rowName) 
-{
-    int alignment_length = 0;
 
-    unordered_map<string,readInfo>::iterator jit;
-    unordered_map<string,readInfo>::iterator iit;
-
-    jit = readMap.find(colName); // col name
-    iit = readMap.find(rowName); // row name 
-
-    if(iit != readMap.end() && jit != readMap.end()) // needed as handling real dataset the aligned reads in sam file could be != the original number of reads
-    {
-        if(iit->second.ref == jit->second.ref)
-        {   
-            if(iit->second.start < jit->second.start) {
-                if(iit->second.end > jit->second.start)
-                    alignment_length = min((iit->second.end - jit->second.start), (jit->second.end - jit->second.start));
-            }
-            else if(iit->second.start > jit->second.start) 
-            {
-                if(jit->second.end > iit->second.start)
-                    alignment_length = min((jit->second.end - iit->second.start), (iit->second.end - iit->second.start));
-            } 
-            else alignment_length = min((jit->second.end - iit->second.start), (iit->second.end - iit->second.start)); 
-        } 
-    }
-    return alignment_length;
-}
-#endif
 /**
  * @brief benchmarkingAl retrives recall/precision values
  * @param groundtruth (input file)
@@ -206,11 +176,8 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
 {
     map<string,vectInfo> isInThere;
     map<string,vectInfo>::iterator iter;
-#ifdef MULTIMAPPED
     multimap<string,readInfo> readMap;
-#else
-    unordered_map<string,readInfo> readMap;
-#endif
+    
     map<pair<string,string>, int> checkBella;
     map<pair<string,string>, int> checkMinimap;
     map<pair<string,string>, int> checkMhap;
@@ -729,21 +696,21 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
             //
 
             stringstream lineStream(line);
-            string colName, rowName;
+            string colName, rowName, strand, colStart, colEnd, colLen, rowStart, rowEnd, rowLen;
 
             getline(lineStream, colName, ' ');
             getline(lineStream, rowName, ' ');
             getline(lineStream, strand, ' ');
-            getline(lineStream, colStart, '');
+            getline(lineStream, colStart, ' ');
             getline(lineStream, colEnd, ' ');
-            if(strad == 'c')
+            if(strand.compare("c") == 0)
             {
                 getline(lineStream, rowEnd, ' ');
                 getline(lineStream, rowStart, ' ');
             }
             else
             {
-                getline(lineStream, rowStart, ''); // check is stoi can parse ',' 
+                getline(lineStream, rowStart, ' '); // check is stoi can parse ',' 
                 getline(lineStream, rowEnd, ' ');
             }
             getline(lineStream, colLen, ' ');
@@ -751,14 +718,6 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
 
             colName = colName; // check if add @
             rowName = rowName; // check if add @
-
-            //    while (ss >> i)
-            //    {
-            //      vect.push_back(i);
-            //    
-            //      if (ss.peek() == ',')
-            //      ss.ignore();
-            //    }
 
             if(colName != rowName) // to be sure to not count self aligned pairs
             {    
