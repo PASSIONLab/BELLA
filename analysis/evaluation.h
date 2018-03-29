@@ -707,15 +707,58 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
     {
         string line;
         while(getline(daligner, line))
-        {
+        {   
+            //
+            // 1  1,865 c   [18,479..20,216] x [ 1,707..0>  (24,451 x 7,283 bps, 19 trace pts)
+            //
+            // "The display of an LA always begins with a line giving the A-read, then the B-read, 
+            // then an indication of orientation (i.e. 'n' for same strand, and 'c' for the opposite strand) 
+            // followed by the A-interval and B-interval that are aligned and in parentheses the lengths of 
+            // the two reads and the number of tracepoints in the alignment between them. In particular, note 
+            // carefully that when the B-read is in the complement orientation (c), then the B-interval gives the 
+            // higher coordinate first, the idea being that one will align from the highest base down to the lowest 
+            // base in the descending direction on B, complement the characters as you go. Further note that in the 
+            // alignment display the coordinates at the start of each line follow this orientation convention and 
+            // give the coordinate of the "tick mark" just left of the first character in each line. It is useful 
+            // to know if an interval reaches the end of read, and to signal this we use an angle-bracket <> instead 
+            // of a square bracket [], e.g. in the example the B-segment starts at the beginning of the read."
+            // 
+            // After our parsing Daligner out is something similar to the other tools output format:
+            // colName rowName strand S1 E1 S2/E2 S2/E2 L1 L2
+            // S2/E2 depends on the strand, if strand == n, will be S2 and then E2, otherwise it will be E2, and then S2
+            //
+
             stringstream lineStream(line);
             string colName, rowName;
-            // DALIGNER NEED TO BE UPDATED AS SOON AS WE CAN GET THE CORRECT OUTPUT FORMAT
+
             getline(lineStream, colName, ' ');
             getline(lineStream, rowName, ' ');
+            getline(lineStream, strand, ' ');
+            getline(lineStream, colStart, '');
+            getline(lineStream, colEnd, ' ');
+            if(strad == 'c')
+            {
+                getline(lineStream, rowEnd, ' ');
+                getline(lineStream, rowStart, ' ');
+            }
+            else
+            {
+                getline(lineStream, rowStart, ''); // check is stoi can parse ',' 
+                getline(lineStream, rowEnd, ' ');
+            }
+            getline(lineStream, colLen, ' ');
+            getline(lineStream, rowLen, ' ');
 
-            colName = colName;
-            rowName = rowName;
+            colName = colName; // check if add @
+            rowName = rowName; // check if add @
+
+            //    while (ss >> i)
+            //    {
+            //      vect.push_back(i);
+            //    
+            //      if (ss.peek() == ',')
+            //      ss.ignore();
+            //    }
 
             if(colName != rowName) // to be sure to not count self aligned pairs
             {    
