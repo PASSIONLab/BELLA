@@ -1,3 +1,9 @@
+/**
+* Evaluation code to compare long read-to-read aligner recall/precision
+* 
+* @author: Giulia Guidi
+*
+*/
 #include "evaluation.h" 
 #include "IntervalTree.h"
 #include "../mtspgemm2017/global.h"
@@ -71,12 +77,12 @@ int main (int argc, char* argv[]) {
                 break;
             }
             case 'b': {
-                if(thisOpt->argument == NULL)
-                {
-                    cout << "\nProgram execution terminated: -b requires BELLA output file" << endl;
-                    cout << "Run with -h to print out the command line options\n" << endl;
-                    return 0;
-                }
+                //if(thisOpt->argument == NULL)
+                //{
+                //    cout << "\nProgram execution terminated: -b requires BELLA output file" << endl;
+                //    cout << "Run with -h to print out the command line options\n" << endl;
+                //    return 0;
+                //}
                 bellafile = strdup(thisOpt->argument);
                 break;
             }
@@ -105,12 +111,8 @@ int main (int argc, char* argv[]) {
                 cout << "\nUsage:\n" << endl;
                 cout << " -z : Simulated reads [false]" << endl;
                 cout << " -g : ground truth file (required)" << endl;
-                cout << " -n : number of reads of fastq(s) (required)" << endl; // need to have this value to 
-                                                                                // compute minimap sensitivity (impractical but 
-                                                                                // safer as with real data isn't safe counting 
-                                                                                // the number of reads from the ground truth)
                 cout << " -t : Overlap length [2000]" << endl;
-                cout << " -b : BELLA output file (required)" << endl;
+                cout << " -b : BELLA output file" << endl;
                 cout << " -m : Minimap or Minimap2 output file" << endl;
                 cout << " -p : MHAP output file" << endl;
                 cout << " -d : Daligner output file" << endl;
@@ -122,7 +124,7 @@ int main (int argc, char* argv[]) {
         }
     }
 
-    if(truth == NULL || bellafile == NULL)
+    if(truth == NULL)
     {
         cout << "\nProgram execution terminated: missing arguments" << endl;
         cout << "Run with -h to print out the command line options\n" << endl;
