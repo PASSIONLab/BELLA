@@ -325,16 +325,16 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
             string colName, rowName, nkmer, score;
             string colStart, colEnd, colLen, rowStart, rowEnd, rowLen;
             
-            getline(lineStream, colName, '\t');
-            getline(lineStream, rowName, '\t');
-            getline(lineStream, nkmer, '\t');
-            getline(lineStream, score, '\t');
-            getline(lineStream, colStart, '\t');
-            getline(lineStream, colEnd, '\t');
-            getline(lineStream, colLen, '\t');
-            getline(lineStream, rowStart, '\t');
-            getline(lineStream, rowEnd, '\t');
-            getline(lineStream, rowLen, '\t');
+            getline(lineStream, colName, ' ');
+            getline(lineStream, rowName, ' ');
+            getline(lineStream, nkmer, ' ');
+            getline(lineStream, score, ' ');
+            getline(lineStream, colStart, ' ');
+            getline(lineStream, colEnd, ' ');
+            getline(lineStream, colLen, ' ');
+            getline(lineStream, rowStart, ' ');
+            getline(lineStream, rowEnd, ' ');
+            getline(lineStream, rowLen, ' ');
 
             if(colName != rowName) // to be sure to not count self aligned pairs
             {
