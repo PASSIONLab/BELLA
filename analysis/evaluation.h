@@ -832,10 +832,10 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
             //}
             //else
             //{
+            getline(lineStream, colLen, ' ');
             getline(lineStream, rowStart, ' '); // check is stoi can parse ',' 
             getline(lineStream, rowEnd, ' ');
             //}
-            getline(lineStream, colLen, ' ');
             getline(lineStream, rowLen, ' ');
 
             colName = "@" + colName;
