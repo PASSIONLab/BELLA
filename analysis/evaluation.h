@@ -830,12 +830,11 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
             getline(lineStream, rowStart, ' '); // check is stoi can parse ',' 
             getline(lineStream, rowEnd, ' ');
             getline(lineStream, rowLen, ' ');
+            irowStart = stoi(rowStart);
+            irowEnd = stoi(rowEnd);
+            irowLen = stoi(rowLen);
             if(strand.compare("c") == 0)
             {
-                irowStart = stoi(rowStart);
-                irowEnd = stoi(rowEnd);
-                irowLen = stoi(rowLen);
-
                 irowStart = irowLen-irowEnd-1;
                 irowEnd = irowLen-irowStart-1;
             }
