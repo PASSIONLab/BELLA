@@ -818,22 +818,26 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
             //
 
             stringstream lineStream(line);
-            string colName, rowName, strand;
-            int colStart, colEnd, colLen, rowStart, rowEnd, rowLen;
+            string colName, rowName, strand, colStart, colEnd, colLen, rowStart, rowEnd, rowLen;
+            int irowStart, irowEnd, irowLen;
 
             getline(lineStream, colName, ' ');
             getline(lineStream, rowName, ' ');
             getline(lineStream, strand, ' ');
-            getline(lineStream, stoi(colStart), ' ');
-            getline(lineStream, stoi(colEnd), ' ');
-            getline(lineStream, stoi(colLen), ' ');
-            getline(lineStream, stoi(rowStart), ' '); // check is stoi can parse ',' 
-            getline(lineStream, stoi(rowEnd), ' ');
-            getline(lineStream, stoi(rowLen), ' ');
+            getline(lineStream, colStart, ' ');
+            getline(lineStream, colEnd, ' ');
+            getline(lineStream, colLen, ' ');
+            getline(lineStream, rowStart, ' '); // check is stoi can parse ',' 
+            getline(lineStream, rowEnd, ' ');
+            getline(lineStream, rowLen, ' ');
             if(strand.compare("c") == 0)
             {
-                rowStart = rowLen-rowEnd-1;
-                rowEnd = rowLen-rowStart-1;
+                irowStart = stoi(rowStart);
+                irowEnd = stoi(rowEnd);
+                irowLen = stoi(rowLen);
+
+                irowStart = irowLen-irowEnd-1;
+                irowEnd = irowLen-irowStart-1;
             }
 
             colName = "@" + colName;
@@ -857,7 +861,7 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
                     }
                     else 
                     {
-                        int ovlEstime = estimeOvl(colStart, colEnd, colLen, rowStart, rowEnd, rowLen);
+                        int ovlEstime = estimeOvl(stoi(colStart), stoi(colEnd), stoi(colLen), irowStart, irowEnd, irowLen);
                         if (ovlEstime < minOvl)
                         {
                             checkDaligner.insert(make_pair(make_pair(colName, rowName), 2));
@@ -875,7 +879,7 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
                     }
                     else 
                     {
-                        int ovlEstime = estimeOvl(colStart, colEnd, colLen, rowStart, rowEnd, rowLen);
+                        int ovlEstime = estimeOvl(stoi(colStart), stoi(colEnd), stoi(colLen), irowStart, irowEnd, irowLen);
                         if (ovlEstime < minOvl)
                         {
                             checkDaligner[make_pair(colName, rowName)] = 2;
@@ -894,7 +898,7 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
                     }
                     else 
                     {
-                        int ovlEstime = estimeOvl(colStart, colEnd, colLen, rowStart, rowEnd, rowLen);
+                        int ovlEstime = estimeOvl(stoi(colStart), stoi(colEnd), stoi(colLen), irowStart, irowEnd, irowLen);
                         if (ovlEstime < minOvl)
                             checkDaligner[make_pair(colName, rowName)] = 2;
                         else
