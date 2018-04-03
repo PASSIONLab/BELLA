@@ -825,16 +825,16 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
             getline(lineStream, strand, ' ');
             getline(lineStream, colStart, ' ');
             getline(lineStream, colEnd, ' ');
-            if(strand.compare("c") == 0)
-            {
-                getline(lineStream, rowEnd, ' ');
-                getline(lineStream, rowStart, ' ');
-            }
-            else
-            {
-                getline(lineStream, rowStart, ' '); // check is stoi can parse ',' 
-                getline(lineStream, rowEnd, ' ');
-            }
+            //if(strand.compare("c") == 0)
+            //{
+            //    getline(lineStream, rowEnd, ' ');
+            //    getline(lineStream, rowStart, ' ');
+            //}
+            //else
+            //{
+            getline(lineStream, rowStart, ' '); // check is stoi can parse ',' 
+            getline(lineStream, rowEnd, ' ');
+            //}
             getline(lineStream, colLen, ' ');
             getline(lineStream, rowLen, ' ');
 
