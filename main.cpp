@@ -48,7 +48,7 @@
 #define LSIZE 16000
 #define ITERS 10
 #define _ALLKMER
-//#define PRINT
+#define PRINT
 //#define JELLYFISH
 
 using namespace std;
@@ -82,7 +82,7 @@ int main (int argc, char *argv[]) {
     option_t *optList, *thisOpt;
     // Get list of command line options and their arguments 
     optList = NULL;
-    optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:a:ze:p:");
+    optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:a:ze:p:n:");
    
     bool skip_algnmnt_krnl = false;
     char *kmer_file = NULL; // Reliable k-mer file from Jellyfish
@@ -93,6 +93,7 @@ int main (int argc, char *argv[]) {
     int algnmnt_drop = 3;   // default alignment x-drop factor
     double erate = 0.15; // default error rate
     int depth = 0; // depth/coverage required
+    int n = 1;
 
     if(optList == NULL)
     {
@@ -166,6 +167,10 @@ int main (int argc, char *argv[]) {
                 kmer_len = atoi(thisOpt->argument);
                 break;
             }
+            case 'n': {
+                n = atoi(thisOpt->argument);
+                break;
+            }
             case 'e': {
                 erate = strtod(thisOpt->argument, NULL);
                 break;
@@ -188,6 +193,7 @@ int main (int argc, char *argv[]) {
                 cout << " -a : alignment score threshold [50]" << endl;
                 cout << " -p : alignment x-drop factor [3]" << endl;
                 cout << " -e : error rate [0.15]" << endl;
+                cout << " -n : minimum number of shared k-mer [1]" << endl;
                 cout << " -z : skip the alignment [false]\n" << endl;
 
                 FreeOptList(thisOpt); // Done with this list, free it
@@ -243,6 +249,7 @@ int main (int argc, char *argv[]) {
     cout << "Input k-mer file: " << kmer_file << endl;
 #endif
     cout << "k-mer counting: BELLA" << endl;
+    cout << "minimum number of shared k-mer: " << n << endl;
     cout << "Output file: " << out_file << endl;
     cout << "k-mer length: " << kmer_len << endl;
     if(skip_algnmnt_krnl)
@@ -250,7 +257,6 @@ int main (int argc, char *argv[]) {
     else cout << "Compute alignment: true" << endl;
     cout << "Alignment x-drop factor: " << algnmnt_drop << endl;
     cout << "Alignment score threshold: " << algnmnt_thr << endl;
-    cout << "Evaluation overlap threshold: " << ovl_thr << endl;
     cout << "Depth: " << depth << "X" << endl;
 #endif
     //
@@ -409,7 +415,7 @@ int main (int argc, char *argv[]) {
                // insert control on independent k-mer
                m2->vpos.insert(m2->vpos.end(), m1->vpos.begin(), m1->vpos.end());
                return m2;
-           }, reads, getvaluetype, kmer_len, algnmnt_drop, algnmnt_thr, out_file, skip_algnmnt_krnl);
+           }, reads, getvaluetype, kmer_len, algnmnt_drop, algnmnt_thr, out_file, skip_algnmnt_krnl, n);
 #else
     spmatPtr_ getvaluetype(make_shared<spmatType_>());
     HeapSpGEMM(spmat, transpmat, 
