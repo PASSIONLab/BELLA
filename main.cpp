@@ -47,7 +47,7 @@
 
 #define LSIZE 16000
 #define ITERS 10
-#define _ALLKMER
+//#define _ALLKMER
 #define PRINT
 //#define JELLYFISH
 

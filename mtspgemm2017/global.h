@@ -21,6 +21,7 @@ extern "C" {
 #endif
 
 #include "../optlist/optlist.h" // command line parser
+#include "../libgaba/gaba.h" // sequence alignment lib
 
 #ifdef __cplusplus
 }

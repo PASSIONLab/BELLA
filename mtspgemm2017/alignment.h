@@ -3,6 +3,7 @@
 #include <seqan/score.h>
 #include <seqan/modifier.h>
 #include <seqan/seeds.h>
+#include "global.h"
 #include <omp.h>
 #include <fstream>
 #include <iostream>
@@ -23,7 +24,88 @@
 using namespace seqan;
 using namespace std;
 
-//#define kmer_len 17 // this has to be defined by the user
+struct gaba_alignment_s* gabaTest(char const *row, char const *col, int rowStart, int colStart, int kmer_len) {
+
+    /* create config */
+    gaba_params_s ginit;
+    ginit.xdrop = 100;
+    ginit.gi = 5;
+    ginit.ge = 1;
+
+    ginit.score_matrix[0] = 2; // Giulia: find a better way to inizialize this
+    ginit.score_matrix[1] = 3;
+    ginit.score_matrix[2] = 3;
+    ginit.score_matrix[3] = 3;
+    ginit.score_matrix[4] = 3;
+    ginit.score_matrix[5] = 2;
+    ginit.score_matrix[6] = 3;
+    ginit.score_matrix[7] = 3;
+    ginit.score_matrix[8] = 3;
+    ginit.score_matrix[9] = 3;
+    ginit.score_matrix[10] = 2;
+    ginit.score_matrix[11] = 3;
+    ginit.score_matrix[12] = 3;
+    ginit.score_matrix[13] = 3;
+    ginit.score_matrix[14] = 3;
+    ginit.score_matrix[15] = 2;
+
+    gaba_t *ctx = gaba_init(&ginit);
+    //gaba_t *ctx = gaba_init(GABA_PARAMS(
+    //    .xdrop = 100,
+    //    GABA_SCORE_SIMPLE(2, 3, 5, 1)                 /* match award, mismatch penalty, gap open penalty (G_i), and gap extension penalty (G_e) */
+    //));
+
+    //char const *a = "\x01\x08\x01\x08\x01\x08";       /* 4-bit encoded "ATATAT" */
+    //char const *b = "\x01\x08\x01\x02\x01\x08";       /* 4-bit encoded "ATACAT" */
+    char const t[64] = { 0 };                           /* tail array */
+
+    struct gaba_section_s asec = gaba_build_section(0, row, (uint32_t)strlen(row));
+    struct gaba_section_s bsec = gaba_build_section(2, col, (uint32_t)strlen(col));
+    struct gaba_section_s tail = gaba_build_section(4, t, 64);
+
+    /* create thread-local object */
+    gaba_dp_t *dp = gaba_dp_init(ctx);                      /* dp[0] holds a 64-cell-wide context */
+    // gaba_dp_t *dp_32 = &dp[_dp_ctx_index(32)];           /* dp[1] and dp[2] are narrower ones */
+    // gaba_dp_t *dp_16 = &dp[_dp_ctx_index(16)];
+
+    /* init section pointers */
+    struct gaba_section_s const *ap = &asec, *bp = &bsec;
+    struct gaba_fill_s const *f = gaba_dp_fill_root(dp, /* dp -> &dp[_dp_ctx_index(band_width)] makes the band width selectable */
+        ap, rowStart,                                   /* a-side (reference side) sequence and start position */
+        bp, colStart,                                   /* b-side (query) */
+        UINT32_MAX                                      /* max extension length */
+    );
+
+    /* until X-drop condition is detected */
+    struct gaba_fill_s const *m = f;                    /* track max */
+    while((f->status & GABA_TERM) == 0) {
+        if(f->status & GABA_UPDATE_A) { ap = &tail; }   /* substitute the pointer by the tail section's if it reached the end */
+        if(f->status & GABA_UPDATE_B) { bp = &tail; }
+
+        f = gaba_dp_fill(dp, f, ap, bp, UINT32_MAX);    /* extend the banded matrix */
+        m = f->max > m->max ? f : m;                    /* swap if maximum score was updated */
+    }
+
+    struct gaba_alignment_s *r = gaba_dp_trace(dp,
+        m,                                              /* section with the max */
+        NULL                                            /* custom allocator: see struct gaba_alloc_s in gaba.h */
+    );
+
+    //printf("score(%ld), path length(%lu)\n", r->score, r->plen);
+    //gaba_print_cigar_forward(
+    //    printer, (void *)stdout,                        /* printer */
+    //    r->path,                                        /* bit-encoded path array */
+    //    0,                                              /* offset is always zero */
+    //    r->plen                                         /* path length */
+    //);
+    //printf("\n");
+
+    /* clean up */
+    //gaba_dp_res_free(dp, r);
+    //gaba_dp_clean(dp);
+    //gaba_clean(ctx);
+    return r;
+}
 
 typedef Seed<Simple> TSeed;
 /**
