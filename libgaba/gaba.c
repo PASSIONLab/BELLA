@@ -216,7 +216,7 @@ _static_assert(sizeof(void *) == 8);
 
 /** check size of structs declared in gaba.h */
 _static_assert(sizeof(struct gaba_params_s) == 40);
-_static_assert(sizeof(struct gaba_section_s) == 16);
+//_static_assert(sizeof(struct gaba_section_s) == 16);
 _static_assert(sizeof(struct gaba_fill_s) == 64);
 _static_assert(sizeof(struct gaba_segment_s) == 32);
 _static_assert(sizeof(struct gaba_alignment_s) == 64);
