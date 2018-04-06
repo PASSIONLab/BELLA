@@ -2,7 +2,7 @@ RMATPATH = mtspgemm2017/GTgraph/R-MAT
 SPRNPATH = mtspgemm2017/GTgraph/sprng2.0-lite
 SEQANPATH = seqan-old
 include mtspgemm2017/GTgraph/Makefile.var
-INCLUDE = -I$(SPRNPATH)/include -I$(CURDIR)/libgaba/include
+INCLUDE = -I$(SPRNPATH)/include -I$(CURDIR)/libgaba
 SEQINCLUDE = -I$(SEQANPATH)
 MLKINCLUDE = -I/opt/intel/composer_xe_2015.0.039/mkl/include
 LIBPATH = -L/opt/intel/composer_xe_2015.0.039/mkl/lib 
@@ -16,7 +16,7 @@ sprng:
 rmat:	sprng
 	(cd $(RMATPATH); $(MAKE); cd ../..)
 
-LIBS = -L$(CURDIR)/libbloom/build -lbloom -L$(CURDIR)/libgaba/ -lgaba
+LIBS = -L$(CURDIR)/libbloom/build -lbloom -L$(CURDIR)/libgaba -lgaba
 
 Buffer.o: kmercode/Buffer.c
 	$(CC) -O3 -fopenmp -c -o Buffer.o kmercode/Buffer.c
