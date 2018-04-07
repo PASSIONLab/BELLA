@@ -24,7 +24,7 @@
 using namespace seqan;
 using namespace std;
 
-struct gaba_alignment_s* gabaTest(char const *row, char const *col, int rowStart, int colStart, int kmer_len) {
+int64_t gabaTest(char const *row, char const *col, int rowStart, int colStart, int kmer_len) {
 
     /* create config */
 
@@ -81,12 +81,12 @@ struct gaba_alignment_s* gabaTest(char const *row, char const *col, int rowStart
     //    r->plen                                         /* path length */
     //);
     //printf("\n");
-
+    int64_t alignmentScore = r->score;
     /* clean up */
-    //gaba_dp_res_free(dp, r);
-    //gaba_dp_clean(dp);
-    //gaba_clean(ctx);
-    return r;
+    gaba_dp_res_free(dp, r);
+    gaba_dp_clean(dp);
+    gaba_clean(ctx);
+    return alignmentScore;
 }
 
 typedef Seed<Simple> TSeed;

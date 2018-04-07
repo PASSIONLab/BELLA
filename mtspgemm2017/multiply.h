@@ -452,7 +452,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                     {      
                         const char* row = globalInstance->at(rowids[j]).seq.c_str();
                         const char* col = globalInstance->at(i+colStart[b]).seq.c_str();
-                        struct gaba_alignment_s* r = gabaTest(row, col, values[j]->pos[0], values[j]->pos[1], kmer_len);
+                        int64_t alignmentScore = gabaTest(row, col, values[j]->pos[0], values[j]->pos[1], kmer_len);
                         // The alignment function knows there's just one shared k-mer    
                         //longestExtensionScore = seqanAlOne(globalInstance->at(rowids[j]).seq, globalInstance->at(i+colStart[b]).seq, 
                         //    globalInstance->at(rowids[j]).seq.length(), values[j]->pos[0], values[j]->pos[1], algnmnt_drop, kmer_len);
@@ -461,10 +461,10 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                     //        cout << "score : " << r->score << endl;
                     //    }
 
-                        if(r->score >= algnmnt_thr)
+                        if(alignmentScore >= algnmnt_thr)
                         {
                             ++taln; // debug
-                            myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << r->score << '\t' << 
+                            myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << alignmentScore << '\t' << 
                                 globalInstance->at(i+colStart[b]).seq.length() << '\t' << globalInstance->at(rowids[j]).seq.length() << endl; 
                             //myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.first << '\t' << beginPositionV(longestExtensionScore.second) << '\t' << 
                             //    endPositionV(longestExtensionScore.second) << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << beginPositionH(longestExtensionScore.second) << '\t' << endPositionH(longestExtensionScore.second) <<
