@@ -337,19 +337,16 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     shared_ptr<readVector_> globalInstance = make_shared<readVector_>(read); // shared pointer to access readVector_ in omp safe way
     stringstream myBatch;                                                    // each thread saves its results in its provate stringstream variable
     pair<int,TSeed> longestExtensionScore;
-    gaba_alignment_s* r;
-
     double ovlalign = omp_get_wtime(); // get overlap and alignment time
     intmax_t novl = 0; // debug counting overlaps
     intmax_t naln = 0; // debug counting alignments
 
-#pragma omp parallel for private(myBatch, longestExtensionScore, r) shared(colStart,colEnd,numCols,globalInstance)
+#pragma omp parallel for private(myBatch, longestExtensionScore) shared(colStart,colEnd,numCols,globalInstance)
     for(int b = 0; b < numThreads+1; ++b) 
     { 
 #ifdef TIMESTEP
         double ovl = omp_get_wtime();
 #endif
-        
         vector<IT> * RowIdsofC = new vector<IT>[numCols[b]];    // row ids for each column of C (bunch of cols)
         vector<FT> * ValuesofC = new vector<FT>[numCols[b]];    // values for each column of C (bunch of cols)
         
@@ -455,11 +452,15 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                     {      
                         const char* row = globalInstance->at(rowids[j]).seq.c_str();
                         const char* col = globalInstance->at(i+colStart[b]).seq.c_str();
-                        r = gabaTest(row, col, values[j]->pos[0], values[j]->pos[1], kmer_len);
+                        struct gaba_alignment_s* r = gabaTest(row, col, values[j]->pos[0], values[j]->pos[1], kmer_len);
                         // The alignment function knows there's just one shared k-mer    
                         //longestExtensionScore = seqanAlOne(globalInstance->at(rowids[j]).seq, globalInstance->at(i+colStart[b]).seq, 
                         //    globalInstance->at(rowids[j]).seq.length(), values[j]->pos[0], values[j]->pos[1], algnmnt_drop, kmer_len);
-    
+                    //#pragma omp critical
+                    //    {
+                    //        cout << "score : " << r->score << endl;
+                    //    }
+
                         if(r->score >= algnmnt_thr)
                         {
                             ++taln; // debug
