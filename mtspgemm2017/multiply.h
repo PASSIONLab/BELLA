@@ -462,7 +462,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                     //        cout << "score : " << r->score << endl;
                     //    }
 
-                        if(result.score >= algnmnt_thr)
+                        if(result.score >= algnmnt_thr) // need to define new threshold?
                         {
                             ++taln; // debug
                            

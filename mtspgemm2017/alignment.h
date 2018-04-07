@@ -81,7 +81,13 @@ alignmentInfo gabaTest(char const *row, char const *col, int rowStart, int colSt
     result.alen = r->seg->alen; // row alignment length
     result.blen = r->seg->blen; // col alignment length
 
-    // TO DO: check reverse complement
+    // TO DO: check reverse complement, how can I check if they're reverse complement? 
+    /* If you need to align the reverse-complement of a sequence you have on memory, 
+    you do not need to explicitly construct the reverse-complemented sequence before calling 
+    the fill-in functions. Passing a pointer mirrored at GABA_EOU (end-of-userland) will 
+    fetch the sequence at the original location in the reverse-complemented manner. 
+    gaba_mirror(sequence, strlen(sequence)) will create a pointer to the head of the 
+    reverse-complemented sequence (or the tail of the original sequence). */
 
     /* clean up */
     gaba_dp_res_free(dp, r);
