@@ -16,6 +16,14 @@ struct readType_ {
 
 typedef vector<readType_> readVector_;
 
+struct alignmentInfo {
+
+    int64_t score;              /** score */
+    uint32_t apos, bpos;        /** (8) pos in the sections */
+    uint32_t alen, blen;        /** (8) lengths of the segments */
+};
+
+
 #ifdef __cplusplus
 extern "C" {
 #endif

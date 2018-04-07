@@ -24,7 +24,7 @@
 using namespace seqan;
 using namespace std;
 
-int64_t gabaTest(char const *row, char const *col, int rowStart, int colStart, int kmer_len) {
+alignmentInfo gabaTest(char const *row, char const *col, int rowStart, int colStart, int kmer_len) {
 
     /* create config */
 
@@ -73,20 +73,21 @@ int64_t gabaTest(char const *row, char const *col, int rowStart, int colStart, i
         NULL                                            /* custom allocator: see struct gaba_alloc_s in gaba.h */
     );
 
-    //printf("score(%ld), path length(%lu)\n", r->score, r->plen);
-    //gaba_print_cigar_forward(
-    //    printer, (void *)stdout,                        /* printer */
-    //    r->path,                                        /* bit-encoded path array */
-    //    0,                                              /* offset is always zero */
-    //    r->plen                                         /* path length */
-    //);
-    //printf("\n");
-    int64_t alignmentScore = r->score;
+    // struct gaba_segment_s const *seg is a field of gaba_alignment_s
+    alignmentInfo result; // defined in global.h
+    result.score = r->score;
+    result.apos = r->seg->apos; // row pos
+    result.bpos = r->seg->bpos; // col pos
+    result.alen = r->seg->alen; // row alignment length
+    result.blen = r->seg->blen; // col alignment length
+
+    // TO DO: check reverse complement
+
     /* clean up */
     gaba_dp_res_free(dp, r);
     gaba_dp_clean(dp);
     gaba_clean(ctx);
-    return alignmentScore;
+    return result;
 }
 
 typedef Seed<Simple> TSeed;
