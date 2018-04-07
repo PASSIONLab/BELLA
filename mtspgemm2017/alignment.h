@@ -27,7 +27,7 @@ using namespace std;
 struct gaba_alignment_s* gabaTest(char const *row, char const *col, int rowStart, int colStart, int kmer_len) {
 
     /* create config */
-cout << "still alive?"<< endl;
+
     //gaba_t *ctx = gaba_init(&ginit);
     gaba_t *ctx = gaba_init(GABA_PARAMS(
         GABA_SCORE_SIMPLE(2, 3, 5, 1),               /* match award, mismatch penalty, gap open penalty (G_i), and gap extension penalty (G_e) */
@@ -36,7 +36,7 @@ cout << "still alive?"<< endl;
         xdrop : 100,
         filter_thresh : 0
     ));
-cout << "still alive!"<< endl;
+
     //char const *a = "\x01\x08\x01\x08\x01\x08";       /* 4-bit encoded "ATATAT" */
     //char const *b = "\x01\x08\x01\x02\x01\x08";       /* 4-bit encoded "ATACAT" */
     char const t[64] = { 0 };                           /* tail array */
@@ -49,7 +49,7 @@ cout << "still alive!"<< endl;
     gaba_dp_t *dp = gaba_dp_init(ctx);                      /* dp[0] holds a 64-cell-wide context */
     // gaba_dp_t *dp_32 = &dp[_dp_ctx_index(32)];           /* dp[1] and dp[2] are narrower ones */
     // gaba_dp_t *dp_16 = &dp[_dp_ctx_index(16)];
-cout << "now?"<< endl;
+
     /* init section pointers */
     gaba_section_s const *ap = &asec, *bp = &bsec;
     gaba_fill_s const *f = gaba_dp_fill_root(dp, /* dp -> &dp[_dp_ctx_index(band_width)] makes the band width selectable */
@@ -57,7 +57,7 @@ cout << "now?"<< endl;
         bp, colStart,                                   /* b-side (query) */
         UINT32_MAX                                      /* max extension length */
     );
-cout << "still alive?"<< endl;
+
     /* until X-drop condition is detected */
     struct gaba_fill_s const *m = f;                    /* track max */
     while((f->status & GABA_TERM) == 0) {
@@ -67,7 +67,7 @@ cout << "still alive?"<< endl;
         f = gaba_dp_fill(dp, f, ap, bp, UINT32_MAX);    /* extend the banded matrix */
         m = f->max > m->max ? f : m;                    /* swap if maximum score was updated */
     }
-cout << "yes!"<< endl;
+
     struct gaba_alignment_s *r = gaba_dp_trace(dp,
         m,                                              /* section with the max */
         NULL                                            /* custom allocator: see struct gaba_alloc_s in gaba.h */
