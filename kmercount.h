@@ -41,7 +41,7 @@
 #include "kmercode/rbounds.hpp"
 #include "kmercode/hyperloglog.hpp"
 
-typedef cuckoohash_map<Kmer, size_t> dictionary_t; // <k-mer && reverse-complement, #kmers>
+typedef cuckoohash_map<Kmer, int> dictionary_t; // <k-mer && reverse-complement, #kmers>
 
 struct filedata {
 
@@ -94,7 +94,7 @@ void JellyFishCount(char *kmer_file, dictionary_t & countsreliable_jelly, int lo
 	
     ifstream filein(kmer_file);
     string line;
-    size_t elem;
+    int elem;
     string kmerstr;    
     Kmer kmerfromstr;
     
@@ -114,7 +114,7 @@ void JellyFishCount(char *kmer_file, dictionary_t & countsreliable_jelly, int lo
                 getline(filein, kmerstr);   
                 kmerfromstr.set_kmer(kmerstr.c_str());
 
-                auto updatecountjelly = [&elem](size_t &num) { num+=elem; };
+                auto updatecountjelly = [&elem](int &num) { num+=elem; };
                 // If the number is already in the table, it will increment its count by the occurrence of the new element. 
                 // Otherwise it will insert a new entry in the table with the corresponding k-mer occurrence.
                 countsjelly.upsert(kmerfromstr.rep(), updatecountjelly, elem);      
@@ -238,7 +238,7 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
 
 
     // in this pass, only use entries that already are in the hash table
-    auto updatecount = [](size_t &num) { ++num; };
+    auto updatecount = [](int &num) { ++num; };
     #pragma omp parallel
     {	    
 	for(auto v:allkmers[MYTHREAD])
@@ -254,7 +254,7 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
     //
     // Reliable k-mer filter on countsdenovo
     //
-    size_t kmer_id_denovo = 0;
+    int kmer_id_denovo = 0;
     
     auto lt = countsdenovo.lock_table(); // our counting
     for (const auto &it : lt) 

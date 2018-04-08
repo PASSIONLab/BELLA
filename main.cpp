@@ -56,17 +56,17 @@ using namespace std;
 #ifdef _ALLKMER
 struct spmatType_ {
  
-     size_t count = 0;   /* number of shared k-mers */
-     vector<std::pair<size_t,size_t>> vpos; /* wanna keep all the positions */
+     int count = 0;   /* number of shared k-mers */
+     vector<std::pair<int,int>> vpos; /* wanna keep all the positions */
  };
 #else
 struct spmatType_ {
 
-    size_t count = 0;   /* number of shared k-mers */
-    size_t pos[4] = {0};  /* pos1i, pos1j, pos2i, pos2j */
+    int count = 0;   /* number of shared k-mers */
+    int pos[4] = {0};  /* pos1i, pos1j, pos2i, pos2j */
 };
 #endif
-typedef shared_ptr<spmatType_> spmatPtr_; // posize_ter to spmatType_ datastruct
+typedef shared_ptr<spmatType_> spmatPtr_; // pointer to spmatType_ datastruct
 typedef std::vector<Kmer> Kmers;
 
 int main (int argc, char *argv[]) {
@@ -88,17 +88,17 @@ int main (int argc, char *argv[]) {
     char *kmer_file = NULL; // Reliable k-mer file from Jellyfish
     char *all_inputs_fofn = NULL;   // List of fastq(s)
     char *out_file = NULL; // output filename
-    size_t kmer_len = 17;  // default k-mer length
-    size_t algnmnt_thr = 50;   // default alignment score threshold
-    size_t algnmnt_drop = 3;   // default alignment x-drop factor
+    int kmer_len = 17;  // default k-mer length
+    int algnmnt_thr = 50;   // default alignment score threshold
+    int algnmnt_drop = 3;   // default alignment x-drop factor
     double erate = 0.15; // default error rate
-    size_t depth = 0; // depth/coverage required
-    size_t n = 1;
+    int depth = 0; // depth/coverage required
+    int n = 1;
 
     if(optList == NULL)
     {
         cout << "BELLA execution terminated: not enough parameters or invalid option" << endl;
-        cout << "Run with -h to prsize_t out the command line options\n" << endl;
+        cout << "Run with -h to print out the command line options\n" << endl;
         return 0;
     }
 
@@ -111,7 +111,7 @@ int main (int argc, char *argv[]) {
                 if(thisOpt->argument == NULL)
                 {
                     cout << "BELLA execution terminated: -f requires an argument" << endl;
-                    cout << "Run with -h to prsize_t out the command line options\n" << endl;
+                    cout << "Run with -h to print out the command line options\n" << endl;
                     return 0;
                 }
 #endif
@@ -122,7 +122,7 @@ int main (int argc, char *argv[]) {
                 if(thisOpt->argument == NULL)
                 {
                     cout << "BELLA execution terminated: -i requires an argument" << endl;
-                    cout << "Run with -h to prsize_t out the command line options\n" << endl;
+                    cout << "Run with -h to print out the command line options\n" << endl;
                     return 0;
                 }
                 all_inputs_fofn = strdup(thisOpt->argument);
@@ -132,7 +132,7 @@ int main (int argc, char *argv[]) {
                 if(thisOpt->argument == NULL)
                 {
                     cout << "BELLA execution terminated: -o requires an argument" << endl;
-                    cout << "Run with -h to prsize_t out the command line options\n" << endl;
+                    cout << "Run with -h to print out the command line options\n" << endl;
                     return 0;
                 }
                 char* line1 = strdup(thisOpt->argument);
@@ -156,7 +156,7 @@ int main (int argc, char *argv[]) {
                 if(thisOpt->argument == NULL)
                 {
                     cout << "BELLA execution terminated: -d requires an argument" << endl;
-                    cout << "Run with -h to prsize_t out the command line options\n" << endl;
+                    cout << "Run with -h to print out the command line options\n" << endl;
                     return 0;
                 }
                 depth = atoi(thisOpt->argument);  
@@ -206,14 +206,14 @@ int main (int argc, char *argv[]) {
     if(kmer_file == NULL || all_inputs_fofn == NULL || out_file == NULL || depth == 0)
     {
         cout << "BELLA execution terminated: missing arguments" << endl;
-        cout << "Run with -h to prsize_t out the command line options\n" << endl;
+        cout << "Run with -h to print out the command line options\n" << endl;
         return 0;
     }
 #else
     if(all_inputs_fofn == NULL || out_file == NULL || depth == 0)
     {
         cout << "BELLA execution terminated: missing arguments" << endl;
-        cout << "Run with -h to prsize_t out the command line options\n" << endl;
+        cout << "Run with -h to print out the command line options\n" << endl;
         return 0;
     }
 #endif
@@ -226,8 +226,8 @@ int main (int argc, char *argv[]) {
     //
     vector<filedata> allfiles = GetFiles(all_inputs_fofn);
     FILE *fastafile;
-    size_t lower = 2; // reliable range lower bound (fixed)
-    size_t upper;     // reliable range upper bound
+    int lower = 2; // reliable range lower bound (fixed)
+    int upper;     // reliable range upper bound
     char *buffer;
     Kmer::set_k(kmer_len);
     size_t upperlimit = 10000000; // in bytes
@@ -237,8 +237,8 @@ int main (int argc, char *argv[]) {
     vector<string> nametags;
     readVector_ reads;
     Kmers kmersfromreads;
-    vector<tuple<size_t,size_t,size_t>> occurrences;
-    vector<tuple<size_t,size_t,size_t>> transtuples;
+    vector<tuple<int,int,int>> occurrences;
+    vector<tuple<int,int,int>> transtuples;
     
     // 
     // File and setting used
@@ -285,12 +285,12 @@ int main (int argc, char *argv[]) {
     // Fastq(s) parsing
     //
     double parsefastq = omp_get_wtime();
-    size_t read_id = 0; // read_id needs to be global (not just per file)
+    int read_id = 0; // read_id needs to be global (not just per file)
     cout << "\nRunning with up to " << MAXTHREADS << " threads" << endl;
 
 
-        vector < vector<tuple<size_t,size_t,size_t>> > alloccurrences(MAXTHREADS);   
-        vector < vector<tuple<size_t,size_t,size_t>> > alltranstuples(MAXTHREADS);   
+        vector < vector<tuple<int,int,int>> > alloccurrences(MAXTHREADS);   
+        vector < vector<tuple<int,int,int>> > alltranstuples(MAXTHREADS);   
         vector < readVector_ > allreads(MAXTHREADS);
 
         double time1 = omp_get_wtime();
@@ -303,13 +303,13 @@ int main (int argc, char *argv[]) {
         size_t fillstatus = 1;
         while(fillstatus) { 
             fillstatus = pfq->fill_block(nametags, seqs, quals, upperlimit);
-            size_t nreads = seqs.size();
+            int nreads = seqs.size();
        
                 #pragma omp parallel for
-                for(size_t i=0; i<nreads; i++) 
+                for(int i=0; i<nreads; i++) 
                 {
                     // remember that the last valid position is length()-1
-                    size_t len = seqs[i].length();
+                    int len = seqs[i].length();
                     
                     readType_ temp;
                     temp.nametag = nametags[i];
@@ -318,14 +318,14 @@ int main (int argc, char *argv[]) {
 
 		    allreads[MYTHREAD].push_back(temp);
                     
-                    for(size_t j=0; j<=len-kmer_len; j++)  
+                    for(int j=0; j<=len-kmer_len; j++)  
                     {
                         std::string kmerstrfromfastq = seqs[i].substr(j, kmer_len);
                         Kmer mykmer(kmerstrfromfastq.c_str());
                         // remember to use only ::rep() when building kmerdict as well
                         Kmer lexsmall = mykmer.rep();      
         
-                        size_t idx; // kmer_id
+                        int idx; // kmer_id
 			auto found = countsreliable.find(lexsmall,idx);
 			if(found)
                         {
@@ -333,7 +333,7 @@ int main (int argc, char *argv[]) {
                             alltranstuples[MYTHREAD].emplace_back(std::make_tuple(idx,read_id+i,j)); // transtuples.push_back(col_id,row_id,kmerpos)
                         }
                     }
-                }   // for(size_t i=0; i<nreads; i++)
+                }   // for(int i=0; i<nreads; i++)
                     //cout << "total number of reads processed so far is " << read_id << endl;
             read_id += nreads;
         } //while(fillstatus) 
@@ -342,7 +342,7 @@ int main (int argc, char *argv[]) {
 
     size_t readcount = 0;
     size_t tuplecount = 0;
-    for(size_t t=0; t<MAXTHREADS; ++t)
+    for(int t=0; t<MAXTHREADS; ++t)
     {
         readcount += allreads[t].size();
         tuplecount += alloccurrences[t].size();
@@ -353,7 +353,7 @@ int main (int argc, char *argv[]) {
 
     size_t readssofar = 0;
     size_t tuplesofar = 0;
-    for(size_t t=0; t<MAXTHREADS; ++t)
+    for(int t=0; t<MAXTHREADS; ++t)
     {
         copy(allreads[t].begin(), allreads[t].end(), reads.begin()+readssofar);
         readssofar += allreads[t].size();
@@ -374,23 +374,23 @@ int main (int argc, char *argv[]) {
     // Sparse matrices construction
     //
 
-    size_t nkmer = countsreliable.size();
+    int nkmer = countsreliable.size();
 
-    CSC<size_t, size_t> spmat(occurrences, read_id, nkmer, 
-                            [] (size_t & p1, size_t & p2) 
+    CSC<int, int> spmat(occurrences, read_id, nkmer, 
+                            [] (int & p1, int & p2) 
                             {   // assume no errors in MergeDuplicates
                                 // keep just the first position of that k-mer in that read
                                 return p1;
                             });
     //std::cout << "spmat created with " << spmat.nnz << " nonzeros" << endl;
-    std::vector<tuple<size_t,size_t,size_t>>().swap(occurrences);    // remove memory of occurences
+    std::vector<tuple<int,int,int>>().swap(occurrences);    // remove memory of occurences
 
-    CSC<size_t, size_t> transpmat(transtuples, nkmer, read_id, 
-                            [] (size_t & p1, size_t & p2) 
+    CSC<int, int> transpmat(transtuples, nkmer, read_id, 
+                            [] (int & p1, int & p2) 
                             {  return p1;
                             });
     //std::cout << "transpose(spmat) created" << endl;
-    std::vector<tuple<size_t,size_t,size_t>>().swap(transtuples); // remove memory of transtuples
+    std::vector<tuple<int,int,int>>().swap(transtuples); // remove memory of transtuples
 
     spmat.Sorted();
     transpmat.Sorted();
@@ -404,7 +404,7 @@ int main (int argc, char *argv[]) {
 #ifdef _ALLKMER
     spmatPtr_ getvaluetype(make_shared<spmatType_>());
     HeapSpGEMM(spmat, transpmat, 
-           [] (size_t & pi, size_t & pj) // n-th k-mer positions on read i and on read j 
+           [] (int & pi, int & pj) // n-th k-mer positions on read i and on read j 
            {   spmatPtr_ value(make_shared<spmatType_>());
                value->count = 1;
                value->vpos.push_back(make_pair(pi,pj));
@@ -419,7 +419,7 @@ int main (int argc, char *argv[]) {
 #else
     spmatPtr_ getvaluetype(make_shared<spmatType_>());
     HeapSpGEMM(spmat, transpmat, 
-            [] (size_t & pi, size_t & pj) // n-th k-mer positions on read i and on read j 
+            [] (int & pi, int & pj) // n-th k-mer positions on read i and on read j 
             {   spmatPtr_ value(make_shared<spmatType_>());
                 value->count = 1;
                 value->pos[0] = pi; // row
