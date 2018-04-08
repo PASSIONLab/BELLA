@@ -41,6 +41,8 @@
 #include "kmercode/rbounds.hpp"
 #include "kmercode/hyperloglog.hpp"
 
+//#define HIST
+
 typedef cuckoohash_map<Kmer, int> dictionary_t; // <k-mer && reverse-complement, #kmers>
 
 struct filedata {
@@ -255,7 +257,28 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
     // Reliable k-mer filter on countsdenovo
     //
     int kmer_id_denovo = 0;
-    
+
+#ifdef HIST
+    std::ofstream printCount("kmerHistogram.txt", std::ofstream::out);
+    std::map<int, int> hist;
+    std::map<int, int>::iterator iter;
+
+    auto lth = countsdenovo.lock_table(); // our counting
+    for (const auto &it : lth) 
+    {
+        iter = hist.find(it.second);
+        if(iter == hist.end())
+            hist.insert(make_pair(it.second, 1));
+        else hist[it.second]++;
+    }
+    lth.unlock(); // unlock the table
+
+    for(auto it = hist.begin(); it != hist.end(); ++it)
+        printCount << it->first << '\t' << it->second << endl;
+
+    printCount.close();
+#endif    
+
     auto lt = countsdenovo.lock_table(); // our counting
     for (const auto &it : lt) 
         if (it.second >= lower && it.second <= upper)
