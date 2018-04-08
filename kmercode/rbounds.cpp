@@ -51,16 +51,18 @@ int rbounds(int d, double e, int k)
 {
     double a,b,c;
     double probability = 1;
-    int m = 2;
+    double cumsum = 0;
+    int m = d;
 
-    while(probability >= MIN_PROB)
+    while(cumsum < MIN_PROB)
     {
-        m++;
         a = factorial(d)/(factorial(m)*factorial(d-m)); // it's fine 
         b = pow(1-e,(m*k));
         c = pow(1-pow(1-e,k),(d-m));
         
         probability = a*b*c;
+        cumsum = cumsum + probability;
+        m--;
     }
-    return (m-1);
+    return (m+1);
 }
