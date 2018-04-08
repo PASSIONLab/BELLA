@@ -36,7 +36,7 @@ typedef Seed<Simple>  TSeed;
 typedef SeedSet<TSeed> TSeedSet;
 
 #define PERCORECACHE (1024 * 1024)
-#define SEQAN
+//#define SEQAN
 //#define TIMESTEP
 //#define PRINT
 //#define RAM
@@ -226,13 +226,13 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     FT * values;
     
     // here numThreads actually represents the number of blocks based on available RAM
-    int numThreads = required_memory/free_memory; 
-    int colsPerBlock = B.cols/numThreads;                 // define number of columns for each blocks
+    size_t numThreads = required_memory/free_memory; 
+    size_t colsPerBlock = B.cols/numThreads;                 // define number of columns for each blocks
 
     // multi thread variable definition 
-    int * colStart = new int[numThreads+1];              // need one block more for remaining cols
-    int * colEnd = new int[numThreads+1];                // need one block more for remaining cols
-    int * numCols = new int[numThreads+1];
+    size_t * colStart = new int[numThreads+1];              // need one block more for remaining cols
+    size_t * colEnd = new int[numThreads+1];                // need one block more for remaining cols
+    size_t * numCols = new int[numThreads+1];
 #ifdef PRINT
     cout << "numBlocks " << numThreads+1 << endl;
     cout << "colsPerBlock " << colsPerBlock << "\n" << endl;
@@ -241,7 +241,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     colEnd[0] = 0;
     numCols[0] = 0;
 
-    int colsTrace = 0;
+    size_t colsTrace = 0;
     for(int i = 0; i < numThreads+1; ++i)
     {
         colStart[i] = colsTrace;
@@ -291,7 +291,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     omp_set_num_threads(MAX_NUM_THREAD);     // Use MAX_NUM_THREAD threads for all consecutive parallel regions
 #endif
 
-    int numThreads;
+    size_t numThreads;
 #pragma omp parallel
     {
         numThreads = omp_get_num_threads();
@@ -300,12 +300,12 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     IT * rowids;
     FT * values;
     
-    int colsPerBlock = B.cols/numThreads;                // define number of columns for each blocks
+    size_t colsPerBlock = B.cols/numThreads;                // define number of columns for each blocks
 
     // multithread variable definition
-    int * colStart = new int[numThreads+1];              // need one block more for remaining cols
-    int * colEnd = new int[numThreads+1];                // need one block more for remaining cols
-    int * numCols = new int[numThreads+1];
+    size_t * colStart = new size_t[numThreads+1];              // need one block more for remaining cols
+    size_t * colEnd = new size_t[numThreads+1];                // need one block more for remaining cols
+    size_t * numCols = new size_t[numThreads+1];
 #ifdef PRINT
     cout << "numThreads: " << numThreads << endl;
     cout << "colsPerThread: " << colsPerBlock << "\n" << endl;
@@ -314,7 +314,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     colEnd[0] = 0;
     numCols[0] = 0;
 
-    int colsTrace = 0;
+    size_t colsTrace = 0;
     for(int i = 0; i < numThreads+1; ++i)
     {
         colStart[i] = colsTrace;
@@ -343,7 +343,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     intmax_t naln = 0; // debug counting alignments
 
 #pragma omp parallel for private(myBatch, longestExtensionScore) shared(colStart,colEnd,numCols,globalInstance)
-    for(int b = 0; b < numThreads+1; ++b) 
+    for(size_t b = 0; b < numThreads+1; ++b) 
     { 
 #ifdef TIMESTEP
         double ovl = omp_get_wtime();
