@@ -4,9 +4,18 @@
 * @author: Giulia Guidi
 *
 */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include "../optlist/optlist.h" // command line parser
+
+#ifdef __cplusplus
+}
+#endif
+
 #include "evaluation.h" 
 #include "IntervalTree.h"
-#include "../mtspgemm2017/global.h"
 #include <omp.h>
 #include <fstream>
 #include <iostream>
