@@ -47,7 +47,7 @@ double factorial(double n)
  * @param k is the k-mer length
  * @return upper bound
  */
-int rbounds(int d, double e, int k)
+int computeUpper(int d, double e, int k)
 {
     double a,b,c;
     double probability = 1;
@@ -62,7 +62,31 @@ int rbounds(int d, double e, int k)
         
         probability = a*b*c;
         cumsum = cumsum + probability;
-        m--;
+        --m;
     }
     return (m+1);
 }
+
+int computeLower(int d, double e, int k)
+{
+    double a,b,c;
+    double probability = 1;
+    double cumsum = 0;
+    int m = 2;
+
+    while(cumsum < MIN_PROB)
+    {
+        a = factorial(d)/(factorial(m)*factorial(d-m)); // it's fine 
+        b = pow(1-e,(m*k));
+        c = pow(1-pow(1-e,k),(d-m));
+        
+        probability = a*b*c;
+        cumsum = cumsum + probability;
+        ++m;
+    }
+    return (m-1);
+}
+
+
+
+

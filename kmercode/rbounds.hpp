@@ -18,6 +18,7 @@ int bincoef(int n, int k);
  * @param klen
  * @return
  */
-int rbounds(int depth, double erate, int klen);
+int computeUpper(int depth, double erate, int klen);
+int computeLower(int depth, double erate, int klen);
 
 #endif

@@ -226,7 +226,7 @@ int main (int argc, char *argv[]) {
     //
     vector<filedata> allfiles = GetFiles(all_inputs_fofn);
     FILE *fastafile;
-    int lower = 2; // reliable range lower bound (fixed)
+    int lower; // reliable range lower bound (fixed)
     int upper;     // reliable range upper bound
     char *buffer;
     Kmer::set_k(kmer_len);
@@ -263,7 +263,8 @@ int main (int argc, char *argv[]) {
     // Reliable bounds computation
     //
     double all = omp_get_wtime();
-    upper = rbounds(depth,erate,kmer_len);
+    lower = computeLower(depth,erate,kmer_len);
+    upper = computeUpper(depth,erate,kmer_len);
 #ifdef PRINT
     cout << "Reliable lower bound: " << lower << endl;
     cout << "Reliable upper bound: " << upper << "\n" << endl;
