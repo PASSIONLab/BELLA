@@ -23,7 +23,6 @@ struct alignmentInfo {
     uint32_t alen, blen;        /** (8) lengths of the segments */
 };
 
-
 #ifdef __cplusplus
 extern "C" {
 #endif

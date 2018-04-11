@@ -265,11 +265,11 @@ int main (int argc, char *argv[]) {
     double all = omp_get_wtime();
     lower = computeLower(depth,erate,kmer_len);
     upper = computeUpper(depth,erate,kmer_len);
-#ifdef PRINT
+#ifdef PRINTm
     cout << "Reliable lower bound: " << lower << endl;
     cout << "Reliable upper bound: " << upper << "\n" << endl;
 #endif
-
+    
     //
     // Reliable k-mer file parsing and k-mer dictionary creation
     // NOTE: this will be replaced by our k-mer counting
