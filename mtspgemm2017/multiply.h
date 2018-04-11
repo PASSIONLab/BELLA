@@ -1,6 +1,7 @@
 #include "CSC.h"
 #include "alignment.h"
 #include "global.h"
+#include "alncommon.h"
 #include "../kmercode/hash_funcs.h"
 #include "../kmercode/Kmer.hpp"
 #include "../kmercode/Buffer.h"
@@ -337,7 +338,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
 
     shared_ptr<readVector_> globalInstance = make_shared<readVector_>(read); // shared pointer to access readVector_ in omp safe way
     stringstream myBatch;                                                    // each thread saves its results in its provate stringstream variable
-    pair<int,TSeed> longestExtensionScore;
+    seqAnResult longestExtensionScore;
     double ovlalign = omp_get_wtime(); // get overlap and alignment time
     intmax_t novl = 0; // debug counting overlaps
     intmax_t naln = 0; // debug counting alignments
@@ -410,11 +411,11 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                         longestExtensionScore = seqanAlOneAllKmer(globalInstance->at(rowids[j]).seq, globalInstance->at(i+colStart[b]).seq, 
                             globalInstance->at(rowids[j]).seq.length(), values[j]->vpos, algnmnt_drop, kmer_len);
                     
-                        if(longestExtensionScore.first >= algnmnt_thr)
+                        if(longestExtensionScore.score >= algnmnt_thr)
                         {
                             ++taln; // debug
-                            myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.first << '\t' << beginPositionV(longestExtensionScore.second) << '\t' << 
-                                endPositionV(longestExtensionScore.second) << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << beginPositionH(longestExtensionScore.second) << '\t' << endPositionH(longestExtensionScore.second) <<
+                            myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.score << '\t' << longestExtensionScore.strand << '\t' << beginPositionV(longestExtensionScore.seed) << '\t' << 
+                                endPositionV(longestExtensionScore.seed) << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << beginPositionH(longestExtensionScore.seed) << '\t' << endPositionH(longestExtensionScore.seed) <<
                                     '\t' << globalInstance->at(rowids[j]).seq.length() << endl;                            
                         }
                     } 
@@ -425,11 +426,11 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                         longestExtensionScore = seqanAlGenAllKmer(globalInstance->at(rowids[j]).seq, globalInstance->at(i+colStart[b]).seq, 
                             globalInstance->at(rowids[j]).seq.length(), values[j]->vpos, algnmnt_drop, kmer_len);
                                     
-                        if(longestExtensionScore.first >= algnmnt_thr)
+                        if(longestExtensionScore.score >= algnmnt_thr)
                         {
                             ++taln; // debug
-                            myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.first << '\t' << beginPositionV(longestExtensionScore.second) << '\t' << 
-                                endPositionV(longestExtensionScore.second) << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << beginPositionH(longestExtensionScore.second) << '\t' << endPositionH(longestExtensionScore.second) <<
+                            myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.score << '\t' << longestExtensionScore.strand << '\t' << beginPositionV(longestExtensionScore.seed) << '\t' << 
+                                endPositionV(longestExtensionScore.seed) << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << beginPositionH(longestExtensionScore.seed) << '\t' << endPositionH(longestExtensionScore.seed) <<
                                     '\t' << globalInstance->at(rowids[j]).seq.length() << endl;  
                         }
                     }
@@ -456,11 +457,11 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                         longestExtensionScore = seqanAlOne(globalInstance->at(rowids[j]).seq, globalInstance->at(i+colStart[b]).seq, 
                             globalInstance->at(rowids[j]).seq.length(), values[j]->pos[0], values[j]->pos[1], algnmnt_drop, kmer_len);
 
-                        if(longestExtensionScore.first >= algnmnt_thr) // need to define new threshold?
+                        if(longestExtensionScore.score >= algnmnt_thr) // need to define new threshold?
                         {
                             ++taln; // debug
-                            myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.first << '\t' << beginPositionV(longestExtensionScore.second) << '\t' << 
-                                endPositionV(longestExtensionScore.second) << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << beginPositionH(longestExtensionScore.second) << '\t' << endPositionH(longestExtensionScore.second) <<
+                            myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.score << '\t' << longestExtensionScore.strand << '\t' << beginPositionV(longestExtensionScore.seed) << '\t' << 
+                                endPositionV(longestExtensionScore.seed) << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << beginPositionH(longestExtensionScore.seed) << '\t' << endPositionH(longestExtensionScore.seed) <<
                                     '\t' << globalInstance->at(rowids[j]).seq.length() << endl;      
                         }
                     } 
@@ -469,11 +470,11 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                         longestExtensionScore = seqanAlGen(globalInstance->at(rowids[j]).seq, globalInstance->at(i+colStart[b]).seq, 
                             globalInstance->at(rowids[j]).seq.length(), values[j]->pos[0], values[j]->pos[1], values[j]->pos[2], values[j]->pos[3], algnmnt_drop, kmer_len);
                         
-                        if(longestExtensionScore.first >= algnmnt_thr)
+                        if(longestExtensionScore.score >= algnmnt_thr)
                         {
                             ++taln; // debug
-                            myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.first << '\t' << beginPositionV(longestExtensionScore.second) << '\t' << 
-                                endPositionV(longestExtensionScore.second) << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << beginPositionH(longestExtensionScore.second) << '\t' << endPositionH(longestExtensionScore.second) <<
+                            myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.score << '\t' << longestExtensionScore.strand << '\t' << beginPositionV(longestExtensionScore.seed) << '\t' << 
+                                endPositionV(longestExtensionScore.seed) << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << beginPositionH(longestExtensionScore.seed) << '\t' << endPositionH(longestExtensionScore.seed) <<
                                     '\t' << globalInstance->at(rowids[j]).seq.length() << endl;
                         }
                     }
