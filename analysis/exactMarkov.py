@@ -1,3 +1,7 @@
+#
+# @author: Giulia Guidi
+#
+
 import numpy as np
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
