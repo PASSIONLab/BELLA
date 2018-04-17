@@ -104,10 +104,10 @@ To know about the evaluation procedure design please refer to:
 > Link to paper
 
 ## Authors
-
+<dl>
 * **Giulia Guidi**
 * [**Ayd<dd>&#305;</dd>n Bulu<dd>&#231;</dd>**](https://people.eecs.berkeley.edu/~aydin/)
-
+</dl>
 ## Contributors
 
 * **Marquita Ellis**
