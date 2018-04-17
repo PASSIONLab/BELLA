@@ -60,11 +60,21 @@ The multi-threading can be set either depending (a) on the maximum number of thr
 
 ## Output Format
 
-BELLA outputs alignments in a format similar to [BLASR's M4 format](https://github.com/PacificBiosciences/blasr/wiki/Blasr-Output-Format). Example output:
+BELLA outputs alignments in a format similar to [BLASR's M4 format](https://github.com/PacificBiosciences/blasr/wiki/Blasr-Output-Format). Example output (tab-delimited):
 
-```HTML
-[A ID] [B ID] [# shared k-mers] [alignment score] [n=B fwd, c=B rc] [A start] [A end] [A length] [B start] [B end] [B length]
-```
+| Col | Description     			|
+|-----|-----------------------------|
+| 1   | A name 						|
+| 2   | B nane 		    			|
+| 3   | Shared k-mers (#)			|
+| 4   | Alignment score 			|
+| 5   | Strand (n=B fwd, c=B rc) 	|
+| 6   | A start         			|
+| 7   | A end           			|
+| 8   | A length        			|
+| 9   | B start        				|
+| 10  | B end        				|
+| 11  | B length        			|
 
 ## Performance evaluation
 
