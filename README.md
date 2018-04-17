@@ -110,7 +110,7 @@ To know about the evaluation procedure design please refer to:
 ## Authors
 
 * **Giulia Guidi**
-* [**Ayd&#305;n Bulu&ccedil;**](https://people.eecs.berkeley.edu/~aydin/)
+* [**Ayd<p>&#305;</p>n Bulu<p>&ccedil;</p>**](https://people.eecs.berkeley.edu/~aydin/)
 
 ## Contributors
 
@@ -121,12 +121,6 @@ To know about the evaluation procedure design please refer to:
 ## License
 
 Add license.
-
-## Citing BELLA
-
-If you use BELLA in your work, please consider to cite:
-
-> Link to paper
 
 ## Acknowledgments
 
