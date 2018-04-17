@@ -107,9 +107,6 @@ To know about the evaluation procedure design please refer to:
 
 * **Giulia Guidi**
 * [**Aydın Buluç**](https://people.eecs.berkeley.edu/~aydin/)
-
-## Contributors
-
 * **Marquita Ellis**
 * **Daniel Rokhsar**
 * [**Katherine Yelick**](https://people.eecs.berkeley.edu/~yelick/?_ga=2.137275831.646808918.1523950603-1375276454.1515506755)
