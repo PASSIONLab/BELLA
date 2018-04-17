@@ -38,7 +38,7 @@
 #include "kmercode/common.h"
 #include "kmercode/fq_reader.h"
 #include "kmercode/ParallelFASTQ.h"
-#include "kmercode/rbounds.hpp"
+#include "kmercode/bound.hpp"
 #include "kmercode/hyperloglog.hpp"
 
 //#define HIST
