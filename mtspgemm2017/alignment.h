@@ -1,10 +1,13 @@
+#ifndef _ALIGNMENT_H_
+#define _ALIGNMENT_H_
+
 #include <seqan/sequence.h>
 #include <seqan/align.h>
 #include <seqan/score.h>
 #include <seqan/modifier.h>
 #include <seqan/seeds.h>
 #include "global.h"
-#include "alncommon.h"
+#include "common.h"
 #include <omp.h>
 #include <fstream>
 #include <iostream>
@@ -378,3 +381,5 @@ seqAnResult seqanAlGenAllKmer(std::string & row, std::string & col, int rlen, st
 
     return longestExtensionScore;
 }
+
+#endif

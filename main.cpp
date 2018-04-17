@@ -35,7 +35,7 @@
 #include "kmercode/common.h"
 #include "kmercode/fq_reader.h"
 #include "kmercode/ParallelFASTQ.h"
-#include "kmercode/rbounds.hpp"
+#include "kmercode/bound.hpp"
 
 #include "mtspgemm2017/utility.h"
 #include "mtspgemm2017/CSC.h"

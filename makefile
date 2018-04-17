@@ -21,8 +21,8 @@ LIBS = -L$(CURDIR)/libbloom/build -lbloom -L$(CURDIR)/libgaba -lgaba
 Buffer.o: kmercode/Buffer.c
 	$(CC) -O3 -fopenmp -c -o Buffer.o kmercode/Buffer.c
 
-rbounds.o: kmercode/rbounds.cpp
-	$(CC) -O3 -fopenmp -c -o rbounds.o kmercode/rbounds.cpp
+bound.o: kmercode/bound.cpp
+	$(CC) -O3 -fopenmp -c -o bound.o kmercode/bound.cpp
 
 fq_reader.o: kmercode/fq_reader.c
 	$(CC) -O3 -std=gnu99 -fopenmp -c -o fq_reader.o kmercode/fq_reader.c
@@ -43,8 +43,8 @@ Kmer.o:	kmercode/Kmer.cpp
 	$(COMPILER) -fopenmp -std=c++11 -O3 -c -o Kmer.o kmercode/Kmer.cpp
 
 # flags defined in mtspgemm2017/GTgraph/Makefile.var
-bella: main.cpp hash_funcs.o fq_reader.o Buffer.o Kmer.o rbounds.o optlist.o rmat bloomlib gabalib
-	$(COMPILER) -std=c++14 $(INCLUDE) -O3 -march=native -fopenmp -fpermissive $(SEQINCLUDE) -o bella hash_funcs.o Kmer.o Buffer.o fq_reader.o rbounds.o optlist.o main.cpp ${LIBS}
+bella: main.cpp hash_funcs.o fq_reader.o Buffer.o Kmer.o bound.o optlist.o rmat bloomlib gabalib
+	$(COMPILER) -std=c++14 $(INCLUDE) -O3 -march=native -fopenmp -fpermissive $(SEQINCLUDE) -o bella hash_funcs.o Kmer.o Buffer.o fq_reader.o bound.o optlist.o main.cpp ${LIBS}
 
 clean:
 	(cd mtspgemm2017/GTgraph; make clean; cd ../..)

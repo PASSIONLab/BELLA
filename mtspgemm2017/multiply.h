@@ -1,7 +1,7 @@
 #include "CSC.h"
 #include "alignment.h"
 #include "global.h"
-#include "alncommon.h"
+#include "common.h"
 #include "../kmercode/hash_funcs.h"
 #include "../kmercode/Kmer.hpp"
 #include "../kmercode/Buffer.h"

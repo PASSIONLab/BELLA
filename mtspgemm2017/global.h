@@ -1,5 +1,5 @@
-#ifndef GLOBAL_H_
-#define GLOBAL_H_
+#ifndef _GLOBAL_H_
+#define _GLOBAL_H_
 
 struct readType_ {
 
