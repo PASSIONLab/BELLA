@@ -48,19 +48,17 @@ The repository contains also the code to get the recall/precision of BELLA and o
 
 **Ground truth generation for real data set**: SAMparser.py allows to transform the BWA-MEM .sam outfile in a simpler format usable as input to the evaluation code when using real data set. 
 
-To run:
 ```
 python3 SAMparser.py <bwamem-output>
 ```
 
 **Ground truth generation for synthetic data set**: mafconvert.py allows to transform the .MAF file from PBSIM (Pacbio read simulator) in a simpler format usable as input to the evaluation code when using synthetic data set.
 
-To run:
 ```
 python mafconvert.py axt <maf-file> > <ground-truth.txt>
 ```
 
-To run the evalaution program:
+To run the evaluation program:
 
 ```
 cd analysis
@@ -71,7 +69,7 @@ make check
 ```
 ./evaluation -g <grouth-truth-file> [-b <bella-output>] [-m <minimap/minimap2-output>] [-d <daligner-output>] [-l <blasr-output>] [-p <mhap-output>]
 ```
-NOTE: add -z flag if synthetic data is used.
+**NOTE**: add -z flag if synthetic data is used.
 
 ### Overlapping feasibility via Markov Chain Model
 
@@ -87,13 +85,18 @@ Give an example
 
 ## Authors
 
-* **Billie Thompson** - *Initial work* - [PurpleBooth](https://github.com/PurpleBooth)
+* **Giulia Guidi**
+* **Aydin Buluc** [Personal website](https://people.eecs.berkeley.edu/~aydin/)
 
-See also the list of [contributors](https://github.com/your/project/contributors) who participated in this project.
+## Contributors
+
+* **Marquita Ellis**
+* **Daniel Rokhsar**
+* **Katherine Yelick** [Personal website](https://people.eecs.berkeley.edu/~yelick/?_ga=2.137275831.646808918.1523950603-1375276454.1515506755)
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
+Add license.
 
 ## Acknowledgments
 
