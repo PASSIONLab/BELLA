@@ -1,7 +1,7 @@
 # BELLA - Berkeley Efficient Long-Read to Long-Read Aligner and Overlapper
 
 BELLA is a computationally-efficient and highly-accurate long-read to long-read aligner and overlapper. BELLA implements a k-mer seed based approach for finding overlaps between pairs of reads. The feasibility of this approach has been demonstrated through a mathematical model based on Markov chains. To achieve fast overlapping without sketching, BELLA exploits sparse matrix-matrix multiplication and utilizes high-performance software and libraries developed for this sparse matrix subroutine.
-BELLA applies a simple yet novel procedure for pruning k-mers. We demonstrated that this reliable k-mer selection procedure retains nearly all valuable information with high probability. Our overlap detection has been coupled with state-of-the-art seed-and-extend banded-alignment methods. BELLA attains high recall.
+BELLA applies a simple yet novel procedure for pruning k-mers. We demonstrated that this reliable k-mer selection procedure retains nearly all valuable information with high probability. Our overlap detection has been coupled with state-of-the-art [seed-and-extend banded-alignment methods](https://github.com/seqan/seqan). BELLA attains high recall.
 
 ## Getting Started
 
@@ -40,7 +40,19 @@ To show the usage:
 ./bella -h
 ```
 
-Describe optional flags.
+Optional flag description: 
+```
+-i : list of fastq(s) (required)
+-o : output filename (required)
+-d : depth (required)
+-k : k-mer length [17]
+-a : alignment score threshold [50]"
+-p : alignment x-drop factor [3]
+-e : error rate [0.15]
+-z : skip the alignment [false]
+-f : k-mer list from Jellyfish (required if #DEFINE JELLYFISH enabled)
+```
+**NOTE**: to use [Jellifish](http://www.cbcb.umd.edu/software/jellyfish/) k-mer counting is necessary to enable #DEFINE JELLYFISH.
 
 ## Performance evaluation
 
