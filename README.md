@@ -9,7 +9,7 @@ These instructions will get you a copy of the project up and running on your loc
 
 ### Prerequisites
 
-The software require g++-6 and OpenMP to be compiled. <br />
+The software require g++-6 and OpenMP to be compiled.  
 To run the evaluation test python3 and simplesam package are required. It can be installed via pip: 
 ```
 pip install simplesam
