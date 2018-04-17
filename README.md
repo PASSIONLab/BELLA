@@ -110,7 +110,7 @@ To know about the evaluation procedure design please refer to:
 ## Authors
 
 * **Giulia Guidi**
-* [**Ayd<p>&#305;</p>n Bulu<p>&ccedil;</p>**](https://people.eecs.berkeley.edu/~aydin/)
+* [**Aydın Buluç**](https://people.eecs.berkeley.edu/~aydin/)
 
 ## Contributors
 
