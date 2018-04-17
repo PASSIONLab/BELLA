@@ -86,13 +86,13 @@ Give an example
 ## Authors
 
 * **Giulia Guidi**
-* **Aydin Buluc** [Personal website](https://people.eecs.berkeley.edu/~aydin/)
+* [**Aydin Buluc**](https://people.eecs.berkeley.edu/~aydin/)
 
 ## Contributors
 
 * **Marquita Ellis**
 * **Daniel Rokhsar**
-* **Katherine Yelick** [Personal website](https://people.eecs.berkeley.edu/~yelick/?_ga=2.137275831.646808918.1523950603-1375276454.1515506755)
+* [**Katherine Yelick**](https://people.eecs.berkeley.edu/~yelick/?_ga=2.137275831.646808918.1523950603-1375276454.1515506755)
 
 ## License
 
