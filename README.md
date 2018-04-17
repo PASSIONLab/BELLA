@@ -99,18 +99,10 @@ To show the usage:
 ```
 **NOTE**: add -z flag if synthetic data is used.  
 
-<!--To know about the evaluation procedure design please refer to:
+To know about the evaluation procedure design please refer to:
 
-> Link to paper-->
+> Link to paper
 
-<!--## Overlapping feasibility via Markov Chain Model
-
-Explain what these tests test and why
-
-```
-Give an example
-```
--->
 ## Built With
 
 * [GNU Make](https://www.gnu.org/software/make/)
@@ -118,7 +110,7 @@ Give an example
 ## Authors
 
 * **Giulia Guidi**
-* [**Ayd&#305n Bulu&ccedil**](https://people.eecs.berkeley.edu/~aydin/)
+* [**Ayd&#305;n Bulu&ccedil;**](https://people.eecs.berkeley.edu/~aydin/)
 
 ## Contributors
 
@@ -130,11 +122,11 @@ Give an example
 
 Add license.
 
-<!--## Citing BELLA
+## Citing BELLA
 
 If you use BELLA in your work, please consider to cite:
 
-> Link to paper-->
+> Link to paper
 
 ## Acknowledgments
 
