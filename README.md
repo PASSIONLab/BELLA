@@ -52,17 +52,17 @@ Optional flag description:
 -z : skip the alignment [false]
 -f : k-mer list from Jellyfish (required if #DEFINE JELLYFISH enabled)
 ```
-**NOTE**: to use [Jellyfish](http://www.cbcb.umd.edu/software/jellyfish/) k-mer counting is necessary to enable #DEFINE JELLYFISH.  
+**NOTE**: to use [Jellyfish](http://www.cbcb.umd.edu/software/jellyfish/) k-mer counting is necessary to enable **#DEFINE JELLYFISH.**  
 
 The default version of BELLA is run with at most two shared k-mers. It can be run with all the shared k-mers enabling **#DEFINE ALLKMER** at the cost of increased running time.  
 
-The multi-threading can be set either depending (a) on the maximum number of thread or (b) on the available RAM. Option (b) should be preferred when medium to large genomes are used. It requires to enable #DEFINE RAM in mtspgemm2017/multiply.h as well as the kind of Operating System used, macOS or Linux.
+The multi-threading can be set either depending (a) on the maximum number of thread or (b) on the available RAM. Option (b) should be preferred when medium to large genomes are used. It requires to enable **#DEFINE RAM** in mtspgemm2017/multiply.h as well as the kind of Operating System used, macOS or Linux.
 
 ## Output Format
 
 BELLA outputs alignments in a format similar to [BLASR's M4 format](https://github.com/PacificBiosciences/blasr/wiki/Blasr-Output-Format). Example output:
 
-```
+```HTML
 [A ID] [B ID] [# shared k-mers] [alignment score] [n=B fwd, c=B rc] [A start] [A end] [A length] [B start] [B end] [B length]
 ```
 
@@ -103,14 +103,10 @@ To know about the evaluation procedure design please refer to:
 
 > Link to paper
 
-## Built With
-
-* [GNU Make](https://www.gnu.org/software/make/)
-
 ## Authors
 
 * **Giulia Guidi**
-* [**Aydın Buluç**](https://people.eecs.berkeley.edu/~aydin/)
+* [**Ayd<dd>&#305;</dd>n Bulu<dd>&#231;</dd>**](https://people.eecs.berkeley.edu/~aydin/)
 
 ## Contributors
 
