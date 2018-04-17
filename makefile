@@ -1,6 +1,6 @@
 RMATPATH = mtspgemm2017/GTgraph/R-MAT
 SPRNPATH = mtspgemm2017/GTgraph/sprng2.0-lite
-SEQANPATH = seqan-old
+SEQANPATH = seqan
 include mtspgemm2017/GTgraph/Makefile.var
 INCLUDE = -I$(SPRNPATH)/include -I$(CURDIR)/libgaba
 SEQINCLUDE = -I$(SEQANPATH)

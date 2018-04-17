@@ -8,7 +8,6 @@
 #include "../kmercode/common.h"
 #include "../kmercode/fq_reader.h"
 #include "../kmercode/ParallelFASTQ.h"
-#include "../edlib/include/edlib.h"
 #include <seqan/sequence.h>
 #include <seqan/align.h>
 #include <seqan/score.h>

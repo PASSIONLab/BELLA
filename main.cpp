@@ -193,7 +193,6 @@ int main (int argc, char *argv[]) {
                 cout << " -a : alignment score threshold [50]" << endl;
                 cout << " -p : alignment x-drop factor [3]" << endl;
                 cout << " -e : error rate [0.15]" << endl;
-                cout << " -n : minimum number of shared k-mer [1]" << endl;
                 cout << " -z : skip the alignment [false]\n" << endl;
 
                 FreeOptList(thisOpt); // Done with this list, free it
