@@ -54,6 +54,14 @@ Optional flag description:
 ```
 **NOTE**: to use [Jellifish](http://www.cbcb.umd.edu/software/jellyfish/) k-mer counting is necessary to enable #DEFINE JELLYFISH.
 
+## Output Format
+
+BELLA outputs alignments in a format similar to [BLASR's M4 format](https://github.com/PacificBiosciences/blasr/wiki/Blasr-Output-Format). Example output:
+
+```
+[A ID] [B ID] [# shared k-mers] [alignment score] [n=B fwd, c=B rc] [A start] [A end] [A length] [B start] [B end] [B length]
+```
+
 ## Performance evaluation
 
 The repository contains also the code to get the recall/precision of BELLA and other long-read aligners (Minimap, Minimap2, DALIGNER, MHAP and BLASR).
@@ -85,7 +93,11 @@ To show the usage:
 ```
 ./evaluation -h
 ```
-**NOTE**: add -z flag if synthetic data is used.
+**NOTE**: add -z flag if synthetic data is used.  
+
+To know about the evaluation procedure design please refer to:
+
+> Link to paper
 
 ## Overlapping feasibility via Markov Chain Model
 
@@ -113,6 +125,12 @@ Give an example
 ## License
 
 Add license.
+
+## Citing BELLA
+
+If you use BELLA in your work, please consider to cite:
+
+> Link to paper
 
 ## Acknowledgments
 
