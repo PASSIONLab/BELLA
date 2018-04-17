@@ -1,33 +1,102 @@
-# README #
+# BELLA - Berkeley Efficient Long-read to Long-read Overlapper and Aligner
 
-Repository containing BELLA source code, a long read aligner to de novo genome assembly.
+BELLA is a computationally-efficient and highly-accurate long-read to long-read aligner and overlapper. BELLA implements a k- mer seed based approach for finding overlaps between pairs of reads. The feasibility of this approach has been demonstrated through a mathematical model based on Markov chains. To achieve fast overlapping without sketching, BELLA exploits sparse matrix-matrix multiplication and utilizes high-performance software and libraries developed for this sparse matrix subroutine.
+BELLA applies a simple yet novel procedure for pruning k-mers. We demonstrated that this reliable k-mer selection procedure retains nearly all valuable information with high probability. Our overlap detection has been coupled with state-of-the-art seed-and-extend banded-alignment methods. BELLA attains high recall.
 
-The master contains the multithreaded code on single node.
-#
-To compile BELLA: make bella
-#
-If #DEFINE Jellyfish (Jellyfish k-mer counting requires Jellyfish k-mer file)
-To run BELLA: ./bella -f <kmers-file> -i <listoffastq> -o <out-filename> [-k <kmer-length>] [-a <alignment-score-thr>] [-p <alignment-xdrop-factor>] [-z]
-	-h will show the usage
-#
-Otherwise our k-mer counting is used:
-#
-To run BELLA: ./bella -i <listoffastq> -o <out-filename> [-k <kmer-length>] [-a <alignment-score-thr>] [-p <alignment-xdrop-factor>] [-z]
-	-h will show the usage
-The repository contains also the code to get the sensitivy of BELLA as well as other long-read aligners.
-#
-To compile: cd analysis && make check
-# 
-To run: ./evaluation -g <ground-truth-file> -n <nreads> -b <bella-output> [-m <minimap-output>] [-p <mhap-output>] [-l <blasr-output>] [-d <daligner-output>] [-z]
-	-h will show the usage
-#
-SAMparser.py allow to transform the BWA-MEM .sam outfile in a simpler format usable as input to the evaluation code when using real dataset
-#
-Requirement: simplesam package, it can be installed via pip: pip install simplesam
-To run: python SAMparser.py <bwamem-output>
-#
-ovlParser.py is a post-processing script to throw out entries with estimated overlap smaller than a threshold in Bella's output.
-#
-To run: python3 ovlParser.py <bella-standard-output> <name-output-file> <threshold>
-#
-Analysis folder contains also the code related to the Markov model.
+## Getting Started
+
+These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
+
+### Prerequisites
+
+The software require g++-6 and OpenMP to be compiled.
+To run the evaluation test python3 and simplesam package are required. It can be installed via pip: 
+```
+pip install simplesam
+```
+
+### Installing
+
+Clone the repository and enter it:
+
+```
+cd longreads
+```
+Build using makefile:
+
+```
+make bella
+```
+
+## Running BELLA
+
+To run with default setting:
+```
+./bella -i <listoffastq> -o <out-filename> -d <depth>
+```
+
+To show the usage:
+```
+./bella -h
+```
+
+Describe optional flags.
+
+### Performance evaluation
+
+The repository contains also the code to get the recall/precision of BELLA and other long-read aligners (Minimap, Minimap2, DALIGNER, MHAP and BLASR).
+
+**Ground truth generation for real data set**: SAMparser.py allows to transform the BWA-MEM .sam outfile in a simpler format usable as input to the evaluation code when using real data set. 
+
+To run:
+```
+python3 SAMparser.py <bwamem-output>
+```
+
+**Ground truth generation for synthetic data set**: mafconvert.py allows to transform the .MAF file from PBSIM (Pacbio read simulator) in a simpler format usable as input to the evaluation code when using synthetic data set.
+
+To run:
+```
+python mafconvert.py axt <maf-file> > <ground-truth.txt>
+```
+
+To run the evalaution program:
+
+```
+cd analysis
+```
+```
+make check
+```
+```
+./evaluation -g <grouth-truth-file> [-b <bella-output>] [-m <minimap/minimap2-output>] [-d <daligner-output>] [-l <blasr-output>] [-p <mhap-output>]
+```
+NOTE: add -z flag if synthetic data is used.
+
+### Overlapping feasibility via Markov Chain Model
+
+Explain what these tests test and why
+
+```
+Give an example
+```
+
+## Built With
+
+* [GNU Make](https://www.gnu.org/software/make/)
+
+## Authors
+
+* **Billie Thompson** - *Initial work* - [PurpleBooth](https://github.com/PurpleBooth)
+
+See also the list of [contributors](https://github.com/your/project/contributors) who participated in this project.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
+
+## Acknowledgments
+
+* Hat tip to anyone who's code was used
+* Inspiration
+* etc
