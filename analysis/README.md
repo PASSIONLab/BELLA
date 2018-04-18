@@ -10,10 +10,16 @@ Text it
 
 ## Overlapping feasibility via Markov Chain Model
 
-```
-Text here
-```
+To run the script implementing the Markov Chain Model we developed to show the overlapping feasibility, do:
 
+```
+python exactMarkov.py
+```
+The default function setting is:
+```python
+func(overlap=500, p=0.85, k=17)
+```
+Explain this.
 ## dAligner Parser
 
 ```
