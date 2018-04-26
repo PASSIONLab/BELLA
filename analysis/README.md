@@ -10,8 +10,8 @@ Text it
 
 ## Overlapping feasibility via Markov Chain Model
 
+In the paper, we present a theory on how k-mers (subsequences) can be used to anchor alignments between two long reads, allowing an accurate overlap discovery among all the reads in a dataset.  
 To run the script implementing the Markov Chain Model we developed to show the overlapping feasibility, do:
-
 ```
 python exactMarkov.py
 ```
@@ -19,7 +19,9 @@ The default function setting is:
 ```python
 func(overlap=500, p=0.85, k=17)
 ```
-Explain this.
+
+The program with default setting computes the probability to get 17 consecutive successes on both the sequences given an overlap length of 500bp and a sequencing success probability equal to 0.85.
+
 ## dAligner Parser
 
 ```
