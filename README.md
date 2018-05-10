@@ -66,7 +66,7 @@ BELLA outputs alignments in a format similar to [BLASR's M4 format](https://gith
 [A ID] [B ID] [# shared k-mers] [alignment score] [n=B fwd, c=B rc] [A start] [A end] [A length] [B start] [B end] [B length]
 ```
 
-## Performance evaluation
+## Performance Evaluation
 
 The repository contains also the code to get the recall/precision of BELLA and other long-read aligners (Minimap, Minimap2, DALIGNER, MHAP and BLASR).
 

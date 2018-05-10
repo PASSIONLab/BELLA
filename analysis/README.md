@@ -8,7 +8,7 @@ These instructions will guide you throught the utilization of the scripts we dev
 Text it
 ```
 
-## Overlapping feasibility via Markov Chain Model
+## Overlapping Feasibility via Markov Chain Model
 
 In the paper, we present a theory on how k-mers (subsequences) can be used to anchor alignments between two long reads, allowing an accurate overlap discovery among all the reads in a dataset.  
 To run the script implementing the Markov Chain Model we developed to show the overlapping feasibility, do:
