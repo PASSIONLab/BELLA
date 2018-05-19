@@ -37,7 +37,7 @@ alignmentInfo gabaTest(char const *row, char const *col, int rowStart, int colSt
         GABA_SCORE_SIMPLE(2, 3, 5, 1),               /* match award, mismatch penalty, gap open penalty (G_i), and gap extension penalty (G_e) */
         gfa : 2,
         gfb : 2,
-        xdrop : 100,
+        xdrop : 80,
         filter_thresh : 0
     ));
 
@@ -45,9 +45,9 @@ alignmentInfo gabaTest(char const *row, char const *col, int rowStart, int colSt
     //char const *b = "\x01\x08\x01\x02\x01\x08";       /* 4-bit encoded "ATACAT" */
     char const t[64] = { 0 };                           /* tail array */
 
-    gaba_section_s asec = gaba_build_section(0, (uint32_t)strlen(row), row);
-    gaba_section_s bsec = gaba_build_section(2, (uint32_t)strlen(col), col);
-    gaba_section_s tail = gaba_build_section(4, 64, t);
+    gaba_section_s asec = gaba_build_section(0, row, (uint32_t)strlen(row));
+    gaba_section_s bsec = gaba_build_section(2, col, (uint32_t)strlen(col));
+    gaba_section_s tail = gaba_build_section(4, t, 64);
 
     /* create thread-local object */
     gaba_dp_t *dp = gaba_dp_init(ctx);                      /* dp[0] holds a 64-cell-wide context */

@@ -78,7 +78,6 @@ int main (int argc, char *argv[]) {
     //
     // Setup the input files
     //
-
     option_t *optList, *thisOpt;
     // Get list of command line options and their arguments 
     optList = NULL;
@@ -426,12 +425,21 @@ int main (int argc, char *argv[]) {
                 value->pos[1] = pj; // col
                 return value;
             }, 
-            [] (spmatPtr_ & m1, spmatPtr_ & m2)
+            [&kmer_len] (spmatPtr_ & m1, spmatPtr_ & m2)
             {   m2->count = m1->count+m2->count;
                 // m1->pos[0] = m1->pos[0]; // row 
                 // m1->pos[1] = m1->pos[1]; // col
+                if((m1->pos[0] > m2->pos[0]+kmer_len-1 || m1->pos[0] < m2->pos[0]-kmer_len+1) 
+                    && (m1->pos[1] > m2->pos[1]+kmer_len-1 || m1->pos[1] < m2->pos[1]-kmer_len+1))
+                {
                 m2->pos[2] = m1->pos[0]; // row 
                 m2->pos[3] = m1->pos[1]; // col
+                }
+                else
+                {
+                    m2->pos[2] = 0; // row 
+                    m2->pos[3] = 0; // col
+                }
                 return m2;
             }, reads, getvaluetype, kmer_len, algnmnt_drop, algnmnt_thr, out_file, skip_algnmnt_krnl); 
 #endif

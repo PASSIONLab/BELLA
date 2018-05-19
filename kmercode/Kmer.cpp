@@ -312,7 +312,6 @@ Kmer Kmer::rep() const {
   return (tw < *this) ? tw : *this;
 }
 
-
 // use:  tw = km.twin();
 // pre:   
 // post: tw is the twin kmer with respect to km,
