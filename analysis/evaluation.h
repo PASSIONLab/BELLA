@@ -323,12 +323,13 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
         {   
             stringstream lineStream(line);
             string colName, rowName, nkmer, score;
-            string colStart, colEnd, colLen, rowStart, rowEnd, rowLen;
+            string colStart, colEnd, colLen, rowStart, rowEnd, rowLen, strand;
             
             getline(lineStream, colName, '\t');
             getline(lineStream, rowName, '\t');
             getline(lineStream, nkmer, '\t');
             getline(lineStream, score, '\t');
+            getline(lineStream, strand, '\t');
             getline(lineStream, colStart, '\t');
             getline(lineStream, colEnd, '\t');
             getline(lineStream, colLen, '\t');
