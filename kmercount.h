@@ -85,23 +85,6 @@ vector<filedata>  GetFiles(char *filename) {
     return filesview;
 }
 
-// Function to get the compressed homopolymer k-mer
-string hc(string& in) {
-  string hckmer; // compressed homopolymer
-  char prev = in[0]; // first base
-  hckmer.append(1,prev);
-
-  for(int i = 1; i < in.size(); ++i) // iter on input kmer
-    if(in[i] != prev) //if we get a different base, add it to the compressed hompolymer
-    {
-      hckmer.append(1,in[i]);
-      prev = in[i];
-    }
-
-  hckmer.append(1,'\0');
-  return hckmer;
-}
-
 /**
  * @brief JellyFishCount
  * @param kmer_file
@@ -210,8 +193,6 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
                         for(int j=0; j<=len-kmer_len; j++)  
                         {
                                 std::string kmerstrfromfastq = seqs[i].substr(j, kmer_len);
-                                //TO DO: test hc function
-                                kmerstrfromfastq = hc(kmerstrfromfastq); // homopolymer compression on string NOT kmer
                                 Kmer mykmer(kmerstrfromfastq.c_str());
                                 Kmer lexsmall = mykmer.rep();
                         allkmers[MYTHREAD].push_back(lexsmall);

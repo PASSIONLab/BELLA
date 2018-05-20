@@ -450,7 +450,8 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                 }
                 else
                 {
-                    if(values[j]->count == 1 || (values[j]->pos[2] == 0 && values[j]->pos[3] == 0)) // 1 share k-mer per pair
+                    if(values[j]->count == 1) // 1 share k-mer per pair
+                    //if(values[j]->count == 1 || (values[j]->pos[2] == 0 && values[j]->pos[3] == 0)) // 1 share k-mer per pair
                     {      
                     // The alignment function knows there's just one shared k-mer    
                         longestExtensionScore = seqanAlOne(globalInstance->at(rowids[j]).seq, globalInstance->at(i+colStart[b]).seq, 
