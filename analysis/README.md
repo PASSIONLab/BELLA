@@ -22,10 +22,12 @@ func(overlap=500, p=0.85, k=17)
 
 The program with default setting computes the probability to get 17 consecutive successes on both the sequences given an overlap length of 500bp and a sequencing success probability equal to 0.85.
 
-## dAligner Parser
+## Scripts for Consolidating dAligner alignment results in BELLA format
 
 ```
-Text here
+Run translateDalignerOut.sh with a script specifiying the desired local alignments (.las file) and corresponding (DAZZ_DB) database instance,
+along with the necessary executables. (The full detailed requirements list is specified in translateDalignerOut.sh).
+An example setup script (for NERSC's Cori) is example-environment-script.sh.   
 ```
 
 ## Further script?
