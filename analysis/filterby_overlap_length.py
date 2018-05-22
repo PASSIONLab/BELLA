@@ -1,5 +1,10 @@
 #!/usr/bin/python
 #
+# Convenience script for viewing alignments above a given THRESHOLD (optional argument 2, default THRESHOLD=2000).
+# Expects the alignments to be provided (argument 1) in bella format.
+# Does NOT change the original input file.  
+# Outputs the filtered alignments into a separate file, with the naming convention <input file name>_filtered<THRESHOLD>.
+#
 # @author:mme
 #
 from sys import argv

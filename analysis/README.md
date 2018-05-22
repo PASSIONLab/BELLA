@@ -8,11 +8,19 @@ These instructions will guide you throught the utilization of the scripts we dev
 Text it
 ```
 
-## Overlapping feasibility via Markov Chain Model
+## Overlapping Feasibility via Markov Chain Model
 
+In the paper, we present a theory on how k-mers (subsequences) can be used to anchor alignments between two long reads, allowing an accurate overlap discovery among all the reads in a dataset.  
+To run the script implementing the Markov Chain Model we developed to show the overlapping feasibility, do:
 ```
-Text here
+python exactMarkov.py
 ```
+The default function setting is:
+```python
+func(overlap=500, p=0.85, k=17)
+```
+
+The program with default setting computes the probability to get 17 consecutive successes on both the sequences given an overlap length of 500bp and a sequencing success probability equal to 0.85.
 
 ## dAligner Parser
 
@@ -29,17 +37,21 @@ Text here
 ## Authors
 
 * **Giulia Guidi**
+* [**Aydın Buluç**](https://people.eecs.berkeley.edu/~aydin/)
 * **Marquita Ellis**
 
 ## Contributors
 
-* [**Aydın Buluç**](https://people.eecs.berkeley.edu/~aydin/)
 * **Daniel Rokhsar**
 * [**Katherine Yelick**](https://people.eecs.berkeley.edu/~yelick/?_ga=2.137275831.646808918.1523950603-1375276454.1515506755)
 
-## License
-
-Add license.
+## Copyright Notice
+ 
+Berkeley Efficient Long-Read to Long-Read Aligner and Overlapper (BELLA), Copyright (c) 2018, The Regents of the University of California, through Lawrence Berkeley National Laboratory (subject to receipt of any required approvals from the U.S. Dept. of Energy) Giulia Guidi and Marco Santambrogio. All rights reserved.
+ 
+If you have questions about your rights to use or distribute this software, please contact Berkeley Lab's Innovation & Partnerships Office at IPO@lbl.gov.
+ 
+NOTICE. This Software was developed under funding from the U.S. Department of Energy and the U.S. Government consequently retains certain rights. As such, the U.S. Government has been granted for itself and others acting on its behalf a paid-up, nonexclusive, irrevocable, worldwide license in the Software to reproduce, distribute copies to the public, prepare derivative works, and perform publicly and display publicly, and to permit other to do so. 
 
 ## Acknowledgments
 

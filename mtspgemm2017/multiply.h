@@ -451,6 +451,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                 else
                 {
                     if(values[j]->count == 1) // 1 share k-mer per pair
+                    //if(values[j]->count == 1 || (values[j]->pos[2] == 0 && values[j]->pos[3] == 0)) // 1 share k-mer per pair
                     {      
                     // The alignment function knows there's just one shared k-mer    
                         longestExtensionScore = seqanAlOne(globalInstance->at(rowids[j]).seq, globalInstance->at(i+colStart[b]).seq, 
@@ -496,14 +497,25 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                     {
                         const char* row = globalInstance->at(rowids[j]).seq.c_str();
                         const char* col = globalInstance->at(i+colStart[b]).seq.c_str();
-                        alignmentInfo result = gabaTest(row, col, values[j]->pos[0], values[j]->pos[1], kmer_len);
+                        alignmentInfo result_a = gabaTest(row, col, values[j]->pos[0], values[j]->pos[1], kmer_len);
+                        alignmentInfo result_b;
+
+                        if(values[j]->count > 1)
+                            result_b = gabaTest(row, col, values[j]->pos[2], values[j]->pos[3], kmer_len);
             
-                        if(result.score >= algnmnt_thr) // need to define new threshold?
+                        if(result_a.score >= algnmnt_thr) // need to define new threshold?
                         {
                             ++taln; // debug      
-                            myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << result.score << '\t' << result.bpos << '\t' << 
-                                result.bpos + result.blen << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << result.apos << '\t' << result.apos + result.alen <<
+                            myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << result_a.score << '\t' << result_a.bpos << '\t' << 
+                                result_a.bpos + result_a.blen << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << result_a.apos << '\t' << result_a.apos + result_a.alen <<
                                     '\t' << globalInstance->at(rowids[j]).seq.length() << endl;      
+                        }
+                        else if(values[j]->count > 1 && result_b.score >= algnmnt_thr)
+                        {
+                            ++taln; // debug      
+                            myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << result_b.score << '\t' << result_b.bpos << '\t' << 
+                                result_b.bpos + result_b.blen << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << result_b.apos << '\t' << result_b.apos + result_b.alen <<
+                                    '\t' << globalInstance->at(rowids[j]).seq.length() << endl;     
                         }
                     }
                 }

@@ -41,6 +41,8 @@
 #include "kmercode/bound.hpp"
 #include "kmercode/hyperloglog.hpp"
 
+using namespace std;
+
 //#define HIST
 
 typedef cuckoohash_map<Kmer, int> dictionary_t; // <k-mer && reverse-complement, #kmers>
@@ -56,7 +58,7 @@ struct filedata {
  * @param filename
  * @return
  */
-std::vector<filedata>  GetFiles(char *filename) {
+vector<filedata>  GetFiles(char *filename) {
     int64_t totalsize = 0;
     int numfiles = 0;
     std::vector<filedata> filesview;
@@ -93,7 +95,7 @@ std::vector<filedata>  GetFiles(char *filename) {
 void JellyFishCount(char *kmer_file, dictionary_t & countsreliable_jelly, int lower, int upper) 
 {
     double kdict = omp_get_wtime();
-	
+    
     ifstream filein(kmer_file);
     string line;
     int elem;
@@ -114,7 +116,7 @@ void JellyFishCount(char *kmer_file, dictionary_t & countsreliable_jelly, int lo
                 string substring = line.substr(1);
                 elem = stoi(substring);
                 getline(filein, kmerstr);   
-                kmerfromstr.set_kmer(kmerstr.c_str());
+                //kmerfromstr.set_kmer(kmerstr.c_str());
 
                 auto updatecountjelly = [&elem](int &num) { num+=elem; };
                 // If the number is already in the table, it will increment its count by the occurrence of the new element. 
@@ -157,7 +159,7 @@ void JellyFishCount(char *kmer_file, dictionary_t & countsreliable_jelly, int lo
 void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_denovo, int lower, int upper, int kmer_len, size_t upperlimit /* memory limit */)
 {
     vector < vector<Kmer> > allkmers(MAXTHREADS);
-    vector < HyperLogLog > hlls(MAXTHREADS, HyperLogLog(12));	// std::vector fill constructor    
+    vector < HyperLogLog > hlls(MAXTHREADS, HyperLogLog(12));   // std::vector fill constructor    
     
     double denovocount = omp_get_wtime();
     dictionary_t countsdenovo;
@@ -166,51 +168,51 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
     for(auto itr=allfiles.begin(); itr!=allfiles.end(); itr++) 
     {
 
-	#pragma omp parallel
-	{
-		ParallelFASTQ *pfq = new ParallelFASTQ();
-        	pfq->open(itr->filename, false, itr->filesize);
+    #pragma omp parallel
+    {
+        ParallelFASTQ *pfq = new ParallelFASTQ();
+            pfq->open(itr->filename, false, itr->filesize);
 
-		vector<string> seqs;
-    		vector<string> quals;
-    		vector<string> nametags;
-		size_t tlreads = 0;	// thread local reads
+        vector<string> seqs;
+            vector<string> quals;
+            vector<string> nametags;
+        size_t tlreads = 0; // thread local reads
 
-        	size_t fillstatus = 1;
-        	while(fillstatus) 
-		{ 
-            		fillstatus = pfq->fill_block(nametags, seqs, quals, upperlimit);
-            		size_t nreads = seqs.size();
+            size_t fillstatus = 1;
+            while(fillstatus) 
+        { 
+                    fillstatus = pfq->fill_block(nametags, seqs, quals, upperlimit);
+                    size_t nreads = seqs.size();
             
-       	    		//#pragma omp parallel for
-			for(int i=0; i<nreads; i++) 
-			{
-                		// remember that the last valid position is length()-1
-                		int len = seqs[i].length();
+                    //#pragma omp parallel for
+            for(int i=0; i<nreads; i++) 
+            {
+                        // remember that the last valid position is length()-1
+                        int len = seqs[i].length();
            
-                		for(int j=0; j<=len-kmer_len; j++)  
-                		{
-                    			std::string kmerstrfromfastq = seqs[i].substr(j, kmer_len);
-                   			Kmer mykmer(kmerstrfromfastq.c_str());
-                    			Kmer lexsmall = mykmer.rep();  
-		    			allkmers[MYTHREAD].push_back(lexsmall);
-		   			hlls[MYTHREAD].add((const char*) lexsmall.getBytes(), lexsmall.getNumBytes());   
-				}
-			} // for(int i=0; i<nreads; i++)
-			tlreads += nreads;
-            	} //while(fillstatus) 
-		delete pfq;
+                        for(int j=0; j<=len-kmer_len; j++)  
+                        {
+                                std::string kmerstrfromfastq = seqs[i].substr(j, kmer_len);
+                                Kmer mykmer(kmerstrfromfastq.c_str());
+                                Kmer lexsmall = mykmer.rep();
+                        allkmers[MYTHREAD].push_back(lexsmall);
+                    hlls[MYTHREAD].add((const char*) lexsmall.getBytes(), lexsmall.getNumBytes());   
+                }
+            } // for(int i=0; i<nreads; i++)
+            tlreads += nreads;
+                } //while(fillstatus) 
+        delete pfq;
 
-		#pragma omp critical
-		totreads += tlreads;
-	}
-	//cout << "There were " << totreads << " reads" << endl;
+        #pragma omp critical
+        totreads += tlreads;
+    }
+    //cout << "There were " << totreads << " reads" << endl;
     }  
 
     // HLL reduction (serial for now)
     for (int i=1;i< MAXTHREADS; i++) 
     {
-	    std::transform(hlls[0].M.begin(), hlls[0].M.end(), hlls[i].M.begin(), hlls[0].M.begin(), [](uint8_t c1, uint8_t c2) -> uint8_t{ return std::max(c1, c2); });
+        std::transform(hlls[0].M.begin(), hlls[0].M.end(), hlls[i].M.begin(), hlls[0].M.begin(), [](uint8_t c1, uint8_t c2) -> uint8_t{ return std::max(c1, c2); });
     }
     double cardinality = hlls[0].estimate();
     //cout << "Cardinality estimate is " << cardinality << endl;
@@ -224,30 +226,30 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
     //cout << "Optimal number of hash functions is : " << bm->hashes << endl;
 
     #pragma omp parallel
-    {	    
-	for(auto v:allkmers[MYTHREAD])
-	{
-		// ABAB: race condition here
-		// thread-1 can start checking and find a zero bit in kth hash for item t, 
-		// but then thread-2 takes over and finds a zero bit in (k+i)th hash for the same item t
-		// both threads will think bloom filter never saw t yet, and will not insert into the 
-		// hash table; potentially causing the item (k-mer) t to be lost. 
-		bool inBloom = (bool) bloom_check_add(bm, v.getBytes(), v.getNumBytes(),1);
+    {       
+    for(auto v:allkmers[MYTHREAD])
+    {
+        // ABAB: race condition here
+        // thread-1 can start checking and find a zero bit in kth hash for item t, 
+        // but then thread-2 takes over and finds a zero bit in (k+i)th hash for the same item t
+        // both threads will think bloom filter never saw t yet, and will not insert into the 
+        // hash table; potentially causing the item (k-mer) t to be lost. 
+        bool inBloom = (bool) bloom_check_add(bm, v.getBytes(), v.getNumBytes(),1);
 
-		if(inBloom) countsdenovo.insert(v, 0);
-	}
+        if(inBloom) countsdenovo.insert(v, 0);
+    }
     }
 
 
     // in this pass, only use entries that already are in the hash table
     auto updatecount = [](int &num) { ++num; };
     #pragma omp parallel
-    {	    
-	for(auto v:allkmers[MYTHREAD])
-	{
-		// does nothing if the entry doesn't exist in the table
-		countsdenovo.update_fn(v,updatecount);
-	}
+    {       
+    for(auto v:allkmers[MYTHREAD])
+    {
+        // does nothing if the entry doesn't exist in the table
+        countsdenovo.update_fn(v,updatecount);
+    }
     }
 
     cout << "\ndenovo counting took: " << omp_get_wtime()-denovocount << "s" << endl;

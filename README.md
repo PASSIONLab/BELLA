@@ -9,7 +9,7 @@ These instructions will get you a copy of the project up and running on your loc
 
 ### Prerequisites
 
-The software require g++-6 and OpenMP to be compiled.  
+The software requires gcc-6 or higher with OpenMP to be compiled.  
 To run the evaluation test python3 and simplesam package are required. It can be installed via pip: 
 ```
 pip install simplesam
@@ -66,7 +66,7 @@ BELLA outputs alignments in a format similar to [BLASR's M4 format](https://gith
 [A ID] [B ID] [# shared k-mers] [alignment score] [n=B fwd, c=B rc] [A start] [A end] [A length] [B start] [B end] [B length]
 ```
 
-## Performance evaluation
+## Performance Evaluation
 
 The repository contains also the code to get the recall/precision of BELLA and other long-read aligners (Minimap, Minimap2, DALIGNER, MHAP and BLASR).
 
@@ -107,16 +107,20 @@ To know about the evaluation procedure design please refer to:
 
 * **Giulia Guidi**
 * [**Aydın Buluç**](https://people.eecs.berkeley.edu/~aydin/)
+* **Marquita Ellis**
 
 ## Contributors
 
-* **Marquita Ellis**
 * **Daniel Rokhsar**
 * [**Katherine Yelick**](https://people.eecs.berkeley.edu/~yelick/?_ga=2.137275831.646808918.1523950603-1375276454.1515506755)
 
-## License
-
-Add license.
+## Copyright Notice
+ 
+Berkeley Efficient Long-Read to Long-Read Aligner and Overlapper (BELLA), Copyright (c) 2018, The Regents of the University of California, through Lawrence Berkeley National Laboratory (subject to receipt of any required approvals from the U.S. Dept. of Energy) Giulia Guidi and Marco Santambrogio. All rights reserved.
+ 
+If you have questions about your rights to use or distribute this software, please contact Berkeley Lab's Innovation & Partnerships Office at IPO@lbl.gov.
+ 
+NOTICE. This Software was developed under funding from the U.S. Department of Energy and the U.S. Government consequently retains certain rights. As such, the U.S. Government has been granted for itself and others acting on its behalf a paid-up, nonexclusive, irrevocable, worldwide license in the Software to reproduce, distribute copies to the public, prepare derivative works, and perform publicly and display publicly, and to permit other to do so. 
 
 ## Acknowledgments
 
