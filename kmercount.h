@@ -260,26 +260,26 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
     //
     int kmer_id_denovo = 0;
 
-#ifdef HIST
-    std::ofstream printCount("kmerHistogram.txt", std::ofstream::out);
-    std::map<int, int> hist;
-    std::map<int, int>::iterator iter;
-
-    auto lth = countsdenovo.lock_table(); // our counting
-    for (const auto &it : lth) 
-    {
-        iter = hist.find(it.second);
-        if(iter == hist.end())
-            hist.insert(make_pair(it.second, 1));
-        else hist[it.second]++;
-    }
-    lth.unlock(); // unlock the table
-
-    for(auto it = hist.begin(); it != hist.end(); ++it)
-        printCount << it->first << '\t' << it->second << endl;
-
-    printCount.close();
-#endif    
+//#ifdef HIST
+//    std::ofstream printCount("kmerHistogram.txt", std::ofstream::out);
+//    std::map<int, int> hist;
+//    std::map<int, int>::iterator iter;
+//
+//    auto lth = countsdenovo.lock_table(); // our counting
+//    for (const auto &it : lth) 
+//    {
+//        iter = hist.find(it.second);
+//        if(iter == hist.end())
+//            hist.insert(make_pair(it.second, 1));
+//        else hist[it.second]++;
+//    }
+//    lth.unlock(); // unlock the table
+//
+//    for(auto it = hist.begin(); it != hist.end(); ++it)
+//        printCount << it->first << '\t' << it->second << endl;
+//
+//    printCount.close();
+//#endif    
 
     auto lt = countsdenovo.lock_table(); // our counting
     for (const auto &it : lt) 
@@ -296,5 +296,72 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
     //cout << "Load factor: " << countsdenovo.load_factor() << std::endl;
     countsdenovo.clear(); // free  
  
+}
+
+
+/**
+ * @brief DeNovoCount
+ * @param allfiles
+ * @param countsreliable_denovo
+ * @param lower
+ * @param upper
+ * @param kmer_len
+ * @param upperlimit
+ */
+void DeNovoCountPair(string row, string col, dictionary_t & countskmerpair, int kmer_len, size_t upperlimit /* memory limit */)
+{
+    vector<Kmer> allkmers;
+    HyperLogLog hlls(12);   // std::vector fill constructor    
+
+    int len_row = row.length();
+    int len_col = col.length();
+
+    for(int j=0; j<=len_row-kmer_len; j++)  
+    {
+        std::string kmerstrfromrow = row.substr(j, kmer_len);
+        Kmer mykmer(kmerstrfromrow.c_str());
+        Kmer lexsmall = mykmer.rep();
+        allkmers.push_back(lexsmall);
+        hlls.add((const char*) lexsmall.getBytes(), lexsmall.getNumBytes());   
+    }
+
+    for(int j=0; j<=len_col-kmer_len; j++)  
+    {
+        std::string kmerstrfromcol = col.substr(j, kmer_len);
+        Kmer mykmer(kmerstrfromcol.c_str());
+        Kmer lexsmall = mykmer.rep();
+        allkmers.push_back(lexsmall);
+        hlls.add((const char*) lexsmall.getBytes(), lexsmall.getNumBytes());   
+    }
+
+    //std::transform(hlls[0].M.begin(), hlls[0].M.end(), hlls[i].M.begin(), hlls[0].M.begin(), [](uint8_t c1, uint8_t c2) -> uint8_t{ return std::max(c1, c2); });
+    double cardinality = hlls.estimate();
+    //cout << "Cardinality estimate is " << cardinality << endl;
+
+    unsigned int random_seed = 0xA57EC3B2;
+    const double desired_probability_of_false_positive = 0.05;
+    struct bloom * bm = (struct bloom*) malloc(sizeof(struct bloom));
+    bloom_init64(bm, cardinality * 1.1, desired_probability_of_false_positive);
+    //cout << "Table size is: " << bm->bits << " bits, " << ((double)bm->bits)/8/1024/1024 << " MB" << endl;
+    //cout << "Optimal number of hash functions is : " << bm->hashes << endl;
+    for(auto v:allkmers)
+    {
+        bool inBloom = (bool) bloom_check_add(bm, v.getBytes(), v.getNumBytes(),1);
+        if(inBloom) countskmerpair.insert(v, 0);
+    }
+
+    // in this pass, only use entries that already are in the hash table
+    auto updatecount = [](int &num) { ++num; };
+    // does nothing if the entry doesn't exist in the table    
+    for(auto v:allkmers)
+    {
+        countskmerpair.update_fn(v,updatecount);
+    }
+
+    // Print some information about the table
+    //cout << "Table size: " << countsdenovo.size() << std::endl;
+    cout << "Entries within reliable range: " << countskmerpair.size() << std::endl;    
+    //cout << "Bucket count: " << countsdenovo.bucket_count() << std::endl;
+    //cout << "Load factor: " << countsdenovo.load_factor() << std::endl;
 }
 #endif
