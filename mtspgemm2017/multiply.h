@@ -147,7 +147,7 @@ void LocalSpGEMM(IT & start, IT & end, IT & ncols, const CSC<IT,NT> & A, const C
         v++;
         delete [] mergeheap;
     }
-}
+} 
 
 /**
   * Sparse multithreaded GEMM.
@@ -157,7 +157,6 @@ template <typename IT, typename NT, typename FT, typename MultiplyOperation, typ
 void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, readVector_ & read, 
     FT & getvaluetype, int kmer_len, int algnmnt_drop, int algnmnt_thr, char* filename, bool skip_algnmnt_krnl)
 {   
-    size_t upperlimit = 10000000; // in bytes
 #ifdef RAM // number of cols depends on available RAM
     cout << "Cols subdivision based on available RAM\n" << endl;
 
@@ -341,6 +340,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     seqAnResult longestExtensionScore;
     double ovlalign = omp_get_wtime(); // get overlap and alignment time
     intmax_t novl = 0; // debug counting overlaps
+    intmax_t naln = 0; // debug counting alignments
 
 #pragma omp parallel for private(myBatch, longestExtensionScore) shared(colStart,colEnd,numCols,globalInstance)
     for(int b = 0; b < numThreads+1; ++b) 
@@ -353,7 +353,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         
         IT * colptr = new IT[numCols[b]+1];
         colptr[0] = 0;
-
+       
         LocalSpGEMM(colStart[b], colEnd[b], numCols[b], A, B, multop, addop, RowIdsofC, ValuesofC);
 
 #ifdef TIMESTEP
@@ -361,6 +361,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         {
             cout << "#" << omp_get_thread_num()+1 << ", ovelap time: " << omp_get_wtime()-ovl << "s" << endl;
         }
+        double align = omp_get_wtime();
 #endif
 
         int k=0;
@@ -369,10 +370,10 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
             colptr[i+1] = colptr[i] + RowIdsofC[k].size();
             ++k;
         }
-
+      
         IT * rowids = new IT[colptr[numCols[b]]];
         FT * values = new FT[colptr[numCols[b]]];
-
+       
         k=0;
         for(int i=0; i<numCols[b]; ++i) // combine step
         {
@@ -382,113 +383,145 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         }
 
         intmax_t tovl = 0; // debug counting overlaps per thread
+        intmax_t taln = 0; // debug counting alignments per thread
 
         delete [] RowIdsofC;
         delete [] ValuesofC;
 
         // Local Alignment before write on stringstream 
+#ifdef ALLKMER
+        for(int i=0; i<numCols[b]; ++i) 
+        {
+            for(int j=colptr[i]; j<colptr[i+1]; ++j) 
+            {   
+                ++tovl; // debug
+                if(skip_algnmnt_krnl)
+                {
+                    myBatch << read[i+colStart[b]].nametag << ' ' << read[rowids[j]].nametag << ' ' << values[j]->count << ' ' << 
+                        read[i+colStart[b]].seq.length() <<' ' << read[rowids[j]].seq.length() << endl;
+                }
+                else
+                {
+                    if(values[j]->count == 1)
+                    {      
+                        //longestExtensionScore = seqanAlOne(globalInstance->at(rowids[j]).seq, globalInstance->at(i+colStart[b]).seq, 
+                            //globalInstance->at(rowids[j]).seq.length(), values[j]->pos[0], values[j]->pos[1], algnmnt_drop, kmer_len);
+                        // The alignment function knows there's just one shared k-mer    
+                        longestExtensionScore = seqanAlOneAllKmer(globalInstance->at(rowids[j]).seq, globalInstance->at(i+colStart[b]).seq, 
+                            globalInstance->at(rowids[j]).seq.length(), values[j]->vpos, algnmnt_drop, kmer_len);
+                    
+                        if(longestExtensionScore.score >= algnmnt_thr)
+                        {
+                            ++taln; // debug
+                            myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.score << '\t' << longestExtensionScore.strand << '\t' << beginPositionV(longestExtensionScore.seed) << '\t' << 
+                                endPositionV(longestExtensionScore.seed) << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << beginPositionH(longestExtensionScore.seed) << '\t' << endPositionH(longestExtensionScore.seed) <<
+                                    '\t' << globalInstance->at(rowids[j]).seq.length() << endl;                            
+                        }
+                    } 
+                    else 
+                    if(values[j]->count >= n)
+                    {       
+                        // The alignment function knows there's more than one shared k-mers 
+                        longestExtensionScore = seqanAlGenAllKmer(globalInstance->at(rowids[j]).seq, globalInstance->at(i+colStart[b]).seq, 
+                            globalInstance->at(rowids[j]).seq.length(), values[j]->vpos, algnmnt_drop, kmer_len);
+                                    
+                        if(longestExtensionScore.score >= algnmnt_thr)
+                        {
+                            ++taln; // debug
+                            myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.score << '\t' << longestExtensionScore.strand << '\t' << beginPositionV(longestExtensionScore.seed) << '\t' << 
+                                endPositionV(longestExtensionScore.seed) << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << beginPositionH(longestExtensionScore.seed) << '\t' << endPositionH(longestExtensionScore.seed) <<
+                                    '\t' << globalInstance->at(rowids[j]).seq.length() << endl;  
+                        }
+                    }
+                }
+            }
+        }
+#endif
+#ifdef SEQAN
         for(int i=0; i<numCols[b]; ++i) 
         {
             for(int j=colptr[i]; j<colptr[i+1]; ++j) 
             {
-                ++tovl; // DEBUG
-                int reduced_kmer_len = 7;
-
-                //
-                // De novo kmer counting
-                //
-
-                dictionary_t countskmerpair;
-                DeNovoCountPair(globalInstance->at(rowids[j]).seq, globalInstance->at(i+colStart[b]).seq, countskmerpair, reduced_kmer_len, upperlimit);
-    
-                vector<tuple<int,int,int>> alloccurrences;
-                vector<tuple<int,int,int>> alltranstuples;
-
-                int len_row = globalInstance->at(rowids[j]).seq.length();
-                int len_col = globalInstance->at(i+colStart[b]).seq.length();
-
-                for(int k=0; k<=len_row-reduced_kmer_len; k++)  
+                ++tovl; // debug
+                if(skip_algnmnt_krnl)
                 {
-                    std::string kmerstrfromrow = globalInstance->at(rowids[j]).seq.substr(k, reduced_kmer_len);
-                    Kmer mykmer(kmerstrfromrow.c_str());
-                    // remember to use only ::rep() when building kmerdict as well
-                    Kmer lexsmall = mykmer.rep();
+                    myBatch << read[i+colStart[b]].nametag << ' ' << read[rowids[j]].nametag << ' ' << values[j]->count << ' ' << 
+                        read[i+colStart[b]].seq.length() << ' ' << read[rowids[j]].seq.length() << endl;
+                }
+                else
+                {
+                    if(values[j]->count == 1) // 1 share k-mer per pair
+                    //if(values[j]->count == 1 || (values[j]->pos[2] == 0 && values[j]->pos[3] == 0)) // 1 share k-mer per pair
+                    {      
+                    // The alignment function knows there's just one shared k-mer    
+                        longestExtensionScore = seqanAlOne(globalInstance->at(rowids[j]).seq, globalInstance->at(i+colStart[b]).seq, 
+                            globalInstance->at(rowids[j]).seq.length(), values[j]->pos[0], values[j]->pos[1], algnmnt_drop, kmer_len);
 
-                    int idx; // kmer_id
-                    auto found = countskmerpair.find(lexsmall,idx);
-                    if(found)
-                    {
-                        alloccurrences.emplace_back(std::make_tuple(j,idx,k)); // vector<tuple<read_id,kmer_id,kmerpos>>
-                        alltranstuples.emplace_back(std::make_tuple(idx,j,k)); // transtuples.push_back(col_id,row_id,kmerpos)
+                        if(longestExtensionScore.score >= algnmnt_thr) // need to define new threshold?
+                        {
+                            ++taln; // debug
+                            myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.score << '\t' << longestExtensionScore.strand << '\t' << beginPositionV(longestExtensionScore.seed) << '\t' << 
+                                endPositionV(longestExtensionScore.seed) << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << beginPositionH(longestExtensionScore.seed) << '\t' << endPositionH(longestExtensionScore.seed) <<
+                                    '\t' << globalInstance->at(rowids[j]).seq.length() << endl;      
+                        }
+                    } 
+                    else 
+                    {   // The alignment function knows there's more than one shared k-mers 
+                        longestExtensionScore = seqanAlGen(globalInstance->at(rowids[j]).seq, globalInstance->at(i+colStart[b]).seq, 
+                            globalInstance->at(rowids[j]).seq.length(), values[j]->pos[0], values[j]->pos[1], values[j]->pos[2], values[j]->pos[3], algnmnt_drop, kmer_len);
+                        
+                        if(longestExtensionScore.score >= algnmnt_thr)
+                        {
+                            ++taln; // debug
+                            myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.score << '\t' << longestExtensionScore.strand << '\t' << beginPositionV(longestExtensionScore.seed) << '\t' << 
+                                endPositionV(longestExtensionScore.seed) << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << beginPositionH(longestExtensionScore.seed) << '\t' << endPositionH(longestExtensionScore.seed) <<
+                                    '\t' << globalInstance->at(rowids[j]).seq.length() << endl;
+                        }
                     }
                 }
-
-                for(int k=0; k<=len_col-reduced_kmer_len; k++)  
-                {
-                    std::string kmerstrfromcol = globalInstance->at(i+colStart[b]).seq.substr(k, reduced_kmer_len);
-                    Kmer mykmer(kmerstrfromcol.c_str());
-                    // remember to use only ::rep() when building kmerdict as well
-                    Kmer lexsmall = mykmer.rep();
-    
-                    int idx; // kmer_id
-                    auto found = countskmerpair.find(lexsmall,idx);
-                    if(found)
-                    {
-                        alloccurrences.emplace_back(std::make_tuple(i,idx,k)); // vector<tuple<read_id,kmer_id,kmerpos>>
-                        alltranstuples.emplace_back(std::make_tuple(idx,i,k)); // transtuples.push_back(col_id,row_id,kmerpos)
-                    }
-                }
-
-                vector<tuple<int,int,int>> occurrences;
-                vector<tuple<int,int,int>> transtuples;
-    
-                size_t tuplecount = alloccurrences.size();
-    
-                occurrences.resize(tuplecount);
-                transtuples.resize(tuplecount);
-
-                //
-                // Sparse matrices construction
-                //
-
-                CSC<int, int> spmat(occurrences, 2, countskmerpair.size(), 
-                    [] (int & p1, int & p2) 
-                    { return p1; });
-                std::cout << "spmat created with " << spmat.nnz << " nonzeros" << endl;
-                std::vector<tuple<int,int,int>>().swap(occurrences);    // remove memory of occurences
-
-                CSC<int, int> transpmat(transtuples, countskmerpair.size(), 2, 
-                    [] (int & p1, int & p2) 
-                    { return p1; });
-
-                std::vector<tuple<int,int,int>>().swap(transtuples); // remove memory of transtuples
-
-                spmat.Sorted();
-                transpmat.Sorted();
-
-                //
-                // Sparse matrix multiplication
-                //
-
-                spmatPtr_ getvaluetype(make_shared<spmatType_>());
-                PairHeapSpGEMM(spmat, transpmat, 
-                [] (int & pi, int & pj) // n-th k-mer positions on read i and on read j 
-                {   spmatPtr_ value(make_shared<spmatType_>());
-                    value->count = 1;
-                    value->pos[0] = pi; // row
-                    value->pos[1] = pj; // col
-                    return value;
-                }, 
-                [] (spmatPtr_ & m1, spmatPtr_ & m2)
-                {   m2->count = m1->count+m2->count;
-
-                    m2->pos[2] = m1->pos[0]; // row 
-                    m2->pos[3] = m1->pos[1]; // col
-
-                    return m2;
-                }, read, getvaluetype, reduced_kmer_len);
             }
         } // for(int i=0; i<numCols[b]; ++i) 
+#else 
+        {
+            for(int i=0; i<numCols[b]; ++i) 
+            {
+                for(int j=colptr[i]; j<colptr[i+1]; ++j) 
+                {   
+                    ++tovl; // debug
+                    if(skip_algnmnt_krnl)
+                    {
+                        myBatch << read[i+colStart[b]].nametag << ' ' << read[rowids[j]].nametag << ' ' << values[j]->count << ' ' << 
+                            read[i+colStart[b]].seq.length() << ' ' << read[rowids[j]].seq.length() << endl;
+                    }
+                    else
+                    {
+                        const char* row = globalInstance->at(rowids[j]).seq.c_str();
+                        const char* col = globalInstance->at(i+colStart[b]).seq.c_str();
+                        alignmentInfo result_a = gabaTest(row, col, values[j]->pos[0], values[j]->pos[1], kmer_len);
+                        alignmentInfo result_b;
+
+                        if(values[j]->count > 1)
+                            result_b = gabaTest(row, col, values[j]->pos[2], values[j]->pos[3], kmer_len);
+            
+                        if(result_a.score >= algnmnt_thr) // need to define new threshold?
+                        {
+                            ++taln; // debug      
+                            myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << result_a.score << '\t' << result_a.bpos << '\t' << 
+                                result_a.bpos + result_a.blen << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << result_a.apos << '\t' << result_a.apos + result_a.alen <<
+                                    '\t' << globalInstance->at(rowids[j]).seq.length() << endl;      
+                        }
+                        else if(values[j]->count > 1 && result_b.score >= algnmnt_thr)
+                        {
+                            ++taln; // debug      
+                            myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << result_b.score << '\t' << result_b.bpos << '\t' << 
+                                result_b.bpos + result_b.blen << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << result_b.apos << '\t' << result_b.apos + result_b.alen <<
+                                    '\t' << globalInstance->at(rowids[j]).seq.length() << endl;     
+                        }
+                    }
+                }
+            }
+        }
+#endif
 
 #ifdef TIMESTEP
 #pragma omp critical
@@ -503,13 +536,22 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
 
 #pragma omp critical
         {
+            naln += taln;
+        }
+#pragma omp critical
+        {
             novl += tovl;
         }
 
 #pragma omp critical
         {
+#ifdef ALLKMER
             writeToFile(myBatch, filename);
             myBatch.str(std::string());
+#else
+            writeToFile(myBatch, filename);
+            myBatch.str(std::string());
+#endif
         }
     }
 #ifdef PRINT
@@ -523,111 +565,206 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     delete [] numCols; 
 }
 
-template <typename IT, typename NT, typename MultiplyOperation, typename AddOperation, typename FT>
-void PairLocalSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, vector<IT> * RowIdsofC, vector<FT> * ValuesofC)
-{
-    for(int i = 0; i<B.cols; ++i) // for all columns of B
-    {
-        IT hsize = B.colptr[i+1]-B.colptr[i];
-        HeapEntry<IT,FT> *mergeheap = new HeapEntry<IT,FT>[hsize];
-        IT maxnnzc = 0;           // max number of nonzeros in C(:,i)
-
-        IT k = 0;   // make initial heap
-
-        for(IT j=B.colptr[i]; j < B.colptr[i+1]; ++j) // for all the nonzeros of the ith column
-        {
-            IT inner = B.rowids[j]; // get the row id of B (or column id of A)
-            IT npins = A.colptr[inner+1] - A.colptr[inner]; // get the number of nonzeros in A's corresponding column
-        
-            if(npins > 0)
-            {
-                mergeheap[k].loc = 1;
-                mergeheap[k].runr = j; // the pointer to B.rowid's is the run-rank
-                mergeheap[k].value = multop(A.values[A.colptr[inner]],B.values[j]);
-                mergeheap[k++].key = A.rowids[A.colptr[inner]]; // A's first rowid is the first key
-                maxnnzc += npins;
-            }
-        }
-
-        hsize = k; // if any of A's "significant" columns is empty, k will be less than hsize
-        make_heap(mergeheap, mergeheap + hsize);        
-        // reserve changes the capacity of the vector, so that future push_back's won't cause reallocation
-        // but it does not change the size, you can still use v.size() to get the number of valid elements
- 
-        RowIdsofC[i].reserve(maxnnzc); 
-        ValuesofC[i].reserve(maxnnzc);
-        
-        while(hsize > 0)
-        {
-            pop_heap(mergeheap, mergeheap + hsize);         // result is stored in mergeheap[hsize-1]
-            HeapEntry<IT,FT> hentry = mergeheap[hsize-1];
-            
-            // Use short circuiting
-            if( (!RowIdsofC[i].empty()) && RowIdsofC[i].back() == hentry.key)
-            {
-                ValuesofC[i].back() = addop(hentry.value, ValuesofC[i].back());
-            }
-            else
-            {
-                ValuesofC[i].push_back(hentry.value);
-                RowIdsofC[i].push_back(hentry.key);
-            }
-      
-            IT inner = B.rowids[hentry.runr];
-            
-            // If still unused nonzeros exists in A(:,colind), insert the next nonzero to the heap
-            if( (A.colptr[inner + 1] - A.colptr[inner]) > hentry.loc)
-            {
-                IT index = A.colptr[inner] + hentry.loc;
-                mergeheap[hsize-1].loc   = hentry.loc +1;
-                mergeheap[hsize-1].runr  = hentry.runr;
-                mergeheap[hsize-1].value = multop(A.values[index], B.values[hentry.runr]);
-                mergeheap[hsize-1].key   = A.rowids[index];
-                
-                push_heap(mergeheap, mergeheap + hsize);
-            }
-            else
-            {
-                --hsize;
-            }     
-        }
-        delete [] mergeheap;
-    }
-} 
-
 /**
-  * Sparse multithreaded GEMM.
-  * Probably slower than HeapSpGEMM_gmalloc but likely to use less memory
+ ** with global memory allocation
  **/
 template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation>
-void PairHeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, readVector_ & read, FT & getvaluetype, int kmer_len)
+void HeapSpGEMM_gmalloc(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, CSC<IT,FT> & C )
 {
-    IT * colptr = new IT[B.cols+1];
-    colptr[0] = 0;
-
-    vector<IT> * RowIdsofC = new vector<IT>[B.cols];      // row ids for each column of C
-    vector<FT> * ValuesofC = new vector<FT>[B.cols];      // values for each column of C
-
-    PairLocalSpGEMM(A, B, multop, addop, RowIdsofC, ValuesofC);
-
-    for(int i=0; i < B.cols; ++i)        // for all edge lists (do NOT parallelize)
+    
+    int numThreads;
+#pragma omp parallel
     {
-        colptr[i+1] = colptr[i] + RowIdsofC[i].size();
+        numThreads = omp_get_num_threads();
     }
-
-    IT * rowids = new IT[B.cols+1];
-    FT * values = new FT[B.cols+1];
-
-    for(int i=0; i < B.cols; ++i)  // combine step
+    
+    // *************** Creating global space to store result, used by all thread *********************
+    IT* maxnnzc = new IT[B.cols]; // maximum number of nnz in each column of C
+    IT flops = 0; // total flops (multiplication) needed to generate C
+#pragma omp parallel
     {
-        copy(RowIdsofC[i].begin(), RowIdsofC[i].end(), rowids + colptr[i]);
-        copy(ValuesofC[i].begin(), ValuesofC[i].end(), values + colptr[i]);
-    }
+        IT tflops=0; //thread private flops
+#pragma omp for
+        for(int i=0; i < B.cols; ++i)        // for all columns of B
+        {
+            IT locmax = 0;
+            for(IT j=B.colptr[i]; j < B.colptr[i+1]; ++j)    // For all the nonzeros of the ith column
+            {
+        //cout << B.colptr[i] << " B.colptr[i]" << endl;
+                IT inner = B.rowids[j];             // get the row id of B (or column id of A)
+                IT npins = A.colptr[inner+1] - A.colptr[inner]; // get the number of nonzeros in A's corresponding column
+        //cout << npins << " npins" << endl;
+                locmax += npins;
+            }
 
+            maxnnzc[i] = locmax;
+            tflops += locmax; 
+        }
+#pragma omp critical
+        {
+            flops += tflops;
+        }
+    } 
+    IT flopsPerThread = flops/numThreads; // amount of work that will be assigned to each thread
+    IT colPerThread [numThreads + 1]; // thread i will process columns from colPerThread[i] to colPerThread[i+1]-1
+    
+    IT* colStart = new IT[B.cols]; //start index in the global array for storing ith column of C
+    IT* colEnd = new IT[B.cols]; //end index in the global array for storing ith column of C
+    colStart[0] = 0;
+    colEnd[0] = 0;
+    
+    int curThread = 0;
+    colPerThread[curThread++] = 0;
+    IT nextflops = flopsPerThread;
+    
+    // TODO: the following prefix sum can be parallelized, e.g., see
+    // http://stackoverflow.com/questions/21352816/prefix-sums-taking-too-long-openmp
+    // not a dominating term at this moment
+    for(int i=0; i < (B.cols -1); ++i)
+    {
+        colStart[i+1] = colStart[i] + maxnnzc[i];
+        colEnd[i+1] = colStart[i+1];
+        if(nextflops < colStart[i+1])
+        {
+            colPerThread[curThread++] = i+1;
+            nextflops += flopsPerThread;
+        }
+    }
+    while(curThread < numThreads)
+        colPerThread[curThread++] = B.cols;
+    colPerThread[numThreads] = B.cols;
+
+    
+    
+    IT size = colEnd[B.cols-1] + maxnnzc[B.cols-1];
+    IT * RowIdsofC = new IT[size];
+    FT * ValuesofC = new FT[size];
+    delete [] maxnnzc;
+    // ************************ End Creating global space *************************************
+    
+    
+    // *************** Creating global heap space to be used by all threads *********************
+
+    IT threadHeapSize[numThreads];
+#pragma omp parallel
+    {
+        int thisThread = omp_get_thread_num();
+        IT localmax = 0; // change -1 to 0 as our IT is size_t
+        for(int i=colPerThread[thisThread]; i < colPerThread[thisThread+1]; ++i)
+        {
+            IT colnnz = B.colptr[i+1]-B.colptr[i];
+            if(colnnz > localmax) 
+        localmax = colnnz;
+        }
+        threadHeapSize[thisThread] = localmax;
+    }
+    
+    IT threadHeapStart[numThreads+1];
+    threadHeapStart[0] = 0;
+    for(int i=0; i<numThreads; i++) {
+        threadHeapStart[i+1] = threadHeapStart[i] + threadHeapSize[i];
+    }
+    
+    HeapEntry<IT,FT> * globalheap = new HeapEntry<IT,FT>[threadHeapStart[numThreads]];
+    
+    // ************************ End Creating global heap space *************************************
+    
+#pragma omp parallel
+    {
+        int thisThread = omp_get_thread_num();
+        HeapEntry<IT,FT> * mergeheap = globalheap + threadHeapStart[thisThread]; // thread private heap space
+        
+        
+        for(int i=colPerThread[thisThread]; i < colPerThread[thisThread+1]; ++i)
+        {
+            IT k = 0;   // Make initial heap
+            for(IT j=B.colptr[i]; j < B.colptr[i+1]; ++j)    // For all the nonzeros of the ith column
+            {
+                IT inner = B.rowids[j];             // get the row id of B (or column id of A)
+                IT npins = A.colptr[inner+1] - A.colptr[inner]; // get the number of nonzeros in A's corresponding column
+                
+                if(npins > 0)
+                {
+                    mergeheap[k].loc = 1;
+                    mergeheap[k].runr = j;              // the pointer to B.rowid's is the run-rank
+                    mergeheap[k].value = multop(A.values[A.colptr[inner]],B.values[j]);
+                    mergeheap[k++].key = A.rowids[A.colptr[inner]]; // A's first rowid is the first key
+                }
+            }
+            IT hsize = k;      // if any of A's "significant" columns is empty, k will be less than hsize
+            make_heap(mergeheap, mergeheap + hsize);
+            
+            // reserve changes the capacity of the vector, so that future push_back's won't cause reallocation
+            // but it does not change the size, you can still use v.size() to get the number of valid elements
+            // RowIdsofC[i].reserve(maxnnzc);
+            // ValuesofC[i].reserve(maxnnzc);
+            
+            while(hsize > 0)
+            {
+                pop_heap(mergeheap, mergeheap + hsize);         // result is stored in mergeheap[hsize-1]
+                HeapEntry<IT,FT> hentry = mergeheap[hsize-1];
+                
+                // Use short circuiting
+                if( (colEnd[i] > colStart[i]) && RowIdsofC[colEnd[i]-1] == hentry.key)
+                {
+                    ValuesofC[colEnd[i]-1] = addop(hentry.value, ValuesofC[colEnd[i]-1]);
+                }
+                else
+                {
+                    
+                    ValuesofC[colEnd[i]]= hentry.value ;
+                    RowIdsofC[colEnd[i]]= hentry.key ;
+                    colEnd[i] ++;
+                }
+                
+                IT inner = B.rowids[hentry.runr];
+                
+                // If still unused nonzeros exists in A(:,colind), insert the next nonzero to the heap
+                if( (A.colptr[inner + 1] - A.colptr[inner]) > hentry.loc)
+                {
+                    IT index = A.colptr[inner] + hentry.loc;
+                    mergeheap[hsize-1].loc = hentry.loc +1;
+                    mergeheap[hsize-1].runr = hentry.runr;
+                    mergeheap[hsize-1].value = multop(A.values[index], B.values[hentry.runr]);
+                    mergeheap[hsize-1].key = A.rowids[index];
+                    
+                    push_heap(mergeheap, mergeheap + hsize);
+                }
+                else
+                {
+                    --hsize;
+                }
+            }
+        }
+    }
+    
+    delete [] globalheap;
+    
+    if(C.isEmpty())
+    {
+        C.rows = A.rows;
+        C.cols = B.cols;
+        C.colptr = new IT[C.cols+1];
+        C.colptr[0] = 0;
+        
+        for(int i=0; i < C.cols; ++i)        // for all edge lists (do NOT parallelize)
+        {
+            C.colptr[i+1] = C.colptr[i] + colEnd[i]-colStart[i];
+        }
+
+        C.nnz = C.colptr[C.cols];
+        C.rowids = new IT[C.nnz];
+        C.values = new FT[C.nnz];
+        
+#pragma omp parallel for
+        for(int i=0; i< C.cols; ++i)         // combine step
+        {
+            copy(&RowIdsofC[colStart[i]], &RowIdsofC[colEnd[i]], C.rowids + C.colptr[i]);
+            copy(&ValuesofC[colStart[i]], &ValuesofC[colEnd[i]], C.values + C.colptr[i]);
+        }
+  }
     delete [] RowIdsofC;
     delete [] ValuesofC;
-
-    delete rowids;
-    delete values;
+    delete [] colEnd;
+    delete [] colStart;
 }
-

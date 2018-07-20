@@ -57,7 +57,17 @@ struct spmatType_ {
      int count = 0;   /* number of shared k-mers */
      vector<std::pair<int,int>> vpos; /* wanna keep all the positions */
  };
+#else
+ struct spmatType_ {
+
+    int count = 0;   /* number of shared k-mers */
+    int pos[4] = {0};  /* pos1i, pos1j, pos2i, pos2j */
+};
+
 #endif
+
+typedef shared_ptr<spmatType_> spmatPtr_; // pointer to spmatType_ datastruct
+typedef std::vector<Kmer> Kmers;
 
 using namespace std;
 
