@@ -60,6 +60,24 @@ typedef SeedSet<TSeed> TSeedSet;
 struct sysinfo info;
 #endif
 
+bool onedge(int colStart, int colEnd, int colLen, int rowStart, int rowEnd, int rowLen)
+{
+    int minLeft = min(colStart, rowStart);
+    int minRight = min(colLen-colEnd, rowLen-rowEnd);
+    int epsilon = 300;
+
+    if(minLeft-epsilon <= 0)
+        minLeft = 0;
+
+    if(minRight-epsilon <= 0)
+        minRight = 0;
+
+    if((minLeft != 0 && minRight != 0))
+        return true;
+    else
+        return false;
+}
+
 /**
  * @brief writeToFile writes a CSV containing
  * CSC indices of the output sparse matrix
@@ -457,7 +475,11 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                         longestExtensionScore = seqanAlOne(globalInstance->at(rowids[j]).seq, globalInstance->at(i+colStart[b]).seq, 
                             globalInstance->at(rowids[j]).seq.length(), values[j]->pos[0], values[j]->pos[1], algnmnt_drop, kmer_len);
 
-                        if(longestExtensionScore.score >= algnmnt_thr) // need to define new threshold?
+                        bool edge = onedge(beginPositionV(longestExtensionScore.seed), endPositionV(longestExtensionScore.seed), globalInstance->at(i+colStart[b]).seq.length(), 
+                            beginPositionH(longestExtensionScore.seed), endPositionH(longestExtensionScore.seed), globalInstance->at(rowids[j]).seq.length());
+
+                        if(!edge)
+                    // && longestExtensionScore.score >= algnmnt_thr
                         {
                             ++taln; // debug
                             myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.score << '\t' << longestExtensionScore.strand << '\t' << beginPositionV(longestExtensionScore.seed) << '\t' << 
@@ -470,13 +492,16 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                         longestExtensionScore = seqanAlGen(globalInstance->at(rowids[j]).seq, globalInstance->at(i+colStart[b]).seq, 
                             globalInstance->at(rowids[j]).seq.length(), values[j]->pos[0], values[j]->pos[1], values[j]->pos[2], values[j]->pos[3], algnmnt_drop, kmer_len);
                         
-                        if(longestExtensionScore.score >= algnmnt_thr)
-                        {
-                            ++taln; // debug
-                            myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.score << '\t' << longestExtensionScore.strand << '\t' << beginPositionV(longestExtensionScore.seed) << '\t' << 
-                                endPositionV(longestExtensionScore.seed) << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << beginPositionH(longestExtensionScore.seed) << '\t' << endPositionH(longestExtensionScore.seed) <<
-                                    '\t' << globalInstance->at(rowids[j]).seq.length() << endl;
-                        }
+                        //bool edge = onedge(beginPositionV(longestExtensionScore.seed), endPositionV(longestExtensionScore.seed), globalInstance->at(i+colStart[b]).seq.length(), 
+                        //    beginPositionH(longestExtensionScore.seed), endPositionH(longestExtensionScore.seed), globalInstance->at(rowids[j]).seq.length());
+//
+                        //if(longestExtensionScore.score >= algnmnt_thr)
+                        //{
+                          ++taln; // debug
+                          myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.score << '\t' << longestExtensionScore.strand << '\t' << beginPositionV(longestExtensionScore.seed) << '\t' << 
+                              endPositionV(longestExtensionScore.seed) << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << beginPositionH(longestExtensionScore.seed) << '\t' << endPositionH(longestExtensionScore.seed) <<
+                                  '\t' << globalInstance->at(rowids[j]).seq.length() << endl;
+                        //}
                     }
                 }
             }
