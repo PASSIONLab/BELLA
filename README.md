@@ -50,6 +50,7 @@ Optional flag description:
 -p : alignment x-drop factor [3]
 -e : error rate [0.15]
 -z : skip the alignment [false]
+-w : epsilon parameter for filtering rule (alignment on edges) [300]
 -f : k-mer list from Jellyfish (required if #DEFINE JELLYFISH enabled)
 ```
 **NOTE**: to use [Jellyfish](http://www.cbcb.umd.edu/software/jellyfish/) k-mer counting is necessary to enable **#DEFINE JELLYFISH.**  
