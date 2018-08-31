@@ -82,7 +82,7 @@ int main (int argc, char *argv[]) {
     option_t *optList, *thisOpt;
     // Get list of command line options and their arguments 
     optList = NULL;
-    optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:a:ze:p:n:");
+    optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:a:ze:p:w:");
    
     bool skip_algnmnt_krnl = false;
     char *kmer_file = NULL; // Reliable k-mer file from Jellyfish
@@ -93,7 +93,8 @@ int main (int argc, char *argv[]) {
     int algnmnt_drop = 3;   // default alignment x-drop factor
     double erate = 0.15; // default error rate
     int depth = 0; // depth/coverage required
-    int n = 1;
+    //int n = 1; // min num shared k-mer
+    int epsilon = 300; // epsilon parameter for alignment on edges TODO: explain better
 
     if(optList == NULL)
     {
@@ -167,10 +168,10 @@ int main (int argc, char *argv[]) {
                 kmer_len = atoi(thisOpt->argument);
                 break;
             }
-            case 'n': {
-                n = atoi(thisOpt->argument);
-                break;
-            }
+            //case 'n': {
+            //    n = atoi(thisOpt->argument);
+            //    break;
+            //}
             case 'e': {
                 erate = strtod(thisOpt->argument, NULL);
                 break;
@@ -181,6 +182,10 @@ int main (int argc, char *argv[]) {
             }
             case 'p': {
                 algnmnt_drop = atoi(thisOpt->argument);
+                break;
+            }
+            case 'w': {
+                epsilon = atoi(thisOpt->argument);
                 break;
             }
             case 'h': {
@@ -194,6 +199,8 @@ int main (int argc, char *argv[]) {
                 cout << " -p : alignment x-drop factor [3]" << endl;
                 cout << " -e : error rate [0.15]" << endl;
                 cout << " -z : skip the alignment [false]\n" << endl;
+                cout << " -w : epsilon parameter for alignment on edges [300]\n" << endl;
+                //cout << " -n : minimum number of shared k-mers [1]\n" << endl;
 
                 FreeOptList(thisOpt); // Done with this list, free it
                 return 0;
@@ -245,18 +252,19 @@ int main (int argc, char *argv[]) {
 #ifdef PRINT
 #ifdef JELLYFISH
     cout << "k-mer counting: Jellyfish" << endl;
-    cout << "Input k-mer file: " << kmer_file << endl;
+    cout << "input k-mer file: " << kmer_file << endl;
 #endif
     cout << "k-mer counting: BELLA" << endl;
-    cout << "minimum number of shared k-mer: " << n << endl;
-    cout << "Output file: " << out_file << endl;
+    //cout << "minimum number of shared k-mer: " << n << endl;
+    cout << "epsilon: " << epsilon << endl;
+    cout << "output file: " << out_file << endl;
     cout << "k-mer length: " << kmer_len << endl;
     if(skip_algnmnt_krnl)
-        cout << "Compute alignment: false" << endl;
-    else cout << "Compute alignment: true" << endl;
-    cout << "Alignment x-drop factor: " << algnmnt_drop << endl;
-    cout << "Alignment score threshold: " << algnmnt_thr << endl;
-    cout << "Depth: " << depth << "X" << endl;
+        cout << "compute alignment: false" << endl;
+    else cout << "compute alignment: true" << endl;
+    cout << "alignment x-drop factor: " << algnmnt_drop << endl;
+    cout << "alignment score threshold: " << algnmnt_thr << endl;
+    cout << "depth: " << depth << "X" << endl;
 #endif
     //
     // Reliable bounds computation
@@ -443,7 +451,7 @@ int main (int argc, char *argv[]) {
                 //    m2->pos[3] = 0; // col
                 //}
                 return m2;
-            }, reads, getvaluetype, kmer_len, algnmnt_drop, algnmnt_thr, out_file, skip_algnmnt_krnl); 
+            }, reads, getvaluetype, kmer_len, algnmnt_drop, algnmnt_thr, out_file, skip_algnmnt_krnl, epsilon); 
 #endif
     cout << "total running time: " << omp_get_wtime()-all << "s\n" << endl;
     return 0;

@@ -37,6 +37,7 @@ typedef SeedSet<TSeed> TSeedSet;
 
 #define PERCORECACHE (1024 * 1024)
 #define SEQAN
+#define FILTERING_RULE // + alignment threshold (filtering rule applied just to pairs sharing 1 kmer)
 //#define TIMESTEP
 //#define PRINT
 //#define RAM
@@ -60,11 +61,12 @@ typedef SeedSet<TSeed> TSeedSet;
 struct sysinfo info;
 #endif
 
-bool onedge(int colStart, int colEnd, int colLen, int rowStart, int rowEnd, int rowLen)
+#ifdef FILTERING_RULE
+bool onedge(int colStart, int colEnd, int colLen, int rowStart, int rowEnd, int rowLen, int w) // pass w as user parameter
 {
     int minLeft = min(colStart, rowStart);
     int minRight = min(colLen-colEnd, rowLen-rowEnd);
-    int epsilon = 300;
+    int epsilon = w;
 
     if(minLeft-epsilon <= 0)
         minLeft = 0;
@@ -77,7 +79,7 @@ bool onedge(int colStart, int colEnd, int colLen, int rowStart, int rowEnd, int 
     else
         return false;
 }
-
+#endif
 /**
  * @brief writeToFile writes a CSV containing
  * CSC indices of the output sparse matrix
@@ -173,7 +175,7 @@ void LocalSpGEMM(IT & start, IT & end, IT & ncols, const CSC<IT,NT> & A, const C
  **/
 template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation>
 void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, readVector_ & read, 
-    FT & getvaluetype, int kmer_len, int algnmnt_drop, int algnmnt_thr, char* filename, bool skip_algnmnt_krnl)
+    FT & getvaluetype, int kmer_len, int algnmnt_drop, int algnmnt_thr, char* filename, bool skip_algnmnt_krnl, int epsilon)
 {   
 #ifdef RAM // number of cols depends on available RAM
     cout << "Cols subdivision based on available RAM\n" << endl;
@@ -474,12 +476,14 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                     // The alignment function knows there's just one shared k-mer    
                         longestExtensionScore = seqanAlOne(globalInstance->at(rowids[j]).seq, globalInstance->at(i+colStart[b]).seq, 
                             globalInstance->at(rowids[j]).seq.length(), values[j]->pos[0], values[j]->pos[1], algnmnt_drop, kmer_len);
-
+#ifdef FILTERING_RULE
                         bool edge = onedge(beginPositionV(longestExtensionScore.seed), endPositionV(longestExtensionScore.seed), globalInstance->at(i+colStart[b]).seq.length(), 
-                            beginPositionH(longestExtensionScore.seed), endPositionH(longestExtensionScore.seed), globalInstance->at(rowids[j]).seq.length());
+                            beginPositionH(longestExtensionScore.seed), endPositionH(longestExtensionScore.seed), globalInstance->at(rowids[j]).seq.length(), epsilon);
 
-                        if(!edge)
-                    // && longestExtensionScore.score >= algnmnt_thr
+                        if(!edge && longestExtensionScore.score >= algnmnt_thr)
+#else
+                        if(longestExtensionScore.score >= algnmnt_thr)
+#endif
                         {
                             ++taln; // debug
                             myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.score << '\t' << longestExtensionScore.strand << '\t' << beginPositionV(longestExtensionScore.seed) << '\t' << 
@@ -493,15 +497,15 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                             globalInstance->at(rowids[j]).seq.length(), values[j]->pos[0], values[j]->pos[1], values[j]->pos[2], values[j]->pos[3], algnmnt_drop, kmer_len);
                         
                         //bool edge = onedge(beginPositionV(longestExtensionScore.seed), endPositionV(longestExtensionScore.seed), globalInstance->at(i+colStart[b]).seq.length(), 
-                        //    beginPositionH(longestExtensionScore.seed), endPositionH(longestExtensionScore.seed), globalInstance->at(rowids[j]).seq.length());
-//
-                        //if(longestExtensionScore.score >= algnmnt_thr)
-                        //{
+                        //    beginPositionH(longestExtensionScore.seed), endPositionH(longestExtensionScore.seed), globalInstance->at(rowids[j]).seq.length(), epsilon);
+
+                        if(longestExtensionScore.score >= algnmnt_thr)
+                        {
                           ++taln; // debug
                           myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.score << '\t' << longestExtensionScore.strand << '\t' << beginPositionV(longestExtensionScore.seed) << '\t' << 
                               endPositionV(longestExtensionScore.seed) << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << beginPositionH(longestExtensionScore.seed) << '\t' << endPositionH(longestExtensionScore.seed) <<
                                   '\t' << globalInstance->at(rowids[j]).seq.length() << endl;
-                        //}
+                        }
                     }
                 }
             }
