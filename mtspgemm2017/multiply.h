@@ -37,7 +37,7 @@ typedef SeedSet<TSeed> TSeedSet;
 
 #define PERCORECACHE (1024 * 1024)
 #define SEQAN
-#define FILTERING_RULE // + alignment threshold (filtering rule applied just to pairs sharing 1 kmer)
+//#define FILTERING_RULE // + alignment threshold (filtering rule applied just to pairs sharing 1 kmer)
 //#define TIMESTEP
 //#define PRINT
 //#define RAM

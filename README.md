@@ -59,6 +59,8 @@ The default version of BELLA is run with at most two shared k-mers. It can be ru
 
 The multi-threading can be set either depending (a) on the maximum number of thread or (b) on the available RAM. Option (b) should be preferred when medium to large genomes are used. It requires to enable **#DEFINE RAM** in mtspgemm2017/multiply.h as well as the kind of Operating System used, macOS or Linux.
 
+The default version of BELLA is run with the filtering rule disabled. It can be enabled uncommenting **#DEFINE FILTERING_RULE** in mtspegemm2017/multiply.h.
+
 ## Output Format
 
 BELLA outputs alignments in a format similar to [BLASR's M4 format](https://github.com/PacificBiosciences/blasr/wiki/Blasr-Output-Format). Example output (tab-delimited):
