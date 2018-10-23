@@ -112,7 +112,7 @@ alignmentInfo gabaTest(char const *row, char const *col, int rowStart, int colSt
 
 seqAnResult seqanAlOne(std::string & row, std::string & col, int rlen, int i, int j, int dropFactor, int kmer_len) {
 
-    Score<int, Simple> scoringScheme(1, -1, -1);
+    Score<int, Simple> scoringScheme(1, -1, -1, -7);
 
     Dna5String seqH; 
     Dna5String seqV; 
@@ -171,7 +171,7 @@ seqAnResult seqanAlOne(std::string & row, std::string & col, int rlen, int i, in
  */
 seqAnResult seqanAlGen(std::string & row, std::string & col, int rlen, int i, int j, int l, int m, int dropFactor, int kmer_len) {
 
-    Score<int, Simple> scoringScheme(1, -1, -1);
+    Score<int, Simple> scoringScheme(1, -1, -1, -7);
 
     Dna5String seqH; 
     Dna5String seqV; 

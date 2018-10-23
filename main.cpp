@@ -42,7 +42,7 @@
 #include "mtspgemm2017/CSR.h"
 #include "mtspgemm2017/global.h"
 #include "mtspgemm2017/IO.h"
-#include "mtspgemm2017/multiply.h"
+#include "mtspgemm2017/adaptive.h"
 
 
 #define LSIZE 16000
@@ -90,7 +90,7 @@ int main (int argc, char *argv[]) {
     char *out_file = NULL; // output filename
     int kmer_len = 17;  // default k-mer length
     int algnmnt_thr = 50;   // default alignment score threshold
-    int algnmnt_drop = 3;   // default alignment x-drop factor
+    int algnmnt_drop = 7;   // default alignment x-drop factor
     double erate = 0.15; // default error rate
     int depth = 0; // depth/coverage required
     //int n = 1; // min num shared k-mer
@@ -451,7 +451,7 @@ int main (int argc, char *argv[]) {
                 //    m2->pos[3] = 0; // col
                 //}
                 return m2;
-            }, reads, getvaluetype, kmer_len, algnmnt_drop, algnmnt_thr, out_file, skip_algnmnt_krnl, epsilon); 
+            }, reads, getvaluetype, kmer_len, algnmnt_drop, algnmnt_thr, out_file, skip_algnmnt_krnl); 
 #endif
     cout << "total running time: " << omp_get_wtime()-all << "s\n" << endl;
     return 0;
