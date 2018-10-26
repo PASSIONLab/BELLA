@@ -46,7 +46,7 @@
 
 #define LSIZE 16000
 #define ITERS 10
-//#define PRINT
+#define PRINT
 //#define JELLYFISH
 //#define ADAPTIVE TODO: ifdef adaptive version otherwise default
 
@@ -282,20 +282,23 @@ int main (int argc, char *argv[]) {
     //
 #ifdef PRINT
 #ifdef JELLYFISH
-    cout << "k-mer counting: Jellyfish" << endl;
-    cout << "input k-mer file: " << kmer_file << endl;
+    cout << "K-mer counting: Jellyfish" << endl;
+    cout << "Input k-mer file: " << kmer_file << endl;
 #endif
-    cout << "k-mer counting: BELLA" << endl;
+    cout << "K-mer counting: BELLA" << endl;
     //cout << "minimum number of shared k-mer: " << n << endl;
-    cout << "epsilon: " << epsilon << endl;
-    cout << "output file: " << out_file << endl;
-    cout << "k-mer length: " << kmer_len << endl;
+    cout << "Epsilon: " << epsilon << endl;
+    cout << "Output filename: " << out_file << endl;
+    cout << "K-mer length: " << kmer_len << endl;
     if(skip_algnmnt_krnl)
-        cout << "compute alignment: false" << endl;
-    else cout << "compute alignment: true" << endl;
-    cout << "alignment x-drop factor: " << xdrop << endl;
-    cout << "alignment score threshold: " << algnmnt_thr << endl;
-    cout << "depth: " << depth << "X" << endl;
+        cout << "Compute alignment: false" << endl;
+    else cout << "Compute alignment: true" << endl;
+    cout << "X-drop: " << xdrop << endl;
+    cout << "Default alignment score threshold: " << algnmnt_thr << endl;
+    cout << "Depth: " << depth << "X" << endl;
+    cout << "Error rate: " << erate << endl;
+    cout << "Scoring matrix: (" << scores[0] << "," << scores[1] << "," << scores[2] << "," << scores[3] << ")" << endl;
+    cout << "Ratio substitution:indel = 1:" << scores[4] << endl;
 #endif
     //
     // Reliable bounds computation
