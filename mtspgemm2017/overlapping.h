@@ -40,9 +40,9 @@ typedef SeedSet<TSeed> TSeedSet;
 #define PERCORECACHE (1024 * 1024)
 //#define TIMESTEP
 //#define PRINT
-#define RAM
+//#define RAM
 //#define OSX
-#define LINUX
+//#define LINUX
 //#define THREADLIMIT
 //#define MAX_NUM_THREAD 1
 
@@ -173,8 +173,8 @@ void LocalSpGEMM(IT & start, IT & end, IT & ncols, const CSC<IT,NT> & A, const C
  **/
 template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation>
 void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, readVector_ & read, 
-    FT & getvaluetype, int kmer_len, int algnmnt_drop, int algnmnt_thr, char* filename, bool skip_algnmnt_krnl)
-{   
+    FT & getvaluetype, int kmer_len, int xdrop, int algnmnt_thr, char* filename, bool skip_algnmnt_krnl, vector<int> & scores, double erate)
+{
     size_t upperlimit = 10000000; // in bytes
 #ifdef RAM // number of cols depends on available RAM
     cout << "Cols subdivision based on available RAM\n" << endl;
@@ -416,35 +416,19 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                 if(values[j]->count == 1)
                 {
                     longestExtensionScore = seqanAlOne(globalInstance->at(rowids[j]).seq, globalInstance->at(i+colStart[b]).seq, 
-                        globalInstance->at(rowids[j]).seq.length(), values[j]->pos[0], values[j]->pos[1], algnmnt_drop, kmer_len);
-
+                        globalInstance->at(rowids[j]).seq.length(), values[j]->pos[0], values[j]->pos[1], xdrop, kmer_len, scores);
+                    // "function" this
                     int diffCol = endPositionV(longestExtensionScore.seed)-beginPositionV(longestExtensionScore.seed);
                     int diffRow = endPositionH(longestExtensionScore.seed)-beginPositionH(longestExtensionScore.seed);
                     int minLeft = min(beginPositionV(longestExtensionScore.seed), beginPositionH(longestExtensionScore.seed));
                     int minRight = min(globalInstance->at(i+colStart[b]).seq.length()-endPositionV(longestExtensionScore.seed), globalInstance->at(rowids[j]).seq.length()-endPositionH(longestExtensionScore.seed));
 
                     int ov = minLeft+minRight+(diffCol+diffRow)/2;
-                    //double adaptive_thr = 0.4450*(double)ov;    // scoring matrix 1,-1,-1
-                    //double adaptive_thr = 1.1675*(double)ov;    // scoring matrix 2,-1,-1
-		//	double adaptive_thr = 0.3319*(double)ov+596.4349; //vv
-//double adaptive_thr = 0.383265617669481*(double)ov+477.781646654574; //ab  
-//double adaptive_thr = 1.10014413143354*(double)ov+714.940575445321; //ab                    
-double adaptive_thr = 0.8911*(double)ov; 
-//double adaptive_thr = 0.11*(double)ov + 165.38; // real ecoli dataset x = 3
-                    //double adaptive_thr = 0.33*(double)ov + 286.86; // real ecoli dataset x = 7
-                    //double adaptive_thr = 0.38*(double)ov + 215.66; // real ecoli dataset x = 9
-                    //double adaptive_thr = 0.40*(double)ov + 195.17; // real ecoli dataset x = 11
-                    //double adaptive_thr = 0.43*(double)ov + 138.37; // real ecoli dataset x = 13
-                    //double adaptive_thr = 0.42*(double)ov + 44.57; // real ecoli dataset x = 15
+                    float A = adaptiveSlope(erate, (float)xdrop, scores);
 
-                    //double adaptive_thr = 0.19*(double)ov + 451.41; // synthetic paeruginosa dataset x = 3
-                    //double adaptive_thr = 0.12*(double)ov + 1047.16; // synthetic paeruginosa dataset x = 7
-                    //double adaptive_thr = 0.11*(double)ov + 1059.30; // synthetic paeruginosa dataset x = 9
-                    //double adaptive_thr = 0.18*(double)ov + 912.33; // synthetic paeruginosa dataset x = 11
-                    //double adaptive_thr = 0.11*(double)ov + 1071.75; // synthetic paeruginosa dataset x = 13
-                    //double adaptive_thr = 0.21*(double)ov + 828.65; // synthetic paeruginosa dataset x = 15
+                    float adaptive_thr = A*(float)ov; 
 
-                    if((double)longestExtensionScore.score > adaptive_thr)
+                    if((float)longestExtensionScore.score > adaptive_thr)
                     {
                     myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.score << '\t' << longestExtensionScore.strand << '\t' << beginPositionV(longestExtensionScore.seed) << '\t' << 
                         endPositionV(longestExtensionScore.seed) << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << beginPositionH(longestExtensionScore.seed) << '\t' << endPositionH(longestExtensionScore.seed) <<
@@ -455,35 +439,19 @@ double adaptive_thr = 0.8911*(double)ov;
                 {
 
                     longestExtensionScore = seqanAlGen(globalInstance->at(rowids[j]).seq, globalInstance->at(i+colStart[b]).seq, 
-                        globalInstance->at(rowids[j]).seq.length(), values[j]->pos[0], values[j]->pos[1], values[j]->pos[2], values[j]->pos[3], algnmnt_drop, kmer_len);
-
+                        globalInstance->at(rowids[j]).seq.length(), values[j]->pos[0], values[j]->pos[1], values[j]->pos[2], values[j]->pos[3], xdrop, kmer_len, scores);
+                    // "function" this
                     int diffCol = endPositionV(longestExtensionScore.seed)-beginPositionV(longestExtensionScore.seed);
                     int diffRow = endPositionH(longestExtensionScore.seed)-beginPositionH(longestExtensionScore.seed);
                     int minLeft = min(beginPositionV(longestExtensionScore.seed), beginPositionH(longestExtensionScore.seed));
                     int minRight = min(globalInstance->at(i+colStart[b]).seq.length()-endPositionV(longestExtensionScore.seed), globalInstance->at(rowids[j]).seq.length()-endPositionH(longestExtensionScore.seed));
 
                     int ov = minLeft+minRight+(diffCol+diffRow)/2;
-                    //double adaptive_thr = 0.4450*(double)ov;    // scoring matrix 1,-1,-1
-                    //double adaptive_thr = 1.1675*(double)ov;    // scoring matrix 2,-1,-1
-//double adaptive_thr = 0.383265617669481*(double)ov+477.781646654574; //ab 
-//double adaptive_thr = 1.10014413143354*(double)ov+714.940575445321; //ab
-//double adaptive_thr =0.8567*(double)ov+586.8543;  
-double adaptive_thr = 0.8911*(double)ov;   
-                //double adaptive_thr = 0.11*(double)ov + 165.38; // real ecoli dataset x = 3
-                    //double adaptive_thr = 0.33*(double)ov + 286.86; // real ecoli dataset x = 7
-                    //double adaptive_thr = 0.38*(double)ov + 215.66; // real ecoli dataset x = 9
-                    //double adaptive_thr = 0.40*(double)ov + 195.17; // real ecoli dataset x = 11
-                    //double adaptive_thr = 0.43*(double)ov + 138.37; // real ecoli dataset x = 13
-                    //double adaptive_thr = 0.42*(double)ov + 44.57; // real ecoli dataset x = 15
+                    float A = adaptiveSlope(erate, (float)xdrop, scores); 
 
-                    //double adaptive_thr = 0.19*(double)ov + 451.41; // synthetic paeruginosa dataset x = 3
-                    //double adaptive_thr = 0.12*(double)ov + 1047.16; // synthetic paeruginosa dataset x = 7
-                    //double adaptive_thr = 0.11*(double)ov + 1059.30; // synthetic paeruginosa dataset x = 9
-                    //double adaptive_thr = 0.18*(double)ov + 912.33; // synthetic paeruginosa dataset x = 11
-                    //double adaptive_thr = 0.11*(double)ov + 1071.75; // synthetic paeruginosa dataset x = 13
-                    //double adaptive_thr = 0.21*(double)ov + 828.65; // synthetic paeruginosa dataset x = 15
+                    float adaptive_thr = A*(float)ov; 
 
-                    if((double)longestExtensionScore.score > adaptive_thr)
+                    if((float)longestExtensionScore.score > adaptive_thr)
                     {
 
                     myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.score << '\t' << longestExtensionScore.strand << '\t' << beginPositionV(longestExtensionScore.seed) << '\t' << 

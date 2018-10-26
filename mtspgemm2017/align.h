@@ -27,16 +27,16 @@
 
 using namespace seqan;
 using namespace std;
-
-float adaptiveSlope(float error, float mis_gap_ratio, float algnmnt_drop, float mat, float mis, float gop, float gex) // cast xdrop to float
+// vector<int> scores = {mat,mis,gex,gop,ratio}
+float adaptiveSlope(float error, int algnmnt_drop, vector<int> & scores) // cast xdrop to float
 {
     float p_mat = 1-error;                      // match
-    float p_mis = error/(mis_gap_ratio+1)     // mismatch
-    float p_gap = p_mis*mis_gap_ratio;
-    float p_gop = p_gap/(algnmnt_drop-1)
-    float p_gex = p_gop*(algnmnt_drop-1)
+    float p_mis = error/(float)(scores[4]+1);     // mismatch
+    float p_gap = p_mis*(float)(scores[4]);
+    float p_gop = p_gap/(float)(algnmnt_drop-1);
+    float p_gex = p_gop*(float)(algnmnt_drop-1);
 
-    return float phi = mat*p_mat + mis*p_mis + gop*p_gop + gex*p_gex;
+    return (float)scores[0]*p_mat + (float)scores[1]*p_mis + (float)scores[3]*p_gop + (float)scores[2]*p_gex;
 }
 
 /**
@@ -50,9 +50,9 @@ float adaptiveSlope(float error, float mis_gap_ratio, float algnmnt_drop, float 
  * @param dropFactor
  * @return alignment score and extended seed
  */
-seqAnResult seqanAlOne(std::string & row, std::string & col, int rlen, int i, int j, int dropFactor, int kmer_len, int mat, int mis, int gop, int gex) {
+seqAnResult seqanAlOne(std::string & row, std::string & col, int rlen, int i, int j, int dropFactor, int kmer_len, vector<int> & scores) {
 
-    Score<int, Simple> scoringScheme(mat, mis, gex, gop);
+    Score<int, Simple> scoringScheme(scores[0], scores[1], scores[2], scores[3]);
 
     Dna5String seqH; 
     Dna5String seqV; 
@@ -109,9 +109,9 @@ seqAnResult seqanAlOne(std::string & row, std::string & col, int rlen, int i, in
  * @param dropFactor
  * @return alignment score and extended seed
  */
-seqAnResult seqanAlGen(std::string & row, std::string & col, int rlen, int i, int j, int l, int m, int dropFactor, int kmer_len, int mat, int mis, int gop, int gex) {
+seqAnResult seqanAlGen(std::string & row, std::string & col, int rlen, int i, int j, int l, int m, int dropFactor, int kmer_len, vector<int> & scores) {
 
-    Score<int, Simple> scoringScheme(mat, mis, gex, gop);
+    Score<int, Simple> scoringScheme(scores[0], scores[1], scores[2], scores[3]);
 
     Dna5String seqH; 
     Dna5String seqV; 
