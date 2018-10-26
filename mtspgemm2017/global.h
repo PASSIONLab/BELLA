@@ -2,8 +2,7 @@
 #define _GLOBAL_H_
 
 struct readType_ {
-
-	std::string nametag;   
+	std::string nametag;
 	std::string seq; 
 	int readid;
 
@@ -11,10 +10,18 @@ struct readType_ {
     {
         return (readid < str.readid);
     }
-
 };
 
 typedef vector<readType_> readVector_;
+
+struct spmatType_ {
+
+    int count = 0;   /* number of shared k-mers */
+    int pos[4] = {0};  /* pos1i, pos1j, pos2i, pos2j */
+};
+
+typedef shared_ptr<spmatType_> spmatPtr_; // pointer to spmatType_ datastruct
+typedef std::vector<Kmer> Kmers;
 
 struct alignmentInfo {
 

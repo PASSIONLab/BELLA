@@ -46,26 +46,8 @@
 
 #define LSIZE 16000
 #define ITERS 10
-//#define _ALLKMER
 //#define PRINT
 //#define JELLYFISH
-
-#ifdef _ALLKMER
-struct spmatType_ {
- 
-     int count = 0;   /* number of shared k-mers */
-     vector<std::pair<int,int>> vpos; /* wanna keep all the positions */
- };
-#else
- struct spmatType_ {
-
-    int count = 0;   /* number of shared k-mers */
-    int pos[4] = {0};  /* pos1i, pos1j, pos2i, pos2j */
-};
-#endif
-
-typedef shared_ptr<spmatType_> spmatPtr_; // pointer to spmatType_ datastruct
-typedef std::vector<Kmer> Kmers;
 
 using namespace std;
 
@@ -89,7 +71,7 @@ int main (int argc, char *argv[]) {
     char *out_file = NULL;              // output filename (o)
     int kmer_len = 17;                  // default k-mer length (k)
     int algnmnt_thr = 50;               // default alignment score threshold (a)
-    int algnmnt_drop = 7;               // default alignment x-drop factor (p)
+    int xdrop = 7;                      // default alignment x-drop factor (p)
     double erate = 0.15;                // default error rate (e)
     int depth = 0;                      // depth/coverage required (d)
     int epsilon = 300;                  // epsilon parameter for alignment on edges TODO: explain (w)
@@ -168,10 +150,6 @@ int main (int argc, char *argv[]) {
                 kmer_len = atoi(thisOpt->argument);
                 break;
             }
-            //case 'n': {
-            //    n = atoi(thisOpt->argument);
-            //    break;
-            //}
             case 'e': {
                 erate = strtod(thisOpt->argument, NULL);
                 break;
@@ -181,7 +159,7 @@ int main (int argc, char *argv[]) {
                 break;
             }
             case 'p': {
-                algnmnt_drop = atoi(thisOpt->argument);
+                xdrop = atoi(thisOpt->argument);
                 break;
             }
             case 'w': {
@@ -280,7 +258,6 @@ int main (int argc, char *argv[]) {
 
     free(optList);
     free(thisOpt);
-
     //
     // Declarations 
     //
@@ -299,7 +276,6 @@ int main (int argc, char *argv[]) {
     Kmers kmersfromreads;
     vector<tuple<int,int,int>> occurrences;
     vector<tuple<int,int,int>> transtuples;
-    
     // 
     // File and setting used
     //
@@ -316,7 +292,7 @@ int main (int argc, char *argv[]) {
     if(skip_algnmnt_krnl)
         cout << "compute alignment: false" << endl;
     else cout << "compute alignment: true" << endl;
-    cout << "alignment x-drop factor: " << algnmnt_drop << endl;
+    cout << "alignment x-drop factor: " << xdrop << endl;
     cout << "alignment score threshold: " << algnmnt_thr << endl;
     cout << "depth: " << depth << "X" << endl;
 #endif
@@ -330,11 +306,8 @@ int main (int argc, char *argv[]) {
     cout << "Reliable lower bound: " << lower << endl;
     cout << "Reliable upper bound: " << upper << "\n" << endl;
 #endif
-    
     //
     // Reliable k-mer file parsing and k-mer dictionary creation
-    // NOTE: this will be replaced by our k-mer counting
-    //
     //
     dictionary_t countsreliable;
 #ifdef JELLYFISH
@@ -342,7 +315,7 @@ int main (int argc, char *argv[]) {
 #else
     cout << "\nRunning with up to " << MAXTHREADS << " threads" << endl;
     DeNovoCount(allfiles, countsreliable, lower, upper, kmer_len, upperlimit);
-#endif   
+#endif
     //
     // Fastq(s) parsing
     //
@@ -350,13 +323,11 @@ int main (int argc, char *argv[]) {
     int read_id = 0; // read_id needs to be global (not just per file)
     cout << "\nRunning with up to " << MAXTHREADS << " threads" << endl;
 
-
         vector < vector<tuple<int,int,int>> > alloccurrences(MAXTHREADS);   
         vector < vector<tuple<int,int,int>> > alltranstuples(MAXTHREADS);   
         vector < readVector_ > allreads(MAXTHREADS);
 
         double time1 = omp_get_wtime();
-
         for(auto itr=allfiles.begin(); itr!=allfiles.end(); itr++) {
 
         ParallelFASTQ *pfq = new ParallelFASTQ();
@@ -372,7 +343,7 @@ int main (int argc, char *argv[]) {
                 {
                     // remember that the last valid position is length()-1
                     int len = seqs[i].length();
-                    
+
                     readType_ temp;
                     temp.nametag = nametags[i];
                     temp.seq = seqs[i]; // save reads for seeded alignment
@@ -386,7 +357,7 @@ int main (int argc, char *argv[]) {
                         Kmer mykmer(kmerstrfromfastq.c_str());
                         // remember to use only ::rep() when building kmerdict as well
                         Kmer lexsmall = mykmer.rep();      
-        
+
                         int idx; // kmer_id
 			auto found = countsreliable.find(lexsmall,idx);
 			if(found)
@@ -431,54 +402,33 @@ int main (int argc, char *argv[]) {
     cout << "\nTotal number of reads: "<< read_id << endl;
     cout << "fastq(s) parsing fastq took: " << omp_get_wtime()-parsefastq << "s" << endl;
     double matcreat = omp_get_wtime();
-
     //
     // Sparse matrices construction
     //
-
     int nkmer = countsreliable.size();
-
     CSC<int, int> spmat(occurrences, read_id, nkmer, 
                             [] (int & p1, int & p2) 
                             {   // assume no errors in MergeDuplicates
                                 // keep just the first position of that k-mer in that read
                                 return p1;
                             });
-    //std::cout << "spmat created with " << spmat.nnz << " nonzeros" << endl;
     std::vector<tuple<int,int,int>>().swap(occurrences);    // remove memory of occurences
 
     CSC<int, int> transpmat(transtuples, nkmer, read_id, 
                             [] (int & p1, int & p2) 
                             {  return p1;
                             });
-    //std::cout << "transpose(spmat) created" << endl;
     std::vector<tuple<int,int,int>>().swap(transtuples); // remove memory of transtuples
 
     spmat.Sorted();
     transpmat.Sorted();
+
 #ifdef PRINT
     cout << "spmat and spmat^T creation took: " << omp_get_wtime()-matcreat << "s" << endl;
 #endif
-    
     //
     // Overlap detection (sparse matrix multiplication) and seed-and-extend alignment
     //
-#ifdef _ALLKMER
-    spmatPtr_ getvaluetype(make_shared<spmatType_>());
-    HeapSpGEMM(spmat, transpmat, 
-           [] (int & pi, int & pj) // n-th k-mer positions on read i and on read j 
-           {   spmatPtr_ value(make_shared<spmatType_>());
-               value->count = 1;
-               value->vpos.push_back(make_pair(pi,pj));
-               return value;
-           }, 
-           [] (spmatPtr_ & m1, spmatPtr_ & m2)
-           {   m2->count = m1->count+m2->count;
-               // insert control on independent k-mer
-               m2->vpos.insert(m2->vpos.end(), m1->vpos.begin(), m1->vpos.end());
-               return m2;
-           }, reads, getvaluetype, kmer_len, algnmnt_drop, algnmnt_thr, out_file, skip_algnmnt_krnl, n);
-#else
     spmatPtr_ getvaluetype(make_shared<spmatType_>());
     HeapSpGEMM(spmat, transpmat, 
             [] (int & pi, int & pj) // n-th k-mer positions on read i and on read j 
@@ -488,25 +438,13 @@ int main (int argc, char *argv[]) {
                 value->pos[1] = pj; // col
                 return value;
             }, 
-            //[&kmer_len] (spmatPtr_ & m1, spmatPtr_ & m2)
             [] (spmatPtr_ & m1, spmatPtr_ & m2)
             {   m2->count = m1->count+m2->count;
-                // m1->pos[0] = m1->pos[0]; // row 
-                // m1->pos[1] = m1->pos[1]; // col
-                //if((m1->pos[0] > m2->pos[0]+kmer_len-1 || m1->pos[0] < m2->pos[0]-kmer_len+1) 
-                //    && (m1->pos[1] > m2->pos[1]+kmer_len-1 || m1->pos[1] < m2->pos[1]-kmer_len+1))
-                //{
                 m2->pos[2] = m1->pos[0]; // row 
                 m2->pos[3] = m1->pos[1]; // col
-                //}
-                //else
-                //{
-                //    m2->pos[2] = 0; // row 
-                //    m2->pos[3] = 0; // col
-                //}
                 return m2;
-            }, reads, getvaluetype, kmer_len, algnmnt_drop, algnmnt_thr, out_file, skip_algnmnt_krnl); 
-#endif
+            }, reads, getvaluetype, kmer_len, xdrop, algnmnt_thr, out_file, skip_algnmnt_krnl, scores, erate); 
+
     cout << "total running time: " << omp_get_wtime()-all << "s\n" << endl;
     return 0;
 } 
