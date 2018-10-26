@@ -48,6 +48,7 @@
 #define ITERS 10
 //#define PRINT
 //#define JELLYFISH
+//#define ADAPTIVE TODO: ifdef adaptive version otherwise default
 
 using namespace std;
 
