@@ -28,6 +28,17 @@
 using namespace seqan;
 using namespace std;
 
+float adaptiveSlope(float error, float mis_gap_ratio, float algnmnt_drop, float mat, float mis, float gop, float gex) // cast xdrop to float
+{
+    float p_mat = 1-error;                      // match
+    float p_mis = error/(mis_gap_ratio+1)     // mismatch
+    float p_gap = p_mis*mis_gap_ratio;
+    float p_gop = p_gap/(algnmnt_drop-1)
+    float p_gex = p_gop*(algnmnt_drop-1)
+
+    return float phi = mat*p_mat + mis*p_mis + gop*p_gop + gex*p_gex;
+}
+
 /**
  * @brief seqanAlOne does the seed-and-extend alignment
  * when ony one shared k-mer exists
@@ -39,10 +50,9 @@ using namespace std;
  * @param dropFactor
  * @return alignment score and extended seed
  */
+seqAnResult seqanAlOne(std::string & row, std::string & col, int rlen, int i, int j, int dropFactor, int kmer_len, int mat, int mis, int gop, int gex) {
 
-seqAnResult seqanAlOne(std::string & row, std::string & col, int rlen, int i, int j, int dropFactor, int kmer_len) {
-
-    Score<int, Simple> scoringScheme(1, -1, -1, -7);
+    Score<int, Simple> scoringScheme(mat, mis, gex, gop);
 
     Dna5String seqH; 
     Dna5String seqV; 
@@ -99,9 +109,9 @@ seqAnResult seqanAlOne(std::string & row, std::string & col, int rlen, int i, in
  * @param dropFactor
  * @return alignment score and extended seed
  */
-seqAnResult seqanAlGen(std::string & row, std::string & col, int rlen, int i, int j, int l, int m, int dropFactor, int kmer_len) {
+seqAnResult seqanAlGen(std::string & row, std::string & col, int rlen, int i, int j, int l, int m, int dropFactor, int kmer_len, int mat, int mis, int gop, int gex) {
 
-    Score<int, Simple> scoringScheme(1, -1, -1, -7);
+    Score<int, Simple> scoringScheme(mat, mis, gex, gop);
 
     Dna5String seqH; 
     Dna5String seqV; 
