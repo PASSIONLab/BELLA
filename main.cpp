@@ -92,9 +92,8 @@ int main (int argc, char *argv[]) {
     int algnmnt_drop = 7;               // default alignment x-drop factor (p)
     double erate = 0.15;                // default error rate (e)
     int depth = 0;                      // depth/coverage required (d)
-    int epsilon = 300;                  // epsilon parameter for alignment on edges TODO: explain better (w)
-    int mis_gap_ratio = 9;              // 1:9 substitution:indel ratio (r)
-    vector<int> scores = {1,-1,-1,-7};  // mat (m), mis (s), gex (y), gop (g)
+    int epsilon = 300;                  // epsilon parameter for alignment on edges TODO: explain (w)
+    vector<int> scores = {1,-1,-1,-7,9};  // mat (m), mis (s), gex (y), gop (g), probability 1:9 substitution:indel ratio (r)
 
 
     if(optList == NULL)
@@ -189,6 +188,56 @@ int main (int argc, char *argv[]) {
                 epsilon = atoi(thisOpt->argument);
                 break;
             }
+            case 'm': {
+                if(thisOpt->argument < 0)
+                {
+                    cout << "BELLA execution terminated: -m requires a positive integer" << endl;
+                    cout << "Run with -h to print out the command line options\n" << endl;
+                    return 0;
+                }
+                scores[0] = atoi(thisOpt->argument);
+                break;
+            }
+            case 's': {
+                if(thisOpt->argument > 0)
+                {
+                    cout << "BELLA execution terminated: -s requires a negative integer" << endl;
+                    cout << "Run with -h to print out the command line options\n" << endl;
+                    return 0;
+                }
+                scores[1] = atoi(thisOpt->argument);
+                break;
+            }
+            case 'y': {
+                if(thisOpt->argument > 0)
+                {
+                    cout << "BELLA execution terminated: -y requires a negative integer" << endl;
+                    cout << "Run with -h to print out the command line options\n" << endl;
+                    return 0;
+                }
+                scores[2] = atoi(thisOpt->argument);
+                break;
+            }
+            case 'g': {
+                if(thisOpt->argument > 0)
+                {
+                    cout << "BELLA execution terminated: -g requires a negative integer" << endl;
+                    cout << "Run with -h to print out the command line options\n" << endl;
+                    return 0;
+                }
+                scores[4] = atoi(thisOpt->argument);
+                break;
+            }
+            case 'r': {
+                if(thisOpt->argument < 0)
+                {
+                    cout << "BELLA execution terminated: -r requires a positive integer" << endl;
+                    cout << "Run with -h to print out the command line options\n" << endl;
+                    return 0;
+                }
+                scores[5] = atoi(thisOpt->argument);
+                break;
+            }
             case 'h': {
                 cout << "Usage:\n" << endl;
                 cout << " -f : k-mer list from Jellyfish (required if Jellyfish k-mer counting is used)" << endl; // the reliable k-mers are selected by bella
@@ -201,7 +250,11 @@ int main (int argc, char *argv[]) {
                 cout << " -e : error rate [0.15]" << endl;
                 cout << " -z : skip the alignment [false]\n" << endl;
                 cout << " -w : epsilon parameter for alignment on edges [300]\n" << endl;
-                //cout << " -n : minimum number of shared k-mers [1]\n" << endl;
+                cout << " -m : match penalty scoring matrix [1]\n" << endl;
+                cout << " -s : mismatch penalty scoring matrix [-1]\n" << endl;
+                cout << " -y : gap extension penalty scoring matrix [-1]\n" << endl;
+                cout << " -g : gap opening penalty scoring matrix [-7]\n" << endl;
+                cout << " -r : substitution:indel probability ratio [1:9=sub:gap]\n" << endl;
 
                 FreeOptList(thisOpt); // Done with this list, free it
                 return 0;
