@@ -42,13 +42,12 @@
 #include "mtspgemm2017/CSR.h"
 #include "mtspgemm2017/global.h"
 #include "mtspgemm2017/IO.h"
-#include "mtspgemm2017/adaptive.h"
-
+#include "mtspgemm2017/overlapping.h"
 
 #define LSIZE 16000
 #define ITERS 10
 //#define _ALLKMER
-#define PRINT
+//#define PRINT
 //#define JELLYFISH
 
 #ifdef _ALLKMER
@@ -82,19 +81,21 @@ int main (int argc, char *argv[]) {
     option_t *optList, *thisOpt;
     // Get list of command line options and their arguments 
     optList = NULL;
-    optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:a:ze:p:w:");
+    optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:a:ze:p:w:m:y:g:s:r:");
    
-    bool skip_algnmnt_krnl = false;
-    char *kmer_file = NULL; // Reliable k-mer file from Jellyfish
-    char *all_inputs_fofn = NULL;   // List of fastq(s)
-    char *out_file = NULL; // output filename
-    int kmer_len = 17;  // default k-mer length
-    int algnmnt_thr = 50;   // default alignment score threshold
-    int algnmnt_drop = 7;   // default alignment x-drop factor
-    double erate = 0.15; // default error rate
-    int depth = 0; // depth/coverage required
-    //int n = 1; // min num shared k-mer
-    int epsilon = 300; // epsilon parameter for alignment on edges TODO: explain better
+    bool skip_algnmnt_krnl = false;     // Do not align (z)
+    char *kmer_file = NULL;             // Reliable k-mer file from Jellyfish
+    char *all_inputs_fofn = NULL;       // List of fastqs (i)
+    char *out_file = NULL;              // output filename (o)
+    int kmer_len = 17;                  // default k-mer length (k)
+    int algnmnt_thr = 50;               // default alignment score threshold (a)
+    int algnmnt_drop = 7;               // default alignment x-drop factor (p)
+    double erate = 0.15;                // default error rate (e)
+    int depth = 0;                      // depth/coverage required (d)
+    int epsilon = 300;                  // epsilon parameter for alignment on edges TODO: explain better (w)
+    int mis_gap_ratio = 9;              // 1:9 substitution:indel ratio (r)
+    vector<int> scores = {1,-1,-1,-7};  // mat (m), mis (s), gex (y), gop (g)
+
 
     if(optList == NULL)
     {
@@ -272,7 +273,7 @@ int main (int argc, char *argv[]) {
     double all = omp_get_wtime();
     lower = computeLower(depth,erate,kmer_len);
     upper = computeUpper(depth,erate,kmer_len);
-#ifdef PRINTm
+#ifdef PRINT
     cout << "Reliable lower bound: " << lower << endl;
     cout << "Reliable upper bound: " << upper << "\n" << endl;
 #endif
