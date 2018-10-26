@@ -40,9 +40,9 @@ typedef SeedSet<TSeed> TSeedSet;
 #define PERCORECACHE (1024 * 1024)
 //#define TIMESTEP
 //#define PRINT
-//#define RAM
+#define RAM
 //#define OSX
-//#define LINUX
+#define LINUX
 //#define THREADLIMIT
 //#define MAX_NUM_THREAD 1
 
@@ -429,7 +429,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
 		//	double adaptive_thr = 0.3319*(double)ov+596.4349; //vv
 //double adaptive_thr = 0.383265617669481*(double)ov+477.781646654574; //ab  
 //double adaptive_thr = 1.10014413143354*(double)ov+714.940575445321; //ab                    
-double adaptive_thr = 0.236875*(double)ov; 
+double adaptive_thr = 0.8911*(double)ov; 
 //double adaptive_thr = 0.11*(double)ov + 165.38; // real ecoli dataset x = 3
                     //double adaptive_thr = 0.33*(double)ov + 286.86; // real ecoli dataset x = 7
                     //double adaptive_thr = 0.38*(double)ov + 215.66; // real ecoli dataset x = 9
@@ -468,7 +468,7 @@ double adaptive_thr = 0.236875*(double)ov;
 //double adaptive_thr = 0.383265617669481*(double)ov+477.781646654574; //ab 
 //double adaptive_thr = 1.10014413143354*(double)ov+714.940575445321; //ab
 //double adaptive_thr =0.8567*(double)ov+586.8543;  
-double adaptive_thr = 0.236875*(double)ov;   
+double adaptive_thr = 0.8911*(double)ov;   
                 //double adaptive_thr = 0.11*(double)ov + 165.38; // real ecoli dataset x = 3
                     //double adaptive_thr = 0.33*(double)ov + 286.86; // real ecoli dataset x = 7
                     //double adaptive_thr = 0.38*(double)ov + 215.66; // real ecoli dataset x = 9
