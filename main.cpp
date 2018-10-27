@@ -43,6 +43,7 @@
 #include "mtspgemm2017/global.h"
 #include "mtspgemm2017/IO.h"
 #include "mtspgemm2017/overlapping.h"
+#include "mtspgemm2017/align.h"
 
 #define LSIZE 16000
 #define ITERS 10
@@ -306,9 +307,11 @@ int main (int argc, char *argv[]) {
     double all = omp_get_wtime();
     lower = computeLower(depth,erate,kmer_len);
     upper = computeUpper(depth,erate,kmer_len);
+    double A = adaptiveSlope(erate, (float)xdrop, scores);
 #ifdef PRINT
     cout << "Reliable lower bound: " << lower << endl;
     cout << "Reliable upper bound: " << upper << "\n" << endl;
+    cout << "Constant of adaptive threshold: " << A << endl;
 #endif
     //
     // Reliable k-mer file parsing and k-mer dictionary creation
@@ -447,7 +450,7 @@ int main (int argc, char *argv[]) {
                 m2->pos[2] = m1->pos[0]; // row 
                 m2->pos[3] = m1->pos[1]; // col
                 return m2;
-            }, reads, getvaluetype, kmer_len, xdrop, algnmnt_thr, out_file, skip_algnmnt_krnl, scores, erate); 
+            }, reads, getvaluetype, kmer_len, xdrop, algnmnt_thr, out_file, skip_algnmnt_krnl, scores, A); 
 
     cout << "total running time: " << omp_get_wtime()-all << "s\n" << endl;
     return 0;

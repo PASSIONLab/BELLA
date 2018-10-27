@@ -173,7 +173,7 @@ void LocalSpGEMM(IT & start, IT & end, IT & ncols, const CSC<IT,NT> & A, const C
  **/
 template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation>
 void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, readVector_ & read, 
-    FT & getvaluetype, int kmer_len, int xdrop, int algnmnt_thr, char* filename, bool skip_algnmnt_krnl, vector<int> & scores, double erate)
+    FT & getvaluetype, int kmer_len, int xdrop, int algnmnt_thr, char* filename, bool skip_algnmnt_krnl, vector<int> & scores, double constA)
 {
     size_t upperlimit = 10000000; // in bytes
 #ifdef RAM // number of cols depends on available RAM
@@ -424,11 +424,9 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                     int minRight = min(globalInstance->at(i+colStart[b]).seq.length()-endPositionV(longestExtensionScore.seed), globalInstance->at(rowids[j]).seq.length()-endPositionH(longestExtensionScore.seed));
 
                     int ov = minLeft+minRight+(diffCol+diffRow)/2;
-                    float A = adaptiveSlope(erate, (float)xdrop, scores);
+                    double adaptive_thr = constA*(double)ov; 
 
-                    float adaptive_thr = A*(float)ov; 
-
-                    if((float)longestExtensionScore.score > adaptive_thr)
+                    if((double)longestExtensionScore.score > adaptive_thr)
                     {
                     myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.score << '\t' << longestExtensionScore.strand << '\t' << beginPositionV(longestExtensionScore.seed) << '\t' << 
                         endPositionV(longestExtensionScore.seed) << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << beginPositionH(longestExtensionScore.seed) << '\t' << endPositionH(longestExtensionScore.seed) <<
@@ -447,13 +445,10 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                     int minRight = min(globalInstance->at(i+colStart[b]).seq.length()-endPositionV(longestExtensionScore.seed), globalInstance->at(rowids[j]).seq.length()-endPositionH(longestExtensionScore.seed));
 
                     int ov = minLeft+minRight+(diffCol+diffRow)/2;
-                    float A = adaptiveSlope(erate, (float)xdrop, scores); 
+                    double adaptive_thr = constA*(double)ov; 
 
-                    float adaptive_thr = A*(float)ov; 
-
-                    if((float)longestExtensionScore.score > adaptive_thr)
+                    if((double)longestExtensionScore.score > adaptive_thr)
                     {
-
                     myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.score << '\t' << longestExtensionScore.strand << '\t' << beginPositionV(longestExtensionScore.seed) << '\t' << 
                         endPositionV(longestExtensionScore.seed) << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << beginPositionH(longestExtensionScore.seed) << '\t' << endPositionH(longestExtensionScore.seed) <<
                             '\t' << globalInstance->at(rowids[j]).seq.length() << endl;

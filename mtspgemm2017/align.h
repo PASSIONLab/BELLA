@@ -28,15 +28,16 @@
 using namespace seqan;
 using namespace std;
 // vector<int> scores = {mat,mis,gex,gop,ratio}
-float adaptiveSlope(float error, int algnmnt_drop, vector<int> & scores) // cast xdrop to float
+double adaptiveSlope(double error, int xdrop, vector<int> & scores) // cast xdrop to float
 {
-    float p_mat = 1-error;                      // match
-    float p_mis = error/(float)(scores[4]+1);     // mismatch
-    float p_gap = p_mis*(float)(scores[4]);
-    float p_gop = p_gap/(float)(algnmnt_drop-1);
-    float p_gex = p_gop*(float)(algnmnt_drop-1);
+    // mat*p_mat+mis*p_mis+gop*(p_gop)+gex*((x-2)*(p_gop))
+    double p_mat = pow(1-error,2);                      // match
+    double p_mis = (1-p_mat)/(double)(scores[4]+1);     // mismatch
+    double p_gap = p_mis*(double)(scores[4]);
+    double p_gop = p_gap/(double)(xdrop-1);
+    double p_gex = p_gop*(double)(xdrop-2);
 
-    return (float)scores[0]*p_mat + (float)scores[1]*p_mis + (float)scores[3]*p_gop + (float)scores[2]*p_gex;
+    return (double)scores[0]*p_mat + (double)scores[1]*p_mis + (double)scores[3]*p_gop + (double)scores[2]*p_gex;
 }
 
 /**
