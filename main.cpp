@@ -65,19 +65,20 @@ int main (int argc, char *argv[]) {
     option_t *optList, *thisOpt;
     // Get list of command line options and their arguments 
     optList = NULL;
-    optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:a:ze:p:w:m:y:g:s:r:");
+    optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:a:ze:p:w:m:y:g:s:r:v");
    
-    bool skip_algnmnt_krnl = false;     // Do not align (z)
-    char *kmer_file = NULL;             // Reliable k-mer file from Jellyfish
-    char *all_inputs_fofn = NULL;       // List of fastqs (i)
-    char *out_file = NULL;              // output filename (o)
-    int kmer_len = 17;                  // default k-mer length (k)
-    int algnmnt_thr = 50;               // default alignment score threshold (a)
-    int xdrop = 7;                      // default alignment x-drop factor (p)
-    double erate = 0.15;                // default error rate (e)
-    int depth = 0;                      // depth/coverage required (d)
-    int epsilon = 300;                  // epsilon parameter for alignment on edges TODO: explain (w)
-    vector<int> scores = {1,-1,-1,-7,9};  // mat (m), mis (s), gex (y), gop (g), probability 1:9 substitution:indel ratio (r)
+    bool skipAlignment = false;         // Do not align (z)
+    bool adapThr = false;                  // Apply adaptive alignment threshold (z)
+    char *kmer_file = NULL;                 // Reliable k-mer file from Jellyfish
+    char *all_inputs_fofn = NULL;           // List of fastqs (i)
+    char *out_file = NULL;                  // output filename (o)
+    int kmer_len = 17;                      // default k-mer length (k)
+    int algnmnt_thr = 50;                   // default alignment score threshold (a)
+    int xdrop = 7;                          // default alignment x-drop factor (p)
+    double erate = 0.15;                    // default error rate (e)
+    int depth = 0;                          // depth/coverage required (d)
+    int epsilon = 300;                      // epsilon parameter for alignment on edges TODO: explain (w)
+    vector<int> scores = {1,-1,-1,-7,9};    // mat (m), mis (s), gex (y), gop (g), probability 1:9 substitution:indel ratio (r)
 
 
     if(optList == NULL)
@@ -147,7 +148,8 @@ int main (int argc, char *argv[]) {
                 depth = atoi(thisOpt->argument);  
                 break;
             }
-            case 'z': skip_algnmnt_krnl = true; break; // TO DO: add skip alignment
+            case 'z': skipAlignment = true; break; // TO DO: add skip alignment
+            case 'v': adapThr = true; break; // TO DO: add skip alignment
             case 'k': {
                 kmer_len = atoi(thisOpt->argument);
                 break;
@@ -291,7 +293,7 @@ int main (int argc, char *argv[]) {
     cout << "Epsilon: " << epsilon << endl;
     cout << "Output filename: " << out_file << endl;
     cout << "K-mer length: " << kmer_len << endl;
-    if(skip_algnmnt_krnl)
+    if(skipAlignment)
         cout << "Compute alignment: false" << endl;
     else cout << "Compute alignment: true" << endl;
     cout << "X-drop: " << xdrop << endl;
@@ -310,7 +312,8 @@ int main (int argc, char *argv[]) {
     double A = adaptiveSlope(erate, (float)xdrop, scores);
 #ifdef PRINT
     cout << "Reliable lower bound: " << lower << endl;
-    cout << "Reliable upper bound: " << upper << "\n" << endl;
+    cout << "Reliable upper bound: " << upper << endl;
+if(adapThr)
     cout << "Constant of adaptive threshold: " << A << endl;
 #endif
     //
@@ -450,7 +453,7 @@ int main (int argc, char *argv[]) {
                 m2->pos[2] = m1->pos[0]; // row 
                 m2->pos[3] = m1->pos[1]; // col
                 return m2;
-            }, reads, getvaluetype, kmer_len, xdrop, algnmnt_thr, out_file, skip_algnmnt_krnl, scores, A); 
+            }, reads, getvaluetype, kmer_len, xdrop, algnmnt_thr, out_file, skipAlignment, scores, A, adapThr); 
 
     cout << "total running time: " << omp_get_wtime()-all << "s\n" << endl;
     return 0;

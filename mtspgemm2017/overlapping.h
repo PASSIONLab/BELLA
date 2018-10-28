@@ -173,7 +173,7 @@ void LocalSpGEMM(IT & start, IT & end, IT & ncols, const CSC<IT,NT> & A, const C
  **/
 template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation>
 void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, readVector_ & read, 
-    FT & getvaluetype, int kmer_len, int xdrop, int algnmnt_thr, char* filename, bool skip_algnmnt_krnl, vector<int> & scores, double constA)
+    FT & getvaluetype, int kmer_len, int xdrop, int defaultThr, char* filename, bool skipAlignment, vector<int> & scores, double constA, bool adapThr)
 {
     size_t upperlimit = 10000000; // in bytes
 #ifdef RAM // number of cols depends on available RAM
@@ -243,7 +243,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     uint64_t required_memory = (rsv)*sizeof(FT);
     //IT * rowids;
     //FT * values;
-    
+
     // here numThreads actually represents the number of blocks based on available RAM
     int numThreads = required_memory/free_memory; 
     int colsPerBlock = B.cols/numThreads;                 // define number of columns for each blocks
@@ -355,9 +355,6 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     //colptr[0] = 0;
 
     shared_ptr<readVector_> globalInstance = make_shared<readVector_>(read); 
-    
-    map<string,int> readset; // GGGG: reads for inner spgemm
-    vector<pair<int,int>> idxset; // GGGG: indexes the pairs we care about in the spgemm (could be useless)
     stringstream myBatch; // each thread saves its results in its provate stringstream variable
     seqAnResult longestExtensionScore;
     double ovlalign = omp_get_wtime(); // get overlap and alignment time
@@ -368,7 +365,6 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
 #ifdef TIMESTEP
         double ovl = omp_get_wtime();
 #endif
-        //spmatPtr_ getvaluetype2(make_shared<spmatType_>());
         vector<IT> * RowIdsofC = new vector<IT>[numCols[b]];    // row ids for each column of C (bunch of cols)
         vector<FT> * ValuesofC = new vector<FT>[numCols[b]];    // values for each column of C (bunch of cols)
 
@@ -408,55 +404,65 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         delete [] RowIdsofC;
         delete [] ValuesofC;
 
-        // Local Alignment before write on stringstream 
-        for(int i=0; i<numCols[b]; ++i) 
-        {
+        for(int i=0; i<numCols[b]; ++i)
+        { 
             for(int j=colptr[i]; j<colptr[i+1]; ++j) 
             {
-                if(values[j]->count == 1)
-                {
-                    longestExtensionScore = seqanAlOne(globalInstance->at(rowids[j]).seq, globalInstance->at(i+colStart[b]).seq, 
-                        globalInstance->at(rowids[j]).seq.length(), values[j]->pos[0], values[j]->pos[1], xdrop, kmer_len, scores);
-                    // "function" this
-                    int diffCol = endPositionV(longestExtensionScore.seed)-beginPositionV(longestExtensionScore.seed);
-                    int diffRow = endPositionH(longestExtensionScore.seed)-beginPositionH(longestExtensionScore.seed);
-                    int minLeft = min(beginPositionV(longestExtensionScore.seed), beginPositionH(longestExtensionScore.seed));
-                    int minRight = min(globalInstance->at(i+colStart[b]).seq.length()-endPositionV(longestExtensionScore.seed), globalInstance->at(rowids[j]).seq.length()-endPositionH(longestExtensionScore.seed));
-
-                    int ov = minLeft+minRight+(diffCol+diffRow)/2;
-                    double adaptive_thr = constA*(double)ov; 
-
-                    if((double)longestExtensionScore.score > adaptive_thr)
+                if(!skipAlignment)
+                {   // local alignment before write on stringstream 
+                    if(values[j]->count == 1)
                     {
-                    myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.score << '\t' << longestExtensionScore.strand << '\t' << beginPositionV(longestExtensionScore.seed) << '\t' << 
-                        endPositionV(longestExtensionScore.seed) << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << beginPositionH(longestExtensionScore.seed) << '\t' << endPositionH(longestExtensionScore.seed) <<
-                            '\t' << globalInstance->at(rowids[j]).seq.length() << endl;
-                    }
-                } // if(values[j]->count == 1)
-                else
-                {
-
-                    longestExtensionScore = seqanAlGen(globalInstance->at(rowids[j]).seq, globalInstance->at(i+colStart[b]).seq, 
-                        globalInstance->at(rowids[j]).seq.length(), values[j]->pos[0], values[j]->pos[1], values[j]->pos[2], values[j]->pos[3], xdrop, kmer_len, scores);
-                    // "function" this
-                    int diffCol = endPositionV(longestExtensionScore.seed)-beginPositionV(longestExtensionScore.seed);
-                    int diffRow = endPositionH(longestExtensionScore.seed)-beginPositionH(longestExtensionScore.seed);
-                    int minLeft = min(beginPositionV(longestExtensionScore.seed), beginPositionH(longestExtensionScore.seed));
-                    int minRight = min(globalInstance->at(i+colStart[b]).seq.length()-endPositionV(longestExtensionScore.seed), globalInstance->at(rowids[j]).seq.length()-endPositionH(longestExtensionScore.seed));
-
-                    int ov = minLeft+minRight+(diffCol+diffRow)/2;
-                    double adaptive_thr = constA*(double)ov; 
-
-                    if((double)longestExtensionScore.score > adaptive_thr)
+                        longestExtensionScore = seqanAlOne(globalInstance->at(rowids[j]).seq, globalInstance->at(i+colStart[b]).seq, 
+                            globalInstance->at(rowids[j]).seq.length(), values[j]->pos[0], values[j]->pos[1], xdrop, kmer_len, scores);
+                        if(adapThr)
+                        {    // "function" this
+                            int diffCol = endPositionV(longestExtensionScore.seed)-beginPositionV(longestExtensionScore.seed);
+                            int diffRow = endPositionH(longestExtensionScore.seed)-beginPositionH(longestExtensionScore.seed);
+                            int minLeft = min(beginPositionV(longestExtensionScore.seed), beginPositionH(longestExtensionScore.seed));
+                            int minRight = min(globalInstance->at(i+colStart[b]).seq.length()-endPositionV(longestExtensionScore.seed), globalInstance->at(rowids[j]).seq.length()-endPositionH(longestExtensionScore.seed));
+    
+                            int ov = minLeft+minRight+(diffCol+diffRow)/2;
+                            double newThr = constA*(double)ov; 
+    
+                            if((double)longestExtensionScore.score > newThr)
+                                myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.score << '\t' << longestExtensionScore.strand << '\t' << beginPositionV(longestExtensionScore.seed) << '\t' << 
+                                    endPositionV(longestExtensionScore.seed) << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << beginPositionH(longestExtensionScore.seed) << '\t' << endPositionH(longestExtensionScore.seed) <<
+                                        '\t' << globalInstance->at(rowids[j]).seq.length() << endl;
+                        }
+                        else if(longestExtensionScore.score > defaultThr)
+                            myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.score << '\t' << longestExtensionScore.strand << '\t' << beginPositionV(longestExtensionScore.seed) << '\t' << 
+                                endPositionV(longestExtensionScore.seed) << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << beginPositionH(longestExtensionScore.seed) << '\t' << endPositionH(longestExtensionScore.seed) <<
+                                    '\t' << globalInstance->at(rowids[j]).seq.length() << endl;
+                    } // if(values[j]->count == 1)
+                    else
                     {
-                    myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.score << '\t' << longestExtensionScore.strand << '\t' << beginPositionV(longestExtensionScore.seed) << '\t' << 
-                        endPositionV(longestExtensionScore.seed) << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << beginPositionH(longestExtensionScore.seed) << '\t' << endPositionH(longestExtensionScore.seed) <<
-                            '\t' << globalInstance->at(rowids[j]).seq.length() << endl;
+                        longestExtensionScore = seqanAlGen(globalInstance->at(rowids[j]).seq, globalInstance->at(i+colStart[b]).seq, 
+                            globalInstance->at(rowids[j]).seq.length(), values[j]->pos[0], values[j]->pos[1], values[j]->pos[2], values[j]->pos[3], xdrop, kmer_len, scores);
+                        if(adapThr)
+                        {    // "function" this
+                            int diffCol = endPositionV(longestExtensionScore.seed)-beginPositionV(longestExtensionScore.seed);
+                            int diffRow = endPositionH(longestExtensionScore.seed)-beginPositionH(longestExtensionScore.seed);
+                            int minLeft = min(beginPositionV(longestExtensionScore.seed), beginPositionH(longestExtensionScore.seed));
+                            int minRight = min(globalInstance->at(i+colStart[b]).seq.length()-endPositionV(longestExtensionScore.seed), globalInstance->at(rowids[j]).seq.length()-endPositionH(longestExtensionScore.seed));
+    
+                            int ov = minLeft+minRight+(diffCol+diffRow)/2;
+                            double newThr = constA*(double)ov; 
+    
+                            if((double)longestExtensionScore.score > newThr)
+                                myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.score << '\t' << longestExtensionScore.strand << '\t' << beginPositionV(longestExtensionScore.seed) << '\t' << 
+                                    endPositionV(longestExtensionScore.seed) << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << beginPositionH(longestExtensionScore.seed) << '\t' << endPositionH(longestExtensionScore.seed) <<
+                                        '\t' << globalInstance->at(rowids[j]).seq.length() << endl;
+                        }
+                        else if(longestExtensionScore.score > defaultThr)
+                            myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.score << '\t' << longestExtensionScore.strand << '\t' << beginPositionV(longestExtensionScore.seed) << '\t' << 
+                                endPositionV(longestExtensionScore.seed) << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << beginPositionH(longestExtensionScore.seed) << '\t' << endPositionH(longestExtensionScore.seed) <<
+                                    '\t' << globalInstance->at(rowids[j]).seq.length() << endl;
                     }
-
-                }
+                }// if skipAlignment == false do alignment, else save just some info on the pair to file
+                else myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << 
+                        globalInstance->at(i+colStart[b]).seq.length() << '\t' << globalInstance->at(rowids[j]).seq.length() << endl;
             }// for(int j=colptr[i]; j<colptr[i+1]; ++j)
-        } // for(int i=0; i<numCols[b]; ++i)
+        }// for(int i=0; i<numCols[b]; ++i)
 
 #ifdef TIMESTEP
 #pragma omp critical
