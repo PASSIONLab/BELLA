@@ -40,6 +40,22 @@ double adaptiveSlope(double error, int xdrop, vector<int> & scores) // cast xdro
     return (double)scores[0]*p_mat + (double)scores[1]*p_mis + (double)scores[3]*p_gop + (double)scores[2]*p_gex;
 }
 
+bool toEnd(int colStart, int colEnd, int colLen, int rowStart, int rowEnd, int rowLen, int relaxMargin)
+{
+    int minLeft = min(colStart, rowStart);
+    int minRight = min(colLen-colEnd, rowLen-rowEnd);
+
+     if(minLeft-relaxMargin <= 0)
+        minLeft = 0;
+     if(minRight-relaxMargin <= 0)
+        minRight = 0;
+
+     if((minLeft == 0 || minRight == 0))
+        return true;
+    else
+        return false;
+}
+
 /**
  * @brief seqanAlOne does the seed-and-extend alignment
  * when ony one shared k-mer exists

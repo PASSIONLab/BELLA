@@ -65,10 +65,11 @@ int main (int argc, char *argv[]) {
     option_t *optList, *thisOpt;
     // Get list of command line options and their arguments 
     optList = NULL;
-    optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:a:ze:p:w:m:y:g:s:r:v");
+    optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:a:ze:p:w:m:y:g:s:r:vx");
    
-    bool skipAlignment = false;         // Do not align (z)
-    bool adapThr = false;                  // Apply adaptive alignment threshold (z)
+    bool skipAlignment = false;             // Do not align (z)
+    bool adapThr = false;                   // Apply adaptive alignment threshold (v)
+    bool alignEnd = false;                  // Filter out alignments not achieving end of the read "relaxed" (x)
     char *kmer_file = NULL;                 // Reliable k-mer file from Jellyfish
     char *all_inputs_fofn = NULL;           // List of fastqs (i)
     char *out_file = NULL;                  // output filename (o)
@@ -77,7 +78,7 @@ int main (int argc, char *argv[]) {
     int xdrop = 7;                          // default alignment x-drop factor (p)
     double erate = 0.15;                    // default error rate (e)
     int depth = 0;                          // depth/coverage required (d)
-    int epsilon = 300;                      // epsilon parameter for alignment on edges TODO: explain (w)
+    int relaxMargin = 300;                  // epsilon parameter for alignment on edges TODO: explain (w)
     vector<int> scores = {1,-1,-1,-7,9};    // mat (m), mis (s), gex (y), gop (g), probability 1:9 substitution:indel ratio (r)
 
 
@@ -150,6 +151,7 @@ int main (int argc, char *argv[]) {
             }
             case 'z': skipAlignment = true; break; // TO DO: add skip alignment
             case 'v': adapThr = true; break; // TO DO: add skip alignment
+            case 'x': alignEnd = true; break; // TO DO: add skip alignment
             case 'k': {
                 kmer_len = atoi(thisOpt->argument);
                 break;
@@ -167,7 +169,7 @@ int main (int argc, char *argv[]) {
                 break;
             }
             case 'w': {
-                epsilon = atoi(thisOpt->argument);
+                relaxMargin = atoi(thisOpt->argument);
                 break;
             }
             case 'm': {
@@ -231,13 +233,14 @@ int main (int argc, char *argv[]) {
                 cout << " -p : alignment x-drop factor [3]" << endl;
                 cout << " -e : error rate [0.15]" << endl;
                 cout << " -z : skip the pairwise alignment [false]\n" << endl;
-                cout << " -w : epsilon parameter for alignment on edges [300]\n" << endl;
+                cout << " -w : relaxMargin parameter for alignment on edges [300]\n" << endl;
                 cout << " -m : match penalty scoring matrix [1]\n" << endl;
                 cout << " -s : mismatch penalty scoring matrix [-1]\n" << endl;
                 cout << " -y : gap extension penalty scoring matrix [-1]\n" << endl;
                 cout << " -g : gap opening penalty scoring matrix [-7]\n" << endl;
                 cout << " -r : substitution:indel probability ratio [1:9=sub:gap]\n" << endl;
                 cout << " -v : use adaptive alignment threshold [false]\n" << endl;
+                cout << " -x : filter out alignment on edge [false]\n" << endl;
 
                 FreeOptList(thisOpt); // Done with this list, free it
                 return 0;
@@ -291,7 +294,6 @@ int main (int argc, char *argv[]) {
 #endif
     cout << "K-mer counting: BELLA" << endl;
     //cout << "minimum number of shared k-mer: " << n << endl;
-    cout << "Epsilon: " << epsilon << endl;
     cout << "Output filename: " << out_file << endl;
     cout << "K-mer length: " << kmer_len << endl;
     if(skipAlignment)
@@ -316,6 +318,12 @@ int main (int argc, char *argv[]) {
     cout << "Reliable upper bound: " << upper << endl;
 if(adapThr)
     cout << "Constant of adaptive threshold: " << A << endl;
+if(alignEnd)
+{
+    cout << "Alignment on edge: true" << endl;
+    cout << "Relax margin: " << relaxMargin << endl;
+
+} else cout << "Alignment on edge: false" << endl;
 #endif
     //
     // Reliable k-mer file parsing and k-mer dictionary creation
@@ -454,7 +462,7 @@ if(adapThr)
                 m2->pos[2] = m1->pos[0]; // row 
                 m2->pos[3] = m1->pos[1]; // col
                 return m2;
-            }, reads, getvaluetype, kmer_len, xdrop, algnmnt_thr, out_file, skipAlignment, scores, A, adapThr); 
+            }, reads, getvaluetype, kmer_len, xdrop, algnmnt_thr, out_file, skipAlignment, scores, A, adapThr, alignEnd, relaxMargin); 
 
     cout << "total running time: " << omp_get_wtime()-all << "s\n" << endl;
     return 0;
