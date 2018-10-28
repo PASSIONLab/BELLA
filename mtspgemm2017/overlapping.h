@@ -40,9 +40,6 @@ typedef SeedSet<TSeed> TSeedSet;
 #define PERCORECACHE (1024 * 1024)
 //#define TIMESTEP
 //#define PRINT
-//#define RAM
-//#define OSX
-//#define LINUX
 //#define THREADLIMIT
 //#define MAX_NUM_THREAD 1
 
@@ -316,9 +313,6 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         numThreads = omp_get_num_threads();
     }
 
-    //IT * rowids;
-    //FT * values;
-
     int colsPerBlock = B.cols/numThreads;                // define number of columns for each blocks
 
     // multithread variable definition
@@ -350,9 +344,6 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         colsTrace = colsTrace+numCols[i];
     }
     #endif
-
-    //IT * colptr = new IT[B.cols+1]; 
-    //colptr[0] = 0;
 
     shared_ptr<readVector_> globalInstance = make_shared<readVector_>(read); 
     stringstream myBatch; // each thread saves its results in its provate stringstream variable
@@ -396,10 +387,6 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
             copy(ValuesofC[k].begin(), ValuesofC[k].end(), values + colptr[i]);
             ++k;
         }
-
-        intmax_t tot = 0;
-        intmax_t tnum = 0;
-        bool result;
 
         delete [] RowIdsofC;
         delete [] ValuesofC;
