@@ -230,13 +230,14 @@ int main (int argc, char *argv[]) {
                 cout << " -a : alignment score threshold [50]" << endl;
                 cout << " -p : alignment x-drop factor [3]" << endl;
                 cout << " -e : error rate [0.15]" << endl;
-                cout << " -z : skip the alignment [false]\n" << endl;
+                cout << " -z : skip the pairwise alignment [false]\n" << endl;
                 cout << " -w : epsilon parameter for alignment on edges [300]\n" << endl;
                 cout << " -m : match penalty scoring matrix [1]\n" << endl;
                 cout << " -s : mismatch penalty scoring matrix [-1]\n" << endl;
                 cout << " -y : gap extension penalty scoring matrix [-1]\n" << endl;
                 cout << " -g : gap opening penalty scoring matrix [-7]\n" << endl;
                 cout << " -r : substitution:indel probability ratio [1:9=sub:gap]\n" << endl;
+                cout << " -v : use adaptive alignment threshold [false]\n" << endl;
 
                 FreeOptList(thisOpt); // Done with this list, free it
                 return 0;
