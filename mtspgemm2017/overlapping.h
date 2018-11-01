@@ -434,6 +434,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                         }
                         else if(longestExtensionScore.score > defaultThr)
                         {
+           // cout << defaultThr << endl;
                             if(alignEnd)
                             {
                                 bool aligntoEnd = toEnd(beginPositionV(longestExtensionScore.seed), endPositionV(longestExtensionScore.seed), globalInstance->at(i+colStart[b]).seq.length(), 
@@ -466,34 +467,36 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     
                             if((double)longestExtensionScore.score > newThr)
                             {
-                                if(alignEnd)
-                                {
-                                    bool aligntoEnd = toEnd(beginPositionV(longestExtensionScore.seed), endPositionV(longestExtensionScore.seed), globalInstance->at(i+colStart[b]).seq.length(), 
-                                        beginPositionH(longestExtensionScore.seed), endPositionH(longestExtensionScore.seed), globalInstance->at(rowids[j]).seq.length(),relaxMargin);
-                                
-                                    if(aligntoEnd)
-                                        myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.score << '\t' << longestExtensionScore.strand << '\t' << beginPositionV(longestExtensionScore.seed) << '\t' << 
-                                            endPositionV(longestExtensionScore.seed) << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << beginPositionH(longestExtensionScore.seed) << '\t' << endPositionH(longestExtensionScore.seed) <<
-                                                '\t' << globalInstance->at(rowids[j]).seq.length() << endl;
-                                }
-                                else myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.score << '\t' << longestExtensionScore.strand << '\t' << beginPositionV(longestExtensionScore.seed) << '\t' << 
+                                //if(alignEnd)
+                                //{
+                                //    bool aligntoEnd = toEnd(beginPositionV(longestExtensionScore.seed), endPositionV(longestExtensionScore.seed), globalInstance->at(i+colStart[b]).seq.length(), 
+                                //        beginPositionH(longestExtensionScore.seed), endPositionH(longestExtensionScore.seed), globalInstance->at(rowids[j]).seq.length(),relaxMargin);
+                                //
+                                //    if(aligntoEnd)
+                                //        myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.score << '\t' << longestExtensionScore.strand << '\t' << beginPositionV(longestExtensionScore.seed) << '\t' << 
+                                //            endPositionV(longestExtensionScore.seed) << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << beginPositionH(longestExtensionScore.seed) << '\t' << endPositionH(longestExtensionScore.seed) <<
+                                //                '\t' << globalInstance->at(rowids[j]).seq.length() << endl;
+                                //}
+                                //else 
+                                myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.score << '\t' << longestExtensionScore.strand << '\t' << beginPositionV(longestExtensionScore.seed) << '\t' << 
                                         endPositionV(longestExtensionScore.seed) << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << beginPositionH(longestExtensionScore.seed) << '\t' << endPositionH(longestExtensionScore.seed) <<
                                             '\t' << globalInstance->at(rowids[j]).seq.length() << endl;
                             }
                         }
                         else if(longestExtensionScore.score > defaultThr)
                         {
-                            if(alignEnd)
-                            {
-                                bool aligntoEnd = toEnd(beginPositionV(longestExtensionScore.seed), endPositionV(longestExtensionScore.seed), globalInstance->at(i+colStart[b]).seq.length(), 
-                                    beginPositionH(longestExtensionScore.seed), endPositionH(longestExtensionScore.seed), globalInstance->at(rowids[j]).seq.length(),relaxMargin);
-
-                                if(aligntoEnd)
-                                    myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.score << '\t' << longestExtensionScore.strand << '\t' << beginPositionV(longestExtensionScore.seed) << '\t' << 
-                                        endPositionV(longestExtensionScore.seed) << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << beginPositionH(longestExtensionScore.seed) << '\t' << endPositionH(longestExtensionScore.seed) <<
-                                            '\t' << globalInstance->at(rowids[j]).seq.length() << endl;
-                            }
-                            else myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.score << '\t' << longestExtensionScore.strand << '\t' << beginPositionV(longestExtensionScore.seed) << '\t' << 
+                            //if(alignEnd)
+                            //{
+                            //    bool aligntoEnd = toEnd(beginPositionV(longestExtensionScore.seed), endPositionV(longestExtensionScore.seed), globalInstance->at(i+colStart[b]).seq.length(), 
+                            //        beginPositionH(longestExtensionScore.seed), endPositionH(longestExtensionScore.seed), globalInstance->at(rowids[j]).seq.length(),relaxMargin);
+//
+                            //    if(aligntoEnd)
+                            //        myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.score << '\t' << longestExtensionScore.strand << '\t' << beginPositionV(longestExtensionScore.seed) << '\t' << 
+                            //            endPositionV(longestExtensionScore.seed) << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << beginPositionH(longestExtensionScore.seed) << '\t' << endPositionH(longestExtensionScore.seed) <<
+                            //                '\t' << globalInstance->at(rowids[j]).seq.length() << endl;
+                            //}
+                            //else 
+                            myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.score << '\t' << longestExtensionScore.strand << '\t' << beginPositionV(longestExtensionScore.seed) << '\t' << 
                                 endPositionV(longestExtensionScore.seed) << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << beginPositionH(longestExtensionScore.seed) << '\t' << endPositionH(longestExtensionScore.seed) <<
                                     '\t' << globalInstance->at(rowids[j]).seq.length() << endl;
                         }
