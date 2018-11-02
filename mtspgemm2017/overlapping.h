@@ -173,7 +173,7 @@ void LocalSpGEMM(IT & start, IT & end, IT & ncols, const CSC<IT,NT> & A, const C
  **/
 template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation>
 void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, readVector_ & read, 
-    FT & getvaluetype, int kmer_len, int xdrop, int defaultThr, char* filename, bool skipAlignment, vector<int> & scores, double constA, bool adapThr, bool alignEnd, int relaxMargin)
+    FT & getvaluetype, int kmer_len, int xdrop, int defaultThr, char* filename, bool skipAlignment, double ratioPhi, bool adapThr, bool alignEnd, int relaxMargin, double deltaChernoff)
 {
     size_t upperlimit = 10000000; // in bytes
 #ifdef RAM // number of cols depends on available RAM
@@ -403,7 +403,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                     if(values[j]->count == 1)
                     {
                         longestExtensionScore = seqanAlOne(globalInstance->at(rowids[j]).seq, globalInstance->at(i+colStart[b]).seq, 
-                            globalInstance->at(rowids[j]).seq.length(), values[j]->pos[0], values[j]->pos[1], xdrop, kmer_len, scores);
+                            globalInstance->at(rowids[j]).seq.length(), values[j]->pos[0], values[j]->pos[1], xdrop, kmer_len);
 
                         if(adapThr)
                         {    // "function" this
@@ -413,7 +413,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                             int minRight = min(globalInstance->at(i+colStart[b]).seq.length()-endPositionV(longestExtensionScore.seed), globalInstance->at(rowids[j]).seq.length()-endPositionH(longestExtensionScore.seed));
     
                             int ov = minLeft+minRight+(diffCol+diffRow)/2;
-                            double newThr = constA*(double)ov; 
+                            double newThr = (1-deltaChernoff)*(ratioPhi*(double)ov); 
     
                             if((double)longestExtensionScore.score > newThr)
                             {
@@ -453,7 +453,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                     else
                     {
                         longestExtensionScore = seqanAlGen(globalInstance->at(rowids[j]).seq, globalInstance->at(i+colStart[b]).seq, 
-                            globalInstance->at(rowids[j]).seq.length(), values[j]->pos[0], values[j]->pos[1], values[j]->pos[2], values[j]->pos[3], xdrop, kmer_len, scores);
+                            globalInstance->at(rowids[j]).seq.length(), values[j]->pos[0], values[j]->pos[1], values[j]->pos[2], values[j]->pos[3], xdrop, kmer_len);
 
                         if(adapThr)
                         {    // "function" this
@@ -463,7 +463,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                             int minRight = min(globalInstance->at(i+colStart[b]).seq.length()-endPositionV(longestExtensionScore.seed), globalInstance->at(rowids[j]).seq.length()-endPositionH(longestExtensionScore.seed));
     
                             int ov = minLeft+minRight+(diffCol+diffRow)/2;
-                            double newThr = constA*(double)ov; 
+                            double newThr = (1-deltaChernoff)*(ratioPhi*(double)ov); 
     
                             if((double)longestExtensionScore.score > newThr)
                             {

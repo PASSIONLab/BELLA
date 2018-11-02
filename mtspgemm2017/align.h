@@ -27,17 +27,15 @@
 
 using namespace seqan;
 using namespace std;
-// vector<int> scores = {mat,mis,gex,gop,ratio}
-double adaptiveSlope(double error, int xdrop, vector<int> & scores) // cast xdrop to float
-{
-    // mat*p_mat+mis*p_mis+gop*(p_gop)+gex*((x-2)*(p_gop))
-    double p_mat = pow(1-error,2);                      // match
-    double p_mis = (1-p_mat)/(double)(scores[4]+1);     // mismatch
-    double p_gap = p_mis*(double)(scores[4]);
-    double p_gop = p_gap/(double)(xdrop-1);
-    double p_gex = p_gop*(double)(xdrop-2);
 
-    return (double)scores[0]*p_mat + (double)scores[1]*p_mis + (double)scores[3]*p_gop + (double)scores[2]*p_gex;
+double adaptiveSlope(double error, int xdrop) // cast xdrop to float
+{
+    double p_mat = pow(1-error,2);  // match
+    double p_mis = 1-p_mat;         // mismatch/gap
+    double alpha = 1;               // match penalty
+    double beta = 1;                // mismatch/gap penalty
+
+    return alpha*p_mat - beta*p_mis;
 }
 
 bool toEnd(int colStart, int colEnd, int colLen, int rowStart, int rowEnd, int rowLen, int relaxMargin)
@@ -67,9 +65,9 @@ bool toEnd(int colStart, int colEnd, int colLen, int rowStart, int rowEnd, int r
  * @param dropFactor
  * @return alignment score and extended seed
  */
-seqAnResult seqanAlOne(std::string & row, std::string & col, int rlen, int i, int j, int dropFactor, int kmer_len, vector<int> & scores) {
+seqAnResult seqanAlOne(std::string & row, std::string & col, int rlen, int i, int j, int dropFactor, int kmer_len) {
 
-    Score<int, Simple> scoringScheme(scores[0], scores[1], scores[2], scores[3]);
+    Score<int, Simple> scoringScheme(1,-1,-1);
 
     Dna5String seqH; 
     Dna5String seqV; 
@@ -126,9 +124,9 @@ seqAnResult seqanAlOne(std::string & row, std::string & col, int rlen, int i, in
  * @param dropFactor
  * @return alignment score and extended seed
  */
-seqAnResult seqanAlGen(std::string & row, std::string & col, int rlen, int i, int j, int l, int m, int dropFactor, int kmer_len, vector<int> & scores) {
+seqAnResult seqanAlGen(std::string & row, std::string & col, int rlen, int i, int j, int l, int m, int dropFactor, int kmer_len) {
 
-    Score<int, Simple> scoringScheme(scores[0], scores[1], scores[2], scores[3]);
+    Score<int, Simple> scoringScheme(1,-1,-1);
 
     Dna5String seqH; 
     Dna5String seqV; 
@@ -203,9 +201,9 @@ seqAnResult seqanAlGen(std::string & row, std::string & col, int rlen, int i, in
  * @return alignment score and extended seed
  * DO NOT USE IT UNTIL THE SEED POSITION DEFINITION WILL BE CORRECTED AND UPDATED
  */
-seqAnResult seqanAlOneAllKmer(std::string & row, std::string & col, int rlen, std::vector<std::pair<int,int>> vpos, int dropFactor, int kmer_len, int mat, int mis, int gop, int gex) {
+seqAnResult seqanAlOneAllKmer(std::string & row, std::string & col, int rlen, std::vector<std::pair<int,int>> vpos, int dropFactor, int kmer_len) {
 
-    Score<int, Simple> scoringScheme(mat, mis, gex, gop);
+    Score<int, Simple> scoringScheme(1,-1,-1);
 
     Dna5String seqH; 
     Dna5String seqV; 
@@ -267,9 +265,9 @@ seqAnResult seqanAlOneAllKmer(std::string & row, std::string & col, int rlen, st
  * @return alignment score and extended seed
  * DO NOT USE IT UNTIL THE SEED POSITION DEFINITION WILL BE CORRECTED AND UPDATED
  */
-seqAnResult seqanAlGenAllKmer(std::string & row, std::string & col, int rlen, std::vector<std::pair<int,int>> vpos, int dropFactor, int kmer_len, int mat, int mis, int gop, int gex) {
+seqAnResult seqanAlGenAllKmer(std::string & row, std::string & col, int rlen, std::vector<std::pair<int,int>> vpos, int dropFactor, int kmer_len) {
 
-    Score<int, Simple> scoringScheme(mat, mis, gex, gop);
+    Score<int, Simple> scoringScheme(1,-1,-1);
 
     Dna5String seqH; 
     Dna5String seqV; 

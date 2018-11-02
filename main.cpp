@@ -49,7 +49,6 @@
 #define ITERS 10
 #define PRINT
 //#define JELLYFISH
-//#define ADAPTIVE TODO: ifdef adaptive version otherwise default
 
 using namespace std;
 
@@ -65,7 +64,7 @@ int main (int argc, char *argv[]) {
     option_t *optList, *thisOpt;
     // Get list of command line options and their arguments 
     optList = NULL;
-    optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:a:ze:p:w:m:y:g:s:r:vx");
+    optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:a:ze:p:w:vxc:");
    
     bool skipAlignment = false;             // Do not align (z)
     bool adapThr = false;                   // Apply adaptive alignment threshold (v)
@@ -79,8 +78,7 @@ int main (int argc, char *argv[]) {
     double erate = 0.15;                    // default error rate (e)
     int depth = 0;                          // depth/coverage required (d)
     int relaxMargin = 300;                  // epsilon parameter for alignment on edges TODO: explain (w)
-    vector<int> scores = {1,-1,-1,-7,9};    // mat (m), mis (s), gex (y), gop (g), probability 1:9 substitution:indel ratio (r)
-
+    double deltaChernoff = 0.1;             // delta computed via Chernoff bound (c)
 
     if(optList == NULL)
     {
@@ -172,54 +170,14 @@ int main (int argc, char *argv[]) {
                 relaxMargin = atoi(thisOpt->argument);
                 break;
             }
-            case 'm': {
-                if(thisOpt->argument < 0)
+            case 'c': {
+                if(stod(thisOpt->argument) > 1.0 || stod(thisOpt->argument) < 0.0)
                 {
-                    cout << "BELLA execution terminated: -m requires a positive integer" << endl;
+                    cout << "BELLA execution terminated: -c requires a value in [0,1]" << endl;
                     cout << "Run with -h to print out the command line options\n" << endl;
                     return 0;
                 }
-                scores[0] = atoi(thisOpt->argument);
-                break;
-            }
-            case 's': {
-                if(thisOpt->argument > 0)
-                {
-                    cout << "BELLA execution terminated: -s requires a negative integer" << endl;
-                    cout << "Run with -h to print out the command line options\n" << endl;
-                    return 0;
-                }
-                scores[1] = atoi(thisOpt->argument);
-                break;
-            }
-            case 'y': {
-                if(thisOpt->argument > 0)
-                {
-                    cout << "BELLA execution terminated: -y requires a negative integer" << endl;
-                    cout << "Run with -h to print out the command line options\n" << endl;
-                    return 0;
-                }
-                scores[2] = atoi(thisOpt->argument);
-                break;
-            }
-            case 'g': {
-                if(thisOpt->argument > 0)
-                {
-                    cout << "BELLA execution terminated: -g requires a negative integer" << endl;
-                    cout << "Run with -h to print out the command line options\n" << endl;
-                    return 0;
-                }
-                scores[4] = atoi(thisOpt->argument);
-                break;
-            }
-            case 'r': {
-                if(thisOpt->argument < 0)
-                {
-                    cout << "BELLA execution terminated: -r requires a positive integer" << endl;
-                    cout << "Run with -h to print out the command line options\n" << endl;
-                    return 0;
-                }
-                scores[5] = atoi(thisOpt->argument);
+                deltaChernoff = stod(thisOpt->argument);
                 break;
             }
             case 'h': {
@@ -232,14 +190,11 @@ int main (int argc, char *argv[]) {
                 cout << " -a : alignment score threshold [50]" << endl;
                 cout << " -p : alignment x-drop factor [3]" << endl;
                 cout << " -e : error rate [0.15]" << endl;
-                cout << " -z : skip the pairwise alignment [false]\n" << endl;
-                cout << " -w : relaxMargin parameter for alignment on edges [300]\n" << endl;
-                cout << " -m : match penalty scoring matrix [1]\n" << endl;
-                cout << " -s : mismatch penalty scoring matrix [-1]\n" << endl;
-                cout << " -y : gap extension penalty scoring matrix [-1]\n" << endl;
-                cout << " -g : gap opening penalty scoring matrix [-7]\n" << endl;
-                cout << " -r : substitution:indel probability ratio [1:9=sub:gap]\n" << endl;
-                cout << " -v : use adaptive alignment threshold [false]\n" << endl;
+                cout << " -z : skip the pairwise alignment [false]" << endl;
+                cout << " -w : relaxMargin parameter for alignment on edges [300]" << endl;
+                cout << " -c : alignment score deviation from the mean [0.1]" << endl;
+                cout << " -r : substitution:indel probability ratio [1:9=sub:gap]" << endl;
+                cout << " -v : use adaptive alignment threshold [false]" << endl;
                 cout << " -x : filter out alignment on edge [false]\n" << endl;
 
                 FreeOptList(thisOpt); // Done with this list, free it
@@ -297,14 +252,11 @@ int main (int argc, char *argv[]) {
     cout << "Output filename: " << out_file << endl;
     cout << "K-mer length: " << kmer_len << endl;
     if(skipAlignment)
-        cout << "Compute alignment: false" << endl;
-    else cout << "Compute alignment: true" << endl;
+        cout << "Compute alignment: False" << endl;
+    else cout << "Compute alignment: True" << endl;
     cout << "X-drop: " << xdrop << endl;
-    cout << "Default alignment score threshold: " << algnmnt_thr << endl;
     cout << "Depth: " << depth << "X" << endl;
     cout << "Error rate: " << erate << endl;
-    cout << "Scoring matrix: (" << scores[0] << "," << scores[1] << "," << scores[2] << "," << scores[3] << ")" << endl;
-    cout << "Ratio substitution:indel = 1:" << scores[4] << endl;
 #endif
     //
     // Reliable bounds computation
@@ -312,18 +264,21 @@ int main (int argc, char *argv[]) {
     double all = omp_get_wtime();
     lower = computeLower(depth,erate,kmer_len);
     upper = computeUpper(depth,erate,kmer_len);
-    double A = adaptiveSlope(erate, (float)xdrop, scores);
+    double ratioPhi = adaptiveSlope(erate, (float)xdrop);
 #ifdef PRINT
     cout << "Reliable lower bound: " << lower << endl;
     cout << "Reliable upper bound: " << upper << endl;
 if(adapThr)
-    cout << "Constant of adaptive threshold: " << A << endl;
+{
+    cout << "Deviation from expected alignment score: " << deltaChernoff << endl;
+    cout << "Constant of adaptive threshold: " << ratioPhi*(1-deltaChernoff)<< endl;
+} else cout << "Default alignment score threshold: " << algnmnt_thr << endl;
 if(alignEnd)
 {
-    cout << "Alignment on edge: true" << endl;
+    cout << "Alignment on edge: True" << endl;
     cout << "Relax margin: " << relaxMargin << endl;
 
-} else cout << "Alignment on edge: false" << endl;
+} else cout << "Alignment on edge: False" << endl;
 #endif
     //
     // Reliable k-mer file parsing and k-mer dictionary creation
@@ -356,7 +311,7 @@ if(alignEnd)
         while(fillstatus) { 
             fillstatus = pfq->fill_block(nametags, seqs, quals, upperlimit);
             int nreads = seqs.size();
-       
+
                 #pragma omp parallel for
                 for(int i=0; i<nreads; i++) 
                 {
@@ -462,7 +417,7 @@ if(alignEnd)
                 m2->pos[2] = m1->pos[0]; // row 
                 m2->pos[3] = m1->pos[1]; // col
                 return m2;
-            }, reads, getvaluetype, kmer_len, xdrop, algnmnt_thr, out_file, skipAlignment, scores, A, adapThr, alignEnd, relaxMargin); 
+            }, reads, getvaluetype, kmer_len, xdrop, algnmnt_thr, out_file, skipAlignment, ratioPhi, adapThr, alignEnd, relaxMargin, deltaChernoff); 
 
     cout << "total running time: " << omp_get_wtime()-all << "s\n" << endl;
     return 0;
