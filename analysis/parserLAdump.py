@@ -36,7 +36,7 @@ with open(argv[1],'r') as infile:
       line=[] # reset to process next 3 lines
 
 # write the set of ids, 1 per line, to a file to use with DBshow
-idsfilename=argv[1]+".indices.txt"
+idsfilename=argv[1]+".ids"
 with open(idsfilename,'w') as ofile:
   for id in idset:
     ofile.write(id+'\n')

@@ -25,10 +25,13 @@ if [ -z $1 ]; then
 else
   source $1
 fi
+if [ -z $LAS ]; then
+  LAS=$DBNAME".las"
+fi
 DUMP=$LAS".dump"
-IDS=$LAS".ids"
-NAMES=$LAS".names"
-BELLA=$LAS".bella"
+IDS=$DUMP".ids"
+NAMES=$DUMP".names"
+BELLA=$DUMP".bella"
 
 # WARNING LAmerge only if blocks haven't been merged yet
 # WARNING LAmerge might fail merging all the blocks is beyond LAmerge's memory limits

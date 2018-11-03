@@ -4,12 +4,12 @@ module load python/3.6-anaconda-4.4 # Cori
 module list #documentation
 set -x
 
-DALIGN=$CSCRATCH/DALIGNER/bin
-DAZZDB=$CSCRATCH/DAZZ_DB/bin
+# path should contain path to DALIGNER and DAZZ_DB binaries
+SOFT=/global/common/software/m2865/bella-proj/bin
+export PATH=$SOFT:$PATH
 
-PYPARSE=$CSCRATCH/dibella-scripts/parserLAdump.py
-PYZIP=$CSCRATCH/dibella-scripts/zip_tag.py
-
-export PATH=$DALIGN:$DAZZDB:$PATH
+PYPARSE=$HOME/bella/analysis/parserLAdump.py
+PYZIP=$HOME/bella/analysis/zip_tag.py
 
 # don't forget to specify DBNAME for the run!
+
