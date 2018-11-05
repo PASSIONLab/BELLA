@@ -37,7 +37,7 @@ BELLA=$DUMP".bella"
 # WARNING LAmerge might fail merging all the blocks is beyond LAmerge's memory limits
 # Example merge: LAmerge $LAS *.las && \
 LAdump -cl $DBNAME $LAS > $DUMP  # was using -clo, but -o might be overly restrictive... 
-python $PYPARSE $DUMP \
+srun -n 1 -c 64 python3 $PYPARSE $DUMP \
 && DBshow -n $DBNAME $IDS > $NAMES \
-&& python $PYZIP $NAMES $IDS $BELLA \
+&& python3 $PYZIP $NAMES $IDS $BELLA \
 && mv $BELLA $BELLA".txt" # final output if all commands succeed
