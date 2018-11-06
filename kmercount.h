@@ -225,61 +225,31 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
     //cout << "Table size is: " << bm->bits << " bits, " << ((double)bm->bits)/8/1024/1024 << " MB" << endl;
     //cout << "Optimal number of hash functions is : " << bm->hashes << endl;
 
-    #pragma omp parallel
-    {       
+#pragma omp parallel
+{       
     for(auto v:allkmers[MYTHREAD])
     {
-        // ABAB: race condition here
-        // thread-1 can start checking and find a zero bit in kth hash for item t, 
-        // but then thread-2 takes over and finds a zero bit in (k+i)th hash for the same item t
-        // both threads will think bloom filter never saw t yet, and will not insert into the 
-        // hash table; potentially causing the item (k-mer) t to be lost. 
         bool inBloom = (bool) bloom_check_add(bm, v.getBytes(), v.getNumBytes(),1);
-
         if(inBloom) countsdenovo.insert(v, 0);
     }
-    }
-
+}
 
     // in this pass, only use entries that already are in the hash table
     auto updatecount = [](int &num) { ++num; };
-    #pragma omp parallel
-    {       
+#pragma omp parallel
+{       
     for(auto v:allkmers[MYTHREAD])
     {
         // does nothing if the entry doesn't exist in the table
         countsdenovo.update_fn(v,updatecount);
     }
-    }
+}
 
     cout << "\ndenovo counting took: " << omp_get_wtime()-denovocount << "s" << endl;
-
-
     //
     // Reliable k-mer filter on countsdenovo
     //
     int kmer_id_denovo = 0;
-
-//#ifdef HIST
-//    std::ofstream printCount("kmerHistogram.txt", std::ofstream::out);
-//    std::map<int, int> hist;
-//    std::map<int, int>::iterator iter;
-//
-//    auto lth = countsdenovo.lock_table(); // our counting
-//    for (const auto &it : lth) 
-//    {
-//        iter = hist.find(it.second);
-//        if(iter == hist.end())
-//            hist.insert(make_pair(it.second, 1));
-//        else hist[it.second]++;
-//    }
-//    lth.unlock(); // unlock the table
-//
-//    for(auto it = hist.begin(); it != hist.end(); ++it)
-//        printCount << it->first << '\t' << it->second << endl;
-//
-//    printCount.close();
-//#endif    
 
     auto lt = countsdenovo.lock_table(); // our counting
     for (const auto &it : lt) 

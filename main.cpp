@@ -77,7 +77,7 @@ int main (int argc, char *argv[]) {
     int xdrop = 3;                          // default alignment x-drop factor (p)
     double erate = 0.15;                    // default error rate (e)
     int depth = 0;                          // depth/coverage required (d)
-    int relaxMargin = 300;                  // epsilon parameter for alignment on edges TODO: explain (w)
+    int relaxMargin = 300;                  // epsilon parameter for alignment on edges (w)
     double deltaChernoff = 0.1;             // delta computed via Chernoff bound (c)
 
     if(optList == NULL)
@@ -186,7 +186,7 @@ int main (int argc, char *argv[]) {
             }
             case 'h': {
                 cout << "Usage:\n" << endl;
-                cout << " -f : k-mer list from Jellyfish (required if Jellyfish k-mer counting is used)" << endl; // the reliable k-mers are selected by bella
+                cout << " -f : k-mer list from Jellyfish (required if Jellyfish k-mer counting is used)" << endl; // Reliable k-mers are selected by BELLA
                 cout << " -i : list of fastq(s) (required)" << endl;
                 cout << " -o : output filename (required)" << endl;
                 cout << " -d : depth/coverage (required)" << endl; // TO DO: add depth estimation
@@ -229,8 +229,8 @@ int main (int argc, char *argv[]) {
     //
     vector<filedata> allfiles = GetFiles(all_inputs_fofn);
     FILE *fastafile;
-    int lower; // reliable range lower bound (fixed)
-    int upper;     // reliable range upper bound
+    int lower;          // reliable range lower bound
+    int upper;          // reliable range upper bound
     char *buffer;
     Kmer::set_k(kmer_len);
     size_t upperlimit = 10000000; // in bytes
@@ -251,7 +251,6 @@ int main (int argc, char *argv[]) {
     cout << "Input k-mer file: " << kmer_file << endl;
 #endif
     cout << "K-mer counting: BELLA" << endl;
-    //cout << "minimum number of shared k-mer: " << n << endl;
     cout << "Output filename: " << out_file << endl;
     cout << "K-mer length: " << kmer_len << endl;
     if(skipAlignment)
@@ -385,8 +384,7 @@ if(alignEnd)
     int nkmer = countsreliable.size();
     CSC<int, int> spmat(occurrences, read_id, nkmer, 
                             [] (int & p1, int & p2) 
-                            {   // assume no errors in MergeDuplicates
-                                // keep just the first position of that k-mer in that read
+                            {
                                 return p1;
                             });
     std::vector<tuple<int,int,int>>().swap(occurrences);    // remove memory of occurences
