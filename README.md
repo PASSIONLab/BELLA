@@ -126,4 +126,4 @@ NOTICE. This Software was developed under funding from the U.S. Department of En
 
 ## Acknowledgments
 
-Funding provided in part by DOE ASCR through the Exascale Computing Project, and computing provided by NERSC. Thanks to Rob Egan and Steven Hofmeyr for discussion.
+Funding provided in part by DOE ASCR through the Exascale Computing Project, and computing provided by NERSC. Thanks to Rob Egan and Steven Hofmeyr for valuable discussions.
