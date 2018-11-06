@@ -72,10 +72,10 @@ BELLA outputs alignments in a format similar to [BLASR's M4 format](https://gith
 
 The repository contains also the code to get the recall/precision of BELLA and other long-read aligners (Minimap, Minimap2, DALIGNER, MHAP and BLASR).
 
-**Ground truth generation for real data set**: SAMparser.py allows to transform the BWA-MEM .sam output file in a simpler format usable as input to the evaluation code when using real data set. 
+**Ground truth generation for real data set**: SAMparser.py allows to transform the BWA-MEM/Minimap2 .sam output file in a simpler format usable as input to the evaluation code when using real data set. 
 
 ```
-python3 SAMparser.py <bwamem-output>
+python3 SAMparser.py <bwamem/minimap2-output>
 ```
 
 **Ground truth generation for synthetic data set**: mafconvert.py allows to transform the .MAF file from PBSIM (Pacbio read simulator) in a simpler format usable as input to the evaluation code when using synthetic data set.
@@ -101,15 +101,17 @@ To show the usage:
 ```
 **NOTE**: add -z flag if simulated data is used.
 
-To know about the evaluation procedure design please refer to:
+To know about the evaluation procedure design and the ground truth generation please refer to:
 
 > Preprint available on biorxiv.
 
 ## Authors
 
-* [**Giulia Guidi**](https://linkedin.com/in/giulia-guidi/), [PASSION Lab](https://passion.lbl.gov/)
-* [**Aydın Buluç**](https://people.eecs.berkeley.edu/~aydin/), [PASSION Lab](https://passion.lbl.gov/)
+* [**Giulia Guidi**](https://linkedin.com/in/giulia-guidi/)
+* [**Aydın Buluç**](https://people.eecs.berkeley.edu/~aydin/)
 * [**Marquita Ellis**](http://crd.lbl.gov/departments/computer-science/CLaSS/class-staff/marquita-ellis/)
+
+Aydın Buluç and Giulia Guidi are part of the [PASSION Lab](https://passion.lbl.gov/), a research team at the [Computational Research Division](http://crd.lbl.gov) of Lawrence Berkeley National Laboratory and at the [Department of Electrical Engineering and Computer Sciences](https://eecs.berkeley.edu/) of UC Berkeley. 
 
 ## Contributors
 
