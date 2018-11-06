@@ -20,7 +20,7 @@ pip install simplesam
 Clone the repository and enter it:
 
 ```
-cd longreads
+cd bella
 ```
 Build using makefile:
 
