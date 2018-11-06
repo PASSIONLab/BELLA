@@ -111,8 +111,6 @@ To know about the evaluation procedure design and the ground truth generation pl
 * [**Aydın Buluç**](https://people.eecs.berkeley.edu/~aydin/)
 * [**Marquita Ellis**](http://crd.lbl.gov/departments/computer-science/CLaSS/class-staff/marquita-ellis/)
 
-Aydın Buluç and Giulia Guidi are part of the [PASSION Lab](https://passion.lbl.gov/), a research team at the [Computational Research Division](http://crd.lbl.gov) of Lawrence Berkeley National Laboratory and at the [Department of Electrical Engineering and Computer Sciences](https://eecs.berkeley.edu/) of UC Berkeley. 
-
 ## Contributors
 
 * [**Daniel Rokhsar**](https://mcb.berkeley.edu/labs/rokhsar/)
