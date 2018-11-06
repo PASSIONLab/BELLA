@@ -1,7 +1,7 @@
 # BELLA - Berkeley Efficient Long-Read to Long-Read Aligner and Overlapper
 
 BELLA is a computationally-efficient and highly-accurate long-read to long-read aligner and overlapper. BELLA implements a k-mer seed based approach for finding overlaps between pairs of reads. The feasibility of this approach has been demonstrated through a mathematical model based on Markov chains. To achieve fast overlapping without sketching, BELLA exploits sparse matrix-matrix multiplication and utilizes high-performance software and libraries developed for this sparse matrix subroutine.
-BELLA applies a simple yet novel procedure for pruning k-mers. We demonstrated that this reliable k-mer selection procedure retains nearly all valuable information with high probability. Our overlap detection has been coupled with state-of-the-art [seed-and-extend banded-alignment methods](https://github.com/seqan/seqan). 
+BELLA applies a simple yet novel procedure for pruning k-mers. We demonstrated that this reliable k-mer selection procedure retains nearly all valuable information with high probability. Our overlap detection has been coupled with state-of-the-art [seed-and-extend banded-alignment methods](https://github.com/seqan/seqan). BELLA implements two different modes for the alignment step. The sensitive mode is fast and achieves high recall, while the precise mode is slightly slower but achieves significantly higher precision. The precise mode uses a new method to separate true alignments from false positives depending on the alignment score.
 
 ## Getting Started
 
@@ -49,17 +49,16 @@ Optional flag description:
 -a : alignment score threshold [50]"
 -p : alignment x-drop factor [3]
 -e : error rate [0.15]
--z : skip the alignment [false]
--w : epsilon parameter for filtering rule (alignment on edges) [300]
+-z : skip the pairwise alignment [false]
+-w : relaxMargin parameter for alignment on edges [300]
+-c : alignment score deviation from the mean [0.1]
+-v : PRECISE MODE, use adaptive alignment threshold [false]
+-x : ALIGNMENT CONSTRAINT, filter out alignment on edge [false]
 -f : k-mer list from Jellyfish (required if #DEFINE JELLYFISH enabled)
 ```
-**NOTE**: to use [Jellyfish](http://www.cbcb.umd.edu/software/jellyfish/) k-mer counting is necessary to enable **#DEFINE JELLYFISH.**  
+**NOTE**: to use [Jellyfish](http://www.cbcb.umd.edu/software/jellyfish/) k-mer counting is necessary to enable **#DEFINE JELLYFISH.**
 
-The default version of BELLA is run with at most two shared k-mers. It can be run with all the shared k-mers enabling **#DEFINE ALLKMER** at the cost of increased running time.  
-
-The multi-threading can be set either depending (a) on the maximum number of thread or (b) on the available RAM. Option (b) should be preferred when medium to large genomes are used. It requires to enable **#DEFINE RAM** in mtspgemm2017/multiply.h as well as the kind of Operating System used, macOS or Linux.
-
-The default version of BELLA is run with the filtering rule disabled. It can be enabled uncommenting **#DEFINE FILTERING_RULE** in mtspegemm2017/multiply.h.
+The multi-threading can be set either depending (a) on the maximum number of thread or (b) on the available RAM. Option (b) should be preferred when medium to large genomes are used. It requires to enable **#DEFINE RAM** in mtspgemm2017/overlapping.h as well as the kind of Operating System used, macOS or Linux.
 
 ## Output Format
 
@@ -100,21 +99,21 @@ To show the usage:
 ```
 ./evaluation -h
 ```
-**NOTE**: add -z flag if synthetic data is used.  
+**NOTE**: add -z flag if simulated data is used.
 
 To know about the evaluation procedure design please refer to:
 
-> Link to paper
+> Preprint available on biorxiv.
 
 ## Authors
 
-* **Giulia Guidi**
-* [**Aydın Buluç**](https://people.eecs.berkeley.edu/~aydin/)
-* **Marquita Ellis**
+* [**Giulia Guidi**](https://linkedin.com/in/giulia-guidi/), [PASSION Lab](https://passion.lbl.gov/)
+* [**Aydın Buluç**](https://people.eecs.berkeley.edu/~aydin/), [PASSION Lab](https://passion.lbl.gov/)
+* [**Marquita Ellis**](http://crd.lbl.gov/departments/computer-science/CLaSS/class-staff/marquita-ellis/)
 
 ## Contributors
 
-* **Daniel Rokhsar**
+* [**Daniel Rokhsar**](https://mcb.berkeley.edu/labs/rokhsar/)
 * [**Katherine Yelick**](https://people.eecs.berkeley.edu/~yelick/?_ga=2.137275831.646808918.1523950603-1375276454.1515506755)
 
 ## Copyright Notice
@@ -127,6 +126,4 @@ NOTICE. This Software was developed under funding from the U.S. Department of En
 
 ## Acknowledgments
 
-* Hat tip to anyone who's code was used
-* Inspiration
-* etc
+Funding provided in part by DOE ASCR through the Exascale Computing Project, and computing provided by NERSC. Thanks to Rob Egan and Steven Hofmeyr for discussion.

@@ -74,7 +74,7 @@ int main (int argc, char *argv[]) {
     char *out_file = NULL;                  // output filename (o)
     int kmer_len = 17;                      // default k-mer length (k)
     int algnmnt_thr = 50;                   // default alignment score threshold (a)
-    int xdrop = 7;                          // default alignment x-drop factor (p)
+    int xdrop = 3;                          // default alignment x-drop factor (p)
     double erate = 0.15;                    // default error rate (e)
     int depth = 0;                          // depth/coverage required (d)
     int relaxMargin = 300;                  // epsilon parameter for alignment on edges TODO: explain (w)
@@ -147,9 +147,13 @@ int main (int argc, char *argv[]) {
                 depth = atoi(thisOpt->argument);  
                 break;
             }
-            case 'z': skipAlignment = true; break; // TO DO: add skip alignment
-            case 'v': adapThr = true; break; // TO DO: add skip alignment
-            case 'x': alignEnd = true; break; // TO DO: add skip alignment
+            case 'z': skipAlignment = true; break; 
+            case 'v': {
+                adapThr = true;
+                xdrop = 7;
+                break;
+            }
+            case 'x': alignEnd = true; break; 
             case 'k': {
                 kmer_len = atoi(thisOpt->argument);
                 break;
@@ -193,7 +197,6 @@ int main (int argc, char *argv[]) {
                 cout << " -z : skip the pairwise alignment [false]" << endl;
                 cout << " -w : relaxMargin parameter for alignment on edges [300]" << endl;
                 cout << " -c : alignment score deviation from the mean [0.1]" << endl;
-                cout << " -r : substitution:indel probability ratio [1:9=sub:gap]" << endl;
                 cout << " -v : use adaptive alignment threshold [false]" << endl;
                 cout << " -x : filter out alignment on edge [false]\n" << endl;
 
