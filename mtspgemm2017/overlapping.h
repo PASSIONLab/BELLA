@@ -29,8 +29,6 @@
 #include <math.h>
 #include <stdlib.h>
 #include <stdint.h>
-//#include <gsl/gsl_vector.h>
-//#include <gsl/gsl_statistics.h>
 
 using namespace seqan;
 
@@ -241,8 +239,6 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     uint64_t d = B.nnz/B.cols; // about d nnz each col
     uint64_t rsv = B.nnz*d;    // worst case
     uint64_t required_memory = (rsv)*sizeof(FT);
-    //IT * rowids;
-    //FT * values;
 
     // here numThreads actually represents the number of blocks based on available RAM
     int numThreads = required_memory/free_memory; 
@@ -434,7 +430,6 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                         }
                         else if(longestExtensionScore.score > defaultThr)
                         {
-           // cout << defaultThr << endl;
                             if(alignEnd)
                             {
                                 bool aligntoEnd = toEnd(beginPositionV(longestExtensionScore.seed), endPositionV(longestExtensionScore.seed), globalInstance->at(i+colStart[b]).seq.length(), 

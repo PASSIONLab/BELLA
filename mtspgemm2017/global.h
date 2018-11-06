@@ -16,8 +16,8 @@ typedef vector<readType_> readVector_;
 
 struct spmatType_ {
 
-    int count = 0;   /* number of shared k-mers */
-    int pos[4] = {0};  /* pos1i, pos1j, pos2i, pos2j */
+    int count = 0;   // number of shared k-mers
+    int pos[4] = {0};  // pos1i, pos1j, pos2i, pos2j 
 };
 
 typedef shared_ptr<spmatType_> spmatPtr_; // pointer to spmatType_ datastruct
@@ -25,9 +25,9 @@ typedef std::vector<Kmer> Kmers;
 
 struct alignmentInfo {
 
-    int64_t score;              /** score */
-    uint32_t apos, bpos;        /** (8) pos in the sections */
-    uint32_t alen, blen;        /** (8) lengths of the segments */
+    int64_t score;              // score 
+    uint32_t apos, bpos;        // (8) pos in the sections 
+    uint32_t alen, blen;        // (8) lengths of the segments 
 };
 
 #ifdef __cplusplus
