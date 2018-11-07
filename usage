@@ -1,3 +1,0 @@
-make bella
-./bella -f kmer.bella -i listofec.txt -d 20 -o denovo.out
-
