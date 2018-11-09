@@ -9,7 +9,7 @@ These instructions will get you a copy of the project up and running on your loc
 
 ### Prerequisites
 
-The software requires gcc-6 or higher with OpenMP to be compiled.  
+**COMPILER:** the software **requires gcc-6 or higher** with OpenMP to be compiled.  
 To run the evaluation test python3 and simplesam package are required. It can be installed via pip: 
 ```
 pip install simplesam
