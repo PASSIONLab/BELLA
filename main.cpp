@@ -240,8 +240,8 @@ int main (int argc, char *argv[]) {
     vector<string> nametags;
     readVector_ reads;
     Kmers kmersfromreads;
-    vector<tuple<int,int,int>> occurrences;
-    vector<tuple<int,int,int>> transtuples;
+    vector<tuple<size_t,size_t,size_t>> occurrences;
+    vector<tuple<size_t,size_t,size_t>> transtuples;
     // 
     // File and setting used
     //
@@ -296,7 +296,7 @@ if(alignEnd)
     // Fastq(s) parsing
     //
     double parsefastq = omp_get_wtime();
-    int read_id = 0; // read_id needs to be global (not just per file)
+    size_t read_id = 0; // read_id needs to be global (not just per file)
     cout << "\nRunning with up to " << MAXTHREADS << " threads" << endl;
 
         vector < vector<tuple<int,int,int>> > alloccurrences(MAXTHREADS);   
@@ -312,7 +312,7 @@ if(alignEnd)
         size_t fillstatus = 1;
         while(fillstatus) { 
             fillstatus = pfq->fill_block(nametags, seqs, quals, upperlimit);
-            int nreads = seqs.size();
+            size_t nreads = seqs.size();
 
                 #pragma omp parallel for
                 for(int i=0; i<nreads; i++) 
@@ -381,19 +381,19 @@ if(alignEnd)
     //
     // Sparse matrices construction
     //
-    int nkmer = countsreliable.size();
-    CSC<int, int> spmat(occurrences, read_id, nkmer, 
-                            [] (int & p1, int & p2) 
+    size_t nkmer = countsreliable.size();
+    CSC<size_t,size_t> spmat(occurrences, read_id, nkmer, 
+                            [] (size_t & p1, size_t & p2) 
                             {
                                 return p1;
                             });
-    std::vector<tuple<int,int,int>>().swap(occurrences);    // remove memory of occurences
+    std::vector<tuple<size_t,size_t,size_t>>().swap(occurrences);    // remove memory of occurences
 
-    CSC<int, int> transpmat(transtuples, nkmer, read_id, 
-                            [] (int & p1, int & p2) 
+    CSC<size_t,size_t> transpmat(transtuples, nkmer, read_id, 
+                            [] (size_t & p1, size_t & p2) 
                             {  return p1;
                             });
-    std::vector<tuple<int,int,int>>().swap(transtuples); // remove memory of transtuples
+    std::vector<tuple<size_t,size_t,size_t>>().swap(transtuples); // remove memory of transtuples
 
     spmat.Sorted();
     transpmat.Sorted();
@@ -406,7 +406,7 @@ if(alignEnd)
     //
     spmatPtr_ getvaluetype(make_shared<spmatType_>());
     HeapSpGEMM(spmat, transpmat, 
-            [] (int & pi, int & pj) // n-th k-mer positions on read i and on read j 
+            [] (size_t & pi, size_t & pj) // n-th k-mer positions on read i and on read j 
             {   spmatPtr_ value(make_shared<spmatType_>());
                 value->count = 1;
                 value->pos[0] = pi; // row
