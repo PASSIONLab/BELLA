@@ -1,7 +1,7 @@
 # BELLA - Berkeley Efficient Long-Read to Long-Read Aligner and Overlapper
 
-BELLA is a computationally-efficient and highly-accurate long-read to long-read aligner and overlapper. BELLA implements a k-mer seed based approach for finding overlaps between pairs of reads. The feasibility of this approach has been demonstrated through a mathematical model based on Markov chains. To achieve fast overlapping without sketching, BELLA exploits sparse matrix-matrix multiplication and utilizes high-performance software and libraries developed for this sparse matrix subroutine.
-BELLA applies a simple yet novel procedure for pruning k-mers. We demonstrated that this reliable k-mer selection procedure retains nearly all valuable information with high probability. Our overlap detection has been coupled with state-of-the-art [seed-and-extend banded-alignment methods](https://github.com/seqan/seqan). BELLA implements two different modes for the alignment step. The sensitive mode is fast and achieves high recall, while the precise mode is slightly slower but achieves significantly higher precision. The precise mode uses a new method to separate true alignments from false positives depending on the alignment score.
+BELLA is a computationally efficient and highly accurate long-read to long-read aligner and overlapper. BELLA uses a k-mer seed-based approach to detect overlaps between noisy, long-read data. BELLA provides a novel algorithm for pruning k-mers that are unlikely to be useful in overlap detection and whose presence would only incur unnecessary computational costs. This reliable k-mers detection algorithm explicitly maximizes the probability of retaining k-mers that belong to unique regions of the genome.
+To achieve fast overlapping without sketching, BELLA uses sparse matrix-matrix multiplication and utilizes high-performance software and libraries developed for this sparse matrix subroutine. BELLA’s overlap detection has been coupled with a state-of-the-art [seed-and-extend banded-alignment](https://github.com/seqan/seqan) method. BELLA’s alignment step comprises two alternatives: the sensitive mode and the precise mode. In the precise mode, we implemented a new method to separate true alignments from false positives depending on the alignment score.
 
 ## Getting Started
 
@@ -9,7 +9,7 @@ These instructions will get you a copy of the project up and running on your loc
 
 ### Prerequisites
 
-The software requires gcc-6 or higher with OpenMP to be compiled.  
+**COMPILER:** the software **requires gcc-6 or higher** with OpenMP to be compiled.  
 To run the evaluation test python3 and simplesam package are required. It can be installed via pip: 
 ```
 pip install simplesam
@@ -20,7 +20,7 @@ pip install simplesam
 Clone the repository and enter it:
 
 ```
-cd longreads
+cd bella
 ```
 Build using makefile:
 
@@ -126,4 +126,4 @@ NOTICE. This Software was developed under funding from the U.S. Department of En
 
 ## Acknowledgments
 
-Funding provided in part by DOE ASCR through the Exascale Computing Project, and computing provided by NERSC. Thanks to Rob Egan and Steven Hofmeyr for discussion.
+Funding provided in part by DOE ASCR through the Exascale Computing Project, and computing provided by NERSC. Thanks to Rob Egan and Steven Hofmeyr for valuable discussions.
