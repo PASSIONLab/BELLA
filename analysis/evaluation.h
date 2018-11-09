@@ -327,7 +327,7 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
             getline(lineStream, rowName, '\t');
             getline(lineStream, nkmer, '\t');
             getline(lineStream, score, '\t');
-            //getline(lineStream, strand, '\t');
+            getline(lineStream, strand, '\t');
             getline(lineStream, colStart, '\t');
             getline(lineStream, colEnd, '\t');
             getline(lineStream, colLen, '\t');
