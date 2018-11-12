@@ -101,9 +101,11 @@ To show the usage:
 ```
 **NOTE**: add -z flag if simulated data is used.
 
-To know about the evaluation procedure design and the ground truth generation please refer to:
+## Citation
 
-> Preprint available on biorxiv.
+To cite our work or to know more about our methods, please refer to:
+
+> BELLA: Berkeley Efficient Long-Read to Long-Read Aligner and Overlapper. Giulia Guidi, Marquita Ellis, Daniel Rokhsar, Katherine Yelick, Aydın Buluç. bioRxiv 464420; doi: https://doi.org/10.1101/464420.
 
 ## Authors
 
