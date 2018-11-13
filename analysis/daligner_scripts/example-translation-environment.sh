@@ -9,8 +9,9 @@ set -x
 SOFT=/global/common/software/m2865/bella-proj/bin
 export PATH=$SOFT:$PATH
 
-PYPARSE=~/bella/analysis/parserLAdump.py
-PYZIP=~/bella/analysis/zip_tag.py
+REPO=~/bella
+PYPARSE=$REPO/analysis/daligner_scripts/parserLAdump.py
+PYZIP=$REPO/analysis/daligner_scripts/zip_tag.py
 
 # don't forget to specify DBNAME for the run!
 
