@@ -1,12 +1,6 @@
 ## Getting Started
 
-These instructions will guide you throught the utilization of the scripts we developed related to the main project, [BELLA](https://bitbucket.org/aydozz/longreads).
-
-### Prerequisites
-
-```
-Text it
-```
+These instructions will guide you throught the utilization of the scripts we developed related to the main project, [BELLA](https://github.com/giuliaguidi/bella).
 
 ## Overlapping Feasibility via Markov Chain Model
 
@@ -30,21 +24,15 @@ along with the necessary executables. (The full detailed requirements list is sp
 An example setup script (for NERSC's Cori) is example-environment-script.sh.   
 ```
 
-## Further script?
-
-```
-Text here
-```
-
 ## Authors
 
-* **Giulia Guidi**
+* [**Giulia Guidi**](https://linkedin.com/in/giulia-guidi/)
 * [**Aydın Buluç**](https://people.eecs.berkeley.edu/~aydin/)
-* **Marquita Ellis**
+* [**Marquita Ellis**](http://crd.lbl.gov/departments/computer-science/CLaSS/class-staff/marquita-ellis/)
 
 ## Contributors
 
-* **Daniel Rokhsar**
+* [**Daniel Rokhsar**](https://mcb.berkeley.edu/labs/rokhsar/)
 * [**Katherine Yelick**](https://people.eecs.berkeley.edu/~yelick/?_ga=2.137275831.646808918.1523950603-1375276454.1515506755)
 
 ## Copyright Notice
@@ -57,6 +45,4 @@ NOTICE. This Software was developed under funding from the U.S. Department of En
 
 ## Acknowledgments
 
-* Hat tip to anyone who's code was used
-* Inspiration
-* etc
+Funding provided in part by DOE ASCR through the Exascale Computing Project, and computing provided by NERSC. Thanks to Rob Egan and Steven Hofmeyr for discussion.

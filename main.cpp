@@ -74,10 +74,10 @@ int main (int argc, char *argv[]) {
     char *out_file = NULL;                  // output filename (o)
     int kmer_len = 17;                      // default k-mer length (k)
     int algnmnt_thr = 50;                   // default alignment score threshold (a)
-    int xdrop = 7;                          // default alignment x-drop factor (p)
+    int xdrop = 3;                          // default alignment x-drop factor (p)
     double erate = 0.15;                    // default error rate (e)
     int depth = 0;                          // depth/coverage required (d)
-    int relaxMargin = 300;                  // epsilon parameter for alignment on edges TODO: explain (w)
+    int relaxMargin = 300;                  // epsilon parameter for alignment on edges (w)
     double deltaChernoff = 0.1;             // delta computed via Chernoff bound (c)
 
     if(optList == NULL)
@@ -147,9 +147,13 @@ int main (int argc, char *argv[]) {
                 depth = atoi(thisOpt->argument);  
                 break;
             }
-            case 'z': skipAlignment = true; break; // TO DO: add skip alignment
-            case 'v': adapThr = true; break; // TO DO: add skip alignment
-            case 'x': alignEnd = true; break; // TO DO: add skip alignment
+            case 'z': skipAlignment = true; break; 
+            case 'v': {
+                adapThr = true;
+                xdrop = 7;
+                break;
+            }
+            case 'x': alignEnd = true; break; 
             case 'k': {
                 kmer_len = atoi(thisOpt->argument);
                 break;
@@ -182,7 +186,7 @@ int main (int argc, char *argv[]) {
             }
             case 'h': {
                 cout << "Usage:\n" << endl;
-                cout << " -f : k-mer list from Jellyfish (required if Jellyfish k-mer counting is used)" << endl; // the reliable k-mers are selected by bella
+                cout << " -f : k-mer list from Jellyfish (required if Jellyfish k-mer counting is used)" << endl; // Reliable k-mers are selected by BELLA
                 cout << " -i : list of fastq(s) (required)" << endl;
                 cout << " -o : output filename (required)" << endl;
                 cout << " -d : depth/coverage (required)" << endl; // TO DO: add depth estimation
@@ -193,7 +197,6 @@ int main (int argc, char *argv[]) {
                 cout << " -z : skip the pairwise alignment [false]" << endl;
                 cout << " -w : relaxMargin parameter for alignment on edges [300]" << endl;
                 cout << " -c : alignment score deviation from the mean [0.1]" << endl;
-                cout << " -r : substitution:indel probability ratio [1:9=sub:gap]" << endl;
                 cout << " -v : use adaptive alignment threshold [false]" << endl;
                 cout << " -x : filter out alignment on edge [false]\n" << endl;
 
@@ -226,8 +229,8 @@ int main (int argc, char *argv[]) {
     //
     vector<filedata> allfiles = GetFiles(all_inputs_fofn);
     FILE *fastafile;
-    int lower; // reliable range lower bound (fixed)
-    int upper;     // reliable range upper bound
+    int lower;          // reliable range lower bound
+    int upper;          // reliable range upper bound
     char *buffer;
     Kmer::set_k(kmer_len);
     size_t upperlimit = 10000000; // in bytes
@@ -237,8 +240,8 @@ int main (int argc, char *argv[]) {
     vector<string> nametags;
     readVector_ reads;
     Kmers kmersfromreads;
-    vector<tuple<int,int,int>> occurrences;
-    vector<tuple<int,int,int>> transtuples;
+    vector<tuple<size_t,size_t,size_t>> occurrences;
+    vector<tuple<size_t,size_t,size_t>> transtuples;
     // 
     // File and setting used
     //
@@ -248,7 +251,6 @@ int main (int argc, char *argv[]) {
     cout << "Input k-mer file: " << kmer_file << endl;
 #endif
     cout << "K-mer counting: BELLA" << endl;
-    //cout << "minimum number of shared k-mer: " << n << endl;
     cout << "Output filename: " << out_file << endl;
     cout << "K-mer length: " << kmer_len << endl;
     if(skipAlignment)
@@ -294,7 +296,7 @@ if(alignEnd)
     // Fastq(s) parsing
     //
     double parsefastq = omp_get_wtime();
-    int read_id = 0; // read_id needs to be global (not just per file)
+    size_t read_id = 0; // read_id needs to be global (not just per file)
     cout << "\nRunning with up to " << MAXTHREADS << " threads" << endl;
 
         vector < vector<tuple<int,int,int>> > alloccurrences(MAXTHREADS);   
@@ -310,7 +312,7 @@ if(alignEnd)
         size_t fillstatus = 1;
         while(fillstatus) { 
             fillstatus = pfq->fill_block(nametags, seqs, quals, upperlimit);
-            int nreads = seqs.size();
+            size_t nreads = seqs.size();
 
                 #pragma omp parallel for
                 for(int i=0; i<nreads; i++) 
@@ -379,20 +381,19 @@ if(alignEnd)
     //
     // Sparse matrices construction
     //
-    int nkmer = countsreliable.size();
-    CSC<int, int> spmat(occurrences, read_id, nkmer, 
-                            [] (int & p1, int & p2) 
-                            {   // assume no errors in MergeDuplicates
-                                // keep just the first position of that k-mer in that read
+    size_t nkmer = countsreliable.size();
+    CSC<size_t,size_t> spmat(occurrences, read_id, nkmer, 
+                            [] (size_t & p1, size_t & p2) 
+                            {
                                 return p1;
                             });
-    std::vector<tuple<int,int,int>>().swap(occurrences);    // remove memory of occurences
+    std::vector<tuple<size_t,size_t,size_t>>().swap(occurrences);    // remove memory of occurences
 
-    CSC<int, int> transpmat(transtuples, nkmer, read_id, 
-                            [] (int & p1, int & p2) 
+    CSC<size_t,size_t> transpmat(transtuples, nkmer, read_id, 
+                            [] (size_t & p1, size_t & p2) 
                             {  return p1;
                             });
-    std::vector<tuple<int,int,int>>().swap(transtuples); // remove memory of transtuples
+    std::vector<tuple<size_t,size_t,size_t>>().swap(transtuples); // remove memory of transtuples
 
     spmat.Sorted();
     transpmat.Sorted();
@@ -405,7 +406,7 @@ if(alignEnd)
     //
     spmatPtr_ getvaluetype(make_shared<spmatType_>());
     HeapSpGEMM(spmat, transpmat, 
-            [] (int & pi, int & pj) // n-th k-mer positions on read i and on read j 
+            [] (size_t & pi, size_t & pj) // n-th k-mer positions on read i and on read j 
             {   spmatPtr_ value(make_shared<spmatType_>());
                 value->count = 1;
                 value->pos[0] = pi; // row

@@ -29,8 +29,6 @@
 #include <math.h>
 #include <stdlib.h>
 #include <stdint.h>
-//#include <gsl/gsl_vector.h>
-//#include <gsl/gsl_statistics.h>
 
 using namespace seqan;
 
@@ -241,17 +239,15 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     uint64_t d = B.nnz/B.cols; // about d nnz each col
     uint64_t rsv = B.nnz*d;    // worst case
     uint64_t required_memory = (rsv)*sizeof(FT);
-    //IT * rowids;
-    //FT * values;
 
     // here numThreads actually represents the number of blocks based on available RAM
     int numThreads = required_memory/free_memory; 
-    int colsPerBlock = B.cols/numThreads;                 // define number of columns for each blocks
+    IT colsPerBlock = B.cols/numThreads;                 // define number of columns for each blocks
 
     // multi thread variable definition 
-    int * colStart = new int[numThreads+1];              // need one block more for remaining cols
-    int * colEnd = new int[numThreads+1];                // need one block more for remaining cols
-    int * numCols = new int[numThreads+1];
+    IT * colStart = new IT[numThreads+1];              // need one block more for remaining cols
+    IT * colEnd = new IT[numThreads+1];                // need one block more for remaining cols
+    IT * numCols = new IT[numThreads+1];
 #ifdef PRINT
     cout << "numBlocks " << numThreads+1 << endl;
     cout << "colsPerBlock " << colsPerBlock << "\n" << endl;
@@ -260,7 +256,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     colEnd[0] = 0;
     numCols[0] = 0;
 
-    int colsTrace = 0;
+    IT colsTrace = 0;
     for(int i = 0; i < numThreads+1; ++i)
     {
         colStart[i] = colsTrace;
@@ -316,12 +312,12 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         numThreads = omp_get_num_threads();
     }
 
-    int colsPerBlock = B.cols/numThreads;                // define number of columns for each blocks
+    IT colsPerBlock = B.cols/numThreads;                // define number of columns for each blocks
 
     // multithread variable definition
-    int * colStart = new int[numThreads+1];              // need one block more for remaining cols
-    int * colEnd = new int[numThreads+1];                // need one block more for remaining cols
-    int * numCols = new int[numThreads+1];
+    IT * colStart = new IT[numThreads+1];              // need one block more for remaining cols
+    IT * colEnd = new IT[numThreads+1];                // need one block more for remaining cols
+    IT * numCols = new IT[numThreads+1];
 #ifdef PRINT
     cout << "numThreads: " << numThreads << endl;
     cout << "colsPerThread: " << colsPerBlock << "\n" << endl;
@@ -330,7 +326,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     colEnd[0] = 0;
     numCols[0] = 0;
 
-    int colsTrace = 0;
+    IT colsTrace = 0;
     for(int i = 0; i < numThreads+1; ++i)
     {
         colStart[i] = colsTrace;
@@ -434,7 +430,6 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                         }
                         else if(longestExtensionScore.score > defaultThr)
                         {
-           // cout << defaultThr << endl;
                             if(alignEnd)
                             {
                                 bool aligntoEnd = toEnd(beginPositionV(longestExtensionScore.seed), endPositionV(longestExtensionScore.seed), globalInstance->at(i+colStart[b]).seq.length(), 

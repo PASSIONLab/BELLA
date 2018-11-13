@@ -31,7 +31,7 @@
  * @param n
  * @return
  */
-double factorial(double n)
+long double factorial(double n)
 {
     if(n > 1)
         return n * factorial(n - 1);
@@ -49,7 +49,7 @@ double factorial(double n)
  */
 int computeUpper(int d, double e, int k)
 {
-    double a,b,c;
+    long double a,b,c;
     double probability = 1;
     double cumsum = 0;
     int m = d;
@@ -69,7 +69,7 @@ int computeUpper(int d, double e, int k)
 
 int computeLower(int d, double e, int k)
 {
-    double a,b,c;
+    long double a,b,c;
     double probability = 1;
     double cumsum = 0;
     int m = 2;

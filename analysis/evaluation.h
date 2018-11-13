@@ -312,8 +312,6 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
     
     groundtruth.clear();
     groundtruth.seekg(0, ios::beg);
-    //ofstream truePositivesBella;
-    //truePositivesBella.open("truepositives-bella.out", std::ofstream::out | std::ofstream::app);
 
     cout << "computing BELLA recall/precision" << endl;
     if(bella.is_open())
@@ -329,7 +327,7 @@ void benchmarkingAl(ifstream & groundtruth, ifstream & bella, ifstream & minimap
             getline(lineStream, rowName, '\t');
             getline(lineStream, nkmer, '\t');
             getline(lineStream, score, '\t');
-            //getline(lineStream, strand, '\t');
+            getline(lineStream, strand, '\t');
             getline(lineStream, colStart, '\t');
             getline(lineStream, colEnd, '\t');
             getline(lineStream, colLen, '\t');

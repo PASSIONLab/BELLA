@@ -1,7 +1,7 @@
 # BELLA - Berkeley Efficient Long-Read to Long-Read Aligner and Overlapper
 
-BELLA is a computationally-efficient and highly-accurate long-read to long-read aligner and overlapper. BELLA implements a k-mer seed based approach for finding overlaps between pairs of reads. The feasibility of this approach has been demonstrated through a mathematical model based on Markov chains. To achieve fast overlapping without sketching, BELLA exploits sparse matrix-matrix multiplication and utilizes high-performance software and libraries developed for this sparse matrix subroutine.
-BELLA applies a simple yet novel procedure for pruning k-mers. We demonstrated that this reliable k-mer selection procedure retains nearly all valuable information with high probability. Our overlap detection has been coupled with state-of-the-art [seed-and-extend banded-alignment methods](https://github.com/seqan/seqan). 
+BELLA is a computationally efficient and highly accurate long-read to long-read aligner and overlapper. BELLA uses a k-mer seed-based approach to detect overlaps between noisy, long-read data. BELLA provides a novel algorithm for pruning k-mers that are unlikely to be useful in overlap detection and whose presence would only incur unnecessary computational costs. This reliable k-mers detection algorithm explicitly maximizes the probability of retaining k-mers that belong to unique regions of the genome.
+To achieve fast overlapping without sketching, BELLA uses sparse matrix-matrix multiplication and utilizes high-performance software and libraries developed for this sparse matrix subroutine. BELLA’s overlap detection has been coupled with a state-of-the-art [seed-and-extend banded-alignment](https://github.com/seqan/seqan) method. BELLA’s alignment step comprises two alternatives: the sensitive mode and the precise mode. In the precise mode, we implemented a new method to separate true alignments from false positives depending on the alignment score.
 
 ## Getting Started
 
@@ -9,7 +9,7 @@ These instructions will get you a copy of the project up and running on your loc
 
 ### Prerequisites
 
-The software requires gcc-6 or higher with OpenMP to be compiled.  
+**COMPILER:** the software **requires gcc-6 or higher** with OpenMP to be compiled.  
 To run the evaluation test python3 and simplesam package are required. It can be installed via pip: 
 ```
 pip install simplesam
@@ -20,7 +20,7 @@ pip install simplesam
 Clone the repository and enter it:
 
 ```
-cd longreads
+cd bella
 ```
 Build using makefile:
 
@@ -49,17 +49,16 @@ Optional flag description:
 -a : alignment score threshold [50]"
 -p : alignment x-drop factor [3]
 -e : error rate [0.15]
--z : skip the alignment [false]
--w : epsilon parameter for filtering rule (alignment on edges) [300]
+-z : skip the pairwise alignment [false]
+-w : relaxMargin parameter for alignment on edges [300]
+-c : alignment score deviation from the mean [0.1]
+-v : PRECISE MODE, use adaptive alignment threshold [false]
+-x : ALIGNMENT CONSTRAINT, filter out alignment on edge [false]
 -f : k-mer list from Jellyfish (required if #DEFINE JELLYFISH enabled)
 ```
-**NOTE**: to use [Jellyfish](http://www.cbcb.umd.edu/software/jellyfish/) k-mer counting is necessary to enable **#DEFINE JELLYFISH.**  
+**NOTE**: to use [Jellyfish](http://www.cbcb.umd.edu/software/jellyfish/) k-mer counting is necessary to enable **#DEFINE JELLYFISH.**
 
-The default version of BELLA is run with at most two shared k-mers. It can be run with all the shared k-mers enabling **#DEFINE ALLKMER** at the cost of increased running time.  
-
-The multi-threading can be set either depending (a) on the maximum number of thread or (b) on the available RAM. Option (b) should be preferred when medium to large genomes are used. It requires to enable **#DEFINE RAM** in mtspgemm2017/multiply.h as well as the kind of Operating System used, macOS or Linux.
-
-The default version of BELLA is run with the filtering rule disabled. It can be enabled uncommenting **#DEFINE FILTERING_RULE** in mtspegemm2017/multiply.h.
+The multi-threading can be set either depending (a) on the maximum number of thread or (b) on the available RAM. Option (b) should be preferred when medium to large genomes are used. It requires to enable **#DEFINE RAM** in mtspgemm2017/overlapping.h as well as the kind of Operating System used, macOS or Linux.
 
 ## Output Format
 
@@ -73,10 +72,10 @@ BELLA outputs alignments in a format similar to [BLASR's M4 format](https://gith
 
 The repository contains also the code to get the recall/precision of BELLA and other long-read aligners (Minimap, Minimap2, DALIGNER, MHAP and BLASR).
 
-**Ground truth generation for real data set**: SAMparser.py allows to transform the BWA-MEM .sam output file in a simpler format usable as input to the evaluation code when using real data set. 
+**Ground truth generation for real data set**: SAMparser.py allows to transform the BWA-MEM/Minimap2 .sam output file in a simpler format usable as input to the evaluation code when using real data set. 
 
 ```
-python3 SAMparser.py <bwamem-output>
+python3 SAMparser.py <bwamem/minimap2-output>
 ```
 
 **Ground truth generation for synthetic data set**: mafconvert.py allows to transform the .MAF file from PBSIM (Pacbio read simulator) in a simpler format usable as input to the evaluation code when using synthetic data set.
@@ -100,21 +99,23 @@ To show the usage:
 ```
 ./evaluation -h
 ```
-**NOTE**: add -z flag if synthetic data is used.  
+**NOTE**: add -z flag if simulated data is used.
 
-To know about the evaluation procedure design please refer to:
+## Citation
 
-> Link to paper
+To cite our work or to know more about our methods, please refer to:
+
+> BELLA: Berkeley Efficient Long-Read to Long-Read Aligner and Overlapper. Giulia Guidi, Marquita Ellis, Daniel Rokhsar, Katherine Yelick, Aydın Buluç. bioRxiv 464420; doi: https://doi.org/10.1101/464420.
 
 ## Authors
 
-* **Giulia Guidi**
+* [**Giulia Guidi**](https://linkedin.com/in/giulia-guidi/)
 * [**Aydın Buluç**](https://people.eecs.berkeley.edu/~aydin/)
-* **Marquita Ellis**
+* [**Marquita Ellis**](http://crd.lbl.gov/departments/computer-science/CLaSS/class-staff/marquita-ellis/)
 
 ## Contributors
 
-* **Daniel Rokhsar**
+* [**Daniel Rokhsar**](https://mcb.berkeley.edu/labs/rokhsar/)
 * [**Katherine Yelick**](https://people.eecs.berkeley.edu/~yelick/?_ga=2.137275831.646808918.1523950603-1375276454.1515506755)
 
 ## Copyright Notice
@@ -127,6 +128,4 @@ NOTICE. This Software was developed under funding from the U.S. Department of En
 
 ## Acknowledgments
 
-* Hat tip to anyone who's code was used
-* Inspiration
-* etc
+Funding provided in part by DOE ASCR through the Exascale Computing Project, and computing provided by NERSC. Thanks to Rob Egan and Steven Hofmeyr for valuable discussions.
