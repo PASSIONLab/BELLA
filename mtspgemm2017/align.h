@@ -3,7 +3,7 @@
 
 #include <seqan/sequence.h>
 #include <seqan/align.h>
-#include <seqan/align_parallel.h>
+//#include <seqan/align_parallel.h>
 #include <seqan/score.h>
 #include <seqan/modifier.h>
 #include <seqan/seeds.h>
