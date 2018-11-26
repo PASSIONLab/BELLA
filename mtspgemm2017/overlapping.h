@@ -347,9 +347,10 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     shared_ptr<readVector_> globalInstance = make_shared<readVector_>(read); 
     stringstream myBatch; // each thread saves its results in its provate stringstream variable
     seqAnResult longestExtensionScore;
-    double ovlalign = omp_get_wtime(); // get overlap and alignment time
+    double align_t; // get overlap and alignment time
+    double align_all = 0;
 
-#pragma omp parallel for private(myBatch, longestExtensionScore) shared(colStart,colEnd,numCols,globalInstance)
+#pragma omp parallel for private(myBatch, longestExtensionScore, align_t) shared(colStart,colEnd,numCols,globalInstance,align_all)
     for(int b = 0; b < numThreads+1; ++b) 
     {
 #ifdef TIMESTEP
@@ -395,7 +396,8 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
             for(int j=colptr[i]; j<colptr[i+1]; ++j) 
             {
                 if(!skipAlignment)
-                {   // local alignment before write on stringstream 
+                {   // local alignment before write on stringstream
+                    align_t = omp_get_wtime();
                     if(values[j]->count == 1)
                     {
                         longestExtensionScore = seqanAlOne(globalInstance->at(rowids[j]).seq, globalInstance->at(i+colStart[b]).seq, 
@@ -517,6 +519,8 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
             myBatch.str(std::string());
         }
     }//for(int b = 0; b < numThreads+1; ++b)
+
+cout << "alignment time: " << align_time << endl;
 
     delete [] colStart;
     delete [] colEnd;
