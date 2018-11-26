@@ -1,0 +1,3 @@
+[submodule "seqan-library-2.4.0/seqan"]
+	path = seqan-library-2.4.0/seqan
+	url = https://github.com/seqan/seqan.git
