@@ -54,7 +54,7 @@ bool toEnd(int colStart, int colEnd, int colLen, int rowStart, int rowEnd, int r
     else
         return false;
 }
-
+/*
 int16_t seqansimdLocal(string & row, string & col) {
 
     using TSequence = String<seqan::Dna>;
@@ -73,11 +73,11 @@ int16_t seqansimdLocal(string & row, string & col) {
 
     Score<int16_t, Simple> scoreLinear(1,-1,-1);
 
-    /* Perform SIMD local alignment */
+   // Perform SIMD local alignment
     seqan::String<int16_t> scores = seqan::localAlignmentScore(execPolicy, seqs1, seqs2, scoreLinear);
     //std::cout << "Score: " << scores[0] << "\n";
     return scores[0];
-}
+}*/
 
 /**
  * @brief seqanAlOne does the seed-and-extend alignment
