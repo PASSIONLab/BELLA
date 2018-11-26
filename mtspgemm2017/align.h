@@ -3,7 +3,7 @@
 
 #include <seqan/sequence.h>
 #include <seqan/align.h>
-#include <seqan/align_parallel.h>
+//#include <seqan/align_parallel.h>
 #include <seqan/score.h>
 #include <seqan/modifier.h>
 #include <seqan/seeds.h>
@@ -53,30 +53,6 @@ bool toEnd(int colStart, int colEnd, int colLen, int rowStart, int rowEnd, int r
         return true;
     else
         return false;
-}
-
-int16_t seqansimdLocal(string & row, string & col) {
-
-    using TSequence = String<seqan::Dna>;
-    using TThreadModel = WavefrontAlignment<seqan::BlockOffsetOptimization>;
-    using TVectorSpec = Vectorial;
-    using TExecPolicy = ExecutionPolicy<TThreadModel, TVectorSpec>;
-
-    seqan::StringSet<TSequence> seqs1;
-    seqan::StringSet<TSequence> seqs2;
-
-    appendValue(seqs1, TSequence{row.c_str()});
-    appendValue(seqs2, TSequence{col.c_str()});
-
-    TExecPolicy execPolicy;
-    setNumThreads(execPolicy, 1);
-
-    Score<int16_t, Simple> scoreLinear(1,-1,-1);
-
-    /* Perform SIMD local alignment */
-    seqan::String<int16_t> scores = seqan::localAlignmentScore(execPolicy, seqs1, seqs2, scoreLinear);
-    //std::cout << "Score: " << scores[0] << "\n";
-    return scores[0];
 }
 
 /**
