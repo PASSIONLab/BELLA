@@ -36,7 +36,7 @@ typedef Seed<Simple>  TSeed;
 typedef SeedSet<TSeed> TSeedSet;
 
 #define PERCORECACHE (1024 * 1024)
-//#define TIMESTEP
+#define TIMESTEP
 //#define PRINT
 //#define THREADLIMIT
 //#define MAX_NUM_THREAD 1
@@ -365,9 +365,10 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         LocalSpGEMM(colStart[b], colEnd[b], numCols[b], A, B, multop, addop, RowIdsofC, ValuesofC);
 
 #ifdef TIMESTEP
+        double ov2 = omp_get_wtime();
 #pragma omp critical
         {
-            cout << "#" << omp_get_thread_num()+1 << ", ovelap time: " << omp_get_wtime()-ovl << "s" << endl;
+            cout << "#" << omp_get_thread_num()+1 << ", overlap time: " << ov2-ovl << "s" << endl;
         }
 #endif
         int k=0;
@@ -505,7 +506,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
 #ifdef TIMESTEP
 #pragma omp critical
         {
-            cout << "#" << omp_get_thread_num()+1 << ", alignment time: " << omp_get_wtime()-align << "s" << endl;
+            cout << "#" << omp_get_thread_num()+1 << ", alignment time: " << omp_get_wtime()-ov2 << "s" << endl;
         }
 #endif
 #pragma omp critical
