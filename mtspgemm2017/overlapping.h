@@ -36,7 +36,7 @@ typedef Seed<Simple>  TSeed;
 typedef SeedSet<TSeed> TSeedSet;
 
 #define PERCORECACHE (1024 * 1024)
-//#define TIMESTEP
+#define TIMESTEP
 //#define PRINT
 //#define THREADLIMIT
 //#define MAX_NUM_THREAD 1
@@ -234,8 +234,9 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
             flops += tflops;
         }
     }
+#ifdef PRINT
     cout << "Flops: " << flops << endl; 
-
+#endif
     uint64_t d = B.nnz/B.cols; // about d nnz each col
     uint64_t rsv = B.nnz*d;    // worst case
     uint64_t required_memory = (rsv)*sizeof(FT);
@@ -278,7 +279,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     intmax_t flops = 0; // total flops (multiplication) needed to generate C
 #pragma omp parallel 
     {
-        intmax_t tflops=0; //thread private flops
+        intmax_t tflops = 0; //thread private flops
 #pragma omp for
         for(int i=0; i < B.cols; ++i)        // for all columns of B
         {
@@ -299,8 +300,9 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
             flops += tflops;
         }
     }
+#ifdef PRINT
     cout << "Flops: " << flops << endl; 
-
+#endif
 #ifdef THREADLIMIT
     omp_set_dynamic(0);                      // Explicitly disable dynamic teams
     omp_set_num_threads(MAX_NUM_THREAD);     // Use MAX_NUM_THREAD threads for all consecutive parallel regions
@@ -347,10 +349,14 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     shared_ptr<readVector_> globalInstance = make_shared<readVector_>(read); 
     stringstream myBatch; // each thread saves its results in its provate stringstream variable
     seqAnResult longestExtensionScore;
-    double align_time; // get overlap and alignment time
-    double align_all = 0;
 
-#pragma omp parallel for private(myBatch, longestExtensionScore, align_time) shared(colStart,colEnd,numCols,globalInstance,align_all)
+#ifdef TIMESTEP
+    size_t alignSoFar = 0;
+
+    #pragma omp parallel for private(myBatch,longestExtensionScore) shared(colStart,colEnd,numCols,globalInstance,alignSoFar)
+#else
+    #pragma omp parallel for private(myBatch,longestExtensionScore) shared(colStart,colEnd,numCols,globalInstance)
+#endif
     for(int b = 0; b < numThreads+1; ++b) 
     {
 #ifdef TIMESTEP
@@ -365,9 +371,10 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         LocalSpGEMM(colStart[b], colEnd[b], numCols[b], A, B, multop, addop, RowIdsofC, ValuesofC);
 
 #ifdef TIMESTEP
+        double ov2 = omp_get_wtime();
 #pragma omp critical
         {
-            cout << "#" << omp_get_thread_num()+1 << ", ovelap time: " << omp_get_wtime()-ovl << "s" << endl;
+            cout << "[" << omp_get_thread_num()+1 << "] overlap time: " << ov2-ovl << "s" << endl;
         }
 #endif
         int k=0;
@@ -391,17 +398,31 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         delete [] RowIdsofC;
         delete [] ValuesofC;
 
+        size_t numAlignmentsThread = 0;
+        size_t numBasesAlignedThread = 0;
+        size_t readLengthsThread = 0;
+
         for(int i=0; i<numCols[b]; ++i)
         { 
             for(int j=colptr[i]; j<colptr[i+1]; ++j) 
             {
                 if(!skipAlignment)
-                {   // local alignment before write on stringstream
-                    align_time = omp_get_wtime();
+                {
+                    /* Local alignment before write on stringstream */
+#ifdef TIMESTEP
+                    /* Progress report */
+                    numAlignmentsThread++;
+                    readLengthsThread += globalInstance->at(rowids[j]).seq.length();
+                    readLengthsThread += globalInstance->at(i+colStart[b]).seq.length();
+#endif
                     if(values[j]->count == 1)
                     {
                         longestExtensionScore = seqanAlOne(globalInstance->at(rowids[j]).seq, globalInstance->at(i+colStart[b]).seq, 
                             globalInstance->at(rowids[j]).seq.length(), values[j]->pos[0], values[j]->pos[1], xdrop, kmer_len);
+#ifdef TIMESTEP
+                        /* Progress report */
+                        numBasesAlignedThread += endPositionV(longestExtensionScore.seed)-beginPositionV(longestExtensionScore.seed);
+#endif
                         if(adapThr)
                         {   // "function" this
                             int diffCol = endPositionV(longestExtensionScore.seed)-beginPositionV(longestExtensionScore.seed);
@@ -451,6 +472,10 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                         longestExtensionScore = seqanAlGen(globalInstance->at(rowids[j]).seq, globalInstance->at(i+colStart[b]).seq, 
                             globalInstance->at(rowids[j]).seq.length(), values[j]->pos[0], values[j]->pos[1], values[j]->pos[2], values[j]->pos[3], xdrop, kmer_len);
 
+#ifdef TIMESTEP
+                        /* Progress report */
+                        numBasesAlignedThread += endPositionV(longestExtensionScore.seed)-beginPositionV(longestExtensionScore.seed);
+#endif
                         if(adapThr)
                         {    // "function" this
                             int diffCol = endPositionV(longestExtensionScore.seed)-beginPositionV(longestExtensionScore.seed);
@@ -473,7 +498,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                                 //            endPositionV(longestExtensionScore.seed) << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << beginPositionH(longestExtensionScore.seed) << '\t' << endPositionH(longestExtensionScore.seed) <<
                                 //                '\t' << globalInstance->at(rowids[j]).seq.length() << endl;
                                 //}
-                                //else 
+                                //else
                                 myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.score << '\t' << longestExtensionScore.strand << '\t' << beginPositionV(longestExtensionScore.seed) << '\t' << 
                                         endPositionV(longestExtensionScore.seed) << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << beginPositionH(longestExtensionScore.seed) << '\t' << endPositionH(longestExtensionScore.seed) <<
                                             '\t' << globalInstance->at(rowids[j]).seq.length() << endl;
@@ -501,17 +526,15 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                         globalInstance->at(i+colStart[b]).seq.length() << '\t' << globalInstance->at(rowids[j]).seq.length() << endl;
             }// for(int j=colptr[i]; j<colptr[i+1]; ++j)
         }// for(int i=0; i<numCols[b]; ++i)
-
 #ifdef TIMESTEP
 #pragma omp critical
         {
-            cout << "#" << omp_get_thread_num()+1 << ", alignment time: " << omp_get_wtime()-align << "s" << endl;
+            alignSoFar += numAlignmentsThread;
+            cout << "[" << omp_get_thread_num()+1 << "] alignment time: " << omp_get_wtime()-ov2 << "s | alignment rate: " << numAlignmentsThread/(omp_get_wtime()-ov2) << " pair/s | average read length: " << readLengthsThread/(2*numAlignmentsThread) << " | read pairs aligned so far: "<< alignSoFar << endl;
+            // Rate in base/s: round(approx_bases_thread/(omp_get_wtime()-ov2))
         }
 #endif
-#pragma omp critical
-        {
-            align_all += align_time;
-        }
+
         delete [] colptr;
         delete [] rowids;
         delete [] values;
@@ -523,11 +546,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         }
     }//for(int b = 0; b < numThreads+1; ++b)
 
-cout << "alignment + writing time: " << align_all << endl;
-
     delete [] colStart;
     delete [] colEnd;
     delete [] numCols; 
 }
-
-
