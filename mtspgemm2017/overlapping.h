@@ -406,7 +406,8 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         { 
             for(int j=colptr[i]; j<colptr[i+1]; ++j) 
             {
-                if(!skipAlignment)
+                if(!skipAlignment) // fix -z to not print 
+
                 {
                     /* Local alignment before write on stringstream */
 #ifdef TIMESTEP
@@ -488,17 +489,6 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
 
                             if((double)longestExtensionScore.score > newThr)
                             {
-                                //if(alignEnd)
-                                //{
-                                //    bool aligntoEnd = toEnd(beginPositionV(longestExtensionScore.seed), endPositionV(longestExtensionScore.seed), globalInstance->at(i+colStart[b]).seq.length(), 
-                                //        beginPositionH(longestExtensionScore.seed), endPositionH(longestExtensionScore.seed), globalInstance->at(rowids[j]).seq.length(),relaxMargin);
-                                //
-                                //    if(aligntoEnd)
-                                //        myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.score << '\t' << longestExtensionScore.strand << '\t' << beginPositionV(longestExtensionScore.seed) << '\t' << 
-                                //            endPositionV(longestExtensionScore.seed) << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << beginPositionH(longestExtensionScore.seed) << '\t' << endPositionH(longestExtensionScore.seed) <<
-                                //                '\t' << globalInstance->at(rowids[j]).seq.length() << endl;
-                                //}
-                                //else
                                 myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.score << '\t' << longestExtensionScore.strand << '\t' << beginPositionV(longestExtensionScore.seed) << '\t' << 
                                         endPositionV(longestExtensionScore.seed) << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << beginPositionH(longestExtensionScore.seed) << '\t' << endPositionH(longestExtensionScore.seed) <<
                                             '\t' << globalInstance->at(rowids[j]).seq.length() << endl;
@@ -506,16 +496,6 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                         }
                         else if(longestExtensionScore.score > defaultThr)
                         {
-                            //if(alignEnd)
-                            //{
-                            //    bool aligntoEnd = toEnd(beginPositionV(longestExtensionScore.seed), endPositionV(longestExtensionScore.seed), globalInstance->at(i+colStart[b]).seq.length(), 
-                            //        beginPositionH(longestExtensionScore.seed), endPositionH(longestExtensionScore.seed), globalInstance->at(rowids[j]).seq.length(),relaxMargin);
-                            //    if(aligntoEnd)
-                            //        myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.score << '\t' << longestExtensionScore.strand << '\t' << beginPositionV(longestExtensionScore.seed) << '\t' << 
-                            //            endPositionV(longestExtensionScore.seed) << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << beginPositionH(longestExtensionScore.seed) << '\t' << endPositionH(longestExtensionScore.seed) <<
-                            //                '\t' << globalInstance->at(rowids[j]).seq.length() << endl;
-                            //}
-                            //else 
                             myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.score << '\t' << longestExtensionScore.strand << '\t' << beginPositionV(longestExtensionScore.seed) << '\t' << 
                                 endPositionV(longestExtensionScore.seed) << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << beginPositionH(longestExtensionScore.seed) << '\t' << endPositionH(longestExtensionScore.seed) <<
                                     '\t' << globalInstance->at(rowids[j]).seq.length() << endl;
@@ -526,15 +506,19 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                         globalInstance->at(i+colStart[b]).seq.length() << '\t' << globalInstance->at(rowids[j]).seq.length() << endl;
             }// for(int j=colptr[i]; j<colptr[i+1]; ++j)
         }// for(int i=0; i<numCols[b]; ++i)
+
 #ifdef TIMESTEP
+        if(!skipAlignment)
+        {
 #pragma omp critical
         {
             alignSoFar += numAlignmentsThread;
-            cout << "[" << omp_get_thread_num()+1 << "] alignment time: " << omp_get_wtime()-ov2 << "s | alignment rate: " << numAlignmentsThread/(omp_get_wtime()-ov2) << " pair/s | average read length: " << readLengthsThread/(2*numAlignmentsThread) << " | read pairs aligned so far: "<< alignSoFar << endl;
-            // Rate in base/s: round(approx_bases_thread/(omp_get_wtime()-ov2))
+            cout << "[" << omp_get_thread_num()+1 << "] alignment time: " << omp_get_wtime()-ov2 << " s | alignment rate: " << numBasesAlignedThread/(omp_get_wtime()-ov2) << " bases/s | average read length: " << 
+                        readLengthsThread/(2*numAlignmentsThread) << " | read pairs aligned so far: " << alignSoFar << endl;
+            // rate in pair/s: numAlignmentsThread/(omp_get_wtime()-ov2)
         }
+        }       
 #endif
-
         delete [] colptr;
         delete [] rowids;
         delete [] values;
