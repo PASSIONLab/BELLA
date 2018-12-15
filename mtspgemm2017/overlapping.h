@@ -91,6 +91,108 @@ bool onedge(int colStart, int colEnd, int colLen, int rowStart, int rowEnd, int 
         return false;
 }
 
+
+// estimate space for result of SpGEMM with Hash
+template <typename IT, typename NT>
+IT* estimateNNZ_Hash(const CSC<IT,NT> & A, const CSC<IT,NT> & B, const size_t *flopC)
+{
+    if(A.isEmpty() || B.isEmpty())
+    {
+        return NULL;
+    }
+    	
+	
+    int numThreads = 1;
+#ifdef THREADED
+#pragma omp parallel
+    {
+        numThreads = omp_get_num_threads();
+    }
+#endif
+    
+
+    IT* colnnzC = new IT[B.cols]; // nnz in every  column of C
+	
+#ifdef THREADED
+#pragma omp parallel for
+#endif
+    for(IT i=0; i< B.cols; ++i)
+    {
+        colnnzC[i] = 0;
+    }
+    
+    // thread private space for heap and colinds
+    std::vector<std::vector< std::pair<IT,IT>>> colindsVec(numThreads);
+
+    for(int i=0; i<numThreads; i++) //inital allocation per thread, may be an overestimate, but does not require more memory than inputs
+    {
+        colindsVec[i].resize(A.nnz/numThreads);
+    }
+
+#ifdef THREADED
+#pragma omp parallel for
+#endif
+    for(int i=0; i < B.cols; ++i)	// for each column of B
+    {
+        size_t nnzcolB = B.colptr[i+1] - B.colptr[i]; //nnz in the current column of B
+
+	int myThread = 0;
+#ifdef THREADED
+        myThread = omp_get_thread_num();
+#endif
+        if(colindsVec[myThread].size() < nnzcolB) //resize thread private vectors if needed
+        {
+            colindsVec[myThread].resize(nnzcolB);
+        }
+		
+        // Hash
+        const size_t minHashTableSize = 16;
+        const size_t hashScale = 107;
+
+        // Initialize hash tables
+        size_t ht_size = minHashTableSize;
+        while(ht_size < flopC[i]) //ht_size is set as 2^n
+        {
+            ht_size <<= 1;
+        }
+        std::vector<IT> globalHashVec(ht_size);
+
+        for(size j=0; j < ht_size; ++j)
+        {
+            globalHashVec[j] = -1;
+        }
+            
+	for (IT j = B.colptr[i]; j < B.colptr[i+1]; ++j)	// all nonzeros in that column of B
+	{
+		IT col2fetch = B.rowids[j];	// find the row index of that nonzero
+		for(IT k = A.colptr[col2fetch]; k < A.colptr[col2fetch]; ++k) // all nonzeros in this column of A
+		{
+			IT key = A.rowids[k];
+                	IT hash = (key*hashScale) & (ht_size-1);
+                	while (1) //hash probing
+                	{
+                    		if (globalHashVec[hash] == key) //key is found in hash table
+                    		{
+                        		break;
+                    		}
+                    		else if (globalHashVec[hash] == -1) //key is not registered yet
+                    		{
+                        		globalHashVec[hash] = key;
+                        		colnnzC[i] ++;
+                        		break;
+                    		}
+                    		else //key is not found
+                    		{
+                        		hash = (hash+1) & (ht_size-1);	// don't exit the while loop yet
+                    		}
+			}
+		}
+        }
+    }
+    
+    return colnnzC;
+}
+
 template <typename IT, typename NT, typename MultiplyOperation, typename AddOperation, typename FT>
 void LocalSpGEMM(IT & start, IT & end, IT & ncols, const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, vector<IT> * RowIdsofC, vector<FT> * ValuesofC)
 {
