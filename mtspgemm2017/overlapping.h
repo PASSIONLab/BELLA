@@ -58,6 +58,63 @@ typedef SeedSet<TSeed> TSeedSet;
 struct sysinfo info;
 #endif
 
+extern int totalMemory;
+
+
+/*
+ Multithreaded prefix sum
+ Inputs:
+    in: an input array
+    size: the length of the input array "in"
+    nthreads: number of threads used to compute the prefix sum
+ 
+ Output:
+    return an array of size "size+1"
+    the memory of the output array is allocated internallay
+ 
+ Example:
+ 
+    in = [2, 1, 3, 5]
+    out = [0, 2, 3, 6, 11]
+ */
+template <typename T>
+T* prefixsum(T* in, int size, int nthreads)
+{
+    std::vector<T> tsum(nthreads+1);
+    tsum[0] = 0;
+    T* out = new T[size+1];
+    out[0] = 0;
+    T* psum = &out[1];
+#pragma omp parallel
+    {
+	int omp_get_thread_num();
+
+        T sum = 0;
+#pragma omp for schedule(static)
+        for (int i=0; i<size; i++)
+        {
+            sum += in[i];
+            psum[i] = sum;
+        }
+        
+        tsum[ithread+1] = sum;
+#pragma omp barrier
+        T offset = 0;
+        for(int i=0; i<(ithread+1); i++)
+        {
+            offset += tsum[i];
+        }
+		
+#pragma omp for schedule(static)
+        for (int i=0; i<size; i++)
+        {
+            psum[i] += offset;
+        }
+    
+    }
+    return out;
+}
+
 /**
  * @brief writeToFile writes a CSV containing
  * CSC indices of the output sparse matrix
@@ -91,6 +148,53 @@ bool onedge(int colStart, int colEnd, int colLen, int rowStart, int rowEnd, int 
         return false;
 }
 
+// estimate the number of floating point operations of SpGEMM
+template <typename IT, typename NT>
+IT* estimateFLOP(const CSC<IT,NT> & A, const CSC<IT,NT> & B)
+{
+	if(A.isEmpty() || B.isEmpty())
+	{
+		return NULL;
+    	}
+    	
+	int numThreads = 1;
+	#ifdef THREADED
+	#pragma omp parallel
+    	{
+        	numThreads = omp_get_num_threads();
+   	}
+	#endif
+    
+	IT* colflopC = new IT[B.cols]; // nnz in every  column of C
+    	
+	#ifdef THREADED
+	#pragma omp parallel for
+	#endif
+   	for(IT i=0; i< B.cols; ++i)
+    	{
+        	colflopC[i] = 0;
+    	}
+
+	#ifdef THREADED
+	#pragma omp parallel for
+	#endif
+    	for(IT i=0; i < B.cols; ++i)
+    	{
+        	size_t nnzcolB = B.colptr[i+1] - B.colptr[i]; //nnz in the current column of B
+		int myThread = 0;
+#ifdef THREADED
+        	myThread = omp_get_thread_num();
+#endif
+		for (IT j = B.colptr[i]; j < B.colptr[i+1]; ++j)	// all nonzeros in that column of B
+		{
+			IT col2fetch = B.rowids[j];	// find the row index of that nonzero in B, which is the column to fetch in A
+			IT nnzcolA =  A.colptr[col2fetch+1]- A.colptr[col2fetch]; // nonzero count of that column of A
+			colflopC[i] += nnzcolA;
+		}
+	}
+    }
+    return colflopC;
+}
 
 // estimate space for result of SpGEMM with Hash
 template <typename IT, typename NT>
@@ -100,51 +204,27 @@ IT* estimateNNZ_Hash(const CSC<IT,NT> & A, const CSC<IT,NT> & B, const size_t *f
     {
         return NULL;
     }
-    	
-	
+    		
     int numThreads = 1;
-#ifdef THREADED
 #pragma omp parallel
     {
         numThreads = omp_get_num_threads();
     }
-#endif
-    
 
     IT* colnnzC = new IT[B.cols]; // nnz in every  column of C
 	
-#ifdef THREADED
 #pragma omp parallel for
-#endif
     for(IT i=0; i< B.cols; ++i)
     {
         colnnzC[i] = 0;
-    }
-    
-    // thread private space for heap and colinds
-    std::vector<std::vector< std::pair<IT,IT>>> colindsVec(numThreads);
+    } 
 
-    for(int i=0; i<numThreads; i++) //inital allocation per thread, may be an overestimate, but does not require more memory than inputs
-    {
-        colindsVec[i].resize(A.nnz/numThreads);
-    }
-
-#ifdef THREADED
 #pragma omp parallel for
-#endif
-    for(int i=0; i < B.cols; ++i)	// for each column of B
+    for(IT i=0; i < B.cols; ++i)	// for each column of B
     {
         size_t nnzcolB = B.colptr[i+1] - B.colptr[i]; //nnz in the current column of B
-
-	int myThread = 0;
-#ifdef THREADED
-        myThread = omp_get_thread_num();
-#endif
-        if(colindsVec[myThread].size() < nnzcolB) //resize thread private vectors if needed
-        {
-            colindsVec[myThread].resize(nnzcolB);
-        }
-		
+	int myThread = omp_get_thread_num();
+    		
         // Hash
         const size_t minHashTableSize = 16;
         const size_t hashScale = 107;
@@ -164,8 +244,8 @@ IT* estimateNNZ_Hash(const CSC<IT,NT> & A, const CSC<IT,NT> & B, const size_t *f
             
 	for (IT j = B.colptr[i]; j < B.colptr[i+1]; ++j)	// all nonzeros in that column of B
 	{
-		IT col2fetch = B.rowids[j];	// find the row index of that nonzero
-		for(IT k = A.colptr[col2fetch]; k < A.colptr[col2fetch]; ++k) // all nonzeros in this column of A
+		IT col2fetch = B.rowids[j];	// find the row index of that nonzero in B, which is the column to fetch in A
+		for(IT k = A.colptr[col2fetch]; k < A.colptr[col2fetch+1]; ++k) // all nonzeros in this column of A
 		{
 			IT key = A.rowids[k];
                 	IT hash = (key*hashScale) & (ht_size-1);
@@ -187,104 +267,95 @@ IT* estimateNNZ_Hash(const CSC<IT,NT> & A, const CSC<IT,NT> & B, const size_t *f
                     		}
 			}
 		}
-        }
+	}
     }
     
     return colnnzC;
 }
 
 template <typename IT, typename NT, typename MultiplyOperation, typename AddOperation, typename FT>
-void LocalSpGEMM(IT & start, IT & end, IT & ncols, const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, vector<IT> * RowIdsofC, vector<FT> * ValuesofC)
+void LocalSpGEMM(IT & start, IT & end, const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, 
+		vector<IT> * RowIdsofC, vector<FT> * ValuesofC, IT* colptrC)
 {
-    int v = 0;
-    for(int i = start; i<end; ++i) // for bcols of B (one block)
+#pragma omp parallel for	
+    for(IT i = start; i<end; ++i) // for bcols of B (one block)
     {
-        IT hsize = B.colptr[i+1]-B.colptr[i];
-        HeapEntry<IT,FT> *mergeheap = new HeapEntry<IT,FT>[hsize];
-        IT maxnnzc = 0;           // max number of nonzeros in C(:,i)
-
-        IT k = 0;   // make initial heap
-
-        for(IT j=B.colptr[i]; j < B.colptr[i+1]; ++j) // for all the nonzeros of the ith column
-        {
-            IT inner = B.rowids[j]; // get the row id of B (or column id of A)
-            IT npins = A.colptr[inner+1] - A.colptr[inner]; // get the number of nonzeros in A's corresponding column
-        
-            if(npins > 0)
-            {
-                mergeheap[k].loc = 1;
-                mergeheap[k].runr = j; // the pointer to B.rowid's is the run-rank
-                mergeheap[k].value = multop(A.values[A.colptr[inner]],B.values[j]);
-                mergeheap[k++].key = A.rowids[A.colptr[inner]]; // A's first rowid is the first key
-                maxnnzc += npins;
-            }
-        }
-
-        hsize = k; // if any of A's "significant" columns is empty, k will be less than hsize
-        make_heap(mergeheap, mergeheap + hsize);        
-        // reserve changes the capacity of the vector, so that future push_back's won't cause reallocation
-        // but it does not change the size, you can still use v.size() to get the number of valid elements
+        const IT minHashTableSize = 16;
+	const IT hashScale = 107;
+    	size_t nnzcolC = colptrC[i+1] - colptrC[i]; //nnz in the current column of C (=Output)
+            
+	IT ht_size = minHashTableSize;
+	while(ht_size < nnzcolC) //ht_size is set as 2^n
+	{
+		ht_size <<= 1;
+	}
+	std::vector< std::pair<IT,NT>> globalHashVec(ht_size);
+           
+	// Initialize hash tables
+	for(IT j=0; j < ht_size; ++j)
+	{
+		globalHashVec[j].first = -1;
+	}
+            
+	for (IT j = B.colptr[i]; j < B.colptr[i+1]; ++j)	// all nonzeros in that column of B
+	{
+		IT col2fetch = B.rowids[j];	// find the row index of that nonzero in B, which is the column to fetch in A
+		NT valueofB = B.values[j];
+		for(IT k = A.colptr[col2fetch]; k < A.colptr[col2fetch+1]; ++k) // all nonzeros in this column of A
+		{
+			IT key = A.rowids[k];
+			NT result =  multop(A.values[k], valueofB);
+                	IT hash = (key*hashScale) & (ht_size-1);
+                	while (1) //hash probing
+                	{
+                    		if (globalHashVec[hash].first == key) //key is found in hash table
+                    		{
+                            		globalHashVec[hash].second = addop(result, globalHashVec[hash].second);
+                        		break;
+                    		}
+                    		else if (globalHashVec[hash] == -1) //key is not registered yet
+                    		{
+                        		globalHashVec[hash].first = key;
+                        		globalHashVec[hash].second = result;					
+                        		break;
+                    		}
+                    		else //key is not found
+                    		{
+                        		hash = (hash+1) & (ht_size-1);	// don't exit the while loop yet
+                    		}
+			}
+		}
+	}
+       // gather non-zero elements from hash table, and then sort them by row indices
+       IT index = 0;
+       for (IT j=0; j < ht_size; ++j)
+       {
+	       if (globalHashVec[j].first != -1)
+	       {
+		       globalHashVec[index++] = globalHashVec[j];
+	       }
+       }
+       std::sort(globalHashVec.begin(), globalHashVec.begin() + index, sort_less<IT, NT>);
+       RowIdsofC[i-start].resize(index); 
+       ValuesofC[i-start].resize(index);
  
-        RowIdsofC[v].reserve(maxnnzc); 
-        ValuesofC[v].reserve(maxnnzc);
-        
-        while(hsize > 0)
-        {
-            pop_heap(mergeheap, mergeheap + hsize);         // result is stored in mergeheap[hsize-1]
-            HeapEntry<IT,FT> hentry = mergeheap[hsize-1];
-            
-            // Use short circuiting
-            if( (!RowIdsofC[v].empty()) && RowIdsofC[v].back() == hentry.key)
-            {
-                ValuesofC[v].back() = addop(hentry.value, ValuesofC[v].back());
-            }
-            else
-            {
-                ValuesofC[v].push_back(hentry.value);
-                RowIdsofC[v].push_back(hentry.key);
-            }
-      
-            IT inner = B.rowids[hentry.runr];
-            
-            // If still unused nonzeros exists in A(:,colind), insert the next nonzero to the heap
-            if( (A.colptr[inner + 1] - A.colptr[inner]) > hentry.loc)
-            {
-                IT index = A.colptr[inner] + hentry.loc;
-                mergeheap[hsize-1].loc   = hentry.loc +1;
-                mergeheap[hsize-1].runr  = hentry.runr;
-                mergeheap[hsize-1].value = multop(A.values[index], B.values[hentry.runr]);
-                mergeheap[hsize-1].key   = A.rowids[index];
-                
-                push_heap(mergeheap, mergeheap + hsize);
-            }
-            else
-            {
-                --hsize;
-            }     
-        }
-        v++;
-        delete [] mergeheap;
+       for (IT j=0; j< index; ++j)
+       {
+	       RowIdsofC[i] = globalHashVec[j].first;
+	       ValuesofC[i] = globalHashVec[j].second;
+       }
     }
+
 }
 
-/**
-  * Sparse multithreaded GEMM.
-  * Probably slower than HeapSpGEMM_gmalloc but likely to use less memory
- **/
-template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation>
-void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, readVector_ & read, 
-    FT & getvaluetype, int kmer_len, int xdrop, int defaultThr, char* filename, bool skipAlignment, double ratioPhi, bool adapThr, bool alignEnd, int relaxMargin, double deltaChernoff)
+uint64_t estimateMemory()
 {
-    size_t upperlimit = 10000000; // in bytes
-#ifdef RAM // number of cols depends on available RAM
-    cout << "Cols subdivision based on available RAM\n" << endl;
-
-#ifdef OSX // OSX-based memory consumption implementation 
+    uint64_t free_memory;
+#if defined (OSX) // OSX-based memory consumption implementation 
     vm_size_t page_size;
     mach_port_t mach_port;
     mach_msg_type_number_t count;
     vm_statistics64_data_t vm_stats;
-    uint64_t free_memory, used_memory;
 
     mach_port = mach_host_self();
     count = sizeof(vm_stats) / sizeof(natural_t);
@@ -294,15 +365,8 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
                                                 (host_info64_t)&vm_stats, &count))
     {
         free_memory = (int64_t)vm_stats.free_count * (int64_t)page_size;
-        used_memory = ((int64_t)vm_stats.active_count +
-                      (int64_t)vm_stats.inactive_count +
-                      (int64_t)vm_stats.wire_count) * (int64_t)page_size;
-        /* It is good to note that just because Mac OS X may show very little actual free memory at times that it may 
-        not be a good indication of how much is ready to be used on short notice. */
     } 
-#endif
-    
-#ifdef LINUX // LINUX-based memory consumption implementation 
+#elif defined (LINUX) // LINUX-based memory consumption implementation 
     if(sysinfo(&info) != 0)
     {
         return false;
@@ -310,201 +374,16 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     unsigned long free_memory = info.freeram * info.mem_unit;
     free_memory += info.freeswap * info.mem_unit;
     free_memory += info.bufferram * info.mem_unit;
-#endif
-
-    intmax_t flops = 0; // total flops (multiplication) needed to generate C
-#pragma omp parallel 
-    {
-        intmax_t tflops=0; //thread private flops
-#pragma omp for
-        for(int i=0; i < B.cols; ++i)        // for all columns of B
-        {
-            IT locmax = 0;
-            for(IT j=B.colptr[i]; j < B.colptr[i+1]; ++j)    // For all the nonzeros of the ith column
-            {
-        //cout << B.colptr[i] << " B.colptr[i]" << endl;
-                IT inner = B.rowids[j];             // get the row id of B (or column id of A)
-                IT npins = A.colptr[inner+1] - A.colptr[inner]; // get the number of nonzeros in A's corresponding column
-        //cout << npins << " npins" << endl;
-                locmax += npins;
-            }
-
-            tflops += (intmax_t)locmax; 
-        }
-#pragma omp critical
-        {
-            flops += tflops;
-        }
-    }
-#ifdef PRINT
-    cout << "Flops: " << flops << endl; 
-#endif
-    uint64_t d = B.nnz/B.cols; // about d nnz each col
-    uint64_t rsv = B.nnz*d;    // worst case
-    uint64_t required_memory = (rsv)*sizeof(FT);
-
-    // here numThreads actually represents the number of blocks based on available RAM
-    int numThreads = required_memory/free_memory; 
-    IT colsPerBlock = B.cols/numThreads;                 // define number of columns for each blocks
-
-    // multi thread variable definition 
-    IT * colStart = new IT[numThreads+1];              // need one block more for remaining cols
-    IT * colEnd = new IT[numThreads+1];                // need one block more for remaining cols
-    IT * numCols = new IT[numThreads+1];
-#ifdef PRINT
-    cout << "numBlocks " << numThreads+1 << endl;
-    cout << "colsPerBlock " << colsPerBlock << "\n" << endl;
-#endif
-    colStart[0] = 0;
-    colEnd[0] = 0;
-    numCols[0] = 0;
-
-    IT colsTrace = 0;
-    for(int i = 0; i < numThreads+1; ++i)
-    {
-        colStart[i] = colsTrace;
-        if(colsTrace+colsPerBlock <= B.cols)
-        {
-            colEnd[i] = colStart[i]+colsPerBlock;
-            numCols[i] = colsPerBlock;
-
-        } else 
-        {
-            colEnd[i] = B.cols;
-            numCols[i] = B.cols-colsTrace;
-        }
-        colsTrace = colsTrace+numCols[i];
-    }
-#else // number of cols depends on number of threads
-    cout << "Cols subdivision based on number of threads\n" << endl;
-
-    intmax_t flops = 0; // total flops (multiplication) needed to generate C
-#pragma omp parallel 
-    {
-        intmax_t tflops = 0; //thread private flops
-#pragma omp for
-        for(int i=0; i < B.cols; ++i)        // for all columns of B
-        {
-            IT locmax = 0;
-            for(IT j=B.colptr[i]; j < B.colptr[i+1]; ++j)    // For all the nonzeros of the ith column
-            {
-        //cout << B.colptr[i] << " B.colptr[i]" << endl;
-                IT inner = B.rowids[j];             // get the row id of B (or column id of A)
-                IT npins = A.colptr[inner+1] - A.colptr[inner]; // get the number of nonzeros in A's corresponding column
-        //cout << npins << " npins" << endl;
-                locmax += npins;
-            }
-
-            tflops += (intmax_t)locmax; 
-        }
-#pragma omp critical
-        {
-            flops += tflops;
-        }
-    }
-#ifdef PRINT
-    cout << "Flops: " << flops << endl; 
-#endif
-#ifdef THREADLIMIT
-    omp_set_dynamic(0);                      // Explicitly disable dynamic teams
-    omp_set_num_threads(MAX_NUM_THREAD);     // Use MAX_NUM_THREAD threads for all consecutive parallel regions
-#endif
-
-    int numThreads;
-#pragma omp parallel
-    {
-        numThreads = omp_get_num_threads();
-    }
-
-    IT colsPerBlock = B.cols/numThreads;                // define number of columns for each blocks
-
-    // multithread variable definition
-    IT * colStart = new IT[numThreads+1];              // need one block more for remaining cols
-    IT * colEnd = new IT[numThreads+1];                // need one block more for remaining cols
-    IT * numCols = new IT[numThreads+1];
-#ifdef PRINT
-    cout << "numThreads: " << numThreads << endl;
-    cout << "colsPerThread: " << colsPerBlock << "\n" << endl;
-#endif
-    colStart[0] = 0;
-    colEnd[0] = 0;
-    numCols[0] = 0;
-
-    IT colsTrace = 0;
-    for(int i = 0; i < numThreads+1; ++i)
-    {
-        colStart[i] = colsTrace;
-        if(colsTrace+colsPerBlock <= B.cols)
-        {
-            colEnd[i] = colStart[i]+colsPerBlock;
-            numCols[i] = colsPerBlock;
-
-        } else 
-        {
-            colEnd[i] = B.cols;
-            numCols[i] = B.cols-colsTrace;
-        }
-        colsTrace = colsTrace+numCols[i];
-    }
-    #endif
-
-    shared_ptr<readVector_> globalInstance = make_shared<readVector_>(read); 
-    stringstream myBatch; // each thread saves its results in its provate stringstream variable
-    seqAnResult longestExtensionScore;
-
-#ifdef TIMESTEP
-    size_t alignSoFar = 0;
-
-    #pragma omp parallel for private(myBatch,longestExtensionScore) shared(colStart,colEnd,numCols,globalInstance,alignSoFar)
 #else
-    #pragma omp parallel for private(myBatch,longestExtensionScore) shared(colStart,colEnd,numCols,globalInstance)
+    free_memory = static_cast<uint64_t>(total_memory) * 1024 * 1024;
 #endif
-    for(int b = 0; b < numThreads+1; ++b) 
-    {
-#ifdef TIMESTEP
-        double ovl = omp_get_wtime();
-#endif
-        vector<IT> * RowIdsofC = new vector<IT>[numCols[b]];    // row ids for each column of C (bunch of cols)
-        vector<FT> * ValuesofC = new vector<FT>[numCols[b]];    // values for each column of C (bunch of cols)
+    return free_memory;
+}
 
-        IT * colptr = new IT[numCols[b]+1];
-        colptr[0] = 0;
 
-        LocalSpGEMM(colStart[b], colEnd[b], numCols[b], A, B, multop, addop, RowIdsofC, ValuesofC);
-
-#ifdef TIMESTEP
-        double ov2 = omp_get_wtime();
-#pragma omp critical
-        {
-            cout << "[" << omp_get_thread_num()+1 << "] overlap time: " << ov2-ovl << "s" << endl;
-        }
-#endif
-        int k=0;
-        for(int i=0; i<numCols[b]; ++i) // for all edge lists (do NOT parallelize)
-        {
-            colptr[i+1] = colptr[i] + RowIdsofC[k].size();
-            ++k;
-        }
-
-        IT * rowids = new IT[colptr[numCols[b]]];
-        FT * values = new FT[colptr[numCols[b]]];
-
-        k=0;
-        for(int i=0; i<numCols[b]; ++i) // combine step
-        {
-            copy(RowIdsofC[k].begin(), RowIdsofC[k].end(), rowids + colptr[i]);
-            copy(ValuesofC[k].begin(), ValuesofC[k].end(), values + colptr[i]);
-            ++k;
-        }
-
-        delete [] RowIdsofC;
-        delete [] ValuesofC;
-
-        size_t numAlignmentsThread = 0;
-        size_t numBasesAlignedThread = 0;
-        size_t readLengthsThread = 0;
-
-        for(int i=0; i<numCols[b]; ++i)
+void RunPairWiseAlignments()
+{
+	for(int i=0; i<numCols[b]; ++i)
         { 
             for(int j=colptr[i]; j<colptr[i+1]; ++j) 
             {
@@ -618,8 +497,7 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
             cout << "[" << omp_get_thread_num()+1 << "] alignment time: " << omp_get_wtime()-ov2 << " s | alignment rate: " << numBasesAlignedThread/(omp_get_wtime()-ov2) << " bases/s | average read length: " << 
                         readLengthsThread/(2*numAlignmentsThread) << " | read pairs aligned so far: " << alignSoFar << endl;
             // rate in pair/s: numAlignmentsThread/(omp_get_wtime()-ov2)
-        }
-        }       
+        }     
 #endif
         delete [] colptr;
         delete [] rowids;
@@ -630,7 +508,102 @@ void HeapSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
             writeToFile(myBatch, filename);
             myBatch.str(std::string());
         }
-    }//for(int b = 0; b < numThreads+1; ++b)
+}
+
+
+/**
+  * Sparse multithreaded GEMM.
+ **/
+template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation>
+void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, readVector_ & read, 
+    FT & getvaluetype, int kmer_len, int xdrop, int defaultThr, char* filename, bool skipAlignment, double ratioPhi, bool adapThr, bool alignEnd, int relaxMargin, double deltaChernoff)
+{
+    size_t upperlimit = 10000000; // in bytes
+    int64_t free_memory = EstimateMemory();
+
+#ifdef PRINT
+    cout << "Available RAM is assumed to be : " << free_memory / (1024 * 1024) << " MB" << endl;
+#endif
+
+    IT* flopC = estimateFLOP(A, B);
+    IT* flopptr = prefixsum<IT>(flopC, B.cols, numThreads);
+    IT flops = flopptr[B.cols];
+
+#ifdef PRINT    
+    cout << "FLOPS is " << flops << endl;
+#endif
+
+    IT* colnnzC = estimateNNZ_Hash(A, B, flopC);
+    IT* colptrC = prefixsum<IT>(colnnzC, B.cols, numThreads);	// colptrC[i] = rolling sum of nonzeros in C[1...i]
+    delete [] colnnzC;
+    delete [] flopptr;
+    delete [] flopC;
+    IT nnzc = colptrC[B.cols];
+    double compression_ratio = (double)flops / nnzc;
+
+#ifdef PRINT
+    cout << "nnz(output): " << nnzc << endl; 
+#endif
+
+    uint64_t required_memory = (nnzc)*sizeof(FT);	// required memory to form the output
+    int stages = required_memory/free_memory; 		// form output in stages
+
+    IT * colStart = new IT[stages+1];	// one array is enough to set stage boundaries	              
+    colStart[0] = 0;
+
+    for(int i = 1; i < stages; ++i)	// colsPerStage is no longer fixed (helps with potential load imbalance)
+    {
+	// std::upper_bound returns an iterator to the first element greater than a certain value 
+	auto upper = std::upper_bound(colptrC, colptrC+B.cols, i * required_memory); 
+	colStart[i]  = upper - colptrC;
+    }
+    colStart[stages] = B.cols;
+
+    copy(colStart, colStart+stages+1, ostream_iterator<IT>(cout, " "));
+    cout << endl;
+
+    shared_ptr<readVector_> globalInstance = make_shared<readVector_>(read); 
+    stringstream myBatch; // each thread(?) saves its results in its private stringstream variable
+    seqAnResult longestExtensionScore;
+
+    for(int b = 0; b < stages; ++b) 
+    {
+#ifdef TIMESTEP
+        double ovl = omp_get_wtime();
+#endif
+        vector<IT> * RowIdsofC = new vector<IT>[colStart[b+1]-colStart[b]];    // row ids for each column of C (bunch of cols)
+        vector<FT> * ValuesofC = new vector<FT>[colStart[b+1]-colStart[b]];    // values for each column of C (bunch of cols)
+
+        LocalSpGEMM(colStart[b], colStart[b+1], A, B, multop, addop, RowIdsofC, ValuesofC, colptrC);
+
+#ifdef TIMESTEP
+        double ov2 = omp_get_wtime();
+#pragma omp critical
+        {
+            cout << "[" << omp_get_thread_num()+1 << "] overlap time: " << ov2-ovl << "s" << endl;
+        }
+#endif
+        
+        IT * rowids = new IT[colptr[numCols[b]]];
+        FT * values = new FT[colptr[numCols[b]]];
+
+        for(IT i=colStart[b]; i<colStart[b+1]; ++i) // combine step
+        {
+	    IT locind = i-colStart[b];
+            copy(RowIdsofC[locind].begin(), RowIdsofC[locind].end(), rowids + colptrC[i]);
+            copy(ValuesofC[locind].begin(), ValuesofC[locind].end(), values + colptrC[i]);
+        }
+
+        delete [] RowIdsofC;
+        delete [] ValuesofC;
+
+        size_t numAlignmentsThread = 0;
+        size_t numBasesAlignedThread = 0;
+        size_t readLengthsThread = 0;
+
+	RunPairWiseAlignments();
+
+    }//for(int b = 0; b < states; ++b)
 
     delete [] colStart;
     delete [] colEnd;

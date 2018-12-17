@@ -50,6 +50,8 @@
 #define PRINT
 //#define JELLYFISH
 
+int totalMemory = 8000;	// in MB
+
 using namespace std;
 
 int main (int argc, char *argv[]) {
@@ -174,6 +176,10 @@ int main (int argc, char *argv[]) {
                 relaxMargin = atoi(thisOpt->argument);
                 break;
             }
+	    case 'm': {
+		totalMemory = atoi(thisOpt->argument);
+		break;
+	    }
             case 'c': {
                 if(stod(thisOpt->argument) > 1.0 || stod(thisOpt->argument) < 0.0)
                 {
@@ -194,6 +200,7 @@ int main (int argc, char *argv[]) {
                 cout << " -a : alignment score threshold [50]" << endl;
                 cout << " -p : alignment x-drop factor [3]" << endl;
                 cout << " -e : error rate [0.15]" << endl;
+                cout << " -m : total RAM of the system in MB [auto estimated if possible or 8,000 if not]" << endl;
                 cout << " -z : skip the pairwise alignment [false]" << endl;
                 cout << " -w : relaxMargin parameter for alignment on edges [300]" << endl;
                 cout << " -c : alignment score deviation from the mean [0.1]" << endl;
