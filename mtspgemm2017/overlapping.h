@@ -59,6 +59,8 @@ struct sysinfo info;
 #endif
 
 extern int totalMemory;
+extern bool userDefMem;
+double safety_net = 1.2;
 
 
 /*
@@ -351,6 +353,12 @@ void LocalSpGEMM(IT & start, IT & end, const CSC<IT,NT> & A, const CSC<IT,NT> & 
 uint64_t estimateMemory()
 {
     uint64_t free_memory;
+    if (userDefMem)
+    {
+    	free_memory = static_cast<uint64_t>(total_memory) * 1024 * 1024;
+    }
+    else
+    {
 #if defined (OSX) // OSX-based memory consumption implementation 
     vm_size_t page_size;
     mach_port_t mach_port;
@@ -375,48 +383,25 @@ uint64_t estimateMemory()
     free_memory += info.freeswap * info.mem_unit;
     free_memory += info.bufferram * info.mem_unit;
 #else
-    free_memory = static_cast<uint64_t>(total_memory) * 1024 * 1024;
+    free_memory = static_cast<uint64_t>(total_memory) * 1024 * 1024;	// user default
 #endif
+    }
     return free_memory;
 }
 
-
-void RunPairWiseAlignments()
+void adapThrAlign(int read1len, int read2len)
 {
-	for(int i=0; i<numCols[b]; ++i)
-        { 
-            for(int j=colptr[i]; j<colptr[i+1]; ++j) 
-            {
-                if(!skipAlignment) // fix -z to not print 
+	auto seed = maxExtScore.seed;
+	int diffCol = endPositionV(seed)- beginPositionV(seed);
+	int diffRow = endPositionH(seed) - beginPositionH(maxExtScore.seed);
+	int minLeft = min(beginPositionV(seed), beginPositionH(seed));
+	int minRight = min(read2len - endPositionV(seed), read1len - endPositionH(seed));
 
-                {
-                    /* Local alignment before write on stringstream */
-#ifdef TIMESTEP
-                    /* Progress report */
-                    numAlignmentsThread++;
-                    readLengthsThread += globalInstance->at(rowids[j]).seq.length();
-                    readLengthsThread += globalInstance->at(i+colStart[b]).seq.length();
-#endif
-                    if(values[j]->count == 1)
-                    {
-                        longestExtensionScore = seqanAlOne(globalInstance->at(rowids[j]).seq, globalInstance->at(i+colStart[b]).seq, 
-                            globalInstance->at(rowids[j]).seq.length(), values[j]->pos[0], values[j]->pos[1], xdrop, kmer_len);
-#ifdef TIMESTEP
-                        /* Progress report */
-                        numBasesAlignedThread += endPositionV(longestExtensionScore.seed)-beginPositionV(longestExtensionScore.seed);
-#endif
-                        if(adapThr)
-                        {   // "function" this
-                            int diffCol = endPositionV(longestExtensionScore.seed)-beginPositionV(longestExtensionScore.seed);
-                            int diffRow = endPositionH(longestExtensionScore.seed)-beginPositionH(longestExtensionScore.seed);
-                            int minLeft = min(beginPositionV(longestExtensionScore.seed), beginPositionH(longestExtensionScore.seed));
-                            int minRight = min(globalInstance->at(i+colStart[b]).seq.length()-endPositionV(longestExtensionScore.seed), globalInstance->at(rowids[j]).seq.length()-endPositionH(longestExtensionScore.seed));
+	int ov = minLeft+minRight+(diffCol+diffRow)/2;
+	double newThr = (1-deltaChernoff)*(ratioPhi*(double)ov); 
 
-                            int ov = minLeft+minRight+(diffCol+diffRow)/2;
-                            double newThr = (1-deltaChernoff)*(ratioPhi*(double)ov); 
-
-                            if((double)longestExtensionScore.score > newThr)
-                            {
+	if((double)maxExtScore.score > newThr)
+	{
                                 if(alignEnd)
                                 {
                                     bool aligntoEnd = toEnd(beginPositionV(longestExtensionScore.seed), endPositionV(longestExtensionScore.seed), globalInstance->at(i+colStart[b]).seq.length(), 
@@ -430,8 +415,35 @@ void RunPairWiseAlignments()
                                 else myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.score << '\t' << longestExtensionScore.strand << '\t' << beginPositionV(longestExtensionScore.seed) << '\t' << 
                                         endPositionV(longestExtensionScore.seed) << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << beginPositionH(longestExtensionScore.seed) << '\t' << endPositionH(longestExtensionScore.seed) <<
                                             '\t' << globalInstance->at(rowids[j]).seq.length() << endl;
-                            }
-                        }
+	}
+}
+
+template <typename IT, typename FT>
+void RunPairWiseAlignments((IT & start, IT & end, IT * colptrC, IT * rowids, FT * values, const readVector_ & reads, int kmer_len, int xdrop)
+{
+#pragma omp parallel for	
+    for(IT j = start; j<end; ++j) // for bcols of A^T A (one block)
+    {
+	for (IT i = colptrC[j]; i < colptrC[j+1]; ++i)	// all nonzeros in that column of A^T A
+	{
+    		seqAnResult maxExtScore;
+    		if(values[j]->count == 1)
+		{
+			size_t rid = rowids[i];		// row id
+			size_t cid = j;			// column id
+			int read1len = reads[rid].seq.length();
+			int read2len = reads[cid].seq.length();
+
+			maxExtScore = seqanAlOne(reads[rid].seq, reads[cid].seq, read1len, values[i]->pos[0], values[i]->pos[1], xdrop, kmer_len);
+
+#ifdef TIMESTEP
+                        /* Progress report */
+                        numBasesAlignedThread += endPositionV(maxExtScore.seed)-beginPositionV(maxExtScore.seed);
+#endif
+                        if(adapThr)
+                        {
+				adapThrAlign(read1len, read2len)
+			}
                         else if(longestExtensionScore.score > defaultThr)
                         {
                             if(alignEnd)
@@ -515,10 +527,10 @@ void RunPairWiseAlignments()
   * Sparse multithreaded GEMM.
  **/
 template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation>
-void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, readVector_ & read, 
-    FT & getvaluetype, int kmer_len, int xdrop, int defaultThr, char* filename, bool skipAlignment, double ratioPhi, bool adapThr, bool alignEnd, int relaxMargin, double deltaChernoff)
+void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, const readVector_ & reads, 
+    FT & getvaluetype, int kmer_len, int xdrop, int defaultThr, char* filename, bool skipAlignment, double ratioPhi, bool adapThr, 
+    bool alignEnd, int relaxMargin, double deltaChernoff)
 {
-    size_t upperlimit = 10000000; // in bytes
     int64_t free_memory = EstimateMemory();
 
 #ifdef PRINT
@@ -545,7 +557,7 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     cout << "nnz(output): " << nnzc << endl; 
 #endif
 
-    uint64_t required_memory = (nnzc)*sizeof(FT);	// required memory to form the output
+    uint64_t required_memory = safety_net * (nnzc)*sizeof(FT);	// required memory to form the output
     int stages = required_memory/free_memory; 		// form output in stages
 
     IT * colStart = new IT[stages+1];	// one array is enough to set stage boundaries	              
@@ -561,10 +573,6 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
 
     copy(colStart, colStart+stages+1, ostream_iterator<IT>(cout, " "));
     cout << endl;
-
-    shared_ptr<readVector_> globalInstance = make_shared<readVector_>(read); 
-    stringstream myBatch; // each thread(?) saves its results in its private stringstream variable
-    seqAnResult longestExtensionScore;
 
     for(int b = 0; b < stages; ++b) 
     {
@@ -584,14 +592,17 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         }
 #endif
         
-        IT * rowids = new IT[colptr[numCols[b]]];
-        FT * values = new FT[colptr[numCols[b]]];
+	IT endcol = colptr[colStart[b+1]];
+	IT begcol = colptr[colStart[b]];
+
+        IT * rowids = new IT[endcol-begcol];
+        FT * values = new FT[endcol-begcol];
 
         for(IT i=colStart[b]; i<colStart[b+1]; ++i) // combine step
         {
 	    IT locind = i-colStart[b];
-            copy(RowIdsofC[locind].begin(), RowIdsofC[locind].end(), rowids + colptrC[i]);
-            copy(ValuesofC[locind].begin(), ValuesofC[locind].end(), values + colptrC[i]);
+            copy(RowIdsofC[locind].begin(), RowIdsofC[locind].end(), rowids + locind);
+            copy(ValuesofC[locind].begin(), ValuesofC[locind].end(), values + locind);
         }
 
         delete [] RowIdsofC;
@@ -601,7 +612,7 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         size_t numBasesAlignedThread = 0;
         size_t readLengthsThread = 0;
 
-	RunPairWiseAlignments();
+	RunPairWiseAlignments(colStart[b], colStart[b+1], colptrC, rowids, values, reads, int kmer_len, int xdrop);
 
     }//for(int b = 0; b < states; ++b)
 

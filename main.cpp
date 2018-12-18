@@ -51,6 +51,7 @@
 //#define JELLYFISH
 
 int totalMemory = 8000;	// in MB
+bool userDefMem = false;
 
 using namespace std;
 
@@ -178,6 +179,7 @@ int main (int argc, char *argv[]) {
             }
 	    case 'm': {
 		totalMemory = atoi(thisOpt->argument);
+		userDefMem = true;
 		break;
 	    }
             case 'c': {
