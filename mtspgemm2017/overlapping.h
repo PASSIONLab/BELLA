@@ -58,10 +58,22 @@ typedef SeedSet<TSeed> TSeedSet;
 struct sysinfo info;
 #endif
 
-extern int totalMemory;
-extern bool userDefMem;
 double safety_net = 1.2;
 
+
+struct BELLApars
+{
+	int totalMemory;	// in MB
+	bool userDefMem;
+
+	bool skipAlignment;  	// Do not align (z)
+	bool adapThr; 		// Apply adaptive alignment threshold (v)
+	bool alignEnd;		// Filter out alignments not achieving end of the read "relaxed" (x)
+	int relaxMargin;	// epsilon parameter for alignment on edges (w)
+	double deltaChernoff;	// delta computed via Chernoff bound (c)
+
+	BELLApars():totalMemory(8000), userDefMem(false), skipAlignment(false), adapThr(false), alignEnd(false), relaxMargin(300), deltaChernoff(0.1) {};
+}
 
 /*
  Multithreaded prefix sum
@@ -389,41 +401,58 @@ uint64_t estimateMemory()
     return free_memory;
 }
 
-void adapThrAlign(int read1len, int read2len)
+void adapThrAlign(const seqAnResult & maxExtScore, const readType_ & read1, const readType_ & read2, const BELLApars & b_pars, double ratioPhi, int count, stringstream & myBatch)
 {
-	auto seed = maxExtScore.seed;
-	int diffCol = endPositionV(seed)- beginPositionV(seed);
-	int diffRow = endPositionH(seed) - beginPositionH(maxExtScore.seed);
-	int minLeft = min(beginPositionV(seed), beginPositionH(seed));
-	int minRight = min(read2len - endPositionV(seed), read1len - endPositionH(seed));
+	auto maxseed = maxExtScore.seed;	// returns a seqan:Seed object
+
+	// {begin/end}Position{V/H}: Returns the begin/end position of the seed in the query (vertical/horizonral direction)
+	// these four return seqan:Tposition objects
+	auto begpV = beginPositionV(maxseed);
+	auto endpV = endPositionV(maxseed);	
+	auto begpH = beginPositionH(maxseed);
+	auto endpH = endPositionH(maxseed);
+
+	string seq1 = read1.seq;
+	string seq2 = read2.seq;
+			
+	int read1len = seq1.length();
+	int read2len = seq2.length();	
+
+	int diffCol = endpV - begpV;
+	int diffRow = endpH - begpH;
+	int minLeft = min(begpV, begpH);
+	int minRight = min(read2len - endpV, read1len - endpH);
 
 	int ov = minLeft+minRight+(diffCol+diffRow)/2;
-	double newThr = (1-deltaChernoff)*(ratioPhi*(double)ov); 
+	double newThr = (1-b_pars.deltaChernoff)*(ratioPhi*(double)ov); 
 
 	if((double)maxExtScore.score > newThr)
 	{
-                                if(alignEnd)
-                                {
-                                    bool aligntoEnd = toEnd(beginPositionV(longestExtensionScore.seed), endPositionV(longestExtensionScore.seed), globalInstance->at(i+colStart[b]).seq.length(), 
-                                        beginPositionH(longestExtensionScore.seed), endPositionH(longestExtensionScore.seed), globalInstance->at(rowids[j]).seq.length(),relaxMargin);
-                                
-                                    if(aligntoEnd)
-                                        myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.score << '\t' << longestExtensionScore.strand << '\t' << beginPositionV(longestExtensionScore.seed) << '\t' << 
-                                            endPositionV(longestExtensionScore.seed) << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << beginPositionH(longestExtensionScore.seed) << '\t' << endPositionH(longestExtensionScore.seed) <<
-                                                '\t' << globalInstance->at(rowids[j]).seq.length() << endl;
-                                }
-                                else myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.score << '\t' << longestExtensionScore.strand << '\t' << beginPositionV(longestExtensionScore.seed) << '\t' << 
-                                        endPositionV(longestExtensionScore.seed) << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << beginPositionH(longestExtensionScore.seed) << '\t' << endPositionH(longestExtensionScore.seed) <<
-                                            '\t' << globalInstance->at(rowids[j]).seq.length() << endl;
+		if(b_pars.alignEnd)
+		{
+			bool aligntoEnd = toEnd(begpV, endpV, read2len, begpH, endpH, read1len,relaxMargin);
+			if(aligntoEnd)
+			{
+				myBatch << read2.nametag << '\t' << read1.nametag << '\t' << count << '\t' << maxExtScore.score << '\t' << maxExtScore.strand << '\t' << 
+					begpV << '\t' << endpV << '\t' << read2len << '\t' << begpH << '\t' << endpH << '\t' << read2len << endl;
+			}
+		}
+		else 
+		{
+			myBatch << read2.nametag << '\t' << read1.nametag << '\t' << count << '\t' << maxExtScore.score << '\t' << maxExtScore.strand << '\t' << 
+				begpV << '\t' << endpV << '\t' << read2len << '\t' << begpH << '\t' << endpH << '\t' << read2len << endl
+		}
 	}
 }
 
 template <typename IT, typename FT>
-void RunPairWiseAlignments((IT & start, IT & end, IT * colptrC, IT * rowids, FT * values, const readVector_ & reads, int kmer_len, int xdrop)
+void RunPairWiseAlignments((IT & start, IT & end, IT * colptrC, IT * rowids, FT * values, const readVector_ & reads, int kmer_len, int xdrop, const BELLApars & b_pars, double ratioPhi)
 {
 #pragma omp parallel for	
     for(IT j = start; j<end; ++j) // for bcols of A^T A (one block)
     {
+    	stringstream myBatch; // each thread saves its results in its private stringstream variable
+
 	for (IT i = colptrC[j]; i < colptrC[j+1]; ++i)	// all nonzeros in that column of A^T A
 	{
     		seqAnResult maxExtScore;
@@ -431,10 +460,13 @@ void RunPairWiseAlignments((IT & start, IT & end, IT * colptrC, IT * rowids, FT 
 		{
 			size_t rid = rowids[i];		// row id
 			size_t cid = j;			// column id
-			int read1len = reads[rid].seq.length();
-			int read2len = reads[cid].seq.length();
+			auto seq1 = reads[rid].seq;
+			auto seq2 = reads[cid].seq;
+			
+			int seq1len = seq1.length();
+			int seq2len = seq2.length();
 
-			maxExtScore = seqanAlOne(reads[rid].seq, reads[cid].seq, read1len, values[i]->pos[0], values[i]->pos[1], xdrop, kmer_len);
+			maxExtScore = seqanAlOne(seq1, seq2, seq1len, values[i]->pos[0], values[i]->pos[1], xdrop, kmer_len);
 
 #ifdef TIMESTEP
                         /* Progress report */
@@ -442,7 +474,7 @@ void RunPairWiseAlignments((IT & start, IT & end, IT * colptrC, IT * rowids, FT 
 #endif
                         if(adapThr)
                         {
-				adapThrAlign(read1len, read2len)
+				adapThrAlign(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, values[j]->count, myBatch)
 			}
                         else if(longestExtensionScore.score > defaultThr)
                         {
@@ -528,8 +560,7 @@ void RunPairWiseAlignments((IT & start, IT & end, IT * colptrC, IT * rowids, FT 
  **/
 template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation>
 void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, const readVector_ & reads, 
-    FT & getvaluetype, int kmer_len, int xdrop, int defaultThr, char* filename, bool skipAlignment, double ratioPhi, bool adapThr, 
-    bool alignEnd, int relaxMargin, double deltaChernoff)
+    FT & getvaluetype, int kmer_len, int xdrop, int defaultThr, char* filename, const BELLApars & b_pars, double ratioPhi)
 {
     int64_t free_memory = EstimateMemory();
 
@@ -612,7 +643,7 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         size_t numBasesAlignedThread = 0;
         size_t readLengthsThread = 0;
 
-	RunPairWiseAlignments(colStart[b], colStart[b+1], colptrC, rowids, values, reads, int kmer_len, int xdrop);
+	RunPairWiseAlignments(colStart[b], colStart[b+1], colptrC, rowids, values, reads, kmer_len, xdrop, b_pars);
 
     }//for(int b = 0; b < states; ++b)
 

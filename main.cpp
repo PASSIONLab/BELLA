@@ -50,8 +50,8 @@
 #define PRINT
 //#define JELLYFISH
 
-int totalMemory = 8000;	// in MB
-bool userDefMem = false;
+                 
+double deltaChernoff = 0.1;            
 
 using namespace std;
 
@@ -69,9 +69,7 @@ int main (int argc, char *argv[]) {
     optList = NULL;
     optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:a:ze:p:w:vxc:");
    
-    bool skipAlignment = false;             // Do not align (z)
-    bool adapThr = false;                   // Apply adaptive alignment threshold (v)
-    bool alignEnd = false;                  // Filter out alignments not achieving end of the read "relaxed" (x)
+
     char *kmer_file = NULL;                 // Reliable k-mer file from Jellyfish
     char *all_inputs_fofn = NULL;           // List of fastqs (i)
     char *out_file = NULL;                  // output filename (o)
@@ -80,8 +78,8 @@ int main (int argc, char *argv[]) {
     int xdrop = 3;                          // default alignment x-drop factor (p)
     double erate = 0.15;                    // default error rate (e)
     int depth = 0;                          // depth/coverage required (d)
-    int relaxMargin = 300;                  // epsilon parameter for alignment on edges (w)
-    double deltaChernoff = 0.1;             // delta computed via Chernoff bound (c)
+
+    BELLApars b_parameters;
 
     if(optList == NULL)
     {
@@ -150,13 +148,13 @@ int main (int argc, char *argv[]) {
                 depth = atoi(thisOpt->argument);  
                 break;
             }
-            case 'z': skipAlignment = true; break; 
+            case 'z': b_parameters.skipAlignment = true; break; 
             case 'v': {
-                adapThr = true;
+                b_parameters.adapThr = true;
                 xdrop = 7;
                 break;
             }
-            case 'x': alignEnd = true; break; 
+            case 'x': b_parameters.alignEnd = true; break; 
             case 'k': {
                 kmer_len = atoi(thisOpt->argument);
                 break;
@@ -174,7 +172,7 @@ int main (int argc, char *argv[]) {
                 break;
             }
             case 'w': {
-                relaxMargin = atoi(thisOpt->argument);
+                b_parameters.relaxMargin = atoi(thisOpt->argument);
                 break;
             }
 	    case 'm': {
@@ -189,7 +187,7 @@ int main (int argc, char *argv[]) {
                     cout << "Run with -h to print out the command line options\n" << endl;
                     return 0;
                 }
-                deltaChernoff = stod(thisOpt->argument);
+                b_parameters.deltaChernoff = stod(thisOpt->argument);
                 break;
             }
             case 'h': {
@@ -262,7 +260,7 @@ int main (int argc, char *argv[]) {
     cout << "K-mer counting: BELLA" << endl;
     cout << "Output filename: " << out_file << endl;
     cout << "K-mer length: " << kmer_len << endl;
-    if(skipAlignment)
+    if(b_parameters.skipAlignment)
         cout << "Compute alignment: False" << endl;
     else cout << "Compute alignment: True" << endl;
     cout << "X-drop: " << xdrop << endl;
@@ -279,15 +277,15 @@ int main (int argc, char *argv[]) {
 #ifdef PRINT
     cout << "Reliable lower bound: " << lower << endl;
     cout << "Reliable upper bound: " << upper << endl;
-if(adapThr)
+if(b_parameters.adapThr)
 {
-    cout << "Deviation from expected alignment score: " << deltaChernoff << endl;
-    cout << "Constant of adaptive threshold: " << ratioPhi*(1-deltaChernoff)<< endl;
+    cout << "Deviation from expected alignment score: " << b_parameters.deltaChernoff << endl;
+    cout << "Constant of adaptive threshold: " << ratioPhi*(1-b_parameters.deltaChernoff)<< endl;
 } else cout << "Default alignment score threshold: " << algnmnt_thr << endl;
-if(alignEnd)
+if(b_parameters.alignEnd)
 {
     cout << "Alignment on edge: True" << endl;
-    cout << "Relax margin: " << relaxMargin << endl;
+    cout << "Relax margin: " << b_parameters.relaxMargin << endl;
 
 } else cout << "Alignment on edge: False" << endl;
 #endif
@@ -427,7 +425,7 @@ if(alignEnd)
                 m2->pos[2] = m1->pos[0]; // row 
                 m2->pos[3] = m1->pos[1]; // col
                 return m2;
-            }, reads, getvaluetype, kmer_len, xdrop, algnmnt_thr, out_file, skipAlignment, ratioPhi, adapThr, alignEnd, relaxMargin, deltaChernoff); 
+            }, reads, getvaluetype, kmer_len, xdrop, algnmnt_thr, out_file, b_parameters, ratioPhi); 
 
     cout << "total running time: " << omp_get_wtime()-all << "s\n" << endl;
     return 0;
