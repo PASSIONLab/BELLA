@@ -73,7 +73,7 @@ struct BELLApars
 	double deltaChernoff;	// delta computed via Chernoff bound (c)
 
 	BELLApars():totalMemory(8000), userDefMem(false), skipAlignment(false), adapThr(false), alignEnd(false), relaxMargin(300), deltaChernoff(0.1) {};
-}
+};
 
 /*
  Multithreaded prefix sum
@@ -101,7 +101,7 @@ T* prefixsum(T* in, int size, int nthreads)
     T* psum = &out[1];
 #pragma omp parallel
     {
-	int omp_get_thread_num();
+	int ithread = omp_get_thread_num();
 
         T sum = 0;
 #pragma omp for schedule(static)
@@ -172,33 +172,24 @@ IT* estimateFLOP(const CSC<IT,NT> & A, const CSC<IT,NT> & B)
     	}
     	
 	int numThreads = 1;
-	#ifdef THREADED
 	#pragma omp parallel
     	{
         	numThreads = omp_get_num_threads();
    	}
-	#endif
     
 	IT* colflopC = new IT[B.cols]; // nnz in every  column of C
     	
-	#ifdef THREADED
 	#pragma omp parallel for
-	#endif
    	for(IT i=0; i< B.cols; ++i)
     	{
         	colflopC[i] = 0;
     	}
 
-	#ifdef THREADED
 	#pragma omp parallel for
-	#endif
     	for(IT i=0; i < B.cols; ++i)
     	{
         	size_t nnzcolB = B.colptr[i+1] - B.colptr[i]; //nnz in the current column of B
-		int myThread = 0;
-#ifdef THREADED
-        	myThread = omp_get_thread_num();
-#endif
+		int myThread = omp_get_thread_num();
 		for (IT j = B.colptr[i]; j < B.colptr[i+1]; ++j)	// all nonzeros in that column of B
 		{
 			IT col2fetch = B.rowids[j];	// find the row index of that nonzero in B, which is the column to fetch in A
@@ -206,8 +197,7 @@ IT* estimateFLOP(const CSC<IT,NT> & A, const CSC<IT,NT> & B)
 			colflopC[i] += nnzcolA;
 		}
 	}
-    }
-    return colflopC;
+    	return colflopC;
 }
 
 // estimate space for result of SpGEMM with Hash
@@ -349,7 +339,9 @@ void LocalSpGEMM(IT & start, IT & end, const CSC<IT,NT> & A, const CSC<IT,NT> & 
 		       globalHashVec[index++] = globalHashVec[j];
 	       }
        }
+#ifdef SORTCOLS
        std::sort(globalHashVec.begin(), globalHashVec.begin() + index, sort_less<IT, NT>);
+#endif
        RowIdsofC[i-start].resize(index); 
        ValuesofC[i-start].resize(index);
  
@@ -474,7 +466,7 @@ tuple<size_t, size_t, size_t> RunPairWiseAlignments((IT & start, IT & end, IT * 
     size_t totalreadlen = 0;
 
 #pragma omp parallel for	
-    for(IT j = start; j<end; ++j) // for bcols of A^T A (one block)
+    for(IT j = start; j<end; ++j) // for (end-start) columns of A^T A (one block)
     {
     	size_t numAlignmentsThread = 0;
         size_t numBasesAlignedThread = 0;
@@ -488,8 +480,8 @@ tuple<size_t, size_t, size_t> RunPairWiseAlignments((IT & start, IT & end, IT * 
                 {
 			size_t rid = rowids[i];		// row id
 			size_t cid = j;			// column id
-			auto seq1 = reads[rid].seq;
-			auto seq2 = reads[cid].seq;
+			string seq1 = reads[rid].seq;
+			string seq2 = reads[cid].seq;
 			
 			int seq1len = seq1.length();
 			int seq2len = seq2.length();
@@ -504,22 +496,17 @@ tuple<size_t, size_t, size_t> RunPairWiseAlignments((IT & start, IT & end, IT * 
 		    	if(values[i]->count == 1)
 		    	{
 				maxExtScore = seqanAlOne(seq1, seq2, seq1len, val->pos[0], val->pos[1], xdrop, kmer_len);
-
-#ifdef TIMESTEP
-                        	numBasesAlignedThread += endPositionV(maxExtScore.seed)-beginPositionV(maxExtScore.seed);
-#endif
-				PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, myBatch);
-		    	} // if(values[j]->count == 1)
-		    	else
+		    	} 
+			else
 		    	{
                         	maxExtScore = seqanAlGen(seq1, seq2, seq1len, val->pos[0], val->pos[1], val->pos[2], val->pos[3], xdrop, kmer_len);
-
+		    	}			
 #ifdef TIMESTEP
-                       
-				numBasesAlignedThread += endPositionV(maxExtScore.seed)-beginPositionV(maxExtScore.seed);
+                      
+			numBasesAlignedThread += endPositionV(maxExtScore.seed)-beginPositionV(maxExtScore.seed);
 #endif
-                        	PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, myBatch);
-		    	}
+                       	PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, myBatch);
+
 		}
 	        else 	// if skipAlignment == false do alignment, else save just some info on the pair to file 		
 		{
@@ -578,8 +565,9 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     cout << "nnz(output): " << nnzc << endl; 
 #endif
 
-    uint64_t required_memory = safety_net * (nnzc)*sizeof(FT);	// required memory to form the output
+    uint64_t required_memory = safety_net * nnzc * (sizeof(FT)+sizeof(IT));	// required memory to form the output
     int stages = required_memory/free_memory; 		// form output in stages
+    uint64_t nnzcperstage = free_memory / (safety_net * (sizeof(FT)+sizeof(IT));
 
     IT * colStart = new IT[stages+1];	// one array is enough to set stage boundaries	              
     colStart[0] = 0;
@@ -587,7 +575,7 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     for(int i = 1; i < stages; ++i)	// colsPerStage is no longer fixed (helps with potential load imbalance)
     {
 	// std::upper_bound returns an iterator to the first element greater than a certain value 
-	auto upper = std::upper_bound(colptrC, colptrC+B.cols, i * required_memory); 
+	auto upper = std::upper_bound(colptrC, colptrC+B.cols, i*nnzcperstage ); 
 	colStart[i]  = upper - colptrC;
     }
     colStart[stages] = B.cols;
