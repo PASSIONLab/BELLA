@@ -412,7 +412,7 @@ if(b_parameters.alignEnd)
     // Overlap detection (sparse matrix multiplication) and seed-and-extend alignment
     //
     spmatPtr_ getvaluetype(make_shared<spmatType_>());
-    HeapSpGEMM(spmat, transpmat, 
+    HashSpGEMM(spmat, transpmat, 
             [] (size_t & pi, size_t & pj) // n-th k-mer positions on read i and on read j 
             {   spmatPtr_ value(make_shared<spmatType_>());
                 value->count = 1;

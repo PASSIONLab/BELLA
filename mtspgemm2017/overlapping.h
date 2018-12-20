@@ -401,7 +401,7 @@ uint64_t estimateMemory()
     return free_memory;
 }
 
-void adapThrAlign(const seqAnResult & maxExtScore, const readType_ & read1, const readType_ & read2, const BELLApars & b_pars, double ratioPhi, int count, stringstream & myBatch)
+void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1, const readType_ & read2, const BELLApars & b_pars, double ratioPhi, int count, stringstream & myBatch)
 {
 	auto maxseed = maxExtScore.seed;	// returns a seqan:Seed object
 
@@ -418,15 +418,35 @@ void adapThrAlign(const seqAnResult & maxExtScore, const readType_ & read1, cons
 	int read1len = seq1.length();
 	int read2len = seq2.length();	
 
-	int diffCol = endpV - begpV;
-	int diffRow = endpH - begpH;
-	int minLeft = min(begpV, begpH);
-	int minRight = min(read2len - endpV, read1len - endpH);
+	if(b_pars.adapThr)
+	{
+		int diffCol = endpV - begpV;
+		int diffRow = endpH - begpH;
+		int minLeft = min(begpV, begpH);
+		int minRight = min(read2len - endpV, read1len - endpH);
 
-	int ov = minLeft+minRight+(diffCol+diffRow)/2;
-	double newThr = (1-b_pars.deltaChernoff)*(ratioPhi*(double)ov); 
+		int ov = minLeft+minRight+(diffCol+diffRow)/2;
+		double newThr = (1-b_pars.deltaChernoff)*(ratioPhi*(double)ov);
 
-	if((double)maxExtScore.score > newThr)
+		if((double)maxExtScore.score > newThr)
+		{
+			if(b_pars.alignEnd)
+			{
+				bool aligntoEnd = toEnd(begpV, endpV, read2len, begpH, endpH, read1len, relaxMargin);
+				if(aligntoEnd)
+				{
+					myBatch << read2.nametag << '\t' << read1.nametag << '\t' << count << '\t' << maxExtScore.score << '\t' << maxExtScore.strand << '\t' << 
+						begpV << '\t' << endpV << '\t' << read2len << '\t' << begpH << '\t' << endpH << '\t' << read1len << endl;
+				}
+			}
+			else 
+			{
+				myBatch << read2.nametag << '\t' << read1.nametag << '\t' << count << '\t' << maxExtScore.score << '\t' << maxExtScore.strand << '\t' << 
+					begpV << '\t' << endpV << '\t' << read2len << '\t' << begpH << '\t' << endpH << '\t' << read1len << endl
+			}
+		}
+	}
+	else if(maxExtScore.score > b_pars.defaultThr)
 	{
 		if(b_pars.alignEnd)
 		{
@@ -434,30 +454,38 @@ void adapThrAlign(const seqAnResult & maxExtScore, const readType_ & read1, cons
 			if(aligntoEnd)
 			{
 				myBatch << read2.nametag << '\t' << read1.nametag << '\t' << count << '\t' << maxExtScore.score << '\t' << maxExtScore.strand << '\t' << 
-					begpV << '\t' << endpV << '\t' << read2len << '\t' << begpH << '\t' << endpH << '\t' << read2len << endl;
+					begpV << '\t' << endpV << '\t' << read2len << '\t' << begpH << '\t' << endpH << '\t' << read1len << endl;
 			}
 		}
 		else 
 		{
 			myBatch << read2.nametag << '\t' << read1.nametag << '\t' << count << '\t' << maxExtScore.score << '\t' << maxExtScore.strand << '\t' << 
-				begpV << '\t' << endpV << '\t' << read2len << '\t' << begpH << '\t' << endpH << '\t' << read2len << endl
+				begpV << '\t' << endpV << '\t' << read2len << '\t' << begpH << '\t' << endpH << '\t' << read1len << endl
 		}
 	}
 }
 
 template <typename IT, typename FT>
-void RunPairWiseAlignments((IT & start, IT & end, IT * colptrC, IT * rowids, FT * values, const readVector_ & reads, int kmer_len, int xdrop, const BELLApars & b_pars, double ratioPhi)
+tuple<size_t, size_t, size_t> RunPairWiseAlignments((IT & start, IT & end, IT * colptrC, IT * rowids, FT * values, const readVector_ & reads, int kmer_len, 
+			int xdrop, const BELLApars & b_pars, double ratioPhi)
 {
+    size_t alignedpairs = 0;
+    size_t alignedbases = 0;
+    size_t totalreadlen = 0;
+
 #pragma omp parallel for	
     for(IT j = start; j<end; ++j) // for bcols of A^T A (one block)
     {
+    	size_t numAlignmentsThread = 0;
+        size_t numBasesAlignedThread = 0;
+        size_t readLengthsThread = 0;
+
     	stringstream myBatch; // each thread saves its results in its private stringstream variable
 
 	for (IT i = colptrC[j]; i < colptrC[j+1]; ++i)	// all nonzeros in that column of A^T A
 	{
-    		seqAnResult maxExtScore;
-    		if(values[j]->count == 1)
-		{
+		if(!b_pars.skipAlignment) // fix -z to not print 
+                {
 			size_t rid = rowids[i];		// row id
 			size_t cid = j;			// column id
 			auto seq1 = reads[rid].seq;
@@ -465,93 +493,55 @@ void RunPairWiseAlignments((IT & start, IT & end, IT * colptrC, IT * rowids, FT 
 			
 			int seq1len = seq1.length();
 			int seq2len = seq2.length();
+	
+#ifdef TIMESTEP	
+                    	numAlignmentsThread++;
+                    	readLengthsThread = readLengthsThread + seq1len + seq2len;
+#endif
 
-			maxExtScore = seqanAlOne(seq1, seq2, seq1len, values[i]->pos[0], values[i]->pos[1], xdrop, kmer_len);
+		    	spmatPtr_ val = values[i];
+		    	seqAnResult maxExtScore;
+		    	if(values[i]->count == 1)
+		    	{
+				maxExtScore = seqanAlOne(seq1, seq2, seq1len, val->pos[0], val->pos[1], xdrop, kmer_len);
 
 #ifdef TIMESTEP
-                        /* Progress report */
-                        numBasesAlignedThread += endPositionV(maxExtScore.seed)-beginPositionV(maxExtScore.seed);
+                        	numBasesAlignedThread += endPositionV(maxExtScore.seed)-beginPositionV(maxExtScore.seed);
 #endif
-                        if(adapThr)
-                        {
-				adapThrAlign(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, values[j]->count, myBatch)
-			}
-                        else if(longestExtensionScore.score > defaultThr)
-                        {
-                            if(alignEnd)
-                            {
-                                bool aligntoEnd = toEnd(beginPositionV(longestExtensionScore.seed), endPositionV(longestExtensionScore.seed), globalInstance->at(i+colStart[b]).seq.length(), 
-                                    beginPositionH(longestExtensionScore.seed), endPositionH(longestExtensionScore.seed), globalInstance->at(rowids[j]).seq.length(),relaxMargin);
-
-                                if(aligntoEnd)
-                                    myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.score << '\t' << longestExtensionScore.strand << '\t' << beginPositionV(longestExtensionScore.seed) << '\t' << 
-                                        endPositionV(longestExtensionScore.seed) << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << beginPositionH(longestExtensionScore.seed) << '\t' << endPositionH(longestExtensionScore.seed) <<
-                                            '\t' << globalInstance->at(rowids[j]).seq.length() << endl;
-                            }
-                            else myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.score << '\t' << longestExtensionScore.strand << '\t' << beginPositionV(longestExtensionScore.seed) << '\t' << 
-                                endPositionV(longestExtensionScore.seed) << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << beginPositionH(longestExtensionScore.seed) << '\t' << endPositionH(longestExtensionScore.seed) <<
-                                    '\t' << globalInstance->at(rowids[j]).seq.length() << endl;
-                        }
-                    } // if(values[j]->count == 1)
-                    else
-                    {
-                        longestExtensionScore = seqanAlGen(globalInstance->at(rowids[j]).seq, globalInstance->at(i+colStart[b]).seq, 
-                            globalInstance->at(rowids[j]).seq.length(), values[j]->pos[0], values[j]->pos[1], values[j]->pos[2], values[j]->pos[3], xdrop, kmer_len);
+				PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, myBatch);
+		    	} // if(values[j]->count == 1)
+		    	else
+		    	{
+                        	maxExtScore = seqanAlGen(seq1, seq2, seq1len, val->pos[0], val->pos[1], val->pos[2], val->pos[3], xdrop, kmer_len);
 
 #ifdef TIMESTEP
-                        /* Progress report */
-                        numBasesAlignedThread += endPositionV(longestExtensionScore.seed)-beginPositionV(longestExtensionScore.seed);
+                       
+				numBasesAlignedThread += endPositionV(maxExtScore.seed)-beginPositionV(maxExtScore.seed);
 #endif
-                        if(adapThr)
-                        {    // "function" this
-                            int diffCol = endPositionV(longestExtensionScore.seed)-beginPositionV(longestExtensionScore.seed);
-                            int diffRow = endPositionH(longestExtensionScore.seed)-beginPositionH(longestExtensionScore.seed);
-                            int minLeft = min(beginPositionV(longestExtensionScore.seed), beginPositionH(longestExtensionScore.seed));
-                            int minRight = min(globalInstance->at(i+colStart[b]).seq.length()-endPositionV(longestExtensionScore.seed), globalInstance->at(rowids[j]).seq.length()-endPositionH(longestExtensionScore.seed));
-
-                            int ov = minLeft+minRight+(diffCol+diffRow)/2;
-                            double newThr = (1-deltaChernoff)*(ratioPhi*(double)ov); 
-
-                            if((double)longestExtensionScore.score > newThr)
-                            {
-                                myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.score << '\t' << longestExtensionScore.strand << '\t' << beginPositionV(longestExtensionScore.seed) << '\t' << 
-                                        endPositionV(longestExtensionScore.seed) << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << beginPositionH(longestExtensionScore.seed) << '\t' << endPositionH(longestExtensionScore.seed) <<
-                                            '\t' << globalInstance->at(rowids[j]).seq.length() << endl;
-                            }
-                        }
-                        else if(longestExtensionScore.score > defaultThr)
-                        {
-                            myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << longestExtensionScore.score << '\t' << longestExtensionScore.strand << '\t' << beginPositionV(longestExtensionScore.seed) << '\t' << 
-                                endPositionV(longestExtensionScore.seed) << '\t' << globalInstance->at(i+colStart[b]).seq.length() << '\t' << beginPositionH(longestExtensionScore.seed) << '\t' << endPositionH(longestExtensionScore.seed) <<
-                                    '\t' << globalInstance->at(rowids[j]).seq.length() << endl;
-                        }
-                    }
-                }// if skipAlignment == false do alignment, else save just some info on the pair to file
-                else myBatch << globalInstance->at(i+colStart[b]).nametag << '\t' << globalInstance->at(rowids[j]).nametag << '\t' << values[j]->count << '\t' << 
-                        globalInstance->at(i+colStart[b]).seq.length() << '\t' << globalInstance->at(rowids[j]).seq.length() << endl;
-            }// for(int j=colptr[i]; j<colptr[i+1]; ++j)
-        }// for(int i=0; i<numCols[b]; ++i)
-
-#ifdef TIMESTEP
-        if(!skipAlignment)
-        {
-#pragma omp critical
-        {
-            alignSoFar += numAlignmentsThread;
-            cout << "[" << omp_get_thread_num()+1 << "] alignment time: " << omp_get_wtime()-ov2 << " s | alignment rate: " << numBasesAlignedThread/(omp_get_wtime()-ov2) << " bases/s | average read length: " << 
-                        readLengthsThread/(2*numAlignmentsThread) << " | read pairs aligned so far: " << alignSoFar << endl;
-            // rate in pair/s: numAlignmentsThread/(omp_get_wtime()-ov2)
-        }     
+                        	PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, myBatch);
+		    	}
+		}
+	        else 	// if skipAlignment == false do alignment, else save just some info on the pair to file 		
+		{
+			myBatch << reads[cid].nametag << '\t' << reads[rid].nametag << '\t' << val->count << '\t' << 
+                        	seq2len << '\t' << seq1len << endl;
+		}
+	} // all nonzeros in that column of A^T A
+	#pragma omp critical
+	{
+#ifndef NOOUTPUT
+		writeToFile(myBatch, filename);	// this is probably very slow and needs to be optimized
+		myBatch.str(std::string());
 #endif
-        delete [] colptr;
-        delete [] rowids;
-        delete [] values;
-
-#pragma omp critical
-        {
-            writeToFile(myBatch, filename);
-            myBatch.str(std::string());
-        }
+	
+#ifdef TIMESTEP	
+        	alignedpairs += numAlignmentsThread;
+		alignedbases += numBasesAlignedThread;	
+		totalreadlen += readLengthsThread;
+#endif		
+	}
+    }	// all columns from start...end (omp for loop)
+    return make_tuple(alignedpairs, alignedbases, totalreadlen);
 }
 
 
@@ -639,15 +629,25 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         delete [] RowIdsofC;
         delete [] ValuesofC;
 
-        size_t numAlignmentsThread = 0;
-        size_t numBasesAlignedThread = 0;
-        size_t readLengthsThread = 0;
+	tuple<size_t, size_t, size_t> alignstats; // (alignedpairs, alignedbases, totalreadlen)
+	alignstats = RunPairWiseAlignments(colStart[b], colStart[b+1], colptrC, rowids, values, reads, kmer_len, xdrop, b_pars);
 
-	RunPairWiseAlignments(colStart[b], colStart[b+1], colptrC, rowids, values, reads, kmer_len, xdrop, b_pars);
+#ifdef TIMESTEP
+        if(!b_pars.skipAlignment)
+        {
+	    	double elapsed = omp_get_wtime()-ov2
+	    	int thread_id = omp_get_thread_num;
+            	cout << "[" << thread_id << "] alignment time: " << elapsed << " s | alignment rate: " << static_cast<double>(get<1>(alignstats))/elapsed;
+	   	cout << " bases/s | average read length: " <<static_cast<double>(get<2>(alignstats))/(2* get<0>(alignstats));
+		cout << " | read pairs aligned so far: " << get<0>(alignstats) << endl;
+	}
+#endif
+
+        delete [] rowids;
+        delete [] values;
 
     }//for(int b = 0; b < states; ++b)
 
+    delete [] colptrC;
     delete [] colStart;
-    delete [] colEnd;
-    delete [] numCols; 
 }
