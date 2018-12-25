@@ -74,7 +74,6 @@ int main (int argc, char *argv[]) {
     char *all_inputs_fofn = NULL;           // List of fastqs (i)
     char *out_file = NULL;                  // output filename (o)
     int kmer_len = 17;                      // default k-mer length (k)
-    int algnmnt_thr = 50;                   // default alignment score threshold (a)
     int xdrop = 3;                          // default alignment x-drop factor (p)
     double erate = 0.15;                    // default error rate (e)
     int depth = 0;                          // depth/coverage required (d)
@@ -164,7 +163,7 @@ int main (int argc, char *argv[]) {
                 break;
             }
             case 'a': {
-                algnmnt_thr = atoi(thisOpt->argument);
+                b_parameters.defaultThr = atoi(thisOpt->argument);
                 break;
             }
             case 'p': {
@@ -176,8 +175,8 @@ int main (int argc, char *argv[]) {
                 break;
             }
 	    case 'm': {
-		totalMemory = atoi(thisOpt->argument);
-		userDefMem = true;
+		b_parameters.totalMemory = atoi(thisOpt->argument);
+		b_parameters.userDefMem = true;
 		break;
 	    }
             case 'c': {
@@ -281,7 +280,7 @@ if(b_parameters.adapThr)
 {
     cout << "Deviation from expected alignment score: " << b_parameters.deltaChernoff << endl;
     cout << "Constant of adaptive threshold: " << ratioPhi*(1-b_parameters.deltaChernoff)<< endl;
-} else cout << "Default alignment score threshold: " << algnmnt_thr << endl;
+} else cout << "Default alignment score threshold: " << b_parameters.defaultThr << endl;
 if(b_parameters.alignEnd)
 {
     cout << "Alignment on edge: True" << endl;
@@ -425,7 +424,7 @@ if(b_parameters.alignEnd)
                 m2->pos[2] = m1->pos[0]; // row 
                 m2->pos[3] = m1->pos[1]; // col
                 return m2;
-            }, reads, getvaluetype, kmer_len, xdrop, algnmnt_thr, out_file, b_parameters, ratioPhi); 
+            }, reads, getvaluetype, kmer_len, xdrop, out_file, b_parameters, ratioPhi); 
 
     cout << "total running time: " << omp_get_wtime()-all << "s\n" << endl;
     return 0;

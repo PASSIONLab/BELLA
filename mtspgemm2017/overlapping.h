@@ -63,16 +63,18 @@ double safety_net = 1.2;
 
 struct BELLApars
 {
-	int totalMemory;	// in MB
+	int totalMemory;	// in MB, default is ~ 8GB
 	bool userDefMem;
 
 	bool skipAlignment;  	// Do not align (z)
 	bool adapThr; 		// Apply adaptive alignment threshold (v)
+   	int defaultThr;   	// default alignment score threshold (a), only matters when adapThr=false, to be deprecated	
 	bool alignEnd;		// Filter out alignments not achieving end of the read "relaxed" (x)
 	int relaxMargin;	// epsilon parameter for alignment on edges (w)
 	double deltaChernoff;	// delta computed via Chernoff bound (c)
 
-	BELLApars():totalMemory(8000), userDefMem(false), skipAlignment(false), adapThr(false), alignEnd(false), relaxMargin(300), deltaChernoff(0.1) {};
+	BELLApars():totalMemory(8000), userDefMem(false), skipAlignment(false), adapThr(false), defaultThr(50),
+			alignEnd(false), relaxMargin(300), deltaChernoff(0.1) {};
 };
 
 /*
@@ -241,7 +243,7 @@ IT* estimateNNZ_Hash(const CSC<IT,NT> & A, const CSC<IT,NT> & B, const size_t *f
         }
         std::vector<IT> globalHashVec(ht_size);
 
-        for(size j=0; j < ht_size; ++j)
+        for(size_t j=0; j < ht_size; ++j)
         {
             globalHashVec[j] = -1;
         }
@@ -354,12 +356,12 @@ void LocalSpGEMM(IT & start, IT & end, const CSC<IT,NT> & A, const CSC<IT,NT> & 
 
 }
 
-uint64_t estimateMemory()
+uint64_t estimateMemory(const BELLApars & b_pars)
 {
     uint64_t free_memory;
-    if (userDefMem)
+    if (b_pars.userDefMem)
     {
-    	free_memory = static_cast<uint64_t>(total_memory) * 1024 * 1024;
+    	free_memory = static_cast<uint64_t>(b_pars.totalMemory) * 1024 * 1024;
     }
     else
     {
@@ -387,7 +389,7 @@ uint64_t estimateMemory()
     free_memory += info.freeswap * info.mem_unit;
     free_memory += info.bufferram * info.mem_unit;
 #else
-    free_memory = static_cast<uint64_t>(total_memory) * 1024 * 1024;	// user default
+    free_memory = static_cast<uint64_t>(b_pars.totalMemory) * 1024 * 1024;	// memory is neither user-supplied nor can be estimated, so use BELLA's default
 #endif
     }
     return free_memory;
@@ -537,9 +539,9 @@ tuple<size_t, size_t, size_t> RunPairWiseAlignments((IT & start, IT & end, IT * 
  **/
 template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation>
 void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, const readVector_ & reads, 
-    FT & getvaluetype, int kmer_len, int xdrop, int defaultThr, char* filename, const BELLApars & b_pars, double ratioPhi)
+    FT & getvaluetype, int kmer_len, int xdrop, char* filename, const BELLApars & b_pars, double ratioPhi)
 {
-    int64_t free_memory = EstimateMemory();
+    int64_t free_memory = estimateMemory(b_pars);
 
 #ifdef PRINT
     cout << "Available RAM is assumed to be : " << free_memory / (1024 * 1024) << " MB" << endl;
