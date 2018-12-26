@@ -295,7 +295,7 @@ void LocalSpGEMM(IT & start, IT & end, const CSC<IT,NT> & A, const CSC<IT,NT> & 
 	{
 		ht_size <<= 1;
 	}
-	std::vector< std::pair<IT,NT>> globalHashVec(ht_size);
+	std::vector< std::pair<IT,FT>> globalHashVec(ht_size);
            
 	// Initialize hash tables
 	for(IT j=0; j < ht_size; ++j)
@@ -310,7 +310,7 @@ void LocalSpGEMM(IT & start, IT & end, const CSC<IT,NT> & A, const CSC<IT,NT> & 
 		for(IT k = A.colptr[col2fetch]; k < A.colptr[col2fetch+1]; ++k) // all nonzeros in this column of A
 		{
 			IT key = A.rowids[k];
-			NT result =  multop(A.values[k], valueofB);
+			FT result =  multop(A.values[k], valueofB);
                 	IT hash = (key*hashScale) & (ht_size-1);
                 	while (1) //hash probing
                 	{
@@ -319,7 +319,7 @@ void LocalSpGEMM(IT & start, IT & end, const CSC<IT,NT> & A, const CSC<IT,NT> & 
                             		globalHashVec[hash].second = addop(result, globalHashVec[hash].second);
                         		break;
                     		}
-                    		else if (globalHashVec[hash] == -1) //key is not registered yet
+                    		else if (globalHashVec[hash].first == -1) //key is not registered yet
                     		{
                         		globalHashVec[hash].first = key;
                         		globalHashVec[hash].second = result;					
@@ -332,7 +332,7 @@ void LocalSpGEMM(IT & start, IT & end, const CSC<IT,NT> & A, const CSC<IT,NT> & 
 			}
 		}
 	}
-       // gather non-zero elements from hash table, and then sort them by row indices
+       // gather non-zero elements from hash table (and then sort them by row indices if needed)
        IT index = 0;
        for (IT j=0; j < ht_size; ++j)
        {
@@ -349,8 +349,8 @@ void LocalSpGEMM(IT & start, IT & end, const CSC<IT,NT> & A, const CSC<IT,NT> & 
  
        for (IT j=0; j< index; ++j)
        {
-	       RowIdsofC[i] = globalHashVec[j].first;
-	       ValuesofC[i] = globalHashVec[j].second;
+	       RowIdsofC[i-start][j] = globalHashVec[j].first;
+	       ValuesofC[i-start][j] = globalHashVec[j].second;
        }
     }
 
@@ -426,7 +426,7 @@ void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1,
 		{
 			if(b_pars.alignEnd)
 			{
-				bool aligntoEnd = toEnd(begpV, endpV, read2len, begpH, endpH, read1len, relaxMargin);
+				bool aligntoEnd = toEnd(begpV, endpV, read2len, begpH, endpH, read1len, b_pars.relaxMargin);
 				if(aligntoEnd)
 				{
 					myBatch << read2.nametag << '\t' << read1.nametag << '\t' << count << '\t' << maxExtScore.score << '\t' << maxExtScore.strand << '\t' << 
@@ -436,7 +436,7 @@ void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1,
 			else 
 			{
 				myBatch << read2.nametag << '\t' << read1.nametag << '\t' << count << '\t' << maxExtScore.score << '\t' << maxExtScore.strand << '\t' << 
-					begpV << '\t' << endpV << '\t' << read2len << '\t' << begpH << '\t' << endpH << '\t' << read1len << endl
+					begpV << '\t' << endpV << '\t' << read2len << '\t' << begpH << '\t' << endpH << '\t' << read1len << endl;
 			}
 		}
 	}
@@ -444,7 +444,7 @@ void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1,
 	{
 		if(b_pars.alignEnd)
 		{
-			bool aligntoEnd = toEnd(begpV, endpV, read2len, begpH, endpH, read1len,relaxMargin);
+			bool aligntoEnd = toEnd(begpV, endpV, read2len, begpH, endpH, read1len,b_pars.relaxMargin);
 			if(aligntoEnd)
 			{
 				myBatch << read2.nametag << '\t' << read1.nametag << '\t' << count << '\t' << maxExtScore.score << '\t' << maxExtScore.strand << '\t' << 
@@ -454,14 +454,14 @@ void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1,
 		else 
 		{
 			myBatch << read2.nametag << '\t' << read1.nametag << '\t' << count << '\t' << maxExtScore.score << '\t' << maxExtScore.strand << '\t' << 
-				begpV << '\t' << endpV << '\t' << read2len << '\t' << begpH << '\t' << endpH << '\t' << read1len << endl
+				begpV << '\t' << endpV << '\t' << read2len << '\t' << begpH << '\t' << endpH << '\t' << read1len << endl;
 		}
 	}
 }
 
 template <typename IT, typename FT>
-tuple<size_t, size_t, size_t> RunPairWiseAlignments((IT & start, IT & end, IT * colptrC, IT * rowids, FT * values, const readVector_ & reads, int kmer_len, 
-			int xdrop, const BELLApars & b_pars, double ratioPhi)
+tuple<size_t, size_t, size_t> RunPairWiseAlignments(IT & start, IT & end, IT * colptrC, IT * rowids, FT * values, const readVector_ & reads, int kmer_len, 
+			int xdrop, char* filename, const BELLApars & b_pars, double ratioPhi)
 {
     size_t alignedpairs = 0;
     size_t alignedbases = 0;
@@ -478,22 +478,23 @@ tuple<size_t, size_t, size_t> RunPairWiseAlignments((IT & start, IT & end, IT * 
 
 	for (IT i = colptrC[j]; i < colptrC[j+1]; ++i)	// all nonzeros in that column of A^T A
 	{
-		if(!b_pars.skipAlignment) // fix -z to not print 
-                {
-			size_t rid = rowids[i];		// row id
-			size_t cid = j;			// column id
-			string seq1 = reads[rid].seq;
-			string seq2 = reads[cid].seq;
+		size_t rid = rowids[i];		// row id
+		size_t cid = j;			// column id
+		string seq1 = reads[rid].seq;
+		string seq2 = reads[cid].seq;
 			
-			int seq1len = seq1.length();
-			int seq2len = seq2.length();
-	
+		int seq1len = seq1.length();
+		int seq2len = seq2.length();
+
+		spmatPtr_ val = values[i];
+
+		if(!b_pars.skipAlignment) // fix -z to not print 
+                {	
 #ifdef TIMESTEP	
                     	numAlignmentsThread++;
                     	readLengthsThread = readLengthsThread + seq1len + seq2len;
 #endif
 
-		    	spmatPtr_ val = values[i];
 		    	seqAnResult maxExtScore;
 		    	if(values[i]->count == 1)
 		    	{
@@ -504,7 +505,6 @@ tuple<size_t, size_t, size_t> RunPairWiseAlignments((IT & start, IT & end, IT * 
                         	maxExtScore = seqanAlGen(seq1, seq2, seq1len, val->pos[0], val->pos[1], val->pos[2], val->pos[3], xdrop, kmer_len);
 		    	}			
 #ifdef TIMESTEP
-                      
 			numBasesAlignedThread += endPositionV(maxExtScore.seed)-beginPositionV(maxExtScore.seed);
 #endif
                        	PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, myBatch);
@@ -547,6 +547,12 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     cout << "Available RAM is assumed to be : " << free_memory / (1024 * 1024) << " MB" << endl;
 #endif
 
+    int numThreads = 1;
+#pragma omp parallel
+    {
+        numThreads = omp_get_num_threads();
+    }
+
     IT* flopC = estimateFLOP(A, B);
     IT* flopptr = prefixsum<IT>(flopC, B.cols, numThreads);
     IT flops = flopptr[B.cols];
@@ -569,7 +575,7 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
 
     uint64_t required_memory = safety_net * nnzc * (sizeof(FT)+sizeof(IT));	// required memory to form the output
     int stages = required_memory/free_memory; 		// form output in stages
-    uint64_t nnzcperstage = free_memory / (safety_net * (sizeof(FT)+sizeof(IT));
+    uint64_t nnzcperstage = free_memory / (safety_net * (sizeof(FT)+sizeof(IT)));
 
     IT * colStart = new IT[stages+1];	// one array is enough to set stage boundaries	              
     colStart[0] = 0;
@@ -597,14 +603,11 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
 
 #ifdef TIMESTEP
         double ov2 = omp_get_wtime();
-#pragma omp critical
-        {
-            cout << "[" << omp_get_thread_num()+1 << "] overlap time: " << ov2-ovl << "s" << endl;
-        }
+	cout << "Columns [" << colStart[b] << " - " << colStart[b+1] << "] overlap time: " << ov2-ovl << "s" << endl;
 #endif
         
-	IT endcol = colptr[colStart[b+1]];
-	IT begcol = colptr[colStart[b]];
+	IT endcol = colptrC[colStart[b+1]];
+	IT begcol = colptrC[colStart[b]];
 
         IT * rowids = new IT[endcol-begcol];
         FT * values = new FT[endcol-begcol];
@@ -620,14 +623,13 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         delete [] ValuesofC;
 
 	tuple<size_t, size_t, size_t> alignstats; // (alignedpairs, alignedbases, totalreadlen)
-	alignstats = RunPairWiseAlignments(colStart[b], colStart[b+1], colptrC, rowids, values, reads, kmer_len, xdrop, b_pars);
+	alignstats = RunPairWiseAlignments(colStart[b], colStart[b+1], colptrC, rowids, values, reads, kmer_len, xdrop, filename, b_pars, ratioPhi);
 
 #ifdef TIMESTEP
         if(!b_pars.skipAlignment)
         {
-	    	double elapsed = omp_get_wtime()-ov2
-	    	int thread_id = omp_get_thread_num;
-            	cout << "[" << thread_id << "] alignment time: " << elapsed << " s | alignment rate: " << static_cast<double>(get<1>(alignstats))/elapsed;
+	    	double elapsed = omp_get_wtime()-ov2;
+            	cout << "Columns [" << colStart[b] << " - " << colStart[b+1] << "] alignment time: " << elapsed << " s | alignment rate: " << static_cast<double>(get<1>(alignstats))/elapsed;
 	   	cout << " bases/s | average read length: " <<static_cast<double>(get<2>(alignstats))/(2* get<0>(alignstats));
 		cout << " | read pairs aligned so far: " << get<0>(alignstats) << endl;
 	}
