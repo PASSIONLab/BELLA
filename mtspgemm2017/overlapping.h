@@ -37,7 +37,11 @@ typedef SeedSet<TSeed> TSeedSet;
 
 #define PERCORECACHE (1024 * 1024)
 #define TIMESTEP
-//#define PRINT
+
+#ifndef PRINT
+#define PRINT
+#endif
+
 //#define THREADLIMIT
 //#define MAX_NUM_THREAD 1
 //#define OSX
@@ -408,6 +412,10 @@ void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1,
 
 	string seq1 = read1.seq;
 	string seq2 = read2.seq;
+
+#ifdef PRINT
+	cout << "Aligned " << read1.nametag << " to " << read2.nametag << ", got score " << maxExtScore.score << endl;
+#endif
 			
 	int read1len = seq1.length();
 	int read2len = seq2.length();	
@@ -574,7 +582,7 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
 #endif
 
     uint64_t required_memory = safety_net * nnzc * (sizeof(FT)+sizeof(IT));	// required memory to form the output
-    int stages = required_memory/free_memory; 		// form output in stages
+    int stages = std::ceil((double) required_memory/ (double) free_memory); 	// form output in stages 
     uint64_t nnzcperstage = free_memory / (safety_net * (sizeof(FT)+sizeof(IT)));
 
     IT * colStart = new IT[stages+1];	// one array is enough to set stage boundaries	              
@@ -588,8 +596,11 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     }
     colStart[stages] = B.cols;
 
+#ifdef PRINT
+    cout << "stages: " << stages << ", nnzperstage: " << nnzcperstage << endl;
     copy(colStart, colStart+stages+1, ostream_iterator<IT>(cout, " "));
     cout << endl;
+#endif
 
     for(int b = 0; b < stages; ++b) 
     {
