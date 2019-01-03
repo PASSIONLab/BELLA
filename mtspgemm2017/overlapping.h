@@ -494,6 +494,10 @@ tuple<size_t, size_t, size_t> RunPairWiseAlignments(IT & start, IT & end, IT * c
 		int seq1len = seq1.length();
 		int seq2len = seq2.length();
 
+#ifdef PRINT 
+		cout << reads[rid].nametag << " vs " << reads[cid].nametag << " with shared k-mers " << values[i]->count << endl;
+#endif
+
 		spmatPtr_ val = values[i];
 
 		if(!b_pars.skipAlignment) // fix -z to not print 
