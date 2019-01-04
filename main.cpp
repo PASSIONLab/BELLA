@@ -276,8 +276,6 @@ int main (int argc, char *argv[]) {
     lower = computeLower(depth,erate,kmer_len);
     upper = computeUpper(depth,erate,kmer_len);
     double ratioPhi = adaptiveSlope(erate, (float)xdrop);
-    lower = 1;
-    upper = 10;
 #ifdef PRINT
     cout << "Reliable lower bound: " << lower << endl;
     cout << "Reliable upper bound: " << upper << endl;
