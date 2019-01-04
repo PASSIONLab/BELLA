@@ -67,7 +67,7 @@ double safety_net = 1.2;
 
 struct BELLApars
 {
-	int totalMemory;	// in MB, default is ~ 8GB
+	double totalMemory;	// in MB, default is ~ 8GB
 	bool userDefMem;
 
 	bool skipAlignment;  	// Do not align (z)
@@ -77,9 +77,12 @@ struct BELLApars
 	int relaxMargin;	// epsilon parameter for alignment on edges (w)
 	double deltaChernoff;	// delta computed via Chernoff bound (c)
 
-	BELLApars():totalMemory(8000), userDefMem(false), skipAlignment(false), adapThr(false), defaultThr(50),
+	BELLApars():totalMemory(8000.0), userDefMem(false), skipAlignment(false), adapThr(false), defaultThr(50),
 			alignEnd(false), relaxMargin(300), deltaChernoff(0.1) {};
 };
+
+
+
 
 /*
  Multithreaded prefix sum
@@ -360,12 +363,12 @@ void LocalSpGEMM(IT & start, IT & end, const CSC<IT,NT> & A, const CSC<IT,NT> & 
 
 }
 
-uint64_t estimateMemory(const BELLApars & b_pars)
+double estimateMemory(const BELLApars & b_pars)
 {
-    uint64_t free_memory;
+    double free_memory;
     if (b_pars.userDefMem)
     {
-    	free_memory = static_cast<uint64_t>(b_pars.totalMemory) * 1024 * 1024;
+    	free_memory = b_pars.totalMemory * 1024 * 1024;
     }
     else
     {
@@ -382,18 +385,18 @@ uint64_t estimateMemory(const BELLApars & b_pars)
                 KERN_SUCCESS == host_statistics64(mach_port, HOST_VM_INFO,
                                                 (host_info64_t)&vm_stats, &count))
     {
-        free_memory = (int64_t)vm_stats.free_count * (int64_t)page_size;
+        free_memory = (double) vm_stats.free_count * (double)page_size;
     } 
 #elif defined (LINUX) // LINUX-based memory consumption implementation 
     if(sysinfo(&info) != 0)
     {
         return false;
     }   
-    unsigned long free_memory = info.freeram * info.mem_unit;
+    free_memory = info.freeram * info.mem_unit;
     free_memory += info.freeswap * info.mem_unit;
     free_memory += info.bufferram * info.mem_unit;
 #else
-    free_memory = static_cast<uint64_t>(b_pars.totalMemory) * 1024 * 1024;	// memory is neither user-supplied nor can be estimated, so use BELLA's default
+    free_memory = b_pars.totalMemory * 1024 * 1024;	// memory is neither user-supplied nor can be estimated, so use BELLA's default
 #endif
     }
     return free_memory;
@@ -468,7 +471,7 @@ void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1,
 }
 
 template <typename IT, typename FT>
-tuple<size_t, size_t, size_t> RunPairWiseAlignments(IT & start, IT & end, IT * colptrC, IT * rowids, FT * values, const readVector_ & reads, int kmer_len, 
+tuple<size_t, size_t, size_t> RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowids, FT * values, const readVector_ & reads, int kmer_len, 
 			int xdrop, char* filename, const BELLApars & b_pars, double ratioPhi)
 {
     size_t alignedpairs = 0;
@@ -486,7 +489,7 @@ tuple<size_t, size_t, size_t> RunPairWiseAlignments(IT & start, IT & end, IT * c
 
 	for (IT i = colptrC[j]; i < colptrC[j+1]; ++i)	// all nonzeros in that column of A^T A
 	{
-		size_t rid = rowids[i];		// row id
+		size_t rid = rowids[i-offset];	// row id
 		size_t cid = j;			// column id
 		string seq1 = reads[rid].seq;
 		string seq2 = reads[cid].seq;
@@ -494,11 +497,12 @@ tuple<size_t, size_t, size_t> RunPairWiseAlignments(IT & start, IT & end, IT * c
 		int seq1len = seq1.length();
 		int seq2len = seq2.length();
 
+		spmatPtr_ val = values[i-offset];		
+
 #ifdef PRINT 
-		cout << reads[rid].nametag << " vs " << reads[cid].nametag << " with shared k-mers " << values[i]->count << endl;
+		cout << "C[" << rid << "," << cid << "] : " << reads[rid].nametag << " vs " << reads[cid].nametag << " with shared k-mers " << val->count << endl;
 #endif
 
-		spmatPtr_ val = values[i];
 
 		if(!b_pars.skipAlignment) // fix -z to not print 
                 {	
@@ -553,7 +557,7 @@ template <typename IT, typename NT, typename FT, typename MultiplyOperation, typ
 void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, const readVector_ & reads, 
     FT & getvaluetype, int kmer_len, int xdrop, char* filename, const BELLApars & b_pars, double ratioPhi)
 {
-    int64_t free_memory = estimateMemory(b_pars);
+    double free_memory = estimateMemory(b_pars);
 
 #ifdef PRINT
     cout << "Available RAM is assumed to be : " << free_memory / (1024 * 1024) << " MB" << endl;
@@ -581,22 +585,25 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     IT nnzc = colptrC[B.cols];
     double compression_ratio = (double)flops / nnzc;
 
-#ifdef PRINT
-    cout << "nnz(output): " << nnzc << endl; 
-#endif
 
     uint64_t required_memory = safety_net * nnzc * (sizeof(FT)+sizeof(IT));	// required memory to form the output
-    int stages = std::ceil((double) required_memory/ (double) free_memory); 	// form output in stages 
+    int stages = std::ceil((double) required_memory/ free_memory); 	// form output in stages 
     uint64_t nnzcperstage = free_memory / (safety_net * (sizeof(FT)+sizeof(IT)));
+
+#ifdef PRINT
+    cout << "nnz(output): " << nnzc << ", free_memory: " << free_memory << ", required_memory: " << required_memory << endl; 
+#endif
+
 
     IT * colStart = new IT[stages+1];	// one array is enough to set stage boundaries	              
     colStart[0] = 0;
 
     for(int i = 1; i < stages; ++i)	// colsPerStage is no longer fixed (helps with potential load imbalance)
     {
-	// std::upper_bound returns an iterator to the first element greater than a certain value 
-	auto upper = std::upper_bound(colptrC, colptrC+B.cols, i*nnzcperstage ); 
-	colStart[i]  = upper - colptrC;
+	// std::upper_bound returns an iterator pointing to the first element 
+	// in the range [first, last) that is greater than value, or last if no such element is found
+	auto upper = std::upper_bound(colptrC, colptrC+B.cols+1, i*nnzcperstage ); 
+	colStart[i]  = upper - colptrC - 1;	// we don't want the element that exceeds our budget, we want the one just before that
     }
     colStart[stages] = B.cols;
 
@@ -621,24 +628,25 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
 	cout << "Columns [" << colStart[b] << " - " << colStart[b+1] << "] overlap time: " << ov2-ovl << "s" << endl;
 #endif
         
-	IT endcol = colptrC[colStart[b+1]];
-	IT begcol = colptrC[colStart[b]];
+	IT endnz = colptrC[colStart[b+1]];
+	IT begnz = colptrC[colStart[b]];
 
-        IT * rowids = new IT[endcol-begcol];
-        FT * values = new FT[endcol-begcol];
+        IT * rowids = new IT[endnz-begnz];
+        FT * values = new FT[endnz-begnz];
 
         for(IT i=colStart[b]; i<colStart[b+1]; ++i) // combine step
         {
-	    IT locind = i-colStart[b];
-            copy(RowIdsofC[locind].begin(), RowIdsofC[locind].end(), rowids + locind);
-            copy(ValuesofC[locind].begin(), ValuesofC[locind].end(), values + locind);
-        }
+	    IT loccol = i-colStart[b];
+	    IT locnz = colptrC[i]-begnz;
+            copy(RowIdsofC[loccol].begin(), RowIdsofC[loccol].end(), rowids + locnz);
+            copy(ValuesofC[loccol].begin(), ValuesofC[loccol].end(), values + locnz);
+	}
 
         delete [] RowIdsofC;
         delete [] ValuesofC;
 
 	tuple<size_t, size_t, size_t> alignstats; // (alignedpairs, alignedbases, totalreadlen)
-	alignstats = RunPairWiseAlignments(colStart[b], colStart[b+1], colptrC, rowids, values, reads, kmer_len, xdrop, filename, b_pars, ratioPhi);
+	alignstats = RunPairWiseAlignments(colStart[b], colStart[b+1], begnz, colptrC, rowids, values, reads, kmer_len, xdrop, filename, b_pars, ratioPhi);
 
 #ifdef TIMESTEP
         if(!b_pars.skipAlignment)

@@ -66,8 +66,10 @@ int main (int argc, char *argv[]) {
     //
     option_t *optList, *thisOpt;
     // Get list of command line options and their arguments 
+    // Follow an option with a colon to indicate that it requires an argument.
+
     optList = NULL;
-    optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:a:ze:p:w:vxc:");
+    optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:a:ze:p:w:vxc:m:");
    
 
     char *kmer_file = NULL;                 // Reliable k-mer file from Jellyfish
@@ -169,14 +171,15 @@ int main (int argc, char *argv[]) {
             case 'p': {
                 xdrop = atoi(thisOpt->argument);
                 break;
-            }
+            } 
             case 'w': {
                 b_parameters.relaxMargin = atoi(thisOpt->argument);
                 break;
             }
 	    case 'm': {
-		b_parameters.totalMemory = atoi(thisOpt->argument);
+		b_parameters.totalMemory = stod(thisOpt->argument);
 		b_parameters.userDefMem = true;
+		cout << "User defined memory set to " << b_parameters.totalMemory << " MB " << endl;
 		break;
 	    }
             case 'c': {
@@ -402,9 +405,6 @@ if(b_parameters.alignEnd)
                             {  return p1;
                             });
     std::vector<tuple<size_t,size_t,size_t>>().swap(transtuples); // remove memory of transtuples
-
-    spmat.Sorted();
-    transpmat.Sorted();
 
 #ifdef PRINT
     cout << "spmat and spmat^T creation took: " << omp_get_wtime()-matcreat << "s" << endl;
