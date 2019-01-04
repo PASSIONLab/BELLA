@@ -415,10 +415,6 @@ void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1,
 
 	string seq1 = read1.seq;
 	string seq2 = read2.seq;
-
-#ifdef PRINT
-	cout << "Aligned " << read1.nametag << " to " << read2.nametag << ", got score " << maxExtScore.score << endl;
-#endif
 			
 	int read1len = seq1.length();
 	int read2len = seq2.length();	
@@ -499,10 +495,6 @@ tuple<size_t, size_t, size_t> RunPairWiseAlignments(IT start, IT end, IT offset,
 
 		spmatPtr_ val = values[i-offset];		
 
-#ifdef PRINT 
-		cout << "C[" << rid << "," << cid << "] : " << reads[rid].nametag << " vs " << reads[cid].nametag << " with shared k-mers " << val->count << endl;
-#endif
-
 
 		if(!b_pars.skipAlignment) // fix -z to not print 
                 {	
@@ -512,7 +504,7 @@ tuple<size_t, size_t, size_t> RunPairWiseAlignments(IT start, IT end, IT offset,
 #endif
 
 		    	seqAnResult maxExtScore;
-		    	if(values[i]->count == 1)
+		    	if(val->count == 1)
 		    	{
 				maxExtScore = seqanAlOne(seq1, seq2, seq1len, val->pos[0], val->pos[1], xdrop, kmer_len);
 		    	} 
@@ -592,6 +584,7 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
 
 #ifdef PRINT
     cout << "nnz(output): " << nnzc << ", free_memory: " << free_memory << ", required_memory: " << required_memory << endl; 
+    cout << "stages: " << stages << ", nnzperstage: " << nnzcperstage << endl;    
 #endif
 
 
@@ -607,11 +600,6 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     }
     colStart[stages] = B.cols;
 
-#ifdef PRINT
-    cout << "stages: " << stages << ", nnzperstage: " << nnzcperstage << endl;
-    copy(colStart, colStart+stages+1, ostream_iterator<IT>(cout, " "));
-    cout << endl;
-#endif
 
     for(int b = 0; b < stages; ++b) 
     {
@@ -654,7 +642,7 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
 	    	double elapsed = omp_get_wtime()-ov2;
             	cout << "Columns [" << colStart[b] << " - " << colStart[b+1] << "] alignment time: " << elapsed << " s | alignment rate: " << static_cast<double>(get<1>(alignstats))/elapsed;
 	   	cout << " bases/s | average read length: " <<static_cast<double>(get<2>(alignstats))/(2* get<0>(alignstats));
-		cout << " | read pairs aligned so far: " << get<0>(alignstats) << endl;
+		cout << " | read pairs aligned this stage: " << get<0>(alignstats) << endl;
 	}
 #endif
 
