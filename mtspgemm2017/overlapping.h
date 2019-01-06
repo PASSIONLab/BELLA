@@ -584,7 +584,7 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
 
 #ifdef PRINT
     cout << "nnz(output): " << nnzc << ", free_memory: " << free_memory << ", required_memory: " << required_memory << endl; 
-    cout << "stages: " << stages << ", nnzperstage: " << nnzcperstage << endl;    
+    cout << "stages: " << stages << ", max nnz per stage: " << nnzcperstage << endl;    
 #endif
 
 
