@@ -1749,8 +1749,12 @@ private:
   // Executes the function over the given range split over num_threads threads
   template <typename F>
   void parallel_exec(size_type start, size_type end, F func) {
+#ifdef __LIBCUCKOO_SERIAL
+    static const size_type num_threads = 1U;
+#else
     static const size_type num_threads =
         std::max(std::thread::hardware_concurrency(), 1U);
+#endif
     size_type work_per_thread = (end - start) / num_threads;
     std::vector<std::thread, rebind_alloc<std::thread>> threads(
         get_allocator());
