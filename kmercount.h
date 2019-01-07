@@ -131,11 +131,11 @@ void JellyFishCount(char *kmer_file, dictionary_t & countsreliable_jelly, int lo
 
     // Reliable k-mer filter on countsjelly
     int kmer_id = 0;
-    auto lt = countsjelly.lock_table();
-    for(auto lt_it = lt.begin(); lt_it != lt.end(); ++lt_it)
-        if (lt_it->second >= lower && lt_it->second <= upper)
+    auto lt = countsjelly.lock_table(); // our counting
+    for (const auto &it : lt) 
+        if (it.second >= lower && it.second <= upper)
         {
-            countsreliable_jelly.insert(lt_it->first,kmer_id);
+            countsreliable_jelly.insert(it.first,kmer_id);
             ++kmer_id;
         }
     lt.unlock(); // unlock the table
@@ -281,7 +281,6 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
     for (const auto &it : lt) 
         if (it.second >= lower && it.second <= upper)
         {
-            cout << it.first.toString() << ' ' << kmer_id_denovo << endl;
             countsreliable_denovo.insert(it.first,kmer_id_denovo);
             ++kmer_id_denovo;
         }
