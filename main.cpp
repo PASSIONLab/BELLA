@@ -40,7 +40,7 @@
 #include "mtspgemm2017/utility.h"
 #include "mtspgemm2017/CSC.h"
 #include "mtspgemm2017/CSR.h"
-#include "mtspgemm2017/global.h"
+#include "mtspgemm2017/common.h"
 #include "mtspgemm2017/IO.h"
 #include "mtspgemm2017/overlapping.h"
 #include "mtspgemm2017/align.h"

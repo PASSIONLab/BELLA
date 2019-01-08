@@ -41,6 +41,7 @@
 #include "kmercode/ParallelFASTQ.h"
 #include "kmercode/bound.hpp"
 #include "kmercode/hyperloglog.hpp"
+#include "mtspgemm2017/common.h"
 
 using namespace std;
 #define ASCIIBASE 33 // Pacbio quality score ASCII BASE

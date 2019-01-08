@@ -1,6 +1,5 @@
 #include "CSC.h"
 #include "align.h"
-#include "global.h"
 #include "common.h"
 #include "../kmercode/hash_funcs.h"
 #include "../kmercode/Kmer.hpp"
@@ -63,26 +62,6 @@ struct sysinfo info;
 #endif
 
 double safety_net = 1.2;
-
-
-struct BELLApars
-{
-	double totalMemory;	// in MB, default is ~ 8GB
-	bool userDefMem;
-
-	bool skipAlignment;  	// Do not align (z)
-	bool adapThr; 		// Apply adaptive alignment threshold (v)
-   	int defaultThr;   	// default alignment score threshold (a), only matters when adapThr=false, to be deprecated	
-	bool alignEnd;		// Filter out alignments not achieving end of the read "relaxed" (x)
-	int relaxMargin;	// epsilon parameter for alignment on edges (w)
-	double deltaChernoff;	// delta computed via Chernoff bound (c)
-
-	BELLApars():totalMemory(8000.0), userDefMem(false), skipAlignment(false), adapThr(false), defaultThr(50),
-			alignEnd(false), relaxMargin(300), deltaChernoff(0.1) {};
-};
-
-
-
 
 /*
  Multithreaded prefix sum
