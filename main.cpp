@@ -160,6 +160,7 @@ int main (int argc, char *argv[]) {
                 break;
             }
             case 'e': {
+                b_parameters.skipEstimate = true;
                 erate = strtod(thisOpt->argument, NULL);
                 break;
             }
@@ -287,7 +288,7 @@ int main (int argc, char *argv[]) {
     // Error estimation and reliabe bounds computation within denovo counting
     cout << "\nRunning with up to " << MAXTHREADS << " threads" << endl;
     double all = omp_get_wtime();
-    DeNovoCount(allfiles, countsreliable, lower, upper, kmer_len, depth, erate, upperlimit);
+    DeNovoCount(allfiles, countsreliable, lower, upper, kmer_len, depth, erate, upperlimit, b_parameters);
 
 #ifdef PRINT
     cout << "Error rate estimate is " << erate << endl;

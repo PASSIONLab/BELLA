@@ -27,10 +27,10 @@ struct BELLApars
 
 	bool skipEstimate;  	// Do not estimate error but use user-defined error (e)
 	bool skipAlignment;  	// Do not align (z)
-	bool adapThr; 		// Apply adaptive alignment threshold (v)
-	int defaultThr;   	// default alignment score threshold (a), only matters when adapThr=false, to be deprecated	
-	bool alignEnd;		// Filter out alignments not achieving end of the read "relaxed" (x)
-	int relaxMargin;	// epsilon parameter for alignment on edges (w)
+	bool adapThr; 			// Apply adaptive alignment threshold (v)
+	int defaultThr;   		// default alignment score threshold (a), only matters when adapThr=false, to be deprecated	
+	bool alignEnd;			// Filter out alignments not achieving end of the read "relaxed" (x)
+	int relaxMargin;		// epsilon parameter for alignment on edges (w)
 	double deltaChernoff;	// delta computed via Chernoff bound (c)
 
 	BELLApars():totalMemory(8000.0), userDefMem(false), skipEstimate(false), skipAlignment(false), adapThr(false), defaultThr(50),

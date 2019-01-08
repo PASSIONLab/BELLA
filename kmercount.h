@@ -156,13 +156,14 @@ void JellyFishCount(char *kmer_file, dictionary_t & countsreliable_jelly, int lo
  * @param kmer_len
  * @param upperlimit
  */
-void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_denovo, int & lower, int & upper, int kmer_len, int depth, double & errestimate, size_t upperlimit /* memory limit */)
+void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_denovo, int & lower, int & upper, int kmer_len, int depth, double & erate, size_t upperlimit /* memory limit */, BELLApars & b_parameters)
 {
     vector < vector<Kmer> > allkmers(MAXTHREADS);
-    vector < vector <double> > allquals(MAXTHREADS);
+    vector < vector<double> > allquals(MAXTHREADS);
     vector < HyperLogLog > hlls(MAXTHREADS, HyperLogLog(12));   // std::vector fill constructor
 
     double denovocount = omp_get_wtime();
+    double cardinality;
     dictionary_t countsdenovo;
     size_t totreads = 0;
 
@@ -199,11 +200,17 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
                         allkmers[MYTHREAD].push_back(lexsmall);
                         hlls[MYTHREAD].add((const char*) lexsmall.getBytes(), lexsmall.getNumBytes());
 
+            if(b_parameters.skipEstimate == false)
+            {
                         // accuracy
                         int bqual = (int)quals[i][j] - ASCIIBASE;
                         double berror = pow(10,-(double)bqual/10);
                         rerror += berror;
+            }
+
                     }
+            if(b_parameters.skipEstimate == false)
+            {
                     // remaining k qual position accuracy
                     for(int j=len-kmer_len+1; j < len; j++)
                     {
@@ -213,6 +220,7 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
                     }
                     rerror = rerror / len;
                     allquals[MYTHREAD].push_back(rerror);
+            }
                 } // for(int i=0; i<nreads; i++)
                 tlreads += nreads;
             } //while(fillstatus) 
@@ -224,23 +232,34 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
     //cout << "There were " << totreads << " reads" << endl;
     }
 
+if(b_parameters.skipEstimate == false)
+{
     // Error estimation for index 0 outside the loop to avoid double iteration (take advantage of next loop)
     double temp = std::accumulate(allquals[0].begin(),allquals[0].end(), 0.0);
-    errestimate = 0.0; // reset to 0 here, otherwise it cointains default or user-defined values TODO : add flag to disable error estimation
-    errestimate += temp/(double)allquals[0].size();
+    erate = 0.0; // reset to 0 here, otherwise it cointains default or user-defined values TODO : add flag to disable error estimation
+    erate += temp/(double)allquals[0].size();
 
     // HLL reduction (serial for now) and error estimation for index > 0 to avoid double iteration
     for (int i = 1; i < MAXTHREADS; i++) 
     {
         double temp = std::accumulate(allquals[i].begin(),allquals[i].end(), 0.0);
-        errestimate += temp/(double)allquals[i].size();
+        erate += temp/(double)allquals[i].size();
 
         std::transform(hlls[0].M.begin(), hlls[0].M.end(), hlls[i].M.begin(), hlls[0].M.begin(), [](uint8_t c1, uint8_t c2) -> uint8_t{ return std::max(c1, c2); });
     }
-    double cardinality = hlls[0].estimate();
-    errestimate = errestimate / (double)MAXTHREADS;
+    cardinality = hlls[0].estimate();
+    erate = erate / (double)MAXTHREADS;
+}
+else
+{
+    // HLL reduction (serial for now) and error estimation for index > 0 to avoid double iteration
+    for (int i = 1; i < MAXTHREADS; i++) 
+    {
+        std::transform(hlls[0].M.begin(), hlls[0].M.end(), hlls[i].M.begin(), hlls[0].M.begin(), [](uint8_t c1, uint8_t c2) -> uint8_t{ return std::max(c1, c2); });
+    }
+    cardinality = hlls[0].estimate();
+}
 
-    unsigned int random_seed = 0xA57EC3B2;
     const double desired_probability_of_false_positive = 0.05;
     struct bloom * bm = (struct bloom*) malloc(sizeof(struct bloom));
     bloom_init64(bm, cardinality * 1.1, desired_probability_of_false_positive);
@@ -273,8 +292,8 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
     cout << "Denovo counting + error estimation took: " << omp_get_wtime()-denovocount << "s" << endl;
 
     // Reliable bounds computation using estimated error rate from phred quality score
-    lower = computeLower(depth,errestimate,kmer_len);
-    upper = computeUpper(depth,errestimate,kmer_len);
+    lower = computeLower(depth,erate,kmer_len);
+    upper = computeUpper(depth,erate,kmer_len);
 
     // Reliable k-mer filter on countsdenovo
     int kmer_id_denovo = 0;
