@@ -215,7 +215,7 @@ IT* estimateNNZ_Hash(const CSC<IT,NT> & A, const CSC<IT,NT> & B, const size_t *f
     for(IT i=0; i < B.cols; ++i)	// for each column of B
     {
         size_t nnzcolB = B.colptr[i+1] - B.colptr[i]; //nnz in the current column of B
-	int myThread = omp_get_thread_num();
+	    int myThread = omp_get_thread_num();
     		
         // Hash
         const size_t minHashTableSize = 16;

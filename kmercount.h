@@ -97,8 +97,6 @@ vector<filedata>  GetFiles(char *filename) {
  */
 void JellyFishCount(char *kmer_file, dictionary_t & countsreliable_jelly, int lower, int upper) 
 {
-    double kdict = omp_get_wtime();
-    
     ifstream filein(kmer_file);
     string line;
     int elem;

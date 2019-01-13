@@ -237,10 +237,8 @@ int main (int argc, char *argv[]) {
     // Declarations 
     //
     vector<filedata> allfiles = GetFiles(all_inputs_fofn);
-    FILE *fastafile;
     int lower, upper; // reliable range lower and upper bound
     double ratioPhi;
-    char *buffer;
     Kmer::set_k(kmer_len);
     size_t upperlimit = 10000000; // in bytes
     Kmers kmervect;
@@ -321,7 +319,6 @@ if(b_parameters.alignEnd)
     vector < vector<tuple<int,int,int>> > alltranstuples(MAXTHREADS);   
     vector < readVector_ > allreads(MAXTHREADS);
 
-    double time1 = omp_get_wtime();
     for(auto itr=allfiles.begin(); itr!=allfiles.end(); itr++)
     {
 
