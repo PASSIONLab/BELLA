@@ -40,7 +40,7 @@
 #include "mtspgemm2017/utility.h"
 #include "mtspgemm2017/CSC.h"
 #include "mtspgemm2017/CSR.h"
-#include "mtspgemm2017/global.h"
+#include "mtspgemm2017/common.h"
 #include "mtspgemm2017/IO.h"
 #include "mtspgemm2017/overlapping.h"
 #include "mtspgemm2017/align.h"
@@ -49,6 +49,8 @@
 #define ITERS 10
 #define PRINT
 //#define JELLYFISH
+
+double deltaChernoff = 0.1;            
 
 using namespace std;
 
@@ -63,22 +65,21 @@ int main (int argc, char *argv[]) {
     //
     option_t *optList, *thisOpt;
     // Get list of command line options and their arguments 
+    // Follow an option with a colon to indicate that it requires an argument.
+
     optList = NULL;
-    optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:a:ze:p:w:vxc:");
+    optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:a:ze:p:w:vxc:m:");
    
-    bool skipAlignment = false;             // Do not align (z)
-    bool adapThr = false;                   // Apply adaptive alignment threshold (v)
-    bool alignEnd = false;                  // Filter out alignments not achieving end of the read "relaxed" (x)
+
     char *kmer_file = NULL;                 // Reliable k-mer file from Jellyfish
     char *all_inputs_fofn = NULL;           // List of fastqs (i)
     char *out_file = NULL;                  // output filename (o)
     int kmer_len = 17;                      // default k-mer length (k)
-    int algnmnt_thr = 50;                   // default alignment score threshold (a)
     int xdrop = 3;                          // default alignment x-drop factor (p)
-    double erate = 0.15;                    // default error rate (e)
+    double erate = 0.15;                    // default error rate (e) 
     int depth = 0;                          // depth/coverage required (d)
-    int relaxMargin = 300;                  // epsilon parameter for alignment on edges (w)
-    double deltaChernoff = 0.1;             // delta computed via Chernoff bound (c)
+
+    BELLApars b_parameters;
 
     if(optList == NULL)
     {
@@ -147,33 +148,40 @@ int main (int argc, char *argv[]) {
                 depth = atoi(thisOpt->argument);  
                 break;
             }
-            case 'z': skipAlignment = true; break; 
+            case 'z': b_parameters.skipAlignment = true; break; 
             case 'v': {
-                adapThr = true;
+                b_parameters.adapThr = true;
                 xdrop = 7;
                 break;
             }
-            case 'x': alignEnd = true; break; 
+            case 'x': b_parameters.alignEnd = true; break; 
             case 'k': {
                 kmer_len = atoi(thisOpt->argument);
                 break;
             }
             case 'e': {
+                b_parameters.skipEstimate = true;
                 erate = strtod(thisOpt->argument, NULL);
                 break;
             }
             case 'a': {
-                algnmnt_thr = atoi(thisOpt->argument);
+                b_parameters.defaultThr = atoi(thisOpt->argument);
                 break;
             }
             case 'p': {
                 xdrop = atoi(thisOpt->argument);
                 break;
-            }
+            } 
             case 'w': {
-                relaxMargin = atoi(thisOpt->argument);
+                b_parameters.relaxMargin = atoi(thisOpt->argument);
                 break;
             }
+        case 'm': {
+        b_parameters.totalMemory = stod(thisOpt->argument);
+        b_parameters.userDefMem = true;
+        cout << "User defined memory set to " << b_parameters.totalMemory << " MB " << endl;
+        break;
+        }
             case 'c': {
                 if(stod(thisOpt->argument) > 1.0 || stod(thisOpt->argument) < 0.0)
                 {
@@ -181,7 +189,7 @@ int main (int argc, char *argv[]) {
                     cout << "Run with -h to print out the command line options\n" << endl;
                     return 0;
                 }
-                deltaChernoff = stod(thisOpt->argument);
+                b_parameters.deltaChernoff = stod(thisOpt->argument);
                 break;
             }
             case 'h': {
@@ -193,7 +201,8 @@ int main (int argc, char *argv[]) {
                 cout << " -k : k-mer length [17]" << endl;
                 cout << " -a : alignment score threshold [50]" << endl;
                 cout << " -p : alignment x-drop factor [3]" << endl;
-                cout << " -e : error rate [0.15]" << endl;
+                cout << " -e : error rate [auto estimated from fastq]" << endl;
+                cout << " -m : total RAM of the system in MB [auto estimated if possible or 8,000 if not]" << endl;
                 cout << " -z : skip the pairwise alignment [false]" << endl;
                 cout << " -w : relaxMargin parameter for alignment on edges [300]" << endl;
                 cout << " -c : alignment score deviation from the mean [0.1]" << endl;
@@ -228,10 +237,8 @@ int main (int argc, char *argv[]) {
     // Declarations 
     //
     vector<filedata> allfiles = GetFiles(all_inputs_fofn);
-    FILE *fastafile;
-    int lower;          // reliable range lower bound
-    int upper;          // reliable range upper bound
-    char *buffer;
+    int lower, upper; // reliable range lower and upper bound
+    double ratioPhi;
     Kmer::set_k(kmer_len);
     size_t upperlimit = 10000000; // in bytes
     Kmers kmervect;
@@ -253,100 +260,110 @@ int main (int argc, char *argv[]) {
     cout << "K-mer counting: BELLA" << endl;
     cout << "Output filename: " << out_file << endl;
     cout << "K-mer length: " << kmer_len << endl;
-    if(skipAlignment)
+    if(b_parameters.skipAlignment)
         cout << "Compute alignment: False" << endl;
     else cout << "Compute alignment: True" << endl;
     cout << "X-drop: " << xdrop << endl;
     cout << "Depth: " << depth << "X" << endl;
-    cout << "Error rate: " << erate << endl;
 #endif
+
     //
-    // Reliable bounds computation
+    // Kmer file parsing, error estimation, reliable bounds computation, and k-mer dictionary creation
     //
+
+    dictionary_t countsreliable;
+#ifdef JELLYFISH
+    // Reliable bounds computation for Jellyfish using default error rate
     double all = omp_get_wtime();
     lower = computeLower(depth,erate,kmer_len);
     upper = computeUpper(depth,erate,kmer_len);
-    double ratioPhi = adaptiveSlope(erate, (float)xdrop);
-#ifdef PRINT
+    cout << "Error rate is " << erate << endl;
     cout << "Reliable lower bound: " << lower << endl;
     cout << "Reliable upper bound: " << upper << endl;
-if(adapThr)
+    JellyFishCount(kmer_file, countsreliable, lower, upper);
+
+#else
+    // Error estimation and reliabe bounds computation within denovo counting
+    cout << "\nRunning with up to " << MAXTHREADS << " threads" << endl;
+    double all = omp_get_wtime();
+    DeNovoCount(allfiles, countsreliable, lower, upper, kmer_len, depth, erate, upperlimit, b_parameters);
+
+#ifdef PRINT
+    cout << "Error rate estimate is " << erate << endl;
+    cout << "Reliable lower bound: " << lower << endl;
+    cout << "Reliable upper bound: " << upper << endl;
+if(b_parameters.adapThr)
 {
-    cout << "Deviation from expected alignment score: " << deltaChernoff << endl;
-    cout << "Constant of adaptive threshold: " << ratioPhi*(1-deltaChernoff)<< endl;
-} else cout << "Default alignment score threshold: " << algnmnt_thr << endl;
-if(alignEnd)
+    ratioPhi = adaptiveSlope(erate, (float)xdrop);
+    cout << "Deviation from expected alignment score: " << b_parameters.deltaChernoff << endl;
+    cout << "Constant of adaptive threshold: " << ratioPhi*(1-b_parameters.deltaChernoff)<< endl;
+}
+else cout << "Default alignment score threshold: " << b_parameters.defaultThr << endl;
+if(b_parameters.alignEnd)
 {
     cout << "Alignment on edge: True" << endl;
-    cout << "Relax margin: " << relaxMargin << endl;
-
+    cout << "Relax margin: " << b_parameters.relaxMargin << endl;
 } else cout << "Alignment on edge: False" << endl;
-#endif
-    //
-    // Reliable k-mer file parsing and k-mer dictionary creation
-    //
-    dictionary_t countsreliable;
-#ifdef JELLYFISH
-    JellyFishCount(kmer_file, countsreliable, lower, upper);
-#else
-    cout << "\nRunning with up to " << MAXTHREADS << " threads" << endl;
-    DeNovoCount(allfiles, countsreliable, lower, upper, kmer_len, upperlimit);
-#endif
+#endif // PRINT
+#endif // DENOVO COUNTING
+
     //
     // Fastq(s) parsing
     //
+
     double parsefastq = omp_get_wtime();
     size_t read_id = 0; // read_id needs to be global (not just per file)
     cout << "\nRunning with up to " << MAXTHREADS << " threads" << endl;
 
-        vector < vector<tuple<int,int,int>> > alloccurrences(MAXTHREADS);   
-        vector < vector<tuple<int,int,int>> > alltranstuples(MAXTHREADS);   
-        vector < readVector_ > allreads(MAXTHREADS);
+    vector < vector<tuple<int,int,int>> > alloccurrences(MAXTHREADS);   
+    vector < vector<tuple<int,int,int>> > alltranstuples(MAXTHREADS);   
+    vector < readVector_ > allreads(MAXTHREADS);
 
-        double time1 = omp_get_wtime();
-        for(auto itr=allfiles.begin(); itr!=allfiles.end(); itr++) {
+    for(auto itr=allfiles.begin(); itr!=allfiles.end(); itr++)
+    {
 
         ParallelFASTQ *pfq = new ParallelFASTQ();
         pfq->open(itr->filename, false, itr->filesize);
 
         size_t fillstatus = 1;
-        while(fillstatus) { 
+        while(fillstatus)
+        { 
             fillstatus = pfq->fill_block(nametags, seqs, quals, upperlimit);
             size_t nreads = seqs.size();
 
-                #pragma omp parallel for
-                for(int i=0; i<nreads; i++) 
+            #pragma omp parallel for
+            for(int i=0; i<nreads; i++) 
+            {
+                // remember that the last valid position is length()-1
+                int len = seqs[i].length();
+
+                readType_ temp;
+                temp.nametag = nametags[i];
+                temp.seq = seqs[i]; // save reads for seeded alignment
+                temp.readid = read_id+i;
+
+                allreads[MYTHREAD].push_back(temp);
+                        
+                for(int j=0; j<=len-kmer_len; j++)  
                 {
-                    // remember that the last valid position is length()-1
-                    int len = seqs[i].length();
+                    std::string kmerstrfromfastq = seqs[i].substr(j, kmer_len);
+                    Kmer mykmer(kmerstrfromfastq.c_str());
+                    // remember to use only ::rep() when building kmerdict as well
+                    Kmer lexsmall = mykmer.rep();
 
-                    readType_ temp;
-                    temp.nametag = nametags[i];
-                    temp.seq = seqs[i]; // save reads for seeded alignment
-                    temp.readid = read_id+i;
-
-		    allreads[MYTHREAD].push_back(temp);
-                    
-                    for(int j=0; j<=len-kmer_len; j++)  
+                    int idx; // kmer_id
+                    auto found = countsreliable.find(lexsmall,idx);
+                    if(found)
                     {
-                        std::string kmerstrfromfastq = seqs[i].substr(j, kmer_len);
-                        Kmer mykmer(kmerstrfromfastq.c_str());
-                        // remember to use only ::rep() when building kmerdict as well
-                        Kmer lexsmall = mykmer.rep();      
-
-                        int idx; // kmer_id
-			auto found = countsreliable.find(lexsmall,idx);
-			if(found)
-                        {
-                            alloccurrences[MYTHREAD].emplace_back(std::make_tuple(read_id+i,idx,j)); // vector<tuple<read_id,kmer_id,kmerpos>>
-                            alltranstuples[MYTHREAD].emplace_back(std::make_tuple(idx,read_id+i,j)); // transtuples.push_back(col_id,row_id,kmerpos)
-                        }
+                        alloccurrences[MYTHREAD].emplace_back(std::make_tuple(read_id+i,idx,j)); // vector<tuple<read_id,kmer_id,kmerpos>>
+                        alltranstuples[MYTHREAD].emplace_back(std::make_tuple(idx,read_id+i,j)); // transtuples.push_back(col_id,row_id,kmerpos)
                     }
-                }   // for(int i=0; i<nreads; i++)
-                    //cout << "total number of reads processed so far is " << read_id << endl;
+                }
+            } // for(int i=0; i<nreads; i++)
+            //cout << "total number of reads processed so far is " << read_id << endl;
             read_id += nreads;
         } //while(fillstatus) 
-    delete pfq;
+        delete pfq;
     } // for all files
 
     size_t readcount = 0;
@@ -378,16 +395,18 @@ if(alignEnd)
     cout << "\nTotal number of reads: "<< read_id << endl;
     cout << "fastq(s) parsing fastq took: " << omp_get_wtime()-parsefastq << "s" << endl;
     double matcreat = omp_get_wtime();
+
     //
     // Sparse matrices construction
     //
+
     size_t nkmer = countsreliable.size();
     CSC<size_t,size_t> spmat(occurrences, read_id, nkmer, 
                             [] (size_t & p1, size_t & p2) 
-                            {
+                            {  
                                 return p1;
                             });
-    std::vector<tuple<size_t,size_t,size_t>>().swap(occurrences);    // remove memory of occurences
+    std::vector<tuple<size_t,size_t,size_t>>().swap(occurrences); // remove memory of occurences
 
     CSC<size_t,size_t> transpmat(transtuples, nkmer, read_id, 
                             [] (size_t & p1, size_t & p2) 
@@ -395,17 +414,16 @@ if(alignEnd)
                             });
     std::vector<tuple<size_t,size_t,size_t>>().swap(transtuples); // remove memory of transtuples
 
-    spmat.Sorted();
-    transpmat.Sorted();
-
 #ifdef PRINT
     cout << "spmat and spmat^T creation took: " << omp_get_wtime()-matcreat << "s" << endl;
 #endif
+
     //
     // Overlap detection (sparse matrix multiplication) and seed-and-extend alignment
     //
+
     spmatPtr_ getvaluetype(make_shared<spmatType_>());
-    HeapSpGEMM(spmat, transpmat, 
+    HashSpGEMM(spmat, transpmat, 
             [] (size_t & pi, size_t & pj) // n-th k-mer positions on read i and on read j 
             {   spmatPtr_ value(make_shared<spmatType_>());
                 value->count = 1;
@@ -418,8 +436,8 @@ if(alignEnd)
                 m2->pos[2] = m1->pos[0]; // row 
                 m2->pos[3] = m1->pos[1]; // col
                 return m2;
-            }, reads, getvaluetype, kmer_len, xdrop, algnmnt_thr, out_file, skipAlignment, ratioPhi, adapThr, alignEnd, relaxMargin, deltaChernoff); 
+            }, reads, getvaluetype, kmer_len, xdrop, out_file, b_parameters, ratioPhi); 
 
-    cout << "total running time: " << omp_get_wtime()-all << "s\n" << endl;
+    cout << "Total running time: " << omp_get_wtime()-all << "s\n" << endl;
     return 0;
 } 

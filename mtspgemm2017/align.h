@@ -3,11 +3,9 @@
 
 #include <seqan/sequence.h>
 #include <seqan/align.h>
-//#include <seqan/align_parallel.h>
 #include <seqan/score.h>
 #include <seqan/modifier.h>
 #include <seqan/seeds.h>
-#include "global.h"
 #include "common.h"
 #include <omp.h>
 #include <fstream>
@@ -90,20 +88,18 @@ int16_t seqansimdLocal(string & row, string & col) {
  * @param dropFactor
  * @return alignment score and extended seed
  */
-seqAnResult seqanAlOne(std::string & row, std::string & col, int rlen, int i, int j, int dropFactor, int kmer_len) {
+seqAnResult seqanAlOne(const std::string & row, const std::string & col, int rlen, int i, int j, int dropFactor, int kmer_len) {
 
     Score<int, Simple> scoringScheme(1,-1,-1);
 
-    Dna5String seqH; 
-    Dna5String seqV; 
+    Dna5String seqH(row); 
+    Dna5String seqV(col); 
     Dna5String seedH;
     Dna5String seedV;
     string strand;
     int longestExtensionTemp;
     seqAnResult longestExtensionScore;
 
-    seqH = row;
-    seqV = col;
 
     TSeed seed1(i, j, i+kmer_len, j+kmer_len);
     seedH = infix(seqH, beginPositionH(seed1), endPositionH(seed1));

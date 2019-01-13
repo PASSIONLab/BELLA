@@ -16,6 +16,7 @@
 #include <queue>
 #include <memory>
 #include <stack>
+#include <numeric>
 #include <functional>
 #include <cstring>
 #include <string.h>
@@ -40,9 +41,11 @@
 #include "kmercode/ParallelFASTQ.h"
 #include "kmercode/bound.hpp"
 #include "kmercode/hyperloglog.hpp"
+#include "mtspgemm2017/common.h"
 
 using namespace std;
-
+#define ASCIIBASE 33 // Pacbio quality score ASCII BASE
+//#define PRINT
 //#define HIST
 
 typedef cuckoohash_map<Kmer, int> dictionary_t; // <k-mer && reverse-complement, #kmers>
@@ -94,8 +97,6 @@ vector<filedata>  GetFiles(char *filename) {
  */
 void JellyFishCount(char *kmer_file, dictionary_t & countsreliable_jelly, int lower, int upper) 
 {
-    double kdict = omp_get_wtime();
-    
     ifstream filein(kmer_file);
     string line;
     int elem;
@@ -126,22 +127,19 @@ void JellyFishCount(char *kmer_file, dictionary_t & countsreliable_jelly, int lo
     } else std::cout << "Unable to open the input file\n";
     filein.close();
     //cout << "jellyfish file parsing took: " << omp_get_wtime()-kdict << "s" << endl;
-    //
-    // Reliable k-mer filter on countsjelly
-    //
-    int kmer_id = 0;
 
-    auto ltj = countsjelly.lock_table(); // jellyfish counting
-    for (const auto &it : ltj) 
+    // Reliable k-mer filter on countsjelly
+    int kmer_id = 0;
+    auto lt = countsjelly.lock_table(); // our counting
+    for (const auto &it : lt) 
         if (it.second >= lower && it.second <= upper)
         {
             countsreliable_jelly.insert(it.first,kmer_id);
             ++kmer_id;
         }
-    ltj.unlock(); // unlock the table
+    lt.unlock(); // unlock the table
     // Print some information about the table
-    //cout << "Table size Jellyfish: " << countsjelly.size() << std::endl;
-    //cout << "Entries within reliable range Jellyfish: " << countsreliable_jelly.size() << std::endl;    
+    cout << "Entries within reliable range Jellyfish: " << countsreliable_jelly.size() << std::endl;    
     //cout << "Bucket count Jellyfish: " << countsjelly.bucket_count() << std::endl;
     //cout << "Load factor Jellyfish: " << countsjelly.load_factor() << std::endl;
     countsjelly.clear(); // free 
@@ -156,74 +154,119 @@ void JellyFishCount(char *kmer_file, dictionary_t & countsreliable_jelly, int lo
  * @param kmer_len
  * @param upperlimit
  */
-void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_denovo, int lower, int upper, int kmer_len, size_t upperlimit /* memory limit */)
+void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_denovo, int & lower, int & upper, int kmer_len, int depth, double & erate, size_t upperlimit /* memory limit */, BELLApars & b_parameters)
 {
     vector < vector<Kmer> > allkmers(MAXTHREADS);
-    vector < HyperLogLog > hlls(MAXTHREADS, HyperLogLog(12));   // std::vector fill constructor    
-    
+    vector < vector<double> > allquals(MAXTHREADS);
+    vector < HyperLogLog > hlls(MAXTHREADS, HyperLogLog(12));   // std::vector fill constructor
+
     double denovocount = omp_get_wtime();
+    double cardinality;
     dictionary_t countsdenovo;
-    //cout << "\nRunning with up to " << MAXTHREADS << " threads" << endl;
     size_t totreads = 0;
+
     for(auto itr=allfiles.begin(); itr!=allfiles.end(); itr++) 
     {
-
-    #pragma omp parallel
-    {
-        ParallelFASTQ *pfq = new ParallelFASTQ();
+        #pragma omp parallel
+        {
+            ParallelFASTQ *pfq = new ParallelFASTQ();
             pfq->open(itr->filename, false, itr->filesize);
 
-        vector<string> seqs;
+            vector<string> seqs;
             vector<string> quals;
             vector<string> nametags;
-        size_t tlreads = 0; // thread local reads
+            size_t tlreads = 0; // thread local reads
 
             size_t fillstatus = 1;
             while(fillstatus) 
-        { 
-                    fillstatus = pfq->fill_block(nametags, seqs, quals, upperlimit);
-                    size_t nreads = seqs.size();
-            
-                    //#pragma omp parallel for
-            for(int i=0; i<nreads; i++) 
-            {
-                        // remember that the last valid position is length()-1
-                        int len = seqs[i].length();
-           
-                        for(int j=0; j<=len-kmer_len; j++)  
-                        {
-                                std::string kmerstrfromfastq = seqs[i].substr(j, kmer_len);
-                                Kmer mykmer(kmerstrfromfastq.c_str());
-                                Kmer lexsmall = mykmer.rep();
+            { 
+                fillstatus = pfq->fill_block(nametags, seqs, quals, upperlimit);
+                size_t nreads = seqs.size();
+
+                //#pragma omp parallel for
+                for(int i=0; i<nreads; i++) 
+                {
+                    // remember that the last valid position is length()-1
+                    int len = seqs[i].length();
+                    double rerror = 0.0;
+
+                    for(int j=0; j<=len-kmer_len; j++)  
+                    {
+                        std::string kmerstrfromfastq = seqs[i].substr(j, kmer_len);
+                        Kmer mykmer(kmerstrfromfastq.c_str());
+                        Kmer lexsmall = mykmer.rep();
                         allkmers[MYTHREAD].push_back(lexsmall);
-                    hlls[MYTHREAD].add((const char*) lexsmall.getBytes(), lexsmall.getNumBytes());   
-                }
-            } // for(int i=0; i<nreads; i++)
-            tlreads += nreads;
-                } //while(fillstatus) 
-        delete pfq;
+                        hlls[MYTHREAD].add((const char*) lexsmall.getBytes(), lexsmall.getNumBytes());
 
-        #pragma omp critical
-        totreads += tlreads;
-    }
+            if(b_parameters.skipEstimate == false)
+            {
+                        // accuracy
+                        int bqual = (int)quals[i][j] - ASCIIBASE;
+                        double berror = pow(10,-(double)bqual/10);
+                        rerror += berror;
+            }
+
+                    }
+            if(b_parameters.skipEstimate == false)
+            {
+                    // remaining k qual position accuracy
+                    for(int j=len-kmer_len+1; j < len; j++)
+                    {
+                        int bqual = (int)quals[i][j] - ASCIIBASE;
+                        double berror = pow(10,-(double)bqual/10);
+                        rerror += berror;
+                    }
+                    rerror = rerror / len;
+                    allquals[MYTHREAD].push_back(rerror);
+            }
+                } // for(int i=0; i<nreads; i++)
+                tlreads += nreads;
+            } //while(fillstatus) 
+            delete pfq;
+
+            #pragma omp critical
+            totreads += tlreads;
+        }
     //cout << "There were " << totreads << " reads" << endl;
-    }  
+    }
 
-    // HLL reduction (serial for now)
-    for (int i=1;i< MAXTHREADS; i++) 
+if(b_parameters.skipEstimate == false)
+{
+    // Error estimation for index 0 outside the loop to avoid double iteration (take advantage of next loop)
+    double temp = std::accumulate(allquals[0].begin(),allquals[0].end(), 0.0);
+    erate = 0.0; // reset to 0 here, otherwise it cointains default or user-defined values TODO : add flag to disable error estimation
+    erate += temp/(double)allquals[0].size();
+
+    // HLL reduction (serial for now) and error estimation for index > 0 to avoid double iteration
+    for (int i = 1; i < MAXTHREADS; i++) 
+    {
+        double temp = std::accumulate(allquals[i].begin(),allquals[i].end(), 0.0);
+        erate += temp/(double)allquals[i].size();
+
+        std::transform(hlls[0].M.begin(), hlls[0].M.end(), hlls[i].M.begin(), hlls[0].M.begin(), [](uint8_t c1, uint8_t c2) -> uint8_t{ return std::max(c1, c2); });
+    }
+    cardinality = hlls[0].estimate();
+    erate = erate / (double)MAXTHREADS;
+}
+else
+{
+    // HLL reduction (serial for now) and error estimation for index > 0 to avoid double iteration
+    for (int i = 1; i < MAXTHREADS; i++) 
     {
         std::transform(hlls[0].M.begin(), hlls[0].M.end(), hlls[i].M.begin(), hlls[0].M.begin(), [](uint8_t c1, uint8_t c2) -> uint8_t{ return std::max(c1, c2); });
     }
-    double cardinality = hlls[0].estimate();
-    //cout << "Cardinality estimate is " << cardinality << endl;
+    cardinality = hlls[0].estimate();
+}
 
-
-    unsigned int random_seed = 0xA57EC3B2;
     const double desired_probability_of_false_positive = 0.05;
     struct bloom * bm = (struct bloom*) malloc(sizeof(struct bloom));
     bloom_init64(bm, cardinality * 1.1, desired_probability_of_false_positive);
-    //cout << "Table size is: " << bm->bits << " bits, " << ((double)bm->bits)/8/1024/1024 << " MB" << endl;
-    //cout << "Optimal number of hash functions is : " << bm->hashes << endl;
+
+#ifdef PRINT
+    cout << "Cardinality estimate is " << cardinality << endl;
+    cout << "Table size is: " << bm->bits << " bits, " << ((double)bm->bits)/8/1024/1024 << " MB" << endl;
+    cout << "Optimal number of hash functions is : " << bm->hashes << endl;
+#endif
 
 #pragma omp parallel
 {       
@@ -244,13 +287,14 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
         countsdenovo.update_fn(v,updatecount);
     }
 }
+    cout << "Denovo counting + error estimation took: " << omp_get_wtime()-denovocount << "s" << endl;
 
-    cout << "\ndenovo counting took: " << omp_get_wtime()-denovocount << "s" << endl;
-    //
+    // Reliable bounds computation using estimated error rate from phred quality score
+    lower = computeLower(depth,erate,kmer_len);
+    upper = computeUpper(depth,erate,kmer_len);
+
     // Reliable k-mer filter on countsdenovo
-    //
     int kmer_id_denovo = 0;
-
     auto lt = countsdenovo.lock_table(); // our counting
     for (const auto &it : lt) 
         if (it.second >= lower && it.second <= upper)
@@ -259,12 +303,11 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
             ++kmer_id_denovo;
         }
     lt.unlock(); // unlock the table
+
     // Print some information about the table
-    //cout << "Table size: " << countsdenovo.size() << std::endl;
-    cout << "Entries within reliable range: " << countsreliable_denovo.size() << std::endl;    
+    cout << "Entries within reliable range: " << countsreliable_denovo.size() << endl;    
     //cout << "Bucket count: " << countsdenovo.bucket_count() << std::endl;
     //cout << "Load factor: " << countsdenovo.load_factor() << std::endl;
-    countsdenovo.clear(); // free  
- 
+    countsdenovo.clear(); // free
 }
 #endif

@@ -71,7 +71,7 @@ public:
     void ParallelWrite(const string & filename, bool onebased, HANDLER handler);
 
   
-    bool isEmpty()
+    bool isEmpty() const
     {
         return ( nnz == 0 );
     }
