@@ -50,7 +50,8 @@ Optional flag description:
 -k : k-mer length [17]
 -a : alignment score threshold [50]"
 -p : alignment x-drop factor [3]
--e : error rate [0.15]
+-e : error rate [auto estimated from fastq]
+-m : total RAM of the system in MB [auto estimated if possible or 8,000 if not]
 -z : skip the pairwise alignment [false]
 -w : relaxMargin parameter for alignment on edges [300]
 -c : alignment score deviation from the mean [0.1]
@@ -60,7 +61,7 @@ Optional flag description:
 ```
 **NOTE**: to use [Jellyfish](http://www.cbcb.umd.edu/software/jellyfish/) k-mer counting is necessary to enable **#DEFINE JELLYFISH.**
 
-The multi-threading can be set either depending (a) on the maximum number of thread or (b) on the available RAM. Option (b) should be preferred when medium to large genomes are used. It requires to enable **#DEFINE RAM** in mtspgemm2017/overlapping.h as well as the kind of Operating System used, macOS or Linux.
+The parallelism depends on the available number of threads and on the available RAM [Default: 8000MB]. Use -DLINUX for Linux or -DOSX for macOS at compile time to estimate available RAM from your machine.
 
 ## Output Format
 
@@ -88,18 +89,18 @@ python mafconvert.py axt <maf-file> > <ground-truth.txt>
 
 To run the evaluation program:
 ```
-cd analysis
+cd bench
 ```
 ```
-make check
+make bench
 ```
 ```
-./evaluation -g <grouth-truth-file> [-b <bella-output>] [-m <minimap/minimap2-output>] [-d <daligner-output>] [-l <blasr-output>] [-p <mhap-output>]
+./bench -g <grouth-truth-file> [-b <bella-output>] [-m <minimap/minimap2-output>] [-d <daligner-output>] [-l <blasr-output>] [-p <mhap-output>] [-o <fileout-name>] [-c <mecat-output>] [-i <mecat-idx2read-file>]
 ```
 
 To show the usage:
 ```
-./evaluation -h
+./bench -h
 ```
 **NOTE**: add -z flag if simulated data is used.
 
