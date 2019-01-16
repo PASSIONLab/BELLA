@@ -381,7 +381,8 @@ double estimateMemory(const BELLApars & b_pars)
     return free_memory;
 }
 
-void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1, const readType_ & read2, const BELLApars & b_pars, double ratioPhi, int count, stringstream & myBatch)
+void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1, const readType_ & read2, 
+					const BELLApars & b_pars, double ratioPhi, int count, stringstream & myBatch, size_t & outputted)
 {
 	auto maxseed = maxExtScore.seed;	// returns a seqan:Seed object
 
@@ -417,12 +418,14 @@ void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1,
 				{
 					myBatch << read2.nametag << '\t' << read1.nametag << '\t' << count << '\t' << maxExtScore.score << '\t' << maxExtScore.strand << '\t' << 
 						begpV << '\t' << endpV << '\t' << read2len << '\t' << begpH << '\t' << endpH << '\t' << read1len << endl;
+					++outputted;
 				}
 			}
 			else 
 			{
 				myBatch << read2.nametag << '\t' << read1.nametag << '\t' << count << '\t' << maxExtScore.score << '\t' << maxExtScore.strand << '\t' << 
 					begpV << '\t' << endpV << '\t' << read2len << '\t' << begpH << '\t' << endpH << '\t' << read1len << endl;
+				++outputted;
 			}
 		}
 	}
@@ -435,23 +438,34 @@ void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1,
 			{
 				myBatch << read2.nametag << '\t' << read1.nametag << '\t' << count << '\t' << maxExtScore.score << '\t' << maxExtScore.strand << '\t' << 
 					begpV << '\t' << endpV << '\t' << read2len << '\t' << begpH << '\t' << endpH << '\t' << read1len << endl;
+				++outputted;	
 			}
 		}
 		else 
 		{
 			myBatch << read2.nametag << '\t' << read1.nametag << '\t' << count << '\t' << maxExtScore.score << '\t' << maxExtScore.strand << '\t' << 
 				begpV << '\t' << endpV << '\t' << read2len << '\t' << begpH << '\t' << endpH << '\t' << read1len << endl;
+			++outputted;
 		}
 	}
 }
 
 template <typename IT, typename FT>
-tuple<size_t, size_t, size_t> RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowids, FT * values, const readVector_ & reads, int kmer_len, 
-			int xdrop, char* filename, const BELLApars & b_pars, double ratioPhi)
+tuple<size_t,size_t,size_t,size_t> RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowids, FT * values, const readVector_ & reads, 
+								int kmer_len, int xdrop, char* filename, const BELLApars & b_pars, double ratioPhi)
 {
     size_t alignedpairs = 0;
     size_t alignedbases = 0;
     size_t totalreadlen = 0;
+    size_t totaloutputt = 0;
+    
+    int numThreads = 1;
+#pragma omp parallel
+    {
+        numThreads = omp_get_num_threads();
+    }
+
+    vector<stringstream> vss(numThreads);	// any chance of false sharing here? depends on how stringstream is implemented. optimize later if needed...
 
 #pragma omp parallel for	
     for(IT j = start; j<end; ++j) // for (end-start) columns of A^T A (one block)
@@ -459,8 +473,9 @@ tuple<size_t, size_t, size_t> RunPairWiseAlignments(IT start, IT end, IT offset,
     	size_t numAlignmentsThread = 0;
         size_t numBasesAlignedThread = 0;
         size_t readLengthsThread = 0;
+	size_t outputted = 0;
 
-    	stringstream myBatch; // each thread saves its results in its private stringstream variable
+	int ithread = omp_get_thread_num();	
 
 	for (IT i = colptrC[j]; i < colptrC[j+1]; ++i)	// all nonzeros in that column of A^T A
 	{
@@ -494,30 +509,63 @@ tuple<size_t, size_t, size_t> RunPairWiseAlignments(IT start, IT end, IT offset,
 #ifdef TIMESTEP
 			numBasesAlignedThread += endPositionV(maxExtScore.seed)-beginPositionV(maxExtScore.seed);
 #endif
-                       	PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, myBatch);
+                       	PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], outputted);
 
 		}
 	        else 	// if skipAlignment == false do alignment, else save just some info on the pair to file 		
 		{
-			myBatch << reads[cid].nametag << '\t' << reads[rid].nametag << '\t' << val->count << '\t' << 
+			vss[ithread] << reads[cid].nametag << '\t' << reads[rid].nametag << '\t' << val->count << '\t' << 
                         	seq2len << '\t' << seq1len << endl;
+			++outputted;
 		}
 	} // all nonzeros in that column of A^T A
-	#pragma omp critical
-	{
-#ifndef NOOUTPUT
-		writeToFile(myBatch, filename);	// this is probably very slow and needs to be optimized
-		myBatch.str(std::string());
-#endif
-	
+
 #ifdef TIMESTEP	
+	#pragma omp critical
+	{	
         	alignedpairs += numAlignmentsThread;
 		alignedbases += numBasesAlignedThread;	
 		totalreadlen += readLengthsThread;
-#endif		
+		totaloutputt += outputted;
 	}
+#endif			
     }	// all columns from start...end (omp for loop)
-    return make_tuple(alignedpairs, alignedbases, totalreadlen);
+
+
+    int64_t * bytes = new int64_t[numThreads];
+    for(int i=0; i< numThreads; ++i)
+    {
+	    vss[i].seekg(0, ios::end);
+	    bytes[i] = vss[i].tellg();
+	    vss[i].seekg(0, ios::beg);
+    }
+    int64_t bytestotal = std::accumulate(bytes, bytes+numThreads, static_cast<int64_t>(0));
+
+    std::ofstream ofs(filename, std::ios::binary | std::ios::app);
+    cout << "Creating or appending to output file with " << bytestotal << " bytes" << endl;
+    ofs.seekp(bytestotal - 1);
+    ofs.write("", 1);	// this will likely create a sparse file so the actual disks won't spin yet
+    ofs.close();
+    
+    #pragma omp parallel
+    {
+	int ithread = omp_get_thread_num();	
+	    
+    	FILE *ffinal;
+	if ((ffinal = fopen(filename, "rb+")) == NULL)	// then everyone fills it
+        {
+		fprintf(stderr, "File %s failed to open at thread %d\n", filename, ithread);
+       	}
+	int64_t bytesuntil = std::accumulate(bytes, bytes+ithread, static_cast<int64_t>(0));
+	fseek (ffinal , bytesuntil , SEEK_SET );
+	std::string text = vss[ithread].str();
+	fwrite(text.c_str(),1, bytes[ithread] ,ffinal);
+	fflush(ffinal);
+	fclose(ffinal);
+    }
+    delete [] bytes;    
+	
+    return make_tuple(alignedpairs, alignedbases, totalreadlen, totaloutputt);
 }
 
 
@@ -612,7 +660,7 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         delete [] RowIdsofC;
         delete [] ValuesofC;
 
-	tuple<size_t, size_t, size_t> alignstats; // (alignedpairs, alignedbases, totalreadlen)
+	tuple<size_t, size_t, size_t, size_t> alignstats; // (alignedpairs, alignedbases, totalreadlen, outputted)
 	alignstats = RunPairWiseAlignments(colStart[b], colStart[b+1], begnz, colptrC, rowids, values, reads, kmer_len, xdrop, filename, b_pars, ratioPhi);
 
 #ifdef TIMESTEP
@@ -622,6 +670,7 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
             	cout << "Columns [" << colStart[b] << " - " << colStart[b+1] << "] alignment time: " << elapsed << " s | alignment rate: " << static_cast<double>(get<1>(alignstats))/elapsed;
 	   	cout << " bases/s | average read length: " <<static_cast<double>(get<2>(alignstats))/(2* get<0>(alignstats));
 		cout << " | read pairs aligned this stage: " << get<0>(alignstats) << endl;
+		cout << "Outputted " << get<3>(alignstats) << " lines" << endl;
 	}
 #endif
 
