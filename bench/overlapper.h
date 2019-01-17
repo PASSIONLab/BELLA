@@ -31,7 +31,7 @@ using namespace std;
 void metricsBella(ifstream & th, ifstream & bf, bool sim, int minOv, string & outfile, mmap_m & seqmap, uint32_t numth)
 {
     bella_m metamap;
-    bella_m::iterator jt;
+    bella_m::iterator it;
     int alignmentLength, ov;
     string cname, rname, nkmer, score, rev, cstart, cend, clen, rstart, rend, rlen;
     uint32_t tpBella = 0, fpBella = 0, tnBella = 0;
@@ -62,54 +62,125 @@ void metricsBella(ifstream & th, ifstream & bf, bool sim, int minOv, string & ou
             getline(lnstream, rlen, '\t');
 
             if(cname != rname) // not count self-pair
-            {   // BELLA output has 1 alignment/pair
-                ov = estimeOv(stoi(cstart), stoi(cend), stoi(clen), stoi(rstart), stoi(rend), stoi(rlen));
-                if(ov >= minOv)
+            {   // Check for BELLA outputting more than 1 alignment/pair
+                it = metamap.find(make_pair(cname,rname)); // this shouldn't be useful
+                if(it == metamap.end())
                 {
-                    alignmentLength = computeLength(seqmap, cname, rname);
-                    if(alignmentLength >= minOv) // TP
+                    ov = estimeOv(stoi(cstart), stoi(cend), stoi(clen), stoi(rstart), stoi(rend), stoi(rlen));
+                    if(ov >= minOv)
                     {
-                        tpBella++;
-
-                        metadata.st = 0;
-                        metadata.cstart = cstart;
-                        metadata.cend = cend;
-                        metadata.clen = clen;
-                        metadata.rstart = rstart;
-                        metadata.rend = rend;
-                        metadata.rlen = rlen;
-                        metadata.nkmer = nkmer;
-                        metadata.score = score;
-                        metadata.ov = ov;
-                        metadata.rev = rev;
-                        metamap.insert(make_pair(make_pair(cname,rname),metadata));
-
+                        alignmentLength = computeLength(seqmap, cname, rname);
+                        if(alignmentLength >= minOv) // TP
+                        {
+                            tpBella++;
+    
+                            metadata.st = 0;
+                            metadata.cstart = cstart;
+                            metadata.cend = cend;
+                            metadata.clen = clen;
+                            metadata.rstart = rstart;
+                            metadata.rend = rend;
+                            metadata.rlen = rlen;
+                            metadata.nkmer = nkmer;
+                            metadata.score = score;
+                            metadata.ov = ov;
+                            metadata.rev = rev;
+                            metamap.insert(make_pair(make_pair(cname,rname),metadata));
+    
+                        }
+                        else // FP
+                        {
+                            fpBella++;
+    
+                            metadata.st = 1;
+                            metadata.cstart = cstart;
+                            metadata.cend = cend;
+                            metadata.clen = clen;
+                            metadata.rstart = rstart;
+                            metadata.rend = rend;
+                            metadata.rlen = rlen;
+                            metadata.nkmer = nkmer;
+                            metadata.score = score;
+                            metadata.ov = ov;
+                            metadata.rev = rev;
+                            metamap.insert(make_pair(make_pair(cname,rname),metadata));
+    
+                        }
                     }
-                    else // FP
+                    else
                     {
-                        fpBella++;
-
-                        metadata.st = 1;
-                        metadata.cstart = cstart;
-                        metadata.cend = cend;
-                        metadata.clen = clen;
-                        metadata.rstart = rstart;
-                        metadata.rend = rend;
-                        metadata.rlen = rlen;
-                        metadata.nkmer = nkmer;
-                        metadata.score = score;
-                        metadata.ov = ov;
-                        metadata.rev = rev;
-                        metamap.insert(make_pair(make_pair(cname,rname),metadata));
-
+                        alignmentLength = computeLength(seqmap, cname, rname);
+                        if(alignmentLength >= minOv) // FP
+                        {
+                            fpBella++;
+    
+                            metadata.st = 1;
+                            metadata.cstart = cstart;
+                            metadata.cend = cend;
+                            metadata.clen = clen;
+                            metadata.rstart = rstart;
+                            metadata.rend = rend;
+                            metadata.rlen = rlen;
+                            metadata.nkmer = nkmer;
+                            metadata.score = score;
+                            metadata.ov = ov;
+                            metadata.rev = rev;
+                            metamap.insert(make_pair(make_pair(cname,rname),metadata));
+    
+                        }
+                        else // TN
+                        {
+                            tnBella++;
+    
+                            metadata.st = 2;
+                            metadata.cstart = cstart;
+                            metadata.cend = cend;
+                            metadata.clen = clen;
+                            metadata.rstart = rstart;
+                            metadata.rend = rend;
+                            metadata.rlen = rlen;
+                            metadata.nkmer = nkmer;
+                            metadata.score = score;
+                            metadata.ov = ov;
+                            metadata.rev = rev;
+                            metamap.insert(make_pair(make_pair(cname,rname),metadata));
+    
+                        }
                     }
                 }
-                else
+                else if (it->second.st == 1) // tool claimed it as < 2kb the first time, but a multi mapping could result in a TP
                 {
-                    alignmentLength = computeLength(seqmap, cname, rname);
-                    if(alignmentLength >= minOv) // FP
+                    ov = estimeOv(stoi(cstart), stoi(cend), stoi(clen), stoi(rstart), stoi(rend), stoi(rlen));
+                    if(ov > minOv-1)
+                    {
+                        alignmentLength = computeLength(seqmap, cname, rname);
+                        if(alignmentLength > minOv-1) // TP
+                        {
+                            tpBella++;
+                            fpBella--;
+
+                            metadata.st = 0;
+                            metadata.cstart = cstart;
+                            metadata.cend = cend;
+                            metadata.clen = clen;
+                            metadata.rstart = rstart;
+                            metadata.rend = rend;
+                            metadata.rlen = rlen;
+                            metadata.nkmer = nkmer;
+                            metadata.score = score;
+                            metadata.ov = ov;
+                            metadata.rev = rev;
+                            metamap[make_pair(cname,rname)] = metadata;
+                        }
+                    }
+                }
+                else if (it->second.st == 2) // tool claimed it as < 2kb the first time, but a multi mapping could result in a FP
+                {
+                    ov = estimeOv(stoi(cstart), stoi(cend), stoi(clen), stoi(rstart), stoi(rend), stoi(rlen));
+                    if(ov > minOv-1)
                     {
                         fpBella++;
+                        tnBella--;
 
                         metadata.st = 1;
                         metadata.cstart = cstart;
@@ -122,26 +193,7 @@ void metricsBella(ifstream & th, ifstream & bf, bool sim, int minOv, string & ou
                         metadata.score = score;
                         metadata.ov = ov;
                         metadata.rev = rev;
-                        metamap.insert(make_pair(make_pair(cname,rname),metadata));
-
-                    }
-                    else // TN
-                    {
-                        tnBella++;
-
-                        metadata.st = 2;
-                        metadata.cstart = cstart;
-                        metadata.cend = cend;
-                        metadata.clen = clen;
-                        metadata.rstart = rstart;
-                        metadata.rend = rend;
-                        metadata.rlen = rlen;
-                        metadata.nkmer = nkmer;
-                        metadata.score = score;
-                        metadata.ov = ov;
-                        metadata.rev = rev;
-                        metamap.insert(make_pair(make_pair(cname,rname),metadata));
-
+                        metamap[make_pair(cname,rname)] = metadata;
                     }
                 }
             }// if(cname != rname)
@@ -155,10 +207,10 @@ void metricsBella(ifstream & th, ifstream & bf, bool sim, int minOv, string & ou
 
     ofstream output(outfile);
     if(output.is_open())
-        for(jt = metamap.begin(); jt != metamap.end(); ++jt)
+        for(it = metamap.begin(); it != metamap.end(); ++it)
         {
-                output << jt->second.st << ',' << jt->second.score << ',' << jt->second.ov << ',' << jt->second.nkmer << ',' << jt->first.first << ',' << jt->first.second << ',' << jt->second.cstart
-                    << ',' << jt->second.cend << ',' << jt->second.clen << ',' << jt->second.rstart << ',' << jt->second.rend << ',' << jt->second.rlen << endl;
+                output << it->second.st << ',' << it->second.score << ',' << it->second.ov << ',' << it->second.nkmer << ',' << it->first.first << ',' << it->first.second << ',' << it->second.cstart
+                    << ',' << it->second.cend << ',' << it->second.clen << ',' << it->second.rstart << ',' << it->second.rend << ',' << it->second.rlen << endl;
         }
     output.close();
 
