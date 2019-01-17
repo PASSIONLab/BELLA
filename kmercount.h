@@ -162,7 +162,6 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
 
     double denovocount = omp_get_wtime();
     double cardinality;
-    dictionary_t countsdenovo;
     size_t totreads = 0;
 
     for(auto itr=allfiles.begin(); itr!=allfiles.end(); itr++) 
@@ -183,7 +182,6 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
                 fillstatus = pfq->fill_block(nametags, seqs, quals, upperlimit);
                 size_t nreads = seqs.size();
 
-                //#pragma omp parallel for
                 for(int i=0; i<nreads; i++) 
                 {
                     // remember that the last valid position is length()-1
@@ -198,27 +196,27 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
                         allkmers[MYTHREAD].push_back(lexsmall);
                         hlls[MYTHREAD].add((const char*) lexsmall.getBytes(), lexsmall.getNumBytes());
 
-            if(b_parameters.skipEstimate == false)
-            {
-                        // accuracy
-                        int bqual = (int)quals[i][j] - ASCIIBASE;
-                        double berror = pow(10,-(double)bqual/10);
-                        rerror += berror;
-            }
+            		if(b_parameters.skipEstimate == false)
+            		{
+                        	// accuracy
+                       		int bqual = (int)quals[i][j] - ASCIIBASE;
+                        	double berror = pow(10,-(double)bqual/10);
+                        	rerror += berror;
+            		}
 
                     }
-            if(b_parameters.skipEstimate == false)
-            {
-                    // remaining k qual position accuracy
-                    for(int j=len-kmer_len+1; j < len; j++)
-                    {
-                        int bqual = (int)quals[i][j] - ASCIIBASE;
-                        double berror = pow(10,-(double)bqual/10);
-                        rerror += berror;
-                    }
-                    rerror = rerror / len;
-                    allquals[MYTHREAD].push_back(rerror);
-            }
+		    if(b_parameters.skipEstimate == false)
+		    {
+                    	// remaining k qual position accuracy
+                    	for(int j=len-kmer_len+1; j < len; j++)
+                    	{
+                        	int bqual = (int)quals[i][j] - ASCIIBASE;
+                        	double berror = pow(10,-(double)bqual/10);
+                        	rerror += berror;
+                    	}
+                    	rerror = rerror / len;
+                    	allquals[MYTHREAD].push_back(rerror);
+		    }
                 } // for(int i=0; i<nreads; i++)
                 tlreads += nreads;
             } //while(fillstatus) 
@@ -229,35 +227,30 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
         }
     //cout << "There were " << totreads << " reads" << endl;
     }
-
-if(b_parameters.skipEstimate == false)
-{
-    // Error estimation for index 0 outside the loop to avoid double iteration (take advantage of next loop)
-    double temp = std::accumulate(allquals[0].begin(),allquals[0].end(), 0.0);
-    erate = 0.0; // reset to 0 here, otherwise it cointains default or user-defined values TODO : add flag to disable error estimation
-    erate += temp/(double)allquals[0].size();
-
-    // HLL reduction (serial for now) and error estimation for index > 0 to avoid double iteration
+    if(b_parameters.skipEstimate == false)
+    {
+	// TODO : add flag to disable error estimation
+    	erate = 0.0; // reset to 0 here, otherwise it cointains default or user-defined values 
+    	
+	#pragma omp for reduction(+:erate)
+	for (int i = 0; i < MAXTHREADS; i++) 
+    	{
+        	double temp = std::accumulate(allquals[i].begin(),allquals[i].end(), 0.0);
+        	erate += temp/(double)allquals[i].size();
+    	}
+   	erate = erate / (double)MAXTHREADS;
+    }
+    // HLL reduction (serial for now) to avoid double iteration
     for (int i = 1; i < MAXTHREADS; i++) 
     {
-        double temp = std::accumulate(allquals[i].begin(),allquals[i].end(), 0.0);
-        erate += temp/(double)allquals[i].size();
-
-        std::transform(hlls[0].M.begin(), hlls[0].M.end(), hlls[i].M.begin(), hlls[0].M.begin(), [](uint8_t c1, uint8_t c2) -> uint8_t{ return std::max(c1, c2); });
+       	std::transform(hlls[0].M.begin(), hlls[0].M.end(), hlls[i].M.begin(), hlls[0].M.begin(), [](uint8_t c1, uint8_t c2) -> uint8_t{ return std::max(c1, c2); });
     }
     cardinality = hlls[0].estimate();
-    erate = erate / (double)MAXTHREADS;
-}
-else
-{
-    // HLL reduction (serial for now) and error estimation for index > 0 to avoid double iteration
-    for (int i = 1; i < MAXTHREADS; i++) 
-    {
-        std::transform(hlls[0].M.begin(), hlls[0].M.end(), hlls[i].M.begin(), hlls[0].M.begin(), [](uint8_t c1, uint8_t c2) -> uint8_t{ return std::max(c1, c2); });
-    }
-    cardinality = hlls[0].estimate();
-}
 
+
+    double load2kmers = omp_get_wtime();    
+    cout << "Initial parsing, error estimation, and k-mer loading took: " << load2kmers - denovocount << "s" << endl;
+    
     const double desired_probability_of_false_positive = 0.05;
     struct bloom * bm = (struct bloom*) malloc(sizeof(struct bloom));
     bloom_init64(bm, cardinality * 1.1, desired_probability_of_false_positive);
@@ -268,26 +261,33 @@ else
     cout << "Optimal number of hash functions is : " << bm->hashes << endl;
 #endif
 
-#pragma omp parallel
-{       
-    for(auto v:allkmers[MYTHREAD])
-    {
-        bool inBloom = (bool) bloom_check_add(bm, v.getBytes(), v.getNumBytes(),1);
-        if(inBloom) countsdenovo.insert(v, 0);
-    }
-}
+    dictionary_t countsdenovo;    
 
+#pragma omp parallel
+    {       
+    	for(auto v:allkmers[MYTHREAD])
+    	{
+        	bool inBloom = (bool) bloom_check_add(bm, v.getBytes(), v.getNumBytes(),1);
+        	if(inBloom) countsdenovo.insert(v, 0);
+    	}
+    }
+
+    double firstpass = omp_get_wtime();        
+    cout << "First pass of k-mer counting took: " << firstpass - load2kmers << "s" << endl;
+    
+    free(bm); // release bloom filter memory
+    
     // in this pass, only use entries that already are in the hash table
     auto updatecount = [](int &num) { ++num; };
 #pragma omp parallel
-{       
-    for(auto v:allkmers[MYTHREAD])
-    {
-        // does nothing if the entry doesn't exist in the table
-        countsdenovo.update_fn(v,updatecount);
+    {       
+    	for(auto v:allkmers[MYTHREAD])
+    	{
+        	// does nothing if the entry doesn't exist in the table
+        	countsdenovo.update_fn(v,updatecount);
+    	}
     }
-}
-    cout << "Denovo counting + error estimation took: " << omp_get_wtime()-denovocount << "s" << endl;
+    cout << "Second pass of k-mer counting took: " << omp_get_wtime()-firstpass << "s" << endl;
 
     // Reliable bounds computation using estimated error rate from phred quality score
     lower = computeLower(depth,erate,kmer_len);
@@ -309,5 +309,6 @@ else
     //cout << "Bucket count: " << countsdenovo.bucket_count() << std::endl;
     //cout << "Load factor: " << countsdenovo.load_factor() << std::endl;
     countsdenovo.clear(); // free
+
 }
 #endif
