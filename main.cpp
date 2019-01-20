@@ -68,7 +68,7 @@ int main (int argc, char *argv[]) {
     // Follow an option with a colon to indicate that it requires an argument.
 
     optList = NULL;
-    optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:a:ze:p:w:vxc:m:");
+    optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:a:ze:p:w:vxc:m:r:");
    
 
     char *kmer_file = NULL;                 // Reliable k-mer file from Jellyfish
@@ -159,6 +159,10 @@ int main (int argc, char *argv[]) {
                 kmer_len = atoi(thisOpt->argument);
                 break;
             }
+            case 'r': {
+                b_parameters.kmerRift = atoi(thisOpt->argument);
+                break;
+            }
             case 'e': {
                 b_parameters.skipEstimate = true;
                 erate = strtod(thisOpt->argument, NULL);
@@ -208,6 +212,7 @@ int main (int argc, char *argv[]) {
                 cout << " -c : alignment score deviation from the mean [0.1]" << endl;
                 cout << " -v : use adaptive alignment threshold [false]" << endl;
                 cout << " -x : filter out alignment on edge [false]\n" << endl;
+                cout << " -r : bases separating two k-mers used as seeds for a read [1000]\n" << endl;
 
                 FreeOptList(thisOpt); // Done with this list, free it
                 return 0;
@@ -431,10 +436,26 @@ if(b_parameters.alignEnd)
                 value->pos[1] = pj; // col
                 return value;
             }, 
-            [] (spmatPtr_ & m1, spmatPtr_ & m2)
-            {   m2->count = m1->count+m2->count;
-                m2->pos[2] = m1->pos[0]; // row 
-                m2->pos[3] = m1->pos[1]; // col
+    [&kmer_len,&b_parameters] (spmatPtr_ & m1, spmatPtr_ & m2)
+            {
+                // kmers have to be separated by b_parameters.kmerRift [default 1,000] bases
+                int left  = m2->pos[0] - kmer_len - b_parameters.kmerRift;
+                int right = m2->pos[0] + kmer_len + b_parameters.kmerRift;
+                int newseed  = m1->pos[0];
+
+                if(!isinrift(newseed, left, right)) // false == seeds separated by "kmerRift" bases
+                {
+                    left  = m2->pos[1] - kmer_len - b_parameters.kmerRift;
+                    right = m2->pos[1] + kmer_len + b_parameters.kmerRift;
+                    newseed  = m1->pos[1];
+
+                    if(!isinrift(newseed, left, right)) // false == seeds separated by "kmerRift" bases
+                    {
+                        m2->count = m2->count+m1->count;          // now this pair use multiple seeds [default: true declared in common.h]
+                        m2->pos[2] = m1->pos[0];    // row
+                        m2->pos[3] = m1->pos[1];    // col
+                    }
+                }
                 return m2;
             }, reads, getvaluetype, kmer_len, xdrop, out_file, b_parameters, ratioPhi); 
 

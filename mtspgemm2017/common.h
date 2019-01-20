@@ -25,6 +25,7 @@ struct BELLApars
 	double totalMemory;	// in MB, default is ~ 8GB
 	bool userDefMem;
 
+    int kmerRift;
 	bool skipEstimate;  	// Do not estimate error but use user-defined error (e)
 	bool skipAlignment;  	// Do not align (z)
 	bool adapThr; 			// Apply adaptive alignment threshold (v)
@@ -33,9 +34,14 @@ struct BELLApars
 	int relaxMargin;		// epsilon parameter for alignment on edges (w)
 	double deltaChernoff;	// delta computed via Chernoff bound (c)
 
-	BELLApars():totalMemory(8000.0), userDefMem(false), skipEstimate(false), skipAlignment(false), adapThr(false), defaultThr(50),
+	BELLApars():totalMemory(8000.0), userDefMem(false), kmerRift(1000), skipEstimate(false), skipAlignment(false), adapThr(false), defaultThr(50),
 			alignEnd(false), relaxMargin(300), deltaChernoff(0.1) {};
 };
+
+template <typename T>
+    bool isinrift(const T& value, const T& left, const T& right) {
+    return (value > left) && (value < right);
+}
 
 typedef seqan::Seed<seqan::Simple> TSeed;
 struct seqAnResult {
