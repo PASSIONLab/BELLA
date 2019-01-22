@@ -419,8 +419,9 @@ void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1,
 	auto begpH = beginPositionH(maxseed);
 	auto endpH = endPositionH(maxseed);
 
-	string seq1 = read1.seq;
-	string seq2 = read2.seq;
+	// get references for better naming
+	const string& seq1 = read1.seq;
+	const string& seq2 = read2.seq;
 			
 	int read1len = seq1.length();
 	int read2len = seq2.length();	
@@ -507,8 +508,8 @@ tuple<size_t,size_t,size_t,size_t> RunPairWiseAlignments(IT start, IT end, IT of
 	{
 		size_t rid = rowids[i-offset];	// row id
 		size_t cid = j;			// column id
-		string seq1 = reads[rid].seq;
-		string seq2 = reads[cid].seq;
+		const string& seq1 = reads[rid].seq;	// get reference for readibility
+		const string& seq2 = reads[cid].seq;	// get reference for readibility
 			
 		int seq1len = seq1.length();
 		int seq2len = seq2.length();

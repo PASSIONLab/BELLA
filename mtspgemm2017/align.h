@@ -145,20 +145,17 @@ seqAnResult seqanAlOne(const std::string & row, const std::string & col, int rle
  * @param dropFactor
  * @return alignment score and extended seed
  */
-seqAnResult seqanAlGen(std::string & row, std::string & col, int rlen, int i, int j, int l, int m, int dropFactor, int kmer_len) {
+seqAnResult seqanAlGen(const std::string & row, const std::string & col, int rlen, int i, int j, int l, int m, int dropFactor, int kmer_len) {
 
     Score<int, Simple> scoringScheme(1,-1,-1);
 
-    Dna5String seqH; 
-    Dna5String seqV; 
+    Dna5String seqH(row); 
+    Dna5String seqV(col); 
     Dna5String seedH;
     Dna5String seedV;
     string strand;
     std::pair<int,int> longestExtensionTemp;
     seqAnResult longestExtensionScore;
-
-    seqH = row;
-    seqV = col;
 
     TSeed seed1(i, j, i+kmer_len, j+kmer_len);
     TSeed seed2(l, m, l+kmer_len, m+kmer_len);
