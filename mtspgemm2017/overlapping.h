@@ -152,7 +152,7 @@ bool onedge(int colStart, int colEnd, int colLen, int rowStart, int rowEnd, int 
 
 // estimate the number of floating point operations of SpGEMM
 template <typename IT, typename NT>
-IT* estimateFLOP(const CSC<IT,NT> & A, const CSC<IT,NT> & B)
+IT* estimateFLOP(const CSC<IT,NT> & A, const CSC<IT,NT> & B, bool lowtriout)
 {
 	if(A.isEmpty() || B.isEmpty())
 	{
@@ -181,7 +181,23 @@ IT* estimateFLOP(const CSC<IT,NT> & A, const CSC<IT,NT> & B)
 		for (IT j = B.colptr[i]; j < B.colptr[i+1]; ++j)	// all nonzeros in that column of B
 		{
 			IT col2fetch = B.rowids[j];	// find the row index of that nonzero in B, which is the column to fetch in A
-			IT nnzcolA =  A.colptr[col2fetch+1]- A.colptr[col2fetch]; // nonzero count of that column of A
+			IT nnzcolA = 0;
+
+			if(lowtriout)
+			{
+				for(IT k = A.colptr[col2fetch]; k < A.colptr[col2fetch+1]; ++k) // all nonzeros in this column of A
+				{
+					// i is the column_id of the output and A.rowids[k] is the row_id of the output
+					if(i < A.rowids[k])
+					{
+						++nnzcolA;
+					}
+				}
+			}
+			else
+			{
+				nnzcolA =  A.colptr[col2fetch+1]- A.colptr[col2fetch]; // nonzero count of that column of A
+			}
 			colflopC[i] += nnzcolA;
 		}
 	}
@@ -190,7 +206,7 @@ IT* estimateFLOP(const CSC<IT,NT> & A, const CSC<IT,NT> & B)
 
 // estimate space for result of SpGEMM with Hash
 template <typename IT, typename NT>
-IT* estimateNNZ_Hash(const CSC<IT,NT> & A, const CSC<IT,NT> & B, const size_t *flopC)
+IT* estimateNNZ_Hash(const CSC<IT,NT> & A, const CSC<IT,NT> & B, const size_t *flopC, bool lowtriout)
 {
     if(A.isEmpty() || B.isEmpty())
     {
@@ -240,6 +256,10 @@ IT* estimateNNZ_Hash(const CSC<IT,NT> & A, const CSC<IT,NT> & B, const size_t *f
 		for(IT k = A.colptr[col2fetch]; k < A.colptr[col2fetch+1]; ++k) // all nonzeros in this column of A
 		{
 			IT key = A.rowids[k];
+
+			if(lowtriout && i >= key)	// i is the column_id of the output and key is the row_id of the output
+				continue;
+
                 	IT hash = (key*hashScale) & (ht_size-1);
                 	while (1) //hash probing
                 	{
@@ -594,7 +614,7 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         numThreads = omp_get_num_threads();
     }
 
-    IT* flopC = estimateFLOP(A, B);
+    IT* flopC = estimateFLOP(A, B, true);
     IT* flopptr = prefixsum<IT>(flopC, B.cols, numThreads);
     IT flops = flopptr[B.cols];
 
@@ -602,7 +622,7 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     cout << "FLOPS is " << flops << endl;
 #endif
 
-    IT* colnnzC = estimateNNZ_Hash(A, B, flopC);
+    IT* colnnzC = estimateNNZ_Hash(A, B, flopC, true);
     IT* colptrC = prefixsum<IT>(colnnzC, B.cols, numThreads);	// colptrC[i] = rolling sum of nonzeros in C[1...i]
     delete [] colnnzC;
     delete [] flopptr;
