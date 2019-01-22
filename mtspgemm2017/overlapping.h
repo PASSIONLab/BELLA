@@ -265,9 +265,11 @@ IT* estimateNNZ_Hash(const CSC<IT,NT> & A, const CSC<IT,NT> & B, const size_t *f
     return colnnzC;
 }
 
+//! Hash based column-by-column spgemm algorithm. Based on earlier code by Buluc, Azad, and Nagasaka
+//! If lowtriout= true, then only creates the lower triangular part: no diagonal and no upper triangular
 template <typename IT, typename NT, typename MultiplyOperation, typename AddOperation, typename FT>
 void LocalSpGEMM(IT & start, IT & end, const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, 
-		vector<IT> * RowIdsofC, vector<FT> * ValuesofC, IT* colptrC)
+		vector<IT> * RowIdsofC, vector<FT> * ValuesofC, IT* colptrC, bool lowtriout)
 {
 #pragma omp parallel for	
     for(IT i = start; i<end; ++i) // for bcols of B (one block)
@@ -296,6 +298,10 @@ void LocalSpGEMM(IT & start, IT & end, const CSC<IT,NT> & A, const CSC<IT,NT> & 
 		for(IT k = A.colptr[col2fetch]; k < A.colptr[col2fetch+1]; ++k) // all nonzeros in this column of A
 		{
 			IT key = A.rowids[k];
+
+			if(lowtriout && i >= key)	// i is the column_id of the output and key is the row_id of the output
+				continue;
+
 			FT result =  multop(A.values[k], valueofB);
                 	IT hash = (key*hashScale) & (ht_size-1);
                 	while (1) //hash probing
@@ -636,7 +642,7 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         vector<IT> * RowIdsofC = new vector<IT>[colStart[b+1]-colStart[b]];    // row ids for each column of C (bunch of cols)
         vector<FT> * ValuesofC = new vector<FT>[colStart[b+1]-colStart[b]];    // values for each column of C (bunch of cols)
 
-        LocalSpGEMM(colStart[b], colStart[b+1], A, B, multop, addop, RowIdsofC, ValuesofC, colptrC);
+        LocalSpGEMM(colStart[b], colStart[b+1], A, B, multop, addop, RowIdsofC, ValuesofC, colptrC, true);
 
 #ifdef TIMESTEP
         double ov2 = omp_get_wtime();
