@@ -25,7 +25,7 @@ cd bella
 Build using makefile:
 
 ```
-make bella
+ln -s makefile-nersc Makefile && make bella
 ```
 
 ## Running BELLA
