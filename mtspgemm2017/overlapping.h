@@ -407,8 +407,11 @@ double estimateMemory(const BELLApars & b_pars)
     return free_memory;
 }
 
+
+
 void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1, const readType_ & read2, 
-					const BELLApars & b_pars, double ratioPhi, int count, stringstream & myBatch, size_t & outputted)
+					const BELLApars & b_pars, double ratioPhi, int count, stringstream & myBatch, size_t & outputted,
+					size_t & numBasesAlignedTrue, size_t & numBasesAlignedFalse)
 {
 	auto maxseed = maxExtScore.seed;	// returns a seqan:Seed object
 
@@ -425,6 +428,7 @@ void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1,
 			
 	int read1len = seq1.length();
 	int read2len = seq2.length();	
+	bool passed = false;
 
 	if(b_pars.adapThr)
 	{
@@ -440,19 +444,12 @@ void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1,
 		{
 			if(b_pars.alignEnd)
 			{
-				bool aligntoEnd = toEnd(begpV, endpV, read2len, begpH, endpH, read1len, b_pars.relaxMargin);
-				if(aligntoEnd)
-				{
-					myBatch << read2.nametag << '\t' << read1.nametag << '\t' << count << '\t' << maxExtScore.score << '\t' << maxExtScore.strand << '\t' << 
-						begpV << '\t' << endpV << '\t' << read2len << '\t' << begpH << '\t' << endpH << '\t' << read1len << endl;
-					++outputted;
-				}
+				if(toEnd(begpV, endpV, read2len, begpH, endpH, read1len, b_pars.relaxMargin))
+					passed = true;		
 			}
 			else 
 			{
-				myBatch << read2.nametag << '\t' << read1.nametag << '\t' << count << '\t' << maxExtScore.score << '\t' << maxExtScore.strand << '\t' << 
-					begpV << '\t' << endpV << '\t' << read2len << '\t' << begpH << '\t' << endpH << '\t' << read1len << endl;
-				++outputted;
+				passed = true;
 			}
 		}
 	}
@@ -460,31 +457,37 @@ void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1,
 	{
 		if(b_pars.alignEnd)
 		{
-			bool aligntoEnd = toEnd(begpV, endpV, read2len, begpH, endpH, read1len,b_pars.relaxMargin);
-			if(aligntoEnd)
-			{
-				myBatch << read2.nametag << '\t' << read1.nametag << '\t' << count << '\t' << maxExtScore.score << '\t' << maxExtScore.strand << '\t' << 
-					begpV << '\t' << endpV << '\t' << read2len << '\t' << begpH << '\t' << endpH << '\t' << read1len << endl;
-				++outputted;	
-			}
+			if(toEnd(begpV, endpV, read2len, begpH, endpH, read1len, b_pars.relaxMargin))
+				passed = true;
 		}
 		else 
 		{
-			myBatch << read2.nametag << '\t' << read1.nametag << '\t' << count << '\t' << maxExtScore.score << '\t' << maxExtScore.strand << '\t' << 
-				begpV << '\t' << endpV << '\t' << read2len << '\t' << begpH << '\t' << endpH << '\t' << read1len << endl;
-			++outputted;
+			passed = true;
 		}
 	}
+	if(passed)
+	{
+		myBatch << read2.nametag << '\t' << read1.nametag << '\t' << count << '\t' << maxExtScore.score << '\t' << maxExtScore.strand << '\t' << 
+			begpV << '\t' << endpV << '\t' << read2len << '\t' << begpH << '\t' << endpH << '\t' << read1len << endl;
+		++outputted;
+		numBasesAlignedTrue += (endpV-begpV);	
+	}		
+	else
+	{
+		numBasesAlignedFalse += (endpV-begpV);		
+	}		
 }
 
 template <typename IT, typename FT>
-tuple<size_t,size_t,size_t,size_t> RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowids, FT * values, const readVector_ & reads, 
+auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowids, FT * values, const readVector_ & reads, 
 								int kmer_len, int xdrop, char* filename, const BELLApars & b_pars, double ratioPhi)
 {
     size_t alignedpairs = 0;
     size_t alignedbases = 0;
     size_t totalreadlen = 0;
     size_t totaloutputt = 0;
+    size_t totsuccbases = 0;
+    size_t totfailbases = 0;
     
     int numThreads = 1;
 #pragma omp parallel
@@ -500,6 +503,9 @@ tuple<size_t,size_t,size_t,size_t> RunPairWiseAlignments(IT start, IT end, IT of
     	size_t numAlignmentsThread = 0;
         size_t numBasesAlignedThread = 0;
         size_t readLengthsThread = 0;
+	size_t numBasesAlignedTrue = 0;
+	size_t numBasesAlignedFalse = 0;
+	
 	size_t outputted = 0;
 
 	int ithread = omp_get_thread_num();	
@@ -536,7 +542,7 @@ tuple<size_t,size_t,size_t,size_t> RunPairWiseAlignments(IT start, IT end, IT of
 #ifdef TIMESTEP
 			numBasesAlignedThread += endPositionV(maxExtScore.seed)-beginPositionV(maxExtScore.seed);
 #endif
-                       	PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], outputted);
+                       	PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse);
 
 		}
 	        else 	// if skipAlignment == false do alignment, else save just some info on the pair to file 		
@@ -554,6 +560,8 @@ tuple<size_t,size_t,size_t,size_t> RunPairWiseAlignments(IT start, IT end, IT of
 		alignedbases += numBasesAlignedThread;	
 		totalreadlen += readLengthsThread;
 		totaloutputt += outputted;
+		totsuccbases += numBasesAlignedTrue;		
+		totfailbases += numBasesAlignedFalse;
 	}
 #endif			
     }	// all columns from start...end (omp for loop)
@@ -592,7 +600,7 @@ tuple<size_t,size_t,size_t,size_t> RunPairWiseAlignments(IT start, IT end, IT of
     }
     delete [] bytes;    
 	
-    return make_tuple(alignedpairs, alignedbases, totalreadlen, totaloutputt);
+    return make_tuple(alignedpairs, alignedbases, totalreadlen, totaloutputt, totsuccbases, totfailbases);
 }
 
 
@@ -687,7 +695,7 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         delete [] RowIdsofC;
         delete [] ValuesofC;
 
-	tuple<size_t, size_t, size_t, size_t> alignstats; // (alignedpairs, alignedbases, totalreadlen, outputted)
+	tuple<size_t, size_t, size_t, size_t, size_t, size_t> alignstats; // (alignedpairs, alignedbases, totalreadlen, outputted, alignedtrue, alignedfalse)
 	alignstats = RunPairWiseAlignments(colStart[b], colStart[b+1], begnz, colptrC, rowids, values, reads, kmer_len, xdrop, filename, b_pars, ratioPhi);
 
 #ifdef TIMESTEP
@@ -698,6 +706,8 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
 	   	cout << " bases/s | average read length: " <<static_cast<double>(get<2>(alignstats))/(2* get<0>(alignstats));
 		cout << " | read pairs aligned this stage: " << get<0>(alignstats) << endl;
 		cout << "Outputted " << get<3>(alignstats) << " lines" << endl;
+		cout << "Average length of successful alignment " << static_cast<double>(get<4>(alignstats)) / get<3>(alignstats) << " bps" << endl;
+		cout << "Average length of failed alignment " << static_cast<double>(get<5>(alignstats)) / (get<0>(alignstats) - get<3>(alignstats)) << " bps" << endl;		
 	}
 #endif
 
