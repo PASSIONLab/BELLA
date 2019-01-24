@@ -27,7 +27,7 @@
 using namespace seqan;
 using namespace std;
 
-double adaptiveSlope(double error, int xdrop)
+double adaptiveSlope(double error)
 {
     double p_mat = pow(1-error,2);  // match
     double p_mis = 1-p_mat;         // mismatch/gap

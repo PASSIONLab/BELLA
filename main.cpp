@@ -294,7 +294,7 @@ int main (int argc, char *argv[]) {
     cout << "Reliable upper bound: " << upper << endl;
 if(b_parameters.adapThr)
 {
-    ratioPhi = adaptiveSlope(erate, (float)xdrop);
+    ratioPhi = adaptiveSlope(erate);
     cout << "Deviation from expected alignment score: " << b_parameters.deltaChernoff << endl;
     cout << "Constant of adaptive threshold: " << ratioPhi*(1-b_parameters.deltaChernoff)<< endl;
 }
