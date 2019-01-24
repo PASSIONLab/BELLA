@@ -52,43 +52,18 @@ bool toEnd(int colStart, int colEnd, int colLen, int rowStart, int rowEnd, int r
     else
         return false;
 }
-/*
-int16_t seqansimdLocal(string & row, string & col) {
-
-    using TSequence = String<seqan::Dna>;
-    using TThreadModel = WavefrontAlignment<seqan::BlockOffsetOptimization>;
-    using TVectorSpec = Vectorial;
-    using TExecPolicy = ExecutionPolicy<TThreadModel, TVectorSpec>;
-
-    seqan::StringSet<TSequence> seqs1;
-    seqan::StringSet<TSequence> seqs2;
-
-    appendValue(seqs1, TSequence{row.c_str()});
-    appendValue(seqs2, TSequence{col.c_str()});
-
-    TExecPolicy execPolicy;
-    setNumThreads(execPolicy, 1);
-
-    Score<int16_t, Simple> scoreLinear(1,-1,-1);
-
-   // Perform SIMD local alignment
-    seqan::String<int16_t> scores = seqan::localAlignmentScore(execPolicy, seqs1, seqs2, scoreLinear);
-    //std::cout << "Score: " << scores[0] << "\n";
-    return scores[0];
-}*/
 
 /**
- * @brief seqanAlOne does the seed-and-extend alignment
- * when ony one shared k-mer exists
+ * @brief alignSeqAn does the seed-and-extend alignment
  * @param row
  * @param col
  * @param rlen is the length of the row sequence
  * @param i is the starting position of the k-mer on the first read
  * @param j is the starting position of the k-mer on the second read
- * @param dropFactor
+ * @param xdrop
  * @return alignment score and extended seed
  */
-seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rlen, int i, int j, int dropFactor, int kmer_len) {
+seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rlen, int i, int j, int xdrop, int kmer_len) {
 
     Score<int, Simple> scoringScheme(1,-1,-1);
 
@@ -119,12 +94,12 @@ seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rle
         setEndPositionV(seed1, j+kmer_len);
 
         /* Perform match extension */
-        longestExtensionTemp = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
+        longestExtensionTemp = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, xdrop, GappedXDrop());
 
     } else
     {
         strand = 'n';
-        longestExtensionTemp = extendSeed(seed1, seqH, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
+        longestExtensionTemp = extendSeed(seed1, seqH, seqV, EXTEND_BOTH, scoringScheme, xdrop, GappedXDrop());
     } 
 
     longestExtensionScore.score = longestExtensionTemp;
@@ -133,152 +108,4 @@ seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rle
     return longestExtensionScore;
 }
 
-/**
- * @brief seqanAlOneAllKmer does the seed-and-extend alignment
- * when only one shared k-mer exists
- * @param row
- * @param col
- * @param rlen is the length of the row sequence
- * @param vpos is a vector containing the starting position of k-mer
- * @param dropFactor
- * @return alignment score and extended seed
- * DO NOT USE IT UNTIL THE SEED POSITION DEFINITION WILL BE CORRECTED AND UPDATED
- */
-seqAnResult seqanAlOneAllKmer(std::string & row, std::string & col, int rlen, std::vector<std::pair<int,int>> vpos, int dropFactor, int kmer_len) {
-
-    Score<int, Simple> scoringScheme(1,-1,-1);
-
-    Dna5String seqH; 
-    Dna5String seqV; 
-    Dna5String seedH;
-    Dna5String seedV;
-    string strand;
-    int longestExtensionTemp;
-    seqAnResult longestExtensionScore;
-
-    seqH = row;
-    seqV = col;
-
-    std::vector<std::pair<int,int>>::iterator it;
-    it = vpos.begin();
-
-    TSeed seed(it->first, it->second, it->first+kmer_len, it->second+kmer_len);
-    seedH = infix(seqH, beginPositionH(seed), endPositionH(seed));
-    seedV = infix(seqV, beginPositionV(seed), endPositionV(seed));
-
-    Dna5StringReverseComplement twin(seedH);
-
-    if(twin == seedV)
-    {
-        strand = 'c';
-        Dna5StringReverseComplement twinRead(seqH);
-        it->first = rlen-it->first-kmer_len;
-
-        setBeginPositionH(seed, it->first);
-        setBeginPositionV(seed, it->second);
-        setEndPositionH(seed, it->first+kmer_len);
-        setEndPositionV(seed, it->second+kmer_len);
-
-        //TSeed seed(it->first, it->second, it->first+kmer_len, it->second+kmer_len); // In this way the seed is not globally updated
-
-        /* Perform match extension */
-        longestExtensionTemp = extendSeed(seed, twinRead, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
-
-    } else
-    {
-        strand = 'n';
-        longestExtensionTemp = extendSeed(seed, seqH, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
-    } 
-
-    longestExtensionScore.score = longestExtensionTemp;
-    longestExtensionScore.seed = seed;
-    longestExtensionScore.strand = strand;
-
-    return longestExtensionScore;
-}
-
-/**
- * @brief seqanAlGenAllKmer does the seed-and-extend alignment
- * when shared k-mers > 1
- * @param row
- * @param col
- * @param rlen
- * @param vpos
- * @param dropFactor
- * @return alignment score and extended seed
- * DO NOT USE IT UNTIL THE SEED POSITION DEFINITION WILL BE CORRECTED AND UPDATED
- */
-seqAnResult seqanAlGenAllKmer(std::string & row, std::string & col, int rlen, std::vector<std::pair<int,int>> vpos, int dropFactor, int kmer_len) {
-
-    Score<int, Simple> scoringScheme(1,-1,-1);
-
-    Dna5String seqH; 
-    Dna5String seqV; 
-    Dna5String seedH;
-    Dna5String seedV;
-    string strand;
-    int tempScore;
-    seqAnResult longestExtensionScore;
-    std::vector<std::pair<int,int>>::iterator fit;
-
-    seqH = row;
-    seqV = col;
-    longestExtensionScore.score = 0;
-    fit = vpos.begin();
-
-    TSeed seed(fit->first, fit->second, fit->first+kmer_len, fit->second+kmer_len);
-    seedH = infix(seqH, beginPositionH(seed), endPositionH(seed));
-    seedV = infix(seqV, beginPositionV(seed), endPositionV(seed));
-    
-    Dna5StringReverseComplement twin(seedH);
-
-    if(twin == seedV)
-    {   /* Reverse seq */
-        strand = 'c';
-        Dna5StringReverseComplement twinRead(seqH);
-        for(std::vector<std::pair<int,int>>::iterator it=vpos.begin(); it!=vpos.end(); ++it)
-        {   /* Update position on reversed seq */
-            it->first = rlen-it->first-kmer_len;
-            /* Seed unpdate */
-            setBeginPositionH(seed, it->first);
-            setBeginPositionV(seed, it->second);
-            setEndPositionH(seed, it->first+kmer_len);
-            setEndPositionV(seed, it->second+kmer_len);
-            //TSeed seed(it->first, it->second, it->first+kmer_len, it->second+kmer_len); // In this way the seed is not globally updated
-            /* Perform match extension */
-            tempScore = extendSeed(seed, twinRead, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
-            /* Keep the best score */
-            if(tempScore > longestExtensionScore.score)
-            {
-                longestExtensionScore.score = tempScore;
-                longestExtensionScore.seed = seed;
-            }
-        }
-    } 
-    else
-    {
-        strand = 'n';
-        for(std::vector<std::pair<int,int>>::iterator it=vpos.begin(); it!=vpos.end(); ++it)
-        {   /* Seed update */
-            setBeginPositionH(seed, it->first);
-            setBeginPositionV(seed, it->second);
-            setEndPositionH(seed, it->first+kmer_len);
-            setEndPositionV(seed, it->second+kmer_len);
-            //TSeed seed(it->first, it->second, it->first+kmer_len, it->second+kmer_len);
-            /* Perform match extension */
-            tempScore = extendSeed(seed, seqH, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
-            /* Keep the best score */
-            if(tempScore > longestExtensionScore.score)
-            {
-                longestExtensionScore.score = tempScore;
-                longestExtensionScore.seed = seed; 
-            }
-        }  
-    }
-    longestExtensionScore.strand = strand;
-
-    return longestExtensionScore;
-}
-
 #endif
-
