@@ -260,11 +260,11 @@ int main (int argc, char *argv[]) {
     cout << "K-mer counting: BELLA" << endl;
     cout << "Output filename: " << out_file << endl;
     cout << "K-mer length: " << kmer_len << endl;
-    if(b_parameters.skipAlignment)
-        cout << "Compute alignment: False" << endl;
-    else cout << "Compute alignment: True" << endl;
     cout << "X-drop: " << xdrop << endl;
     cout << "Depth: " << depth << "X" << endl;
+    if(b_parameters.skipAlignment)
+        cout << "Compute alignment: false" << endl;
+    else cout << "Compute alignment: true" << endl;
 #endif
 
     //
@@ -301,9 +301,8 @@ if(b_parameters.adapThr)
 else cout << "Default alignment score threshold: " << b_parameters.defaultThr << endl;
 if(b_parameters.alignEnd)
 {
-    cout << "Alignment on edge: True" << endl;
-    cout << "Relax margin: " << b_parameters.relaxMargin << endl;
-} else cout << "Alignment on edge: False" << endl;
+    cout << "Constraint: alignment on edge with a margin of " << b_parameters.relaxMargin << " bps" << endl;
+}
 #endif // PRINT
 #endif // DENOVO COUNTING
 
@@ -313,7 +312,10 @@ if(b_parameters.alignEnd)
 
     double parsefastq = omp_get_wtime();
     size_t read_id = 0; // read_id needs to be global (not just per file)
+
+#ifdef PRINT
     cout << "\nRunning with up to " << MAXTHREADS << " threads" << endl;
+#endif
 
     vector < vector<tuple<int,int,int>> > alloccurrences(MAXTHREADS);   
     vector < vector<tuple<int,int,int>> > alltranstuples(MAXTHREADS);   
@@ -392,13 +394,17 @@ if(b_parameters.alignEnd)
     std::sort(reads.begin(), reads.end());   // bool operator in global.h: sort by readid
     std::vector<string>().swap(seqs);        // free memory of seqs  
     std::vector<string>().swap(quals);       // free memory of quals
-    cout << "\nTotal number of reads: "<< read_id << endl;
-    cout << "fastq(s) parsing fastq took: " << omp_get_wtime()-parsefastq << "s" << endl;
-    double matcreat = omp_get_wtime();
+
+#ifdef PRINT
+    cout << "Fastq(s) parsing fastq took: " << omp_get_wtime()-parsefastq << "s" << endl;
+    cout << "Total number of reads: "<< read_id << "\n"<< endl;
+#endif
 
     //
     // Sparse matrices construction
     //
+
+    double matcreat = omp_get_wtime();
 
     size_t nkmer = countsreliable.size();
     CSC<size_t,size_t> spmat(occurrences, read_id, nkmer, 
@@ -415,7 +421,7 @@ if(b_parameters.alignEnd)
     std::vector<tuple<size_t,size_t,size_t>>().swap(transtuples); // remove memory of transtuples
 
 #ifdef PRINT
-    cout << "spmat and spmat^T creation took: " << omp_get_wtime()-matcreat << "s" << endl;
+    cout << "MATRIX CONSTRUCTION took: " << omp_get_wtime()-matcreat << "s\n" << endl;
 #endif
 
     //

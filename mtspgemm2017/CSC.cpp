@@ -318,9 +318,9 @@ void CSC<IT,NT>::MergeDuplicates (AddOperation addop)
     copy(diff.begin(), diff.end(), colptr);  // update the column pointers
     delete [] rowids;
     delete [] values;
-    cout << "old number of nonzeros before merging : " << nnz << endl; 
+    cout << "Old number of nonzeros before merging: " << nnz << endl; 
     nnz  = colptr[cols];
-    cout << "new number of nonzeros after merging : " << nnz << endl; 
+    cout << "New number of nonzeros after merging: " << nnz << endl; 
     
     rowids = new IT[nnz];
     values = new NT[nnz];

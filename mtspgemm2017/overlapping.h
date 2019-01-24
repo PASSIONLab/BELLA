@@ -407,8 +407,6 @@ double estimateMemory(const BELLApars & b_pars)
     return free_memory;
 }
 
-
-
 void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1, const readType_ & read2, 
 					const BELLApars & b_pars, double ratioPhi, int count, stringstream & myBatch, size_t & outputted,
 					size_t & numBasesAlignedTrue, size_t & numBasesAlignedFalse, bool & passed)
@@ -494,117 +492,122 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
         numThreads = omp_get_num_threads();
     }
 
-    vector<stringstream> vss(numThreads);	// any chance of false sharing here? depends on how stringstream is implemented. optimize later if needed...
+    vector<stringstream> vss(numThreads); // any chance of false sharing here? depends on how stringstream is implemented. optimize later if needed...
 
-#pragma omp parallel for	
+#pragma omp parallel for
     for(IT j = start; j<end; ++j) // for (end-start) columns of A^T A (one block)
     {
-    	size_t numAlignmentsThread = 0;
+        size_t numAlignmentsThread = 0;
         size_t numBasesAlignedThread = 0;
         size_t readLengthsThread = 0;
-	size_t numBasesAlignedTrue = 0;
-	size_t numBasesAlignedFalse = 0;
-	
-	size_t outputted = 0;
+        size_t numBasesAlignedTrue = 0;
+        size_t numBasesAlignedFalse = 0;
 
-	int ithread = omp_get_thread_num();	
+        size_t outputted = 0;
 
-	for (IT i = colptrC[j]; i < colptrC[j+1]; ++i)	// all nonzeros in that column of A^T A
-	{
-		size_t rid = rowids[i-offset];	// row id
-		size_t cid = j;			// column id
-		const string& seq1 = reads[rid].seq;	// get reference for readibility
-		const string& seq2 = reads[cid].seq;	// get reference for readibility
-			
-		int seq1len = seq1.length();
-		int seq2len = seq2.length();
+        int ithread = omp_get_thread_num();	
 
-		spmatPtr_ val = values[i-offset];		
-
-		if(!b_pars.skipAlignment) // fix -z to not print 
+        for (IT i = colptrC[j]; i < colptrC[j+1]; ++i)  // all nonzeros in that column of A^T A
         {
-#ifdef TIMESTEP	
-            numAlignmentsThread++;
-            readLengthsThread = readLengthsThread + seq1len + seq2len;
-#endif
-            seqAnResult maxExtScore;
-            bool passed = false;
-            if(val->count == 1)
-            {
-                maxExtScore = alignSeqAn(seq1, seq2, seq1len, val->pos[0], val->pos[1], xdrop, kmer_len);
-                PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
-            }
-            else
-            {
-                maxExtScore = alignSeqAn(seq1, seq2, seq1len, val->pos[0], val->pos[1], xdrop, kmer_len);
-                PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
+            size_t rid = rowids[i-offset];  // row id
+            size_t cid = j;                 // column id
+            const string& seq1 = reads[rid].seq;	// get reference for readibility
+            const string& seq2 = reads[cid].seq;	// get reference for readibility
+            	
+            int seq1len = seq1.length();
+            int seq2len = seq2.length();
 
-                if(!passed)
+            spmatPtr_ val = values[i-offset];
+
+            if(!b_pars.skipAlignment) // fix -z to not print 
+            {
+#ifdef TIMESTEP
+                numAlignmentsThread++;
+                readLengthsThread = readLengthsThread + seq1len + seq2len;
+#endif
+                seqAnResult maxExtScore;
+                bool passed = false;
+
+                if(val->count == 1)
                 {
-                    maxExtScore = alignSeqAn(seq1, seq2, seq1len, val->pos[2], val->pos[3], xdrop, kmer_len);
+                    maxExtScore = alignSeqAn(seq1, seq2, seq1len, val->pos[0], val->pos[1], xdrop, kmer_len);
                     PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
                 }
+                else
+                {
+                    maxExtScore = alignSeqAn(seq1, seq2, seq1len, val->pos[0], val->pos[1], xdrop, kmer_len);
+                    PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
+
+                    if(!passed)
+                    {
+                        maxExtScore = alignSeqAn(seq1, seq2, seq1len, val->pos[2], val->pos[3], xdrop, kmer_len);
+                        PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
+                    }
             }
 #ifdef TIMESTEP
-			numBasesAlignedThread += endPositionV(maxExtScore.seed)-beginPositionV(maxExtScore.seed);
+            numBasesAlignedThread += endPositionV(maxExtScore.seed)-beginPositionV(maxExtScore.seed);
 #endif
-		}
-	    else 	// if skipAlignment == false do alignment, else save just some info on the pair to file 		
-		{
-			vss[ithread] << reads[cid].nametag << '\t' << reads[rid].nametag << '\t' << val->count << '\t' << 
-                        	seq2len << '\t' << seq1len << endl;
-			++outputted;
-		}
-	} // all nonzeros in that column of A^T A
+            }
+            else // if skipAlignment == false do alignment, else save just some info on the pair to file
+            {
+                vss[ithread] << reads[cid].nametag << '\t' << reads[rid].nametag << '\t' << val->count << '\t' << 
+                        seq2len << '\t' << seq1len << endl;
+                ++outputted;
+            }
+        } // all nonzeros in that column of A^T A
 
 #ifdef TIMESTEP	
-	#pragma omp critical
-	{	
-        	alignedpairs += numAlignmentsThread;
-		alignedbases += numBasesAlignedThread;	
-		totalreadlen += readLengthsThread;
-		totaloutputt += outputted;
-		totsuccbases += numBasesAlignedTrue;		
-		totfailbases += numBasesAlignedFalse;
-	}
-#endif			
-    }	// all columns from start...end (omp for loop)
+        #pragma omp critical
+        {
+            alignedpairs += numAlignmentsThread;
+            alignedbases += numBasesAlignedThread;
+            totalreadlen += readLengthsThread;
+            totaloutputt += outputted;
+            totsuccbases += numBasesAlignedTrue;
+            totfailbases += numBasesAlignedFalse;
+        }
+#endif
+    } // all columns from start...end (omp for loop)
 
+    double outputting = omp_get_wtime();
 
     int64_t * bytes = new int64_t[numThreads];
     for(int i=0; i< numThreads; ++i)
     {
-	    vss[i].seekg(0, ios::end);
-	    bytes[i] = vss[i].tellg();
-	    vss[i].seekg(0, ios::beg);
+        vss[i].seekg(0, ios::end);
+        bytes[i] = vss[i].tellg();
+        vss[i].seekg(0, ios::beg);
     }
     int64_t bytestotal = std::accumulate(bytes, bytes+numThreads, static_cast<int64_t>(0));
 
     std::ofstream ofs(filename, std::ios::binary | std::ios::app);
-    cout << "Creating or appending to output file with " << bytestotal << " bytes" << endl;
+#ifdef PRINT
+    cout << "Creating or appending to output file with " << (double)bytestotal/(double)(1024 * 1024) << " MB" << endl;
+#endif
     ofs.seekp(bytestotal - 1);
-    ofs.write("", 1);	// this will likely create a sparse file so the actual disks won't spin yet
+    ofs.write("", 1); // this will likely create a sparse file so the actual disks won't spin yet
     ofs.close();
-    
+
     #pragma omp parallel
     {
-	int ithread = omp_get_thread_num();	
-	    
-    	FILE *ffinal;
-	if ((ffinal = fopen(filename, "rb+")) == NULL)	// then everyone fills it
+        int ithread = omp_get_thread_num();	
+
+        FILE *ffinal;
+        if ((ffinal = fopen(filename, "rb+")) == NULL)	// then everyone fills it
         {
-		fprintf(stderr, "File %s failed to open at thread %d\n", filename, ithread);
-       	}
-	int64_t bytesuntil = std::accumulate(bytes, bytes+ithread, static_cast<int64_t>(0));
-	fseek (ffinal , bytesuntil , SEEK_SET );
-	std::string text = vss[ithread].str();
-	fwrite(text.c_str(),1, bytes[ithread] ,ffinal);
-	fflush(ffinal);
-	fclose(ffinal);
+            fprintf(stderr, "File %s failed to open at thread %d\n", filename, ithread);
+        }
+        int64_t bytesuntil = std::accumulate(bytes, bytes+ithread, static_cast<int64_t>(0));
+        fseek (ffinal , bytesuntil , SEEK_SET );
+        std::string text = vss[ithread].str();
+        fwrite(text.c_str(),1, bytes[ithread] ,ffinal);
+        fflush(ffinal);
+        fclose(ffinal);
     }
-    delete [] bytes;    
-	
-    return make_tuple(alignedpairs, alignedbases, totalreadlen, totaloutputt, totsuccbases, totfailbases);
+    delete [] bytes;
+    double timeoutputt = omp_get_wtime()-outputting;
+
+    return make_tuple(alignedpairs, alignedbases, totalreadlen, totaloutputt, totsuccbases, totfailbases, timeoutputt);
 }
 
 
@@ -618,7 +621,7 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     double free_memory = estimateMemory(b_pars);
 
 #ifdef PRINT
-    cout << "Available RAM is assumed to be : " << free_memory / (1024 * 1024) << " MB" << endl;
+    cout << "Available RAM is assumed to be: " << free_memory / (1024 * 1024) << " MB" << endl;
 #endif
 
     int numThreads = 1;
@@ -649,23 +652,21 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
     uint64_t nnzcperstage = free_memory / (safety_net * (sizeof(FT)+sizeof(IT)));
 
 #ifdef PRINT
-    cout << "nnz(output): " << nnzc << ", free_memory: " << free_memory << ", required_memory: " << required_memory << endl; 
-    cout << "stages: " << stages << ", max nnz per stage: " << nnzcperstage << endl;    
+    cout << "nnz(output): " << nnzc << " | free memory: " << free_memory << " | required memory: " << required_memory << endl; 
+    cout << "Stages: " << stages << " | max nnz per stage: " << nnzcperstage << endl;    
 #endif
-
 
     IT * colStart = new IT[stages+1];	// one array is enough to set stage boundaries	              
     colStart[0] = 0;
 
     for(int i = 1; i < stages; ++i)	// colsPerStage is no longer fixed (helps with potential load imbalance)
     {
-	// std::upper_bound returns an iterator pointing to the first element 
-	// in the range [first, last) that is greater than value, or last if no such element is found
-	auto upper = std::upper_bound(colptrC, colptrC+B.cols+1, i*nnzcperstage ); 
-	colStart[i]  = upper - colptrC - 1;	// we don't want the element that exceeds our budget, we want the one just before that
+        // std::upper_bound returns an iterator pointing to the first element 
+        // in the range [first, last) that is greater than value, or last if no such element is found
+        auto upper = std::upper_bound(colptrC, colptrC+B.cols+1, i*nnzcperstage ); 
+        colStart[i]  = upper - colptrC - 1;	// we don't want the element that exceeds our budget, we want the one just before that
     }
     colStart[stages] = B.cols;
-
 
     for(int b = 0; b < stages; ++b) 
     {
@@ -679,40 +680,41 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
 
 #ifdef TIMESTEP
         double ov2 = omp_get_wtime();
-	cout << "Columns [" << colStart[b] << " - " << colStart[b+1] << "] overlap time: " << ov2-ovl << "s" << endl;
+        cout << "\nColumns [" << colStart[b] << " - " << colStart[b+1] << "] OVERLAP time: " << ov2-ovl << "s" << endl;
 #endif
-        
-	IT endnz = colptrC[colStart[b+1]];
-	IT begnz = colptrC[colStart[b]];
+
+        IT endnz = colptrC[colStart[b+1]];
+        IT begnz = colptrC[colStart[b]];
 
         IT * rowids = new IT[endnz-begnz];
         FT * values = new FT[endnz-begnz];
 
         for(IT i=colStart[b]; i<colStart[b+1]; ++i) // combine step
         {
-	    IT loccol = i-colStart[b];
-	    IT locnz = colptrC[i]-begnz;
+            IT loccol = i-colStart[b];
+            IT locnz = colptrC[i]-begnz;
             copy(RowIdsofC[loccol].begin(), RowIdsofC[loccol].end(), rowids + locnz);
             copy(ValuesofC[loccol].begin(), ValuesofC[loccol].end(), values + locnz);
-	}
+        }
 
         delete [] RowIdsofC;
         delete [] ValuesofC;
 
-	tuple<size_t, size_t, size_t, size_t, size_t, size_t> alignstats; // (alignedpairs, alignedbases, totalreadlen, outputted, alignedtrue, alignedfalse)
-	alignstats = RunPairWiseAlignments(colStart[b], colStart[b+1], begnz, colptrC, rowids, values, reads, kmer_len, xdrop, filename, b_pars, ratioPhi);
+        tuple<size_t, size_t, size_t, size_t, size_t, size_t, double> alignstats; // (alignedpairs, alignedbases, totalreadlen, outputted, alignedtrue, alignedfalse, timeoutputt)
+        alignstats = RunPairWiseAlignments(colStart[b], colStart[b+1], begnz, colptrC, rowids, values, reads, kmer_len, xdrop, filename, b_pars, ratioPhi);
 
 #ifdef TIMESTEP
         if(!b_pars.skipAlignment)
         {
 	    	double elapsed = omp_get_wtime()-ov2;
-            	cout << "Columns [" << colStart[b] << " - " << colStart[b+1] << "] alignment time: " << elapsed << " s | alignment rate: " << static_cast<double>(get<1>(alignstats))/elapsed;
-	   	cout << " bases/s | average read length: " <<static_cast<double>(get<2>(alignstats))/(2* get<0>(alignstats));
-		cout << " | read pairs aligned this stage: " << get<0>(alignstats) << endl;
-		cout << "Outputted " << get<3>(alignstats) << " lines" << endl;
-		cout << "Average length of successful alignment " << static_cast<double>(get<4>(alignstats)) / get<3>(alignstats) << " bps" << endl;
-		cout << "Average length of failed alignment " << static_cast<double>(get<5>(alignstats)) / (get<0>(alignstats) - get<3>(alignstats)) << " bps" << endl;		
-	}
+            double aligntime = elapsed-get<6>(alignstats); // substracting outputting time
+            cout << "\nColumns [" << colStart[b] << " - " << colStart[b+1] << "] ALIGNMENT time: " << aligntime << "s | alignment rate: " << static_cast<double>(get<1>(alignstats))/aligntime;
+            cout << " bases/s | average read length: " <<static_cast<double>(get<2>(alignstats))/(2* get<0>(alignstats));
+            cout << " | read pairs aligned this stage: " << get<0>(alignstats) << endl;
+            cout << "Average length of successful alignment " << static_cast<double>(get<4>(alignstats)) / get<3>(alignstats) << " bps" << endl;
+            cout << "Average length of failed alignment " << static_cast<double>(get<5>(alignstats)) / (get<0>(alignstats) - get<3>(alignstats)) << " bps" << endl;		
+	        cout << "\nOutputted " << get<3>(alignstats) << " lines in " << get<6>(alignstats) << "s" << endl;
+       }
 #endif
 
         delete [] rowids;

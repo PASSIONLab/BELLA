@@ -45,8 +45,9 @@
 
 using namespace std;
 #define ASCIIBASE 33 // Pacbio quality score ASCII BASE
-//#define PRINT
-//#define HIST
+#ifndef PRINT
+#define PRINT
+#endif
 
 typedef cuckoohash_map<Kmer, int> dictionary_t; // <k-mer && reverse-complement, #kmers>
 
@@ -69,7 +70,7 @@ vector<filedata>  GetFiles(char *filename) {
     filedata fdata;
     ifstream allfiles(filename);
     if(!allfiles.is_open()) {
-        cerr << "could not open " << filename << endl;
+        cerr << "Could not open " << filename << endl;
         exit(1);
     }
     allfiles.getline(fdata.filename,MAX_FILE_PATH);
@@ -80,7 +81,7 @@ vector<filedata>  GetFiles(char *filename) {
         fdata.filesize = st.st_size;
         
         filesview.push_back(fdata);
-        cout << filesview.back().filename << " : " << filesview.back().filesize / (1024*1024) << " MB" << endl;
+        cout << filesview.back().filename << ": " << filesview.back().filesize / (1024*1024) << " MB" << endl;
         allfiles.getline(fdata.filename,MAX_FILE_PATH);
         totalsize += fdata.filesize;
         numfiles++;
@@ -225,32 +226,31 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
             #pragma omp critical
             totreads += tlreads;
         }
-    //cout << "There were " << totreads << " reads" << endl;
     }
+
+    // Error estimation
     if(b_parameters.skipEstimate == false)
     {
-	// TODO : add flag to disable error estimation
-    	erate = 0.0; // reset to 0 here, otherwise it cointains default or user-defined values 
-    	
-	#pragma omp for reduction(+:erate)
-	for (int i = 0; i < MAXTHREADS; i++) 
-    	{
-        	double temp = std::accumulate(allquals[i].begin(),allquals[i].end(), 0.0);
-        	erate += temp/(double)allquals[i].size();
-    	}
-   	erate = erate / (double)MAXTHREADS;
+        erate = 0.0; // reset to 0 here, otherwise it cointains default or user-defined values
+        #pragma omp for reduction(+:erate)
+        for (int i = 0; i < MAXTHREADS; i++) 
+            {
+                double temp = std::accumulate(allquals[i].begin(),allquals[i].end(), 0.0);
+                erate += temp/(double)allquals[i].size();
+            }
+        erate = erate / (double)MAXTHREADS;
     }
+
     // HLL reduction (serial for now) to avoid double iteration
     for (int i = 1; i < MAXTHREADS; i++) 
     {
-       	std::transform(hlls[0].M.begin(), hlls[0].M.end(), hlls[i].M.begin(), hlls[0].M.begin(), [](uint8_t c1, uint8_t c2) -> uint8_t{ return std::max(c1, c2); });
+        std::transform(hlls[0].M.begin(), hlls[0].M.end(), hlls[i].M.begin(), hlls[0].M.begin(), [](uint8_t c1, uint8_t c2) -> uint8_t{ return std::max(c1, c2); });
     }
     cardinality = hlls[0].estimate();
 
+    double load2kmers = omp_get_wtime(); 
+    cout << "Initial parsing, error estimation, and k-mer loading took: " << load2kmers - denovocount << "s\n" << endl;
 
-    double load2kmers = omp_get_wtime();    
-    cout << "Initial parsing, error estimation, and k-mer loading took: " << load2kmers - denovocount << "s" << endl;
-    
     const double desired_probability_of_false_positive = 0.05;
     struct bloom * bm = (struct bloom*) malloc(sizeof(struct bloom));
     bloom_init64(bm, cardinality * 1.1, desired_probability_of_false_positive);
@@ -258,10 +258,10 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
 #ifdef PRINT
     cout << "Cardinality estimate is " << cardinality << endl;
     cout << "Table size is: " << bm->bits << " bits, " << ((double)bm->bits)/8/1024/1024 << " MB" << endl;
-    cout << "Optimal number of hash functions is : " << bm->hashes << endl;
+    cout << "Optimal number of hash functions is: " << bm->hashes << endl;
 #endif
 
-    dictionary_t countsdenovo;    
+    dictionary_t countsdenovo;
 
 #pragma omp parallel
     {       
@@ -272,11 +272,11 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
     	}
     }
 
-    double firstpass = omp_get_wtime();        
-    cout << "First pass of k-mer counting took: " << firstpass - load2kmers << "s" << endl;
-    
+    double firstpass = omp_get_wtime();
+    cout << "KMERCOUNTING: first pass of k-mer counting took: " << firstpass - load2kmers << "s" << endl;
+
     free(bm); // release bloom filter memory
-    
+
     // in this pass, only use entries that already are in the hash table
     auto updatecount = [](int &num) { ++num; };
 #pragma omp parallel
@@ -287,11 +287,11 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
         	countsdenovo.update_fn(v,updatecount);
     	}
     }
-    cout << "Second pass of k-mer counting took: " << omp_get_wtime()-firstpass << "s" << endl;
+    cout << "KMERCOUNTING: second pass of k-mer counting took: " << omp_get_wtime() - firstpass << "s\n" << endl;
 
     // Reliable bounds computation using estimated error rate from phred quality score
-    lower = computeLower(depth,erate,kmer_len);
-    upper = computeUpper(depth,erate,kmer_len);
+    lower = computeLower(depth, erate, kmer_len);
+    upper = computeUpper(depth, erate, kmer_len);
 
     // Reliable k-mer filter on countsdenovo
     int kmer_id_denovo = 0;
@@ -305,7 +305,7 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
     lt.unlock(); // unlock the table
 
     // Print some information about the table
-    cout << "Entries within reliable range: " << countsreliable_denovo.size() << endl;    
+    cout << "Entries within reliable range: " << countsreliable_denovo.size() << endl;
     //cout << "Bucket count: " << countsdenovo.bucket_count() << std::endl;
     //cout << "Load factor: " << countsdenovo.load_factor() << std::endl;
     countsdenovo.clear(); // free
