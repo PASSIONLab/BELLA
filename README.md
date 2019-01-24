@@ -1,7 +1,7 @@
 # BELLA - Berkeley Efficient Long-Read to Long-Read Aligner and Overlapper
 
 BELLA is a computationally efficient and highly accurate long-read to long-read aligner and overlapper. BELLA uses a k-mer seed-based approach to detect overlaps between noisy, long-read data. BELLA provides a novel algorithm for pruning k-mers that are unlikely to be useful in overlap detection and whose presence would only incur unnecessary computational costs. This reliable k-mers detection algorithm explicitly maximizes the probability of retaining k-mers that belong to unique regions of the genome.
-To achieve fast overlapping without sketching, BELLA uses sparse matrix-matrix multiplication and utilizes high-performance software and libraries developed for this sparse matrix subroutine. BELLA’s overlap detection has been coupled with a state-of-the-art [seed-and-extend banded-alignment](https://github.com/seqan/seqan) method. BELLA’s alignment step comprises two alternatives: the sensitive mode and the precise mode. In the precise mode, we implemented a new method to separate true alignments from false positives depending on the alignment score.
+To achieve fast overlapping without sketching, BELLA uses sparse matrix-matrix multiplication and utilizes high-performance software and libraries developed for this sparse matrix subroutine. BELLA’s overlap detection has been coupled with a state-of-the-art [seed-and-extend banded-alignment](https://github.com/seqan/seqan) method. BELLA’s alignment step implements a new method to separate true alignments from false positives depending on the alignment score.
 
 ## Getting Started
 
@@ -48,15 +48,15 @@ Optional flag description:
 -o : output filename (required)
 -d : depth (required)
 -k : k-mer length [17]
--a : alignment score threshold [50]"
--p : alignment x-drop factor [3]
+-a : fixed alignment threshold [50]
+-x : alignment x-drop factor [7]
 -e : error rate [auto estimated from fastq]
 -m : total RAM of the system in MB [auto estimated if possible or 8,000 if not]
 -z : skip the pairwise alignment [false]
 -w : relaxMargin parameter for alignment on edges [300]
 -c : alignment score deviation from the mean [0.1]
--v : PRECISE MODE, use adaptive alignment threshold [false]
--x : ALIGNMENT CONSTRAINT, filter out alignment on edge [false]
+-n : filter out alignment on edge [false]
+-r : kmerRift: bases separating two k-mers used as seeds for a read [1,000]
 -f : k-mer list from Jellyfish (required if #DEFINE JELLYFISH enabled)
 ```
 **NOTE**: to use [Jellyfish](http://www.cbcb.umd.edu/software/jellyfish/) k-mer counting is necessary to enable **#DEFINE JELLYFISH.**
