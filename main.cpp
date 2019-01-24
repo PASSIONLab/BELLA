@@ -421,7 +421,7 @@ if(b_parameters.alignEnd)
     std::vector<tuple<size_t,size_t,size_t>>().swap(transtuples); // remove memory of transtuples
 
 #ifdef PRINT
-    cout << "MATRIX CONSTRUCTION took: " << omp_get_wtime()-matcreat << "s\n" << endl;
+    cout << "Sparse matrix construction took: " << omp_get_wtime()-matcreat << "s\n" << endl;
 #endif
 
     //

@@ -273,7 +273,7 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
     }
 
     double firstpass = omp_get_wtime();
-    cout << "KMERCOUNTING: first pass of k-mer counting took: " << firstpass - load2kmers << "s" << endl;
+    cout << "First pass of k-mer counting took: " << firstpass - load2kmers << "s" << endl;
 
     free(bm); // release bloom filter memory
 
@@ -287,7 +287,7 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
         	countsdenovo.update_fn(v,updatecount);
     	}
     }
-    cout << "KMERCOUNTING: second pass of k-mer counting took: " << omp_get_wtime() - firstpass << "s\n" << endl;
+    cout << "Second pass of k-mer counting took: " << omp_get_wtime() - firstpass << "s\n" << endl;
 
     // Reliable bounds computation using estimated error rate from phred quality score
     lower = computeLower(depth, erate, kmer_len);

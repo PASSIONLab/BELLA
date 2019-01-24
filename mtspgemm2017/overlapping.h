@@ -680,7 +680,7 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
 
 #ifdef TIMESTEP
         double ov2 = omp_get_wtime();
-        cout << "\nColumns [" << colStart[b] << " - " << colStart[b+1] << "] OVERLAP time: " << ov2-ovl << "s" << endl;
+        cout << "\nColumns [" << colStart[b] << " - " << colStart[b+1] << "] overlap time: " << ov2-ovl << "s" << endl;
 #endif
 
         IT endnz = colptrC[colStart[b+1]];
@@ -708,7 +708,7 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         {
 	    	double elapsed = omp_get_wtime()-ov2;
             double aligntime = elapsed-get<6>(alignstats); // substracting outputting time
-            cout << "\nColumns [" << colStart[b] << " - " << colStart[b+1] << "] ALIGNMENT time: " << aligntime << "s | alignment rate: " << static_cast<double>(get<1>(alignstats))/aligntime;
+            cout << "\nColumns [" << colStart[b] << " - " << colStart[b+1] << "] alignment time: " << aligntime << "s | alignment rate: " << static_cast<double>(get<1>(alignstats))/aligntime;
             cout << " bases/s | average read length: " <<static_cast<double>(get<2>(alignstats))/(2* get<0>(alignstats));
             cout << " | read pairs aligned this stage: " << get<0>(alignstats) << endl;
             cout << "Average length of successful alignment " << static_cast<double>(get<4>(alignstats)) / get<3>(alignstats) << " bps" << endl;
