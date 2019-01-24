@@ -88,7 +88,7 @@ int16_t seqansimdLocal(string & row, string & col) {
  * @param dropFactor
  * @return alignment score and extended seed
  */
-seqAnResult seqanAlOne(const std::string & row, const std::string & col, int rlen, int i, int j, int dropFactor, int kmer_len) {
+seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rlen, int i, int j, int dropFactor, int kmer_len) {
 
     Score<int, Simple> scoringScheme(1,-1,-1);
 
@@ -132,82 +132,7 @@ seqAnResult seqanAlOne(const std::string & row, const std::string & col, int rle
     longestExtensionScore.strand = strand;
     return longestExtensionScore;
 }
-/**
- * @brief seqanAlGen does the seed-and-extend alignment
- * when two shared k-mers exist
- * @param row
- * @param col
- * @param rlen is the length of the row sequence
- * @param i is the starting position of the first k-mer on the first read
- * @param j is the starting position of the first k-mer on the second read
- * @param l is the starting position of the second k-mer on the first read
- * @param m is the starting position of the second k-mer on the second read
- * @param dropFactor
- * @return alignment score and extended seed
- */
-seqAnResult seqanAlGen(const std::string & row, const std::string & col, int rlen, int i, int j, int l, int m, int dropFactor, int kmer_len) {
 
-    Score<int, Simple> scoringScheme(1,-1,-1);
-
-    Dna5String seqH(row); 
-    Dna5String seqV(col); 
-    Dna5String seedH;
-    Dna5String seedV;
-    string strand;
-    std::pair<int,int> longestExtensionTemp;
-    seqAnResult longestExtensionScore;
-
-    TSeed seed1(i, j, i+kmer_len, j+kmer_len);
-    TSeed seed2(l, m, l+kmer_len, m+kmer_len);
-    seedH = infix(seqH, beginPositionH(seed1), endPositionH(seed1));
-    seedV = infix(seqV, beginPositionV(seed1), endPositionV(seed1));
-
-    Dna5StringReverseComplement twin(seedH);
-
-    if(twin == seedV)
-    {
-        strand = 'c';
-        Dna5StringReverseComplement twinRead(seqH);
-
-        i = rlen-i-kmer_len;
-        l = rlen-l-kmer_len;
-
-        setBeginPositionH(seed1, i);
-        setBeginPositionV(seed1, j);
-        setEndPositionH(seed1, i+kmer_len);
-        setEndPositionV(seed1, j+kmer_len);
-
-        setBeginPositionH(seed2, l);
-        setBeginPositionV(seed2, m);
-        setEndPositionH(seed2, l+kmer_len);
-        setEndPositionV(seed2, m+kmer_len);
-
-        /* Perform match extension */
-        longestExtensionTemp.first = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
-        longestExtensionTemp.second = extendSeed(seed2, twinRead, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
-
-    } else
-    {
-        strand = 'n';
-        longestExtensionTemp.first = extendSeed(seed1, seqH, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
-        longestExtensionTemp.second = extendSeed(seed2, seqH, seqV, EXTEND_BOTH, scoringScheme, dropFactor, GappedXDrop());
-    }
-
-    longestExtensionScore.strand = strand;
-
-    if(longestExtensionTemp.first > longestExtensionTemp.second)
-    {
-        longestExtensionScore.score = longestExtensionTemp.first;
-        longestExtensionScore.seed = seed1;
-    }
-    else
-    {
-        longestExtensionScore.score = longestExtensionTemp.second;
-        longestExtensionScore.seed = seed2;
-    } 
-
-    return longestExtensionScore;
-}
 /**
  * @brief seqanAlOneAllKmer does the seed-and-extend alignment
  * when only one shared k-mer exists

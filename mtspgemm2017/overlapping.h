@@ -411,7 +411,7 @@ double estimateMemory(const BELLApars & b_pars)
 
 void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1, const readType_ & read2, 
 					const BELLApars & b_pars, double ratioPhi, int count, stringstream & myBatch, size_t & outputted,
-					size_t & numBasesAlignedTrue, size_t & numBasesAlignedFalse)
+					size_t & numBasesAlignedTrue, size_t & numBasesAlignedFalse, bool & passed)
 {
 	auto maxseed = maxExtScore.seed;	// returns a seqan:Seed object
 
@@ -427,8 +427,7 @@ void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1,
 	const string& seq2 = read2.seq;
 			
 	int read1len = seq1.length();
-	int read2len = seq2.length();	
-	bool passed = false;
+	int read2len = seq2.length();
 
 	if(b_pars.adapThr)
 	{
@@ -474,8 +473,8 @@ void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1,
 	}		
 	else
 	{
-		numBasesAlignedFalse += (endpV-begpV);		
-	}		
+		numBasesAlignedFalse += (endpV-begpV);
+	}
 }
 
 template <typename IT, typename FT>
@@ -522,30 +521,35 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 
 		spmatPtr_ val = values[i-offset];		
 
-
 		if(!b_pars.skipAlignment) // fix -z to not print 
-                {	
+        {
 #ifdef TIMESTEP	
-                    	numAlignmentsThread++;
-                    	readLengthsThread = readLengthsThread + seq1len + seq2len;
+            numAlignmentsThread++;
+            readLengthsThread = readLengthsThread + seq1len + seq2len;
 #endif
+            seqAnResult maxExtScore;
+            bool passed = false;
+            if(val->count == 1)
+            {
+                maxExtScore = alignSeqAn(seq1, seq2, seq1len, val->pos[0], val->pos[1], xdrop, kmer_len);
+                PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
+            }
+            else
+            {
+                maxExtScore = alignSeqAn(seq1, seq2, seq1len, val->pos[0], val->pos[1], xdrop, kmer_len);
+                PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
 
-		    	seqAnResult maxExtScore;
-		    	if(val->count == 1)
-		    	{
-				maxExtScore = seqanAlOne(seq1, seq2, seq1len, val->pos[0], val->pos[1], xdrop, kmer_len);
-		    	} 
-			else
-		    	{
-                        	maxExtScore = seqanAlGen(seq1, seq2, seq1len, val->pos[0], val->pos[1], val->pos[2], val->pos[3], xdrop, kmer_len);
-		    	}			
+                if(!passed)
+                {
+                    maxExtScore = alignSeqAn(seq1, seq2, seq1len, val->pos[2], val->pos[3], xdrop, kmer_len);
+                    PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
+                }
+            }
 #ifdef TIMESTEP
 			numBasesAlignedThread += endPositionV(maxExtScore.seed)-beginPositionV(maxExtScore.seed);
 #endif
-                       	PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse);
-
 		}
-	        else 	// if skipAlignment == false do alignment, else save just some info on the pair to file 		
+	    else 	// if skipAlignment == false do alignment, else save just some info on the pair to file 		
 		{
 			vss[ithread] << reads[cid].nametag << '\t' << reads[rid].nametag << '\t' << val->count << '\t' << 
                         	seq2len << '\t' << seq1len << endl;
