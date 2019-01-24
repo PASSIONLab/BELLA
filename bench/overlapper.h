@@ -219,7 +219,7 @@ void metricsBella(ifstream & th, ifstream & bf, bool sim, int minOv, string & ou
     cout << "   .FP = " << fpBella << endl;
     cout << "   .TP = " << tpBella << endl;
     cout << "   .TN = " << tnBella << endl;
-    cout << "   .Recall = " << ((double)(tpBella)/(double)(numth))*100 << "%" << endl;
+    cout << "   .Recall = " << ((double)(tpBella*2)/(double)(numth))*100 << "%" << endl;
     cout << "   .Precision = " << ((double)(tpBella)/(double)(tpBella+fpBella))*100 << "%" << endl;
     cout << "   .Specificity = " << ((double)(tnBella)/(double)(tnBella+fpBella))*100 << "%" << "\n" << endl;
 
