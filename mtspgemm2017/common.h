@@ -34,7 +34,7 @@ struct BELLApars
 	int relaxMargin;		// epsilon parameter for alignment on edges (w)
 	double deltaChernoff;	// delta computed via Chernoff bound (c)
 
-	BELLApars():totalMemory(8000.0), userDefMem(false), kmerRift(1000), skipEstimate(false), skipAlignment(false), adapThr(false), defaultThr(50),
+	BELLApars():totalMemory(8000.0), userDefMem(false), kmerRift(1000), skipEstimate(false), skipAlignment(false), adapThr(true), defaultThr(50),
 			alignEnd(false), relaxMargin(300), deltaChernoff(0.1) {};
 };
 

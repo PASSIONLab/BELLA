@@ -68,14 +68,14 @@ int main (int argc, char *argv[]) {
     // Follow an option with a colon to indicate that it requires an argument.
 
     optList = NULL;
-    optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:a:ze:p:w:vxc:m:r:");
+    optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:a:ze:x:w:nc:m:r:");
    
 
     char *kmer_file = NULL;                 // Reliable k-mer file from Jellyfish
     char *all_inputs_fofn = NULL;           // List of fastqs (i)
     char *out_file = NULL;                  // output filename (o)
     int kmer_len = 17;                      // default k-mer length (k)
-    int xdrop = 3;                          // default alignment x-drop factor (p)
+    int xdrop = 7;                          // default alignment x-drop factor (x)
     double erate = 0.15;                    // default error rate (e) 
     int depth = 0;                          // depth/coverage required (d)
 
@@ -149,12 +149,7 @@ int main (int argc, char *argv[]) {
                 break;
             }
             case 'z': b_parameters.skipAlignment = true; break; 
-            case 'v': {
-                b_parameters.adapThr = true;
-                xdrop = 7;
-                break;
-            }
-            case 'x': b_parameters.alignEnd = true; break; 
+            case 'n': b_parameters.alignEnd = true; break; 
             case 'k': {
                 kmer_len = atoi(thisOpt->argument);
                 break;
@@ -170,9 +165,10 @@ int main (int argc, char *argv[]) {
             }
             case 'a': {
                 b_parameters.defaultThr = atoi(thisOpt->argument);
+                b_parameters.adapThr = false;
                 break;
             }
-            case 'p': {
+            case 'x': {
                 xdrop = atoi(thisOpt->argument);
                 break;
             } 
@@ -203,16 +199,15 @@ int main (int argc, char *argv[]) {
                 cout << " -o : output filename (required)" << endl;
                 cout << " -d : depth/coverage (required)" << endl; // TO DO: add depth estimation
                 cout << " -k : k-mer length [17]" << endl;
-                cout << " -a : alignment score threshold [50]" << endl;
-                cout << " -p : alignment x-drop factor [3]" << endl;
+                cout << " -a : use fixed alignment threshold [50]" << endl;
+                cout << " -x : alignment x-drop factor [7]" << endl;
                 cout << " -e : error rate [auto estimated from fastq]" << endl;
                 cout << " -m : total RAM of the system in MB [auto estimated if possible or 8,000 if not]" << endl;
                 cout << " -z : skip the pairwise alignment [false]" << endl;
                 cout << " -w : relaxMargin parameter for alignment on edges [300]" << endl;
                 cout << " -c : alignment score deviation from the mean [0.1]" << endl;
-                cout << " -v : use adaptive alignment threshold [false]" << endl;
-                cout << " -x : filter out alignment on edge [false]\n" << endl;
-                cout << " -r : bases separating two k-mers used as seeds for a read [1000]\n" << endl;
+                cout << " -n : filter out alignment on edge [false]\n" << endl;
+                cout << " -r : kmerRift: bases separating two k-mers used as seeds for a read [1,000]\n" << endl;
 
                 FreeOptList(thisOpt); // Done with this list, free it
                 return 0;
