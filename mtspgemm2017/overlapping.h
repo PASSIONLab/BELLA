@@ -713,10 +713,9 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
             cout << " | read pairs aligned this stage: " << get<0>(alignstats) << endl;
             cout << "Average length of successful alignment " << static_cast<double>(get<4>(alignstats)) / get<3>(alignstats) << " bps" << endl;
             cout << "Average length of failed alignment " << static_cast<double>(get<5>(alignstats)) / (get<0>(alignstats) - get<3>(alignstats)) << " bps" << endl;		
-	        cout << "\nOutputted " << get<3>(alignstats) << " lines in " << get<6>(alignstats) << "s" << endl;
        }
 #endif
-
+        cout << "\nOutputted " << get<3>(alignstats) << " lines in " << get<6>(alignstats) << "s" << endl;
         delete [] rowids;
         delete [] values;
 
