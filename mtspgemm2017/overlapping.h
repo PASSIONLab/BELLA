@@ -530,20 +530,29 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 
                 if(val->count == 1)
                 {
-                    maxExtScore = alignSeqAn(seq1, seq2, seq1len, val->pos[0], val->pos[1], xdrop, kmer_len);
+                    auto it = val->pos.begin();
+                    int i = it->first, j = it->second;
+
+                    maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, xdrop, kmer_len);
                     PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
                 }
                 else
                 {
-                    maxExtScore = alignSeqAn(seq1, seq2, seq1len, val->pos[0], val->pos[1], xdrop, kmer_len);
-                    PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
-
-                    if(!passed)
+      #pragma omp critical
+                {
+                    cout << val->pos.size() << endl;
+                }
+                    for(auto it = val->pos.begin(); it != val->pos.end(); ++it) // if !b_pars.allKmer this should be at most two cycle
                     {
-                        maxExtScore = alignSeqAn(seq1, seq2, seq1len, val->pos[2], val->pos[3], xdrop, kmer_len);
+                        int i = it->first, j = it->second;
+
+                        maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, xdrop, kmer_len);
                         PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
+
+                        if(passed)
+                            break;
                     }
-            }
+                }
 #ifdef TIMESTEP
             numBasesAlignedThread += endPositionV(maxExtScore.seed)-beginPositionV(maxExtScore.seed);
 #endif

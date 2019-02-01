@@ -76,9 +76,9 @@ seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rle
     seqAnResult longestExtensionScore;
 
 
-    TSeed seed1(i, j, i+kmer_len, j+kmer_len);
-    seedH = infix(seqH, beginPositionH(seed1), endPositionH(seed1));
-    seedV = infix(seqV, beginPositionV(seed1), endPositionV(seed1));
+    TSeed seed(i, j, i+kmer_len, j+kmer_len);
+    seedH = infix(seqH, beginPositionH(seed), endPositionH(seed));
+    seedV = infix(seqV, beginPositionV(seed), endPositionV(seed));
 
     Dna5StringReverseComplement twin(seedH);
 
@@ -88,22 +88,22 @@ seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rle
         Dna5StringReverseComplement twinRead(seqH);
         i = rlen-i-kmer_len;
         
-        setBeginPositionH(seed1, i);
-        setBeginPositionV(seed1, j);
-        setEndPositionH(seed1, i+kmer_len);
-        setEndPositionV(seed1, j+kmer_len);
+        setBeginPositionH(seed, i);
+        setBeginPositionV(seed, j);
+        setEndPositionH(seed, i+kmer_len);
+        setEndPositionV(seed, j+kmer_len);
 
         /* Perform match extension */
-        longestExtensionTemp = extendSeed(seed1, twinRead, seqV, EXTEND_BOTH, scoringScheme, xdrop, GappedXDrop());
+        longestExtensionTemp = extendSeed(seed, twinRead, seqV, EXTEND_BOTH, scoringScheme, xdrop, GappedXDrop());
 
     } else
     {
         strand = 'n';
-        longestExtensionTemp = extendSeed(seed1, seqH, seqV, EXTEND_BOTH, scoringScheme, xdrop, GappedXDrop());
+        longestExtensionTemp = extendSeed(seed, seqH, seqV, EXTEND_BOTH, scoringScheme, xdrop, GappedXDrop());
     } 
 
     longestExtensionScore.score = longestExtensionTemp;
-    longestExtensionScore.seed = seed1;
+    longestExtensionScore.seed = seed;
     longestExtensionScore.strand = strand;
     return longestExtensionScore;
 }

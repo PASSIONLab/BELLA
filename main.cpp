@@ -68,7 +68,7 @@ int main (int argc, char *argv[]) {
     // Follow an option with a colon to indicate that it requires an argument.
 
     optList = NULL;
-    optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:a:ze:x:w:nc:m:r:");
+    optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:Ka:ze:x:w:nc:m:r:");
    
 
     char *kmer_file = NULL;                 // Reliable k-mer file from Jellyfish
@@ -176,12 +176,16 @@ int main (int argc, char *argv[]) {
                 b_parameters.relaxMargin = atoi(thisOpt->argument);
                 break;
             }
-        case 'm': {
-        b_parameters.totalMemory = stod(thisOpt->argument);
-        b_parameters.userDefMem = true;
-        cout << "User defined memory set to " << b_parameters.totalMemory << " MB " << endl;
-        break;
-        }
+            case 'K': {
+                b_parameters.allKmer = true;
+                break;
+            }
+            case 'm': {
+                b_parameters.totalMemory = stod(thisOpt->argument);
+                b_parameters.userDefMem = true;
+                cout << "User defined memory set to " << b_parameters.totalMemory << " MB " << endl;
+                break;
+            }
             case 'c': {
                 if(stod(thisOpt->argument) > 1.0 || stod(thisOpt->argument) < 0.0)
                 {
@@ -430,31 +434,39 @@ if(b_parameters.alignEnd)
 
     spmatPtr_ getvaluetype(make_shared<spmatType_>());
     HashSpGEMM(spmat, transpmat, 
-            [] (size_t & pi, size_t & pj) // n-th k-mer positions on read i and on read j 
+            [] (size_t & pi, size_t & pj)                     // n-th k-mer positions on read i and on read j
             {   spmatPtr_ value(make_shared<spmatType_>());
                 value->count = 1;
-                value->pos[0] = pi; // row
-                value->pos[1] = pj; // col
+                value->pos.push_back(make_pair(pi, pj));
                 return value;
-            }, 
+            },
     [&kmer_len,&b_parameters] (spmatPtr_ & m1, spmatPtr_ & m2)
             {
-                // kmers have to be separated by b_parameters.kmerRift [default 1,000] bases
-                int left  = m2->pos[0] - kmer_len - b_parameters.kmerRift;
-                int right = m2->pos[0] + kmer_len + b_parameters.kmerRift;
-                int newseed  = m1->pos[0];
-
-                if(!isinrift(newseed, left, right)) // false == seeds separated by "kmerRift" bases
+                for(int i = 0; i < m1->pos.size(); ++i)
                 {
-                    left  = m2->pos[1] - kmer_len - b_parameters.kmerRift;
-                    right = m2->pos[1] + kmer_len + b_parameters.kmerRift;
-                    newseed  = m1->pos[1];
+                    int left  = m2->pos[i].first - kmer_len - b_parameters.kmerRift;
+                    int right = m2->pos[i].first + kmer_len + b_parameters.kmerRift;
+                    int newseed  = m1->pos[i].first;
 
-                    if(!isinrift(newseed, left, right)) // false == seeds separated by "kmerRift" bases
+                    if(!isinrift(newseed, left, right))       // seeds separated by <kmerRift> bases
                     {
-                        m2->count = m2->count+m1->count;          // now this pair use multiple seeds [default: true declared in common.h]
-                        m2->pos[2] = m1->pos[0];    // row
-                        m2->pos[3] = m1->pos[1];    // col
+                        left  = m2->pos[i].second - kmer_len - b_parameters.kmerRift;
+                        right = m2->pos[i].second + kmer_len + b_parameters.kmerRift;
+                        newseed  = m1->pos[i].second;
+
+                        if(!isinrift(newseed, left, right))   // seeds separated by <kmerRift> bases
+                            if(!b_parameters.allKmer)         // save at most two kmers as seeds
+                            {
+                                m2->count = m2->count+m1->count;
+                                m2->pos.push_back(m1->pos[i]);
+                                cout << m2->pos.size() << endl;
+                    break;
+                            }
+                            else   // save all possible kmers as seeds
+                            {
+                                m2->count = m2->count+m1->count;
+                                m2->pos.push_back(m1->pos[i]);
+                            }
                     }
                 }
                 return m2;
