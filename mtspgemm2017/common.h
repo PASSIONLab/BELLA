@@ -28,13 +28,14 @@ struct BELLApars
     int kmerRift;
 	bool skipEstimate;  	// Do not estimate error but use user-defined error (e)
 	bool skipAlignment;  	// Do not align (z)
+    bool allKmer;           // Use all possible kmers (non-overlapping and separated by <kmerRift> bases) as alignment seeds (K)
 	bool adapThr; 			// Apply adaptive alignment threshold (v)
 	int defaultThr;   		// default alignment score threshold (a), only matters when adapThr=false, to be deprecated	
 	bool alignEnd;			// Filter out alignments not achieving end of the read "relaxed" (x)
 	int relaxMargin;		// epsilon parameter for alignment on edges (w)
 	double deltaChernoff;	// delta computed via Chernoff bound (c)
 
-	BELLApars():totalMemory(8000.0), userDefMem(false), kmerRift(1000), skipEstimate(false), skipAlignment(false), adapThr(true), defaultThr(50),
+	BELLApars():totalMemory(8000.0), userDefMem(false), kmerRift(1000), skipEstimate(false), skipAlignment(false), allKmer(false), adapThr(true), defaultThr(50),
 			alignEnd(false), relaxMargin(300), deltaChernoff(0.2) {};
 };
 
@@ -65,11 +66,12 @@ typedef vector<readType_> readVector_;
 
 struct spmatType_ {
 
-    int count = 0;   // number of shared k-mers
-    int pos[4] = {0};  // pos1i, pos1j, pos2i, pos2j 
+    int count = 0;              // number of shared k-mers
+    vector<pair<int,int>> pos;  // vector of k-mer positions <read-i, read-j> (if !K, use at most 2 kmers, otherwise all)
 };
 
 typedef shared_ptr<spmatType_> spmatPtr_; // pointer to spmatType_ datastruct
+
 typedef std::vector<Kmer> Kmers;
 
 struct alignmentInfo {
