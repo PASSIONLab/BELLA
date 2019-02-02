@@ -112,14 +112,14 @@ To cite our work or to know more about our methods, please refer to:
 
 ## Authors
 
-* [**Giulia Guidi**](https://linkedin.com/in/giulia-guidi/)
+* [**Giulia Guidi**](https://sites.google.com/berkeley.edu/gguidi/)
 * [**Aydın Buluç**](https://people.eecs.berkeley.edu/~aydin/)
-* [**Marquita Ellis**](http://crd.lbl.gov/departments/computer-science/CLaSS/class-staff/marquita-ellis/)
+* [**Marquita Ellis**](https://sites.google.com/view/about-mme)
 
 ## Contributors
 
 * [**Daniel Rokhsar**](https://mcb.berkeley.edu/labs/rokhsar/)
-* [**Katherine Yelick**](https://people.eecs.berkeley.edu/~yelick/?_ga=2.137275831.646808918.1523950603-1375276454.1515506755)
+* [**Katherine Yelick**](https://people.eecs.berkeley.edu/~yelick/)
 
 ## Copyright Notice
  
