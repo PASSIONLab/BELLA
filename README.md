@@ -57,6 +57,7 @@ Optional flag description:
 -c : alignment score deviation from the mean [0.1]
 -n : filter out alignment on edge [false]
 -r : kmerRift: bases separating two k-mers used as seeds for a read [1,000]
+-K : all (non-overlapping and separated by <kmerRift> bases) k-mers as alignment seeds [false]
 -f : k-mer list from Jellyfish (required if #DEFINE JELLYFISH enabled)
 ```
 **NOTE**: to use [Jellyfish](http://www.cbcb.umd.edu/software/jellyfish/) k-mer counting is necessary to enable **#DEFINE JELLYFISH.**
