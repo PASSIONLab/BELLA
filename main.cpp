@@ -269,6 +269,9 @@ int main (int argc, char *argv[]) {
     if(b_parameters.skipAlignment)
         cout << "Compute alignment: false" << endl;
     else cout << "Compute alignment: true" << endl;
+    if(!b_parameters.allKmer)
+        cout << "Seeding: two-kmer" << endl;
+    else cout << "Seeding: all-kmer" << endl;
 #endif
 
     //
@@ -471,10 +474,6 @@ if(b_parameters.alignEnd)
                                 m2->pos.push_back(m1->pos[i]);
                             }
                     }
-        //#pragma omp critical
-        //{
-        //    cout << m2->pos.size() << endl;
-        //}
                 }
                 return m2;
             }, reads, getvaluetype, kmer_len, xdrop, out_file, b_parameters, ratioPhi); 
