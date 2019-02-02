@@ -458,9 +458,12 @@ if(b_parameters.alignEnd)
                             if(!b_parameters.allKmer)         // save at most two kmers as seeds
                             {
                                 m2->count = m2->count+m1->count;
-                                m2->pos.push_back(m1->pos[i]);
-                                cout << m2->pos.size() << endl;
-                    break;
+                                m2->pos.clear();  // free from previous positions and save only two pos
+
+                                m2->pos.push_back(make_pair(m2->pos[i].first, m2->pos[i].second));
+                                m2->pos.push_back(make_pair(m1->pos[i].first, m1->pos[i].second));
+
+                                break;
                             }
                             else   // save all possible kmers as seeds
                             {
@@ -468,6 +471,10 @@ if(b_parameters.alignEnd)
                                 m2->pos.push_back(m1->pos[i]);
                             }
                     }
+        //#pragma omp critical
+        //{
+        //    cout << m2->pos.size() << endl;
+        //}
                 }
                 return m2;
             }, reads, getvaluetype, kmer_len, xdrop, out_file, b_parameters, ratioPhi); 

@@ -538,10 +538,10 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
                 }
                 else
                 {
-      #pragma omp critical
-                {
-                    cout << val->pos.size() << endl;
-                }
+     // #pragma omp critical
+     //           {
+     //               cout << val->pos.size() << endl;
+     //           }
                     for(auto it = val->pos.begin(); it != val->pos.end(); ++it) // if !b_pars.allKmer this should be at most two cycle
                     {
                         int i = it->first, j = it->second;
