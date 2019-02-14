@@ -27,9 +27,9 @@ with open(sys.argv[1], 'r') as one, open(sys.argv[2], 'r') as two:
 		list1.append(pair)
 	file2 	= csv.reader(two, delimiter='\t')
 	for row in file2:
-		pair = [(row[0], row[1])]
+		pair = [(row[2], row[3])]	# diBELLA has names in position 2,3
 		list2.append(pair)
-		pair = [(row[1], row[0])]	# Check reversed pair
+		pair = [(row[3], row[2])]	# Check reversed pair
 		list2.append(pair)
 
 m = 0
