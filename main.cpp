@@ -68,7 +68,7 @@ int main (int argc, char *argv[]) {
     // Follow an option with a colon to indicate that it requires an argument.
 
     optList = NULL;
-    optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:Ka:ze:x:w:nc:m:r:");
+    optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:Ka:ze:x:w:nc:m:r:p");
    
 
     char *kmer_file = NULL;                 // Reliable k-mer file from Jellyfish
@@ -114,6 +114,7 @@ int main (int argc, char *argv[]) {
                 all_inputs_fofn = strdup(thisOpt->argument);
                 break;
             }
+            case 'p': b_parameters.outputPaf = true; break; // PAF format
             case 'o': {
                 if(thisOpt->argument == NULL)
                 {
@@ -148,7 +149,7 @@ int main (int argc, char *argv[]) {
                 depth = atoi(thisOpt->argument);  
                 break;
             }
-            case 'z': b_parameters.skipAlignment = true; break; 
+            case 'z': b_parameters.skipAlignment = true; break;
             case 'n': b_parameters.alignEnd = true; break; 
             case 'k': {
                 kmer_len = atoi(thisOpt->argument);
@@ -212,6 +213,7 @@ int main (int argc, char *argv[]) {
                 cout << " -c : alignment score deviation from the mean [0.1]" << endl;
                 cout << " -n : filter out alignment on edge [false]\n" << endl;
                 cout << " -r : kmerRift: bases separating two k-mers used as seeds for a read [1,000]\n" << endl;
+                cout << " -p : output in PAF format [false]\n" << endl;
 
                 FreeOptList(thisOpt); // Done with this list, free it
                 return 0;
