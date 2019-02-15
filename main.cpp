@@ -350,7 +350,7 @@ if(b_parameters.alignEnd)
 
                 readType_ temp;
                 temp.nametag = nametags[i];
-                temp.seq = seqs[i]; // save reads for seeded alignment
+                temp.seq = seqs[i];     // save reads for seeded alignment
                 temp.readid = read_id+i;
 
                 allreads[MYTHREAD].push_back(temp);

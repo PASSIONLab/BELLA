@@ -484,8 +484,11 @@ void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1,
         }
         else    // PAF format is the output format used by minimap/minimap2: https://github.com/lh3/miniasm/blob/master/PAF.md
         {
-            string pafstrand;   // maxExtScore not modifiable   
-            int mapq = 255;     // mapping quality (0-255; 255 for missing) 
+            string pafstrand;       // maxExtScore not modifiable   
+            int mapq = 255;         // mapping quality (0-255; 255 for missing)     
+
+            read1.nametag.erase(read1.nametag.begin());     // removing "@"     
+            read2.nametag.erase(read2.nametag.begin());     // removing "@"     
             if(maxExtScore.strand == "n") pafstrand = "+";  
             else pafstrand = "-";
 
@@ -505,6 +508,21 @@ void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1,
                 // number of residue matches (alignment score)
                 // alignment block length (overlap length)
                 // mapping quality (0-255; 255 for missing)
+
+// Here's some additional info in minimap2 output
+// Tag Type     Description
+// _
+// tp  A        Type of aln: P/primary, S/secondary and I,i/inversion
+// cm  i        Number of minimizers on the chain
+// s1  i        Chaining score
+// dv   f       Approximate per-base sequence divergence
+// rl   i       Length of query regions harboring repetitive seeds
+        // An esample:     
+                // tp:A:S  
+                // cm:i:67 
+                // s1:i:680    
+                // dv:f:0.1064 
+                // rl:i:25
         }
 		++outputted;
 		numBasesAlignedTrue += (endpV-begpV);	
