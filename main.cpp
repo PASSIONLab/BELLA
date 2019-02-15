@@ -349,6 +349,7 @@ if(b_parameters.alignEnd)
                 int len = seqs[i].length();
 
                 readType_ temp;
+                nametags[i].erase(nametags[i].begin());     // removing "@"
                 temp.nametag = nametags[i];
                 temp.seq = seqs[i];     // save reads for seeded alignment
                 temp.readid = read_id+i;

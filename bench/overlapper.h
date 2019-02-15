@@ -61,6 +61,9 @@ void metricsBella(ifstream & th, ifstream & bf, bool sim, int minOv, string & ou
             getline(lnstream, rend, '\t');
             getline(lnstream, rlen, '\t');
 
+            cname = "@" + cname;
+            rname = "@" + rname;
+
             if(cname != rname) // not count self-pair
             {   // Check for BELLA outputting more than 1 alignment/pair
                 it = metamap.find(make_pair(cname,rname)); // this shouldn't be useful

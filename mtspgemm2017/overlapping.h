@@ -486,9 +486,6 @@ void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1,
         {
             string pafstrand;       // maxExtScore not modifiable   
             int mapq = 255;         // mapping quality (0-255; 255 for missing)     
-
-            read1.nametag.erase(read1.nametag.begin());     // removing "@"     
-            read2.nametag.erase(read2.nametag.begin());     // removing "@"     
             if(maxExtScore.strand == "n") pafstrand = "+";  
             else pafstrand = "-";
 
