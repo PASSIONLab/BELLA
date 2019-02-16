@@ -14,8 +14,8 @@ import random
 
 cwd = os.getcwd()
 pair = {}
-list1 = []	# Query pair names
-list2 = []	# Reference pair names
+list1 = []	# Reference pair names
+list2 = []	# Query pair names
 
 with open(sys.argv[1], 'r') as one, open(sys.argv[2], 'r') as two:
 	# Here, we compare only read names, not alignment scores, etc.
@@ -25,7 +25,7 @@ with open(sys.argv[1], 'r') as one, open(sys.argv[2], 'r') as two:
 		list1.append(pair)
 		pair = [(row[1], row[0])]	# Check reversed pair
 		list1.append(pair)
-	file2 	= csv.reader(two, delimiter='\t')
+	file2 = csv.reader(two, delimiter=' ')
 	for row in file2:
 		pair = [(row[2], row[3])]	# diBELLA has names in position 2,3
 		list2.append(pair)
@@ -38,16 +38,16 @@ lines = 0
 randid = random.randint(1,100000)
 
 with open(cwd + '/missingPairj' + str(randid) + '.out', 'w') as missingPair:
-	for pair in list2:			# BELLA/reference
+	for pair in list1:		# BELLA/reference
 		lines = lines + 1
-		if pair not in list1:	# diBELLA/query
+		if pair not in list2:	# diBELLA/query
 			for a, b in pair:
 				missingPair.write(a + '\t' + b + '\n')
 				m = m + 1	# number of missing lines
 
 with open(cwd + '/extraPairj' + str(randid) + '.out', 'w') as extraPair:
-	for pair in list1:			# diBELLA/query
-		if pair not in list2:	# BELLA/reference
+	for pair in list2:		# diBELLA/query
+		if pair not in list1:	# BELLA/reference
 			for a, b in pair:
 				extraPair.write(a + '\t' + b + '\n')
 				e = e + 1	# number of missing lines
