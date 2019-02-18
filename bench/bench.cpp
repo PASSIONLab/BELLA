@@ -47,12 +47,13 @@ int main (int argc, char* argv[]) {
     option_t *optList, *thisOpt;
     // Get list of command line options and their arguments 
     optList = NULL;
-    optList = GetOptList(argc, argv, (char*)"g:b:m:p:d:hl:zo:c:i:");
+    optList = GetOptList(argc, argv, (char*)"g:b:m:p:d:hl:zo:c:i:B:");
    
     int ovLen = 2000;  // min overlap length to be considered a true positive
     bool sim = false;   // simulated dataset [false]
     char *th = NULL;    // truth
     char *b = NULL;     // bella
+    char *B = NULL;     // dibella
     char *o = NULL;     // BELLA evaluation output filename
     char *m = NULL;     // minimap/miniamap2
     char *p = NULL;     // mhap
@@ -95,6 +96,10 @@ int main (int argc, char* argv[]) {
                 m = strdup(thisOpt->argument);
                 break;
             }
+            case 'B': {
+                B = strdup(thisOpt->argument);
+                break;
+            }
             case 'p': {
                 p = strdup(thisOpt->argument);
                 break;
@@ -125,6 +130,7 @@ int main (int argc, char* argv[]) {
                 cout << " -g : Ground truth file (required)" << endl;
                 cout << " -t : Overlap length [2000]" << endl;
                 cout << " -b : BELLA output file" << endl;
+                cout << " -B : diBELLA output file (distributed-memory BELLA)" << endl;
                 cout << " -m : MINIMAP2 output file" << endl;
                 cout << " -p : MHAP output file" << endl;
                 cout << " -d : DALIGNER output file" << endl;
@@ -169,33 +175,38 @@ int main (int argc, char* argv[]) {
 
     std::ifstream thf(th);
     multimap<string,readInfo> seqmap;
-    uint32_t num = getTruth(thf,sim,ovLen,seqmap,num); // will contain ground truth cardinality
+    uint32_t num = getTruth(thf,sim,ovLen,seqmap,num);      // will contain ground truth cardinality
 
     if(b != NULL)
     {
         std::ifstream bf(b);
         std::string out(o);
-        metricsBella(thf,bf,sim,ovLen,out,seqmap,num); // bella
+        metricsBella(thf,bf,sim,ovLen,out,seqmap,num);      // bella
+    }
+    if(B != NULL)
+    {
+        std::ifstream bf(B);
+        metricsDiBella(thf,bf,sim,ovLen,seqmap,num);        // dibella
     }
     if(m != NULL)
     {
         std::ifstream mf(m);
-        metricsMinimap2(thf,mf,sim,ovLen,seqmap,num); // minimap/minimap2
+        metricsMinimap2(thf,mf,sim,ovLen,seqmap,num);       // minimap/minimap2
     }
     if(p != NULL)
     {
         std::ifstream pf(p);
-        metricsMhap(thf,pf,sim,ovLen,seqmap,num); // mhap
+        metricsMhap(thf,pf,sim,ovLen,seqmap,num);           // mhap
     }
     if(l != NULL)
     {
         std::ifstream lf(l);
-        metricsBlasr(thf,lf,sim,ovLen,seqmap,num); // blasr
+        metricsBlasr(thf,lf,sim,ovLen,seqmap,num);          // blasr
     }
     if(d != NULL)
     {
         std::ifstream df(d);
-        metricsDaligner(thf,df,sim,ovLen,seqmap,num); // daligner
+        metricsDaligner(thf,df,sim,ovLen,seqmap,num);       // daligner
     }
     if(c != NULL)
     {
