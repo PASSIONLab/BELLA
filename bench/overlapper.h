@@ -242,7 +242,7 @@ void metricsDiBella(ifstream & th, ifstream & dbf, bool sim, int minOv, mmap_m &
     if(dbf.is_open())
     {
         string ln;
-        while(getline(bf, ln))
+        while(getline(dbf, ln))
         {
             stringstream lnstream(ln);
             myStruct metadata;
