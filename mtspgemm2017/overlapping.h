@@ -116,38 +116,41 @@ T* prefixsum(T* in, int size, int nthreads)
     }
     return out;
 }
+/* fix according to PAF format */
 
-/**
- * @brief writeToFile writes a CSV containing
- * CSC indices of the output sparse matrix
- * @param myBatch
- * @param filename
- */
-void writeToFile(std::stringstream & myBatch, std::string filename)
-{  
-    std::string myString = myBatch.str();  
-    std::ofstream myfile;  
-    myfile.open (filename, ios_base::app);  
-    myfile << myString;  
-    myfile.close();  
-}
-
-bool onedge(int colStart, int colEnd, int colLen, int rowStart, int rowEnd, int rowLen)
+void toPAF(size_t& begpV, size_t& endpV, const int lenV, size_t& begpH, size_t& endpH, const int lenH, const string& rev)
 {
-    int minLeft = min(colStart, rowStart);
-    int minRight = min(colLen-colEnd, rowLen-rowEnd);
-    int epsilon = 300;
-
-    if(minLeft-epsilon <= 0)
-        minLeft = 0;
-
-    if(minRight-epsilon <= 0)
-        minRight = 0;
-
-    if((minLeft == 0 && minRight == 0))
-        return true;
+    /* first, extend to the end of the sequences */
+    if(begpH < begpV)
+    {
+        begpV = begpV - begpH;
+        begpH = 0;
+    }
     else
-        return false;
+    {
+        begpH = begpH - begpV;
+        begpV = 0;
+    }
+
+    if((lenH - endpH) < (lenV - endpV))
+    {
+        endpV = endpV + (lenH - endpH);
+        endpH = lenH;
+    }
+    else
+    {
+        endpH = endpH + (lenV - endpV);
+        endpV = lenV;
+    }
+
+    /* second, (possibly) convert back the seqH seed position according to the original strand */
+    if(rev == "c")
+    {
+        size_t temp = begpH;
+        begpH = lenH-endpH;
+        endpH = lenH-temp;
+    }
+
 }
 
 // estimate the number of floating point operations of SpGEMM
@@ -444,7 +447,7 @@ void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1,
 			if(b_pars.alignEnd)
 			{
 				if(toEnd(begpV, endpV, read2len, begpH, endpH, read1len, b_pars.relaxMargin))
-					passed = true;		
+					passed = true;
 			}
 			else 
 			{
@@ -484,8 +487,10 @@ void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1,
         }
         else    // PAF format is the output format used by minimap/minimap2: https://github.com/lh3/miniasm/blob/master/PAF.md
         {
+            /* field adjustment to match the PAF format */
+            toPAF(begpV, endpV, read2len, begpH, endpH, read1len, maxExtScore.strand);
             string pafstrand;       // maxExtScore not modifiable   
-            int mapq = 255;         // mapping quality (0-255; 255 for missing)     
+            int mapq = 255;         // mapping quality (0-255; 255 for missing)         
             if(maxExtScore.strand == "n") pafstrand = "+";  
             else pafstrand = "-";
 
