@@ -1,7 +1,10 @@
-/**
-* Program to translate overlappers' output in PAF format (input for miniasm) | TODO: same for DALIGNER's format in order to use HINGE (also, look at HINGE input)
-* @author: Giulia Guidi
-*/
+
+//=======================================================================
+// Title:  C++ program to translate overlappers' output in PAF format
+// Author: G. Guidi
+// Date:   23 Feb 2019
+//=======================================================================
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -45,7 +48,7 @@ int main (int argc, char* argv[]) {
     option_t *optList, *thisOpt;
     /* list of command line options and their arguments */
     optList = NULL;
-    optList = GetOptList(argc, argv, (char*)"b:B:m:t:r:d:f:");
+    optList = GetOptList(argc, argv, (char*)"b:B:m:t:r:d:f:i:");
 
     char *b = NULL;     // bella
     char *B = NULL;     // dibella
@@ -54,6 +57,7 @@ int main (int argc, char* argv[]) {
     char *r = NULL;     // blasr
     char *d = NULL;     // daligner
     char *filename = NULL;  // filename translated output
+    char *index = NULL;  // filename translated output
 
     if(optList == NULL)
     {
@@ -84,6 +88,10 @@ int main (int argc, char* argv[]) {
                 t = strdup(thisOpt->argument);
                 break;
             }
+            case 'i': {
+                index = strdup(thisOpt->argument);
+                break;
+            }
             case 'r': {
                 r = strdup(thisOpt->argument);
                 break;
@@ -102,6 +110,7 @@ int main (int argc, char* argv[]) {
                 cout << " -B : diBELLA" << endl;
                 cout << " -m : MHAP" << endl;
                 cout << " -t : MECAT" << endl;
+                cout << " -i : MECAT index" << endl;
                 cout << " -r : BLASR" << endl;
                 cout << " -d : DALIGNER" << endl;
                 cout << " -o : filename" << endl;
@@ -139,12 +148,23 @@ int main (int argc, char* argv[]) {
     //}
     else if(t != NULL)
     {
-        ifstream input(t);
-        MECAT2PAF(input, filename);
+        if(index != NULL)
+        {
+            ifstream input(t);
+            ifstream idx(index);
+            MECAT2PAF(input, filename, idx);
+        }
+        else
+        {
+            std::cout << "MECAT index file is missing" << endl;
+            return 0;
+        }
     }
     //else if(d != NULL)
     //{
     //    ifstream input(d);
     //    DALIGNER2PAF(input, filename);
     //}
+
+    return 0;
 }

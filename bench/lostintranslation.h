@@ -1,5 +1,3 @@
-#include "utils.h"
-#include "common.h"
 #include <omp.h>
 #include <fstream>
 #include <iostream>
@@ -46,6 +44,12 @@ using namespace std;
 number of sequence matches, mismatches, insertions and deletions in the alignment. If alignment is not available, 
 column 10 and 11 are still required but may be highly inaccurate. */
 
+//=======================================================================
+// 
+// Common functions
+// 
+//=======================================================================
+
 int estimate (int begpV, int endpV, int lenV, int begpH, int endpH, int lenH)
 {
     int diffV = begpV - begpV;
@@ -70,6 +74,61 @@ vector<std::string> split (const std::string &s, char delim)
 
     return result;
 }
+
+/* from mecat index file to a map<uint32_t,string> : map<index,read-name> */
+void mecatidx (ifstream& idx2read, map<uint32_t, std::string>& names)
+{
+    string num, name, seq;
+    uint32_t idx;
+
+    if(idx2read.is_open())
+    {   
+        string line;
+        while(getline(idx2read, line))
+        {
+            stringstream linestream(line);
+
+            getline(linestream, num, ' ');
+            getline(linestream, name, ' ' );
+
+            /* sequence on new line */
+            getline(idx2read, seq); 
+
+            idx = stoi(num);
+            /* remove first char'>' */
+            name.erase(0, 1); 
+            names.insert(std::make_pair(idx, name));
+        }
+        cout << "MECAT idx2read table created" << endl;
+    }
+    else
+    {
+        cout << "Error creating names table from idx2read" << endl;
+        exit(1);
+    }
+}
+
+/* from mecat numeric id to read name */
+std::string idx2read(uint32_t idx, map<uint32_t, std::string>& names)
+{
+    map<uint32_t, std::string>::iterator it;
+    string name;
+
+    it = names.find(idx);
+    if(it != names.end())
+        return names[idx];
+    else
+    {
+        cout << "Read " << idx << " not present in MECAT output" << endl;
+        exit(1);
+    }
+}
+
+//=======================================================================
+// 
+// MHAP to PAF
+// 
+//=======================================================================
 
 void MHAP2PAF(ifstream& input, char* filename)
 {
@@ -113,8 +172,6 @@ void MHAP2PAF(ifstream& input, char* filename)
         std::string& endpH = v[10];
         std::string& lengH = v[11];
 
-        /* GGGG: If alignment is missing I could estimate it as (1-e)% of the overlap length */
-
         /* change strand formatting */
         if(isRev == "0") isRev = "+";         
             else isRev = "-";
@@ -122,8 +179,15 @@ void MHAP2PAF(ifstream& input, char* filename)
         /* compute overlap length if missing (begpV, endpV, lenV, begpH, endpH, lenH) */
         int ovlen = estimate (stoi(begpV), stoi(endpV), stoi(lengV), stoi(begpH), stoi(endpH), stoi(lengH));
 
+        /* GGGG: If alignment is missing I estimate it as % of the overlap length and I determine that % using the error rate */
+        // GGGG: Error rate is now hard-coded, need to be an input parameter
+
+        float error = 0.15;
+        float identity = (1-error)*(1-error);
+        int score = floor(identity*ovlen);
+
         local[ithread] << nameV << "\t" << lengV << "\t" << begpV << "\t" << endpV << "\t" << isRev 
-            << "\t" << nameH << "\t" << lengH << "\t" << begpH << "\t" << endpH << "\t" << " " 
+            << "\t" << nameH << "\t" << lengH << "\t" << begpH << "\t" << endpH << "\t" << score 
                 << "\t" << ovlen << "\t255" << endl;
     }
 
@@ -166,8 +230,17 @@ void MHAP2PAF(ifstream& input, char* filename)
     delete [] bytes;
 }
 
-void MECAT2PAF(ifstream& input, char* filename)
+//=======================================================================
+// 
+// MECAT to PAF
+// 
+//=======================================================================
+
+void MECAT2PAF(ifstream& input, char* filename, ifstream& index)
 {
+    map<uint32_t, std::string> names;
+    mecatidx (index, names);
+
     int maxt = 1;
 #pragma omp parallel
     {
@@ -200,9 +273,10 @@ void MECAT2PAF(ifstream& input, char* filename)
         /* MECAT format: cid, rid, score, id, cstr, cstart, cend, clen, rstr, rstart, rend, rlen */
         std::vector<std::string> v = split (entries[i], '\t');
 
-        /* improve readability */
-        std::string& nameV = v[0];
-        std::string& nameH = v[1];
+        /* mecat idx to nametag translation */
+        std::string nameV = idx2read (stoi(v[0]), names);
+        std::string nameH = idx2read (stoi(v[1]), names);
+
         std::string& ident = v[2];
         std::string& begpV = v[5];
         std::string& endpV = v[6];
@@ -218,10 +292,10 @@ void MECAT2PAF(ifstream& input, char* filename)
 
         /* compute overlap length if missing (begpV, endpV, lenV, begpH, endpH, lenH) */
         int ovlen = estimate (stoi(begpV), stoi(endpV), stoi(lengV), stoi(begpH), stoi(endpH), stoi(lengH));
-
         /* If alignment is missing I estimate it as (ident) *ovlen */
         int score = floor((stod(ident)*ovlen) / 100);
-        /* GGGG: I might need to translate back idx to original names */
+
+        /* GGGG: I might need to translate back idx to original names ---> YES, I NEED THE ORIGINAL NAMES. */
         local[ithread] << nameV << "\t" << lengV << "\t" << begpV << "\t" << endpV << "\t" << isRev 
             << "\t" << nameH << "\t" << lengH << "\t" << begpH << "\t" << endpH << "\t" << score 
                 << "\t" << ovlen << "\t255" << endl;
