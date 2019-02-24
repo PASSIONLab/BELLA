@@ -113,6 +113,8 @@ void MHAP2PAF(ifstream& input, char* filename)
         std::string& endpH = v[10];
         std::string& lengH = v[11];
 
+        /* GGGG: If alignment is missing I could estimate it as (1-e)% of the overlap length */
+
         /* change strand formatting */
         if(isRev == "0") isRev = "+";         
             else isRev = "-";
@@ -121,7 +123,7 @@ void MHAP2PAF(ifstream& input, char* filename)
         int ovlen = estimate (stoi(begpV), stoi(endpV), stoi(lengV), stoi(begpH), stoi(endpH), stoi(lengH));
 
         local[ithread] << nameV << "\t" << lengV << "\t" << begpV << "\t" << endpV << "\t" << isRev 
-            << "\t" << nameH << "\t" << lengH << "\t" << begpH << "\t" << endpH << "\t" << "0" 
+            << "\t" << nameH << "\t" << lengH << "\t" << begpH << "\t" << endpH << "\t" << " " 
                 << "\t" << ovlen << "\t255" << endl;
     }
 
@@ -201,7 +203,7 @@ void MECAT2PAF(ifstream& input, char* filename)
         /* improve readability */
         std::string& nameV = v[0];
         std::string& nameH = v[1];
-        std::string& score = v[2];
+        std::string& ident = v[2];
         std::string& begpV = v[5];
         std::string& endpV = v[6];
         std::string& lengV = v[7];
@@ -217,6 +219,8 @@ void MECAT2PAF(ifstream& input, char* filename)
         /* compute overlap length if missing (begpV, endpV, lenV, begpH, endpH, lenH) */
         int ovlen = estimate (stoi(begpV), stoi(endpV), stoi(lengV), stoi(begpH), stoi(endpH), stoi(lengH));
 
+        /* If alignment is missing I estimate it as (ident) *ovlen */
+        int score = floor((stod(ident)*ovlen) / 100);
         /* GGGG: I might need to translate back idx to original names */
         local[ithread] << nameV << "\t" << lengV << "\t" << begpV << "\t" << endpV << "\t" << isRev 
             << "\t" << nameH << "\t" << lengH << "\t" << begpH << "\t" << endpH << "\t" << score 

@@ -137,11 +137,11 @@ int main (int argc, char* argv[]) {
     //    ifstream input(r);
     //    BLASR2PAF(input, filename);
     //}
-    //else if(t != NULL)
-    //{
-    //    ifstream input(t);
-    //    MECAT2PAF(input, filename);
-    //}
+    else if(t != NULL)
+    {
+        ifstream input(t);
+        MECAT2PAF(input, filename);
+    }
     //else if(d != NULL)
     //{
     //    ifstream input(d);
