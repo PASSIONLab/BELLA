@@ -25,6 +25,7 @@
 #include <set>
 #include <memory>
 #include <typeinfo>
+#include <omp.h>
 
 using namespace std;
 
@@ -100,7 +101,6 @@ void MHAP2PAF(ifstream& input, char* filename)
     for(uint64_t i = 0; i < numoverlap; i++) 
     {
         std::stringstream linestream(entries[i]);
-        std::stringstream myPAFline;
         int ithread = omp_get_thread_num();
 
         /* MHAP format: cname, rname, err, nkmer, cstrand, cstart, cend, clen, rstrand, rstart, rend, rlen */
@@ -114,11 +114,9 @@ void MHAP2PAF(ifstream& input, char* filename)
         int ovlen = estimate (stoi(v[5]), stoi(v[6]), stoi(v[7]), stoi(v[9]), stoi(v[10]), stoi(v[11]));
 
         /* GGGG: improve readability */
-        myPAFline << v[0] << "\t" << v[7] << "\t" << v[5] << "\t" << v[6] << "\t" << v[8] 
+        local[ithread] << v[0] << "\t" << v[7] << "\t" << v[5] << "\t" << v[6] << "\t" << v[8] 
             << "\t" << v[1] << "\t" << v[11] << "\t" << v[9] << "\t" << v[10] << "\t" << "0" 
                 << "\t" << ovlen << "\t255" << endl;
-
-        local[ithread].push_back(myPAFline);
     }
 
     /* write to a new file */
