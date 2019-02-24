@@ -46,7 +46,7 @@ using namespace std;
 number of sequence matches, mismatches, insertions and deletions in the alignment. If alignment is not available, 
 column 10 and 11 are still required but may be highly inaccurate. */
 
-int estimate (int& begpV, int& endpV, int& lenV, int& begpH, int& endpH, int& lenH)
+int estimate (int begpV, int endpV, int lenV, int begpH, int endpH, int lenH)
 {
     int diffV = begpV - begpV;
     int diffH = endpH - begpH;
@@ -111,7 +111,7 @@ void MHAP2PAF(ifstream& input, char* filename)
             else v[8] = "-";
 
         /* compute overlap length if missing (begpV, endpV, lenV, begpH, endpH, lenH) */
-        int ovlen = estimate (v[5], v[6], v[7], v[9], v[10], v[11]);
+        int ovlen = estimate (stoi(v[5]), stoi(v[6]), stoi(v[7]), stoi(v[9]), stoi(v[10]), stoi(v[11]));
 
         /* GGGG: improve readability */
         myPAFline << v[0] << "\t" << v[7] << "\t" << v[5] << "\t" << v[6] << "\t" << v[8] 

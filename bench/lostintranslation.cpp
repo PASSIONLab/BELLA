@@ -1,5 +1,5 @@
 /**
-* Program to translate overlappers' output in PAF format (input for miniasm) | This might become Elizabeth's project
+* Program to translate overlappers' output in PAF format (input for miniasm) | TODO: same for DALIGNER's format in order to use HINGE (also, look at HINGE input)
 * @author: Giulia Guidi
 */
 #ifdef __cplusplus
@@ -116,34 +116,35 @@ int main (int argc, char* argv[]) {
     free(optList);
     free(thisOpt);
 
-    if(b != NULL)
-    {
-        ifstream input(b);
-        BELLA2PAF(input, filename);
-    }
-    else if(B != NULL)
-    {
-        ifstream input(B);
-        diBELLA2PAF(input, filename);
-    }
-    else if(m != NULL)
+    //if(b != NULL)
+    //{
+    //    ifstream input(b);
+    //    BELLA2PAF(input, filename);
+    //}
+    //else if(B != NULL)
+    //{
+    //    ifstream input(B);
+    //    diBELLA2PAF(input, filename);
+    //}
+    //else 
+    if(m != NULL)
     {
         ifstream input(m);
         MHAP2PAF(input, filename);
     }
-    else if(r != NULL)
-    {
-        ifstream input(r);
-        BLASR2PAF(input, filename);
-    }
-    else if(t != NULL)
-    {
-        ifstream input(t);
-        MECAT2PAF(input, filename);
-    }
-    else if(d != NULL)
-    {
-        ifstream input(d);
-        DALIGNER2PAF(input, filename);
-    }
+    //else if(r != NULL)
+    //{
+    //    ifstream input(r);
+    //    BLASR2PAF(input, filename);
+    //}
+    //else if(t != NULL)
+    //{
+    //    ifstream input(t);
+    //    MECAT2PAF(input, filename);
+    //}
+    //else if(d != NULL)
+    //{
+    //    ifstream input(d);
+    //    DALIGNER2PAF(input, filename);
+    //}
 }
