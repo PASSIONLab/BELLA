@@ -99,31 +99,28 @@ void MHAP2PAF(ifstream& input, char* filename)
 #pragma omp parallel for
     for(uint64_t i = 0; i < numoverlap; i++) 
     {
-        std::stringstream linestream(entries[i]);
         int ithread = omp_get_thread_num();
-
         /* MHAP format: cname, rname, err, nkmer, cstrand, cstart, cend, clen, rstrand, rstart, rend, rlen */
-        std::vector<std::string> v = split (entries[i], '\t');
-
+        std::vector<std::string> v = split (entries[i], ' ');
         /* improve readability */
         std::string& nameV = v[0];
         std::string& nameH = v[1];
         std::string& begpV = v[5];
         std::string& endpV = v[6];
         std::string& lengV = v[7];
-        std::string& rev   = v[8];
+        std::string& isRev = v[8];
         std::string& begpH = v[9];
         std::string& endpH = v[10];
         std::string& lengH = v[11];
 
         /* change strand formatting */
-        if(rev == "0") rev = "+";         
-            else rev = "-";
+        if(isRev == "0") isRev = "+";         
+            else isRev = "-";
 
         /* compute overlap length if missing (begpV, endpV, lenV, begpH, endpH, lenH) */
         int ovlen = estimate (stoi(begpV), stoi(endpV), stoi(lengV), stoi(begpH), stoi(endpH), stoi(lengH));
 
-        local[ithread] << nameV << "\t" << lengV << "\t" << begpV << "\t" << endpV << "\t" << rev 
+        local[ithread] << nameV << "\t" << lengV << "\t" << begpV << "\t" << endpV << "\t" << isRev 
             << "\t" << nameH << "\t" << lengH << "\t" << begpH << "\t" << endpH << "\t" << "0" 
                 << "\t" << ovlen << "\t255" << endl;
     }
@@ -208,20 +205,20 @@ void MECAT2PAF(ifstream& input, char* filename)
         std::string& begpV = v[5];
         std::string& endpV = v[6];
         std::string& lengV = v[7];
-        std::string& rev   = v[8];
+        std::string& isRev = v[8];
         std::string& begpH = v[9];
         std::string& endpH = v[10];
         std::string& lengH = v[11];
 
         /* change strand formatting */
-        if(rev == "0") rev = "+";         
-            else rev = "-";
+        if(isRev == "0") isRev = "+";         
+            else isRev = "-";
 
         /* compute overlap length if missing (begpV, endpV, lenV, begpH, endpH, lenH) */
         int ovlen = estimate (stoi(begpV), stoi(endpV), stoi(lengV), stoi(begpH), stoi(endpH), stoi(lengH));
 
         /* GGGG: I might need to translate back idx to original names */
-        local[ithread] << nameV << "\t" << lengV << "\t" << begpV << "\t" << endpV << "\t" << rev 
+        local[ithread] << nameV << "\t" << lengV << "\t" << begpV << "\t" << endpV << "\t" << isRev 
             << "\t" << nameH << "\t" << lengH << "\t" << begpH << "\t" << endpH << "\t" << score 
                 << "\t" << ovlen << "\t255" << endl;
     }
