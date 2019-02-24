@@ -34,7 +34,6 @@ extern "C" {
 #include <unistd.h>
 #include <ctype.h> 
 #include <memory>
-#include <omp.h>
 
 using namespace std;
 

@@ -25,7 +25,6 @@
 #include <set>
 #include <memory>
 #include <typeinfo>
-#include <omp.h>
 
 using namespace std;
 
