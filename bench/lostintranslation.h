@@ -105,16 +105,26 @@ void MHAP2PAF(ifstream& input, char* filename)
         /* MHAP format: cname, rname, err, nkmer, cstrand, cstart, cend, clen, rstrand, rstart, rend, rlen */
         std::vector<std::string> v = split (entries[i], '\t');
 
+        /* improve readability */
+        std::string& nameV = v[0];
+        std::string& nameH = v[1];
+        std::string& begpV = v[5];
+        std::string& endpV = v[6];
+        std::string& lengV = v[7];
+        std::string& rev   = v[8];
+        std::string& begpH = v[9];
+        std::string& endpH = v[10];
+        std::string& lengH = v[11];
+
         /* change strand formatting */
-        if(v[8] == "0") v[8] = "+";         
-            else v[8] = "-";
+        if(rev == "0") rev = "+";         
+            else rev = "-";
 
         /* compute overlap length if missing (begpV, endpV, lenV, begpH, endpH, lenH) */
-        int ovlen = estimate (stoi(v[5]), stoi(v[6]), stoi(v[7]), stoi(v[9]), stoi(v[10]), stoi(v[11]));
+        int ovlen = estimate (stoi(begpV), stoi(endpV), stoi(lengV), stoi(begpH), stoi(endpH), stoi(lengH));
 
-        /* GGGG: improve readability */
-        local[ithread] << v[0] << "\t" << v[7] << "\t" << v[5] << "\t" << v[6] << "\t" << v[8] 
-            << "\t" << v[1] << "\t" << v[11] << "\t" << v[9] << "\t" << v[10] << "\t" << "0" 
+        local[ithread] << nameV << "\t" << lengV << "\t" << begpV << "\t" << endpV << "\t" << rev 
+            << "\t" << nameH << "\t" << lengH << "\t" << begpH << "\t" << endpH << "\t" << "0" 
                 << "\t" << ovlen << "\t255" << endl;
     }
 
