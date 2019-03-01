@@ -160,11 +160,11 @@ int main (int argc, char* argv[]) {
             return 0;
         }
     }
-    //else if(d != NULL)
-    //{
-    //    ifstream input(d);
-    //    DALIGNER2PAF(input, filename);
-    //}
+    else if(d != NULL)
+    {
+        ifstream input(d);
+        DALIGNER2PAF(input, filename);
+    }
 
     return 0;
 }
