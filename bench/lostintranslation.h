@@ -339,3 +339,211 @@ void MECAT2PAF(ifstream& input, char* filename, ifstream& index)
     }
     delete [] bytes;
 }
+
+//=======================================================================
+// 
+// BLASR to PAF
+// 
+//=======================================================================
+
+void BLASR2PAF(ifstream& input, char* filename)
+{
+    int maxt = 1;
+#pragma omp parallel
+    {
+        maxt = omp_get_num_threads();
+    }
+
+    uint64_t numoverlap = std::count(std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>(), '\n');
+    input.seekg(0, std::ios_base::beg);
+
+    vector<std::string> entries;
+    vector<std::stringstream> local(maxt);      
+
+    /* read input file */
+    if(input)
+        for (int i = 0; i < numoverlap; ++i)
+        {
+            std::string line;
+            std::getline(input, line);
+            entries.push_back(line);
+        }
+    input.close();
+
+    /* transform BLASR output in PAF format */
+#pragma omp parallel for
+    for(uint64_t i = 0; i < numoverlap; i++) 
+    {
+        int ithread = omp_get_thread_num();
+        /* BLASR format: cname, rname, score, id, cstr, cstart, cend, clen, rstr, rstart, rend, rlen, qv */
+        std::vector<std::string> v = split (entries[i], ' ');
+        /* improve readability */
+        std::string& nameV = v[0];
+        std::string& nameH = v[1];
+        std::string& score = v[2];
+        std::string& strnV = v[4];
+        std::string& begpV = v[5];
+        std::string& endpV = v[6];
+        std::string& lengV = v[7];
+        std::string& strnH = v[8];
+        std::string& begpH = v[9];
+        std::string& endpH = v[10];
+        std::string& lengH = v[11];
+        std::string& mapQV = v[12];
+
+        /* change strand formatting */
+        std::string isRev;
+        if(strnH == strnV) isRev = "+";         
+            else isRev = "-";
+
+        // GGGG: BLASR scores are negatives? Dig into this.
+        score.erase(0, 1); 
+        /* compute overlap length if missing (begpV, endpV, lenV, begpH, endpH, lenH) */
+        int ovlen = estimate (stoi(begpV), stoi(endpV), stoi(lengV), stoi(begpH), stoi(endpH), stoi(lengH));
+
+        local[ithread] << nameV << "\t" << lengV << "\t" << begpV << "\t" << endpV << "\t" << isRev 
+            << "\t" << nameH << "\t" << lengH << "\t" << begpH << "\t" << endpH << "\t" << score 
+                << "\t" << ovlen << "\t" << mapQV << endl;
+    }
+
+    /* write to a new file */
+    int64_t * bytes = new int64_t[maxt];
+    for(int i = 0; i < maxt; ++i)
+    {
+        local[i].seekg(0, ios::end);
+        bytes[i] = local[i].tellg();
+        local[i].seekg(0, ios::beg);
+    }
+    int64_t bytestotal = std::accumulate(bytes, bytes + maxt, static_cast<int64_t>(0));
+
+    std::ofstream output(filename, std::ios::binary | std::ios::app);
+#ifdef PRINT
+    cout << "Creating or appending to output file with " << (double)bytestotal/(double)(1024 * 1024) << " MB" << endl;
+#endif
+    output.seekp(bytestotal - 1);
+    /* this will likely create a sparse file so the actual disks won't spin yet */
+    output.write("", 1); 
+    output.close();
+
+    #pragma omp parallel
+    {
+        int ithread = omp_get_thread_num(); 
+
+        FILE *ffinal;
+        /* then everyone fills it */
+        if ((ffinal = fopen(filename, "rb+")) == NULL) 
+        {
+            fprintf(stderr, "File %s failed to open at thread %d\n", filename, ithread);
+        }
+        int64_t bytesuntil = std::accumulate(bytes, bytes + ithread, static_cast<int64_t>(0));
+        fseek (ffinal , bytesuntil , SEEK_SET);
+        std::string text = local[ithread].str();
+        fwrite(text.c_str(),1, bytes[ithread], ffinal);
+        fflush(ffinal);
+        fclose(ffinal);
+    }
+    delete [] bytes;
+}//
+
+////=======================================================================
+//// 
+//// DALIGNER (translated in BELLA format) to PAF
+//// 
+////=======================================================================//
+
+//void DALIGNER2PAF(ifstream& input, char* filename)
+//{
+//    int maxt = 1;
+//#pragma omp parallel
+//    {
+//        maxt = omp_get_num_threads();
+//    }//
+
+//    uint64_t numoverlap = std::count(std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>(), '\n');
+//    input.seekg(0, std::ios_base::beg);//
+
+//    vector<std::string> entries;
+//    vector<std::stringstream> local(maxt);      //
+
+//    /* read input file */
+//    if(input)
+//        for (int i = 0; i < numoverlap; ++i)
+//        {
+//            std::string line;
+//            std::getline(input, line);
+//            entries.push_back(line);
+//        }
+//    input.close();//
+
+//    /* transform BLASR output in PAF format */
+//#pragma omp parallel for
+//    for(uint64_t i = 0; i < numoverlap; i++) 
+//    {
+//        int ithread = omp_get_thread_num();
+//        /* BLASR format: cname, rname, score, id, cstr, cstart, cend, clen, rstr, rstart, rend, rlen, qv */
+//        std::vector<std::string> v = split (entries[i], ' ');
+//        /* improve readability */
+//        std::string& nameV = v[0];
+//        std::string& nameH = v[1];
+//        std::string& score = v[2];
+//        std::string& strnV = v[4];
+//        std::string& begpV = v[5];
+//        std::string& endpV = v[6];
+//        std::string& lengV = v[7];
+//        std::string& strnH = v[8];
+//        std::string& begpH = v[9];
+//        std::string& endpH = v[10];
+//        std::string& lengH = v[11];
+//        std::string& mapQV = v[12];//
+
+//        /* change strand formatting */
+//        std::string isRev;
+//        if(strnH == strnV) isRev = "+";         
+//            else isRev = "-";//
+
+//        /* compute overlap length if missing (begpV, endpV, lenV, begpH, endpH, lenH) */
+//        int ovlen = estimate (stoi(begpV), stoi(endpV), stoi(lengV), stoi(begpH), stoi(endpH), stoi(lengH));//
+
+//        local[ithread] << nameV << "\t" << lengV << "\t" << begpV << "\t" << endpV << "\t" << isRev 
+//            << "\t" << nameH << "\t" << lengH << "\t" << begpH << "\t" << endpH << "\t" << score 
+//                << "\t" << ovlen << "\t" << mapQV << endl;
+//    }//
+
+//    /* write to a new file */
+//    int64_t * bytes = new int64_t[maxt];
+//    for(int i = 0; i < maxt; ++i)
+//    {
+//        local[i].seekg(0, ios::end);
+//        bytes[i] = local[i].tellg();
+//        local[i].seekg(0, ios::beg);
+//    }
+//    int64_t bytestotal = std::accumulate(bytes, bytes + maxt, static_cast<int64_t>(0));//
+
+//    std::ofstream output(filename, std::ios::binary | std::ios::app);
+//#ifdef PRINT
+//    cout << "Creating or appending to output file with " << (double)bytestotal/(double)(1024 * 1024) << " MB" << endl;
+//#endif
+//    output.seekp(bytestotal - 1);
+//    /* this will likely create a sparse file so the actual disks won't spin yet */
+//    output.write("", 1); 
+//    output.close();//
+
+//    #pragma omp parallel
+//    {
+//        int ithread = omp_get_thread_num(); //
+
+//        FILE *ffinal;
+//        /* then everyone fills it */
+//        if ((ffinal = fopen(filename, "rb+")) == NULL) 
+//        {
+//            fprintf(stderr, "File %s failed to open at thread %d\n", filename, ithread);
+//        }
+//        int64_t bytesuntil = std::accumulate(bytes, bytes + ithread, static_cast<int64_t>(0));
+//        fseek (ffinal , bytesuntil , SEEK_SET);
+//        std::string text = local[ithread].str();
+//        fwrite(text.c_str(),1, bytes[ithread], ffinal);
+//        fflush(ffinal);
+//        fclose(ffinal);
+//    }
+//    delete [] bytes;
+//}//

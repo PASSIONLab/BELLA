@@ -48,7 +48,7 @@ int main (int argc, char* argv[]) {
     option_t *optList, *thisOpt;
     /* list of command line options and their arguments */
     optList = NULL;
-    optList = GetOptList(argc, argv, (char*)"b:B:m:t:r:d:f:i:");
+    optList = GetOptList(argc, argv, (char*)"b:B:m:t:r:d:f:i:h");
 
     char *b = NULL;     // bella
     char *B = NULL;     // dibella
@@ -141,11 +141,11 @@ int main (int argc, char* argv[]) {
         ifstream input(m);
         MHAP2PAF(input, filename);
     }
-    //else if(r != NULL)
-    //{
-    //    ifstream input(r);
-    //    BLASR2PAF(input, filename);
-    //}
+    else if(r != NULL)
+    {
+        ifstream input(r);
+        BLASR2PAF(input, filename);
+    }
     else if(t != NULL)
     {
         if(index != NULL)
