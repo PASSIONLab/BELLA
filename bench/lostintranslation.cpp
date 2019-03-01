@@ -51,7 +51,7 @@ int main (int argc, char* argv[]) {
     optList = GetOptList(argc, argv, (char*)"b:B:m:t:r:d:f:i:h");
 
     char *b = NULL;     // bella
-    char *B = NULL;     // dibella
+    // char *B = NULL;  // dibella // not supported yet
     char *m = NULL;     // mhap
     char *t = NULL;     // mecat
     char *r = NULL;     // blasr
@@ -76,10 +76,10 @@ int main (int argc, char* argv[]) {
                 b = strdup(thisOpt->argument);
                 break;
             }
-            case 'B': {
-                B = strdup(thisOpt->argument);
-                break;
-            }
+            //case 'B': {
+            //    B = strdup(thisOpt->argument);
+            //    break;
+            //}
             case 'm': {
                 m = strdup(thisOpt->argument);
                 break;
@@ -107,7 +107,7 @@ int main (int argc, char* argv[]) {
             case 'h': {
                 cout << "\nUsage:\n" << endl;
                 cout << " -b : BELLA" << endl;
-                cout << " -B : diBELLA" << endl;
+                // cout << " -B : diBELLA" << endl;
                 cout << " -m : MHAP" << endl;
                 cout << " -t : MECAT" << endl;
                 cout << " -i : MECAT index" << endl;
@@ -125,18 +125,12 @@ int main (int argc, char* argv[]) {
     free(optList);
     free(thisOpt);
 
-    //if(b != NULL)
-    //{
-    //    ifstream input(b);
-    //    BELLA2PAF(input, filename);
-    //}
-    //else if(B != NULL)
-    //{
-    //    ifstream input(B);
-    //    diBELLA2PAF(input, filename);
-    //}
-    //else 
-    if(m != NULL)
+    if(b != NULL)
+    {
+        ifstream input(b);
+        BELLA2PAF(input, filename);
+    }
+    else if(m != NULL)
     {
         ifstream input(m);
         MHAP2PAF(input, filename);
@@ -165,6 +159,11 @@ int main (int argc, char* argv[]) {
         ifstream input(d);
         DALIGNER2PAF(input, filename);
     }
+    //else if(B != NULL)
+    //{
+    //    ifstream input(B);
+    //    diBELLA2PAF(input, filename);
+    //}
 
     return 0;
 }

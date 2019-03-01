@@ -126,6 +126,106 @@ std::string idx2read(uint32_t idx, map<uint32_t, std::string>& names)
 
 //=======================================================================
 // 
+// BELLA to PAF (BELLA directly outputs in PAF format if run with -p)
+// 
+//=======================================================================
+
+void BELLA2PAF(ifstream& input, char* filename)
+{
+    int maxt = 1;
+#pragma omp parallel
+    {
+        maxt = omp_get_num_threads();
+    }
+
+    uint64_t numoverlap = std::count(std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>(), '\n');
+    input.seekg(0, std::ios_base::beg);
+
+    vector<std::string> entries;
+    vector<std::stringstream> local(maxt);      
+
+    /* read input file */
+    if(input)
+        for (int i = 0; i < numoverlap; ++i)
+        {
+            std::string line;
+            std::getline(input, line);
+            entries.push_back(line);
+        }
+    input.close();
+
+    /* transform BELLA output in PAF format */
+#pragma omp parallel for
+    for(uint64_t i = 0; i < numoverlap; i++) 
+    {
+        int ithread = omp_get_thread_num();
+        /* BELLA format: cname, rname, numkmer, score, rev, cstart, cend, clen, rstart, rend, rlen */
+        std::vector<std::string> v = split (entries[i], '\t');
+        /* improve readability */
+        std::string& nameV = v[0];
+        std::string& nameH = v[1];
+        std::string& score = v[3];
+        std::string& isRev = v[4];
+        std::string& begpV = v[5];
+        std::string& endpV = v[6];
+        std::string& lengV = v[7];
+        std::string& begpH = v[8];
+        std::string& endpH = v[9];
+        std::string& lengH = v[10];
+
+        /* change strand formatting */
+        if(isRev == "n") isRev = "+";         
+            else isRev = "-";
+
+        /* compute overlap length if missing (begpV, endpV, lenV, begpH, endpH, lenH) */
+        int ovlen = estimate (stoi(begpV), stoi(endpV), stoi(lengV), stoi(begpH), stoi(endpH), stoi(lengH));
+
+        local[ithread] << nameV << "\t" << lengV << "\t" << begpV << "\t" << endpV << "\t" << isRev 
+            << "\t" << nameH << "\t" << lengH << "\t" << begpH << "\t" << endpH << "\t" << score 
+                << "\t" << ovlen << "\t255" << endl;
+    }
+
+    /* write to a new file */
+    int64_t * bytes = new int64_t[maxt];
+    for(int i = 0; i < maxt; ++i)
+    {
+        local[i].seekg(0, ios::end);
+        bytes[i] = local[i].tellg();
+        local[i].seekg(0, ios::beg);
+    }
+    int64_t bytestotal = std::accumulate(bytes, bytes + maxt, static_cast<int64_t>(0));
+
+    std::ofstream output(filename, std::ios::binary | std::ios::app);
+#ifdef PRINT
+    cout << "Creating or appending to output file with " << (double)bytestotal/(double)(1024 * 1024) << " MB" << endl;
+#endif
+    output.seekp(bytestotal - 1);
+    /* this will likely create a sparse file so the actual disks won't spin yet */
+    output.write("", 1); 
+    output.close();
+
+    #pragma omp parallel
+    {
+        int ithread = omp_get_thread_num(); 
+
+        FILE *ffinal;
+        /* then everyone fills it */
+        if ((ffinal = fopen(filename, "rb+")) == NULL) 
+        {
+            fprintf(stderr, "File %s failed to open at thread %d\n", filename, ithread);
+        }
+        int64_t bytesuntil = std::accumulate(bytes, bytes + ithread, static_cast<int64_t>(0));
+        fseek (ffinal , bytesuntil , SEEK_SET);
+        std::string text = local[ithread].str();
+        fwrite(text.c_str(),1, bytes[ithread], ffinal);
+        fflush(ffinal);
+        fclose(ffinal);
+    }
+    delete [] bytes;
+}
+
+//=======================================================================
+// 
 // MHAP to PAF
 // 
 //=======================================================================
