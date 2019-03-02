@@ -104,7 +104,7 @@ make bench
 ```
 ./bench -g <grouth-truth-file> [-b <bella-output>] [-m <minimap/minimap2-output>] [-d <daligner-output>] [-l <blasr-output>] [-p <mhap-output>] [-o <fileout-name>] [-c <mecat-output>] [-i <mecat-idx2read-file>]
 ```
-If the output of BELLA is in PAF formatm, **-a** instead of **-b** should be used:
+If the output of BELLA is in PAF format, **-a** instead of **-b** should be used:
 ```
 ./bench -g <grouth-truth-file> [-a <bella-output>] [-m <minimap/minimap2-output>] [-d <daligner-output>] [-l <blasr-output>] [-p <mhap-output>] [-o <fileout-name>] [-c <mecat-output>] [-i <mecat-idx2read-file>]
 ```
