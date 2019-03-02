@@ -116,38 +116,41 @@ T* prefixsum(T* in, int size, int nthreads)
     }
     return out;
 }
+/* fix according to PAF format */
 
-/**
- * @brief writeToFile writes a CSV containing
- * CSC indices of the output sparse matrix
- * @param myBatch
- * @param filename
- */
-void writeToFile(std::stringstream & myBatch, std::string filename)
-{  
-    std::string myString = myBatch.str();  
-    std::ofstream myfile;  
-    myfile.open (filename, ios_base::app);  
-    myfile << myString;  
-    myfile.close();  
-}
-
-bool onedge(int colStart, int colEnd, int colLen, int rowStart, int rowEnd, int rowLen)
+void toPAF(size_t& begpV, size_t& endpV, const int lenV, size_t& begpH, size_t& endpH, const int lenH, const string& rev)
 {
-    int minLeft = min(colStart, rowStart);
-    int minRight = min(colLen-colEnd, rowLen-rowEnd);
-    int epsilon = 300;
-
-    if(minLeft-epsilon <= 0)
-        minLeft = 0;
-
-    if(minRight-epsilon <= 0)
-        minRight = 0;
-
-    if((minLeft == 0 && minRight == 0))
-        return true;
+    /* first, extend to the end of the sequences */
+    if(begpH < begpV)
+    {
+        begpV = begpV - begpH;
+        begpH = 0;
+    }
     else
-        return false;
+    {
+        begpH = begpH - begpV;
+        begpV = 0;
+    }
+
+    if((lenH - endpH) < (lenV - endpV))
+    {
+        endpV = endpV + (lenH - endpH);
+        endpH = lenH;
+    }
+    else
+    {
+        endpH = endpH + (lenV - endpV);
+        endpV = lenV;
+    }
+
+    /* second, (possibly) convert back the seqH seed position according to the original strand */
+    if(rev == "c")
+    {
+        size_t temp = begpH;
+        begpH = lenH-endpH;
+        endpH = lenH-temp;
+    }
+
 }
 
 // estimate the number of floating point operations of SpGEMM
@@ -427,14 +430,14 @@ void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1,
 	int read1len = seq1.length();
 	int read2len = seq2.length();
 
+    int diffCol = endpV - begpV;
+    int diffRow = endpH - begpH;
+    int minLeft = min(begpV, begpH);
+    int minRight = min(read2len - endpV, read1len - endpH);
+    int ov = minLeft+minRight+(diffCol+diffRow)/2;
+
 	if(b_pars.adapThr)
 	{
-		int diffCol = endpV - begpV;
-		int diffRow = endpH - begpH;
-		int minLeft = min(begpV, begpH);
-		int minRight = min(read2len - endpV, read1len - endpH);
-
-		int ov = minLeft+minRight+(diffCol+diffRow)/2;
 		double newThr = (1-b_pars.deltaChernoff)*(ratioPhi*(double)ov);
 
 		if((double)maxExtScore.score > newThr)
@@ -442,7 +445,7 @@ void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1,
 			if(b_pars.alignEnd)
 			{
 				if(toEnd(begpV, endpV, read2len, begpH, endpH, read1len, b_pars.relaxMargin))
-					passed = true;		
+					passed = true;
 			}
 			else 
 			{
@@ -462,10 +465,59 @@ void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1,
 			passed = true;
 		}
 	}
+
 	if(passed)
 	{
-		myBatch << read2.nametag << '\t' << read1.nametag << '\t' << count << '\t' << maxExtScore.score << '\t' << maxExtScore.strand << '\t' << 
-			begpV << '\t' << endpV << '\t' << read2len << '\t' << begpH << '\t' << endpH << '\t' << read1len << endl;
+        if(!b_pars.outputPaf)  // BELLA output format
+        {
+            myBatch << read2.nametag << '\t' << read1.nametag << '\t' << count << '\t' << maxExtScore.score << '\t' << ov << '\t' << maxExtScore.strand << '\t' << 
+                begpV << '\t' << endpV << '\t' << read2len << '\t' << begpH << '\t' << endpH << '\t' << read1len << endl;
+                // column seq name
+                // row seq name
+                // number of shared k-mer
+                // alignment score
+                // overlap estimation
+                // strand (n/c)
+                // column seq start
+                // column seq end
+                // column seq length
+                // row seq start
+                // row seq end
+                // row seq length
+        }
+        else    // PAF format is the output format used by minimap/minimap2: https://github.com/lh3/miniasm/blob/master/PAF.md
+        {
+            /* field adjustment to match the PAF format */
+            toPAF(begpV, endpV, read2len, begpH, endpH, read1len, maxExtScore.strand);
+            /* re-compute overlap estimation with extended alignment to the edges */
+            diffCol = endpV - begpV;
+            diffRow = endpH - begpH;
+            minLeft = min(begpV, begpH);
+            minRight = min(read2len - endpV, read1len - endpH);
+            ov = minLeft+minRight+(diffCol+diffRow)/2;
+
+            string pafstrand;       // maxExtScore not modifiable   
+            int mapq = 255;         // mapping quality (0-255; 255 for missing)         
+            if(maxExtScore.strand == "n") pafstrand = "+";  
+            else pafstrand = "-";
+
+            // If PAF is generated from an alignment, column 10 equals the number of sequence matches, 
+            // and column 11 equals the total number of sequence matches, mismatches, insertions and deletions in the alignment     
+            myBatch << read2.nametag << '\t' << read2len << '\t' << begpV << '\t' << endpV << '\t' << pafstrand << '\t' << 
+                read1.nametag << '\t' << read1len << '\t' << begpH << '\t' << endpH << '\t' << maxExtScore.score << '\t' << ov << '\t' << mapq << endl;
+                // column seq name
+                // column seq length
+                // column seq start
+                // column seq end
+                // strand (+/-)
+                // row seq name
+                // row seq length
+                // row seq start
+                // row seq end
+                // number of residue matches (alignment score)
+                // alignment block length (overlap length)
+                // mapping quality (0-255; 255 for missing)
+        }
 		++outputted;
 		numBasesAlignedTrue += (endpV-begpV);	
 	}		

@@ -48,14 +48,14 @@ int main (int argc, char* argv[]) {
     option_t *optList, *thisOpt;
     // Get list of command line options and their arguments 
     optList = NULL;
-    optList = GetOptList(argc, argv, (char*)"g:b:m:p:d:hl:zo:c:i:B:O");
-   
+    optList = GetOptList(argc, argv, (char*)"g:b:a:m:p:d:hl:zo:c:i:O");
+
     int ovLen = 2000;   // min overlap length to be considered a true positive
     bool sim = false;   // simulated dataset [false]
     bool oov = false;
     char *th = NULL;    // truth
     char *b = NULL;     // bella
-    char *B = NULL;     // dibella
+    char *a = NULL;     // BELLA in PAF format
     char *o = NULL;     // BELLA evaluation output filename
     char *m = NULL;     // minimap/miniamap2
     char *p = NULL;     // mhap
@@ -89,8 +89,8 @@ int main (int argc, char* argv[]) {
                 b = strdup(thisOpt->argument);
                 break;
             }
-            case 'B': {
-                B = strdup(thisOpt->argument);
+            case 'a': {
+                a = strdup(thisOpt->argument);
                 break;
             }
             case 'z': sim = true; break; // using simulated data
@@ -132,9 +132,9 @@ int main (int argc, char* argv[]) {
                 cout << " -z : Simulated data [false]" << endl;
                 cout << " -g : Ground truth file (required)" << endl;
                 cout << " -t : Overlap length [2000]" << endl;
-                cout << " -O : BELLA/diBELLA output only overlap [false]" << endl;
+                cout << " -O : BELLA output only overlap [false]" << endl;
                 cout << " -b : BELLA output file" << endl;
-                cout << " -B : diBELLA output file" << endl;
+                cout << " -a : BELLA output file in PAF format" << endl;
                 cout << " -m : MINIMAP2 output file" << endl;
                 cout << " -p : MHAP output file" << endl;
                 cout << " -d : DALIGNER output file" << endl;
@@ -156,6 +156,13 @@ int main (int argc, char* argv[]) {
     }
 
     if(b != NULL && o == NULL)
+    {
+        cout << "\nProgram execution terminated: missing argument." << endl;
+        cout << "Please add name for output file with -o option. Run with -h to print out the command line options.\n" << endl;
+        return 0;
+    }
+
+    if(a != NULL && o == NULL)
     {
         cout << "\nProgram execution terminated: missing argument." << endl;
         cout << "Please add name for output file with -o option. Run with -h to print out the command line options.\n" << endl;
@@ -186,12 +193,7 @@ int main (int argc, char* argv[]) {
         if(b != NULL)
         {
             std::ifstream bf(b);
-            myBella(thf,bf,sim,ovLen,seqmap,num); // bella
-        }
-        if(B != NULL)
-        {
-            std::ifstream dbf(B);
-            myDiBella(thf,dbf,sim,ovLen,seqmap,num); // dibella
+            myBella(thf,bf,sim,ovLen,seqmap,num); // bella only overlaps (not alignment score, etc.)
         }
     }
     else
@@ -202,6 +204,12 @@ int main (int argc, char* argv[]) {
             std::string out(o);
             metricsBella(thf,bf,sim,ovLen,out,seqmap,num); // bella
         }
+    }
+    if(a != NULL)
+    {
+        std::ifstream bf(a);
+        std::string out(o);
+        metricsBellaPAF(thf,bf,sim,ovLen,out,seqmap,num); // bella in paf format
     }
     if(m != NULL)
     {
