@@ -34,9 +34,10 @@ struct BELLApars
 	bool alignEnd;			// Filter out alignments not achieving end of the read "relaxed" (x)
 	int relaxMargin;		// epsilon parameter for alignment on edges (w)
 	double deltaChernoff;	// delta computed via Chernoff bound (c)
+    bool outputPaf;         // output in paf format (p)
 
 	BELLApars():totalMemory(8000.0), userDefMem(false), kmerRift(1000), skipEstimate(false), skipAlignment(false), allKmer(false), adapThr(true), defaultThr(50),
-			alignEnd(false), relaxMargin(300), deltaChernoff(0.2) {};
+			alignEnd(false), relaxMargin(300), deltaChernoff(0.2), outputPaf(false) {};
 };
 
 template <typename T>
@@ -47,7 +48,7 @@ template <typename T>
 typedef seqan::Seed<seqan::Simple> TSeed;
 struct seqAnResult {
     int score;
-    string strand;
+    std::string strand;
     TSeed seed;
 };
 

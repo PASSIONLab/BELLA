@@ -80,6 +80,7 @@ seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rle
     seedH = infix(seqH, beginPositionH(seed), endPositionH(seed));
     seedV = infix(seqV, beginPositionV(seed), endPositionV(seed));
 
+    /* we are reversing the "row", "col" is always on the forward strand */
     Dna5StringReverseComplement twin(seedH);
 
     if(twin == seedV)
