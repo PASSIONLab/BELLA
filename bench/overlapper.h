@@ -33,7 +33,7 @@ void metricsBella(ifstream & th, ifstream & bf, bool sim, int minOv, string & ou
     bella_m metamap;
     bella_m::iterator it;
     int alignmentLength, ov;
-    string cname, rname, nkmer, score, rev, cstart, cend, clen, rstart, rend, rlen;
+    string cname, rname, nkmer, score, rev, cstart, cend, clen, rstart, rend, rlen, ovlen;
     uint32_t tpBella = 0, fpBella = 0, tnBella = 0;
 
     /* st = 0: tp */
@@ -53,6 +53,7 @@ void metricsBella(ifstream & th, ifstream & bf, bool sim, int minOv, string & ou
             getline(lnstream, rname, '\t');
             getline(lnstream, nkmer, '\t');
             getline(lnstream, score, '\t');
+            getline(lnstream, ovlen, '\t');
             getline(lnstream, rev, '\t');
             getline(lnstream, cstart, '\t');
             getline(lnstream, cend, '\t');
@@ -60,6 +61,8 @@ void metricsBella(ifstream & th, ifstream & bf, bool sim, int minOv, string & ou
             getline(lnstream, rstart, '\t');
             getline(lnstream, rend, '\t');
             getline(lnstream, rlen, '\t');
+
+            ov = stoi(ovlen);
 
             cname = "@" + cname;
             rname = "@" + rname;
@@ -69,7 +72,6 @@ void metricsBella(ifstream & th, ifstream & bf, bool sim, int minOv, string & ou
                 it = metamap.find(make_pair(cname,rname)); // this shouldn't be useful
                 if(it == metamap.end())
                 {
-                    ov = estimeOv(stoi(cstart), stoi(cend), stoi(clen), stoi(rstart), stoi(rend), stoi(rlen));
                     if(ov >= minOv)
                     {
                         alignmentLength = computeLength(seqmap, cname, rname);
@@ -153,7 +155,6 @@ void metricsBella(ifstream & th, ifstream & bf, bool sim, int minOv, string & ou
                 }
                 else if (it->second.st == 1) // tool claimed it as < 2kb the first time, but a multi mapping could result in a TP
                 {
-                    ov = estimeOv(stoi(cstart), stoi(cend), stoi(clen), stoi(rstart), stoi(rend), stoi(rlen));
                     if(ov > minOv-1)
                     {
                         alignmentLength = computeLength(seqmap, cname, rname);
@@ -179,7 +180,6 @@ void metricsBella(ifstream & th, ifstream & bf, bool sim, int minOv, string & ou
                 }
                 else if (it->second.st == 2) // tool claimed it as < 2kb the first time, but a multi mapping could result in a FP
                 {
-                    ov = estimeOv(stoi(cstart), stoi(cend), stoi(clen), stoi(rstart), stoi(rend), stoi(rlen));
                     if(ov > minOv-1)
                     {
                         fpBella++;
@@ -213,6 +213,201 @@ void metricsBella(ifstream & th, ifstream & bf, bool sim, int minOv, string & ou
         for(it = metamap.begin(); it != metamap.end(); ++it)
         {
                 output << it->second.st << ',' << it->second.score << ',' << it->second.ov << ',' << it->second.nkmer << ',' << it->first.first << ',' << it->first.second << ',' << it->second.cstart
+                    << ',' << it->second.cend << ',' << it->second.clen << ',' << it->second.rstart << ',' << it->second.rend << ',' << it->second.rlen << endl;
+        }
+    output.close();
+
+    cout << "BELLA:" << endl;
+    cout << "   .Pairs = " << tpBella+fpBella+tnBella << endl;
+    cout << "   .FP = " << fpBella << endl;
+    cout << "   .TP = " << tpBella << endl;
+    cout << "   .TN = " << tnBella << endl;
+    cout << "   .Recall = " << ((double)(tpBella*2)/(double)(numth))*100 << "%" << endl;
+    cout << "   .Precision = " << ((double)(tpBella)/(double)(tpBella+fpBella))*100 << "%" << endl;
+    cout << "   .Specificity = " << ((double)(tnBella)/(double)(tnBella+fpBella))*100 << "%" << "\n" << endl;
+
+    bf.close();
+}
+
+void metricsBellaPAF(ifstream & th, ifstream & bf, bool sim, int minOv, string & outfile, mmap_m & seqmap, uint32_t numth)
+{
+    bella_m metamap;
+    bella_m::iterator it;
+    int alignmentLength, ov;
+    string cname, rname, score, rev, cstart, cend, clen, rstart, rend, rlen, ovlen, mapqv;
+    uint32_t tpBella = 0, fpBella = 0, tnBella = 0;
+
+    /* st = 0: tp */
+    /* st = 1: fp */
+    /* st = 2: tn */
+
+    cout << "BELLA evaluation started ..." << endl;
+    if(bf.is_open())
+    {
+        string ln;
+        while(getline(bf, ln))
+        {
+            stringstream lnstream(ln);
+            myStruct metadata;
+
+            getline(lnstream, cname, '\t');
+            getline(lnstream, clen, '\t');
+            getline(lnstream, cstart, '\t');
+            getline(lnstream, cend, '\t');
+            getline(lnstream, rev, '\t');
+            getline(lnstream, rname, '\t');
+            getline(lnstream, rlen, '\t');
+            getline(lnstream, rstart, '\t');
+            getline(lnstream, rend, '\t');
+            getline(lnstream, score, '\t');
+            getline(lnstream, ovlen, '\t');
+            getline(lnstream, mapqv, '\t'); // missing and equal to 255     
+
+            ov = stoi(ovlen);
+
+            cname = "@" + cname;
+            rname = "@" + rname;
+
+            if(cname != rname) // not count self-pair
+            {   // Check for BELLA outputting more than 1 alignment/pair
+                it = metamap.find(make_pair(cname,rname)); // this shouldn't be useful
+                if(it == metamap.end())
+                {
+                    if(ov >= minOv)
+                    {
+                        alignmentLength = computeLength(seqmap, cname, rname);
+                        if(alignmentLength >= minOv) // TP
+                        {
+                            tpBella++;
+    
+                            metadata.st = 0;
+                            metadata.cstart = cstart;
+                            metadata.cend = cend;
+                            metadata.clen = clen;
+                            metadata.rstart = rstart;
+                            metadata.rend = rend;
+                            metadata.rlen = rlen;
+                            metadata.score = score;
+                            metadata.ov = ov;
+                            metadata.rev = rev;
+                            metamap.insert(make_pair(make_pair(cname,rname),metadata));
+    
+                        }
+                        else // FP
+                        {
+                            fpBella++;
+    
+                            metadata.st = 1;
+                            metadata.cstart = cstart;
+                            metadata.cend = cend;
+                            metadata.clen = clen;
+                            metadata.rstart = rstart;
+                            metadata.rend = rend;
+                            metadata.rlen = rlen;
+                            metadata.score = score;
+                            metadata.ov = ov;
+                            metadata.rev = rev;
+                            metamap.insert(make_pair(make_pair(cname,rname),metadata));
+    
+                        }
+                    }
+                    else
+                    {
+                        alignmentLength = computeLength(seqmap, cname, rname);
+                        if(alignmentLength >= minOv) // FP
+                        {
+                            fpBella++;
+    
+                            metadata.st = 1;
+                            metadata.cstart = cstart;
+                            metadata.cend = cend;
+                            metadata.clen = clen;
+                            metadata.rstart = rstart;
+                            metadata.rend = rend;
+                            metadata.rlen = rlen;
+                            metadata.score = score;
+                            metadata.ov = ov;
+                            metadata.rev = rev;
+                            metamap.insert(make_pair(make_pair(cname,rname),metadata));
+    
+                        }
+                        else // TN
+                        {
+                            tnBella++;
+    
+                            metadata.st = 2;
+                            metadata.cstart = cstart;
+                            metadata.cend = cend;
+                            metadata.clen = clen;
+                            metadata.rstart = rstart;
+                            metadata.rend = rend;
+                            metadata.rlen = rlen;
+                            metadata.score = score;
+                            metadata.ov = ov;
+                            metadata.rev = rev;
+                            metamap.insert(make_pair(make_pair(cname,rname),metadata));
+    
+                        }
+                    }
+                }
+                else if (it->second.st == 1) // tool claimed it as < 2kb the first time, but a multi mapping could result in a TP
+                {
+                    if(ov > minOv-1)
+                    {
+                        alignmentLength = computeLength(seqmap, cname, rname);
+                        if(alignmentLength > minOv-1) // TP
+                        {
+                            tpBella++;
+                            fpBella--;
+
+                            metadata.st = 0;
+                            metadata.cstart = cstart;
+                            metadata.cend = cend;
+                            metadata.clen = clen;
+                            metadata.rstart = rstart;
+                            metadata.rend = rend;
+                            metadata.rlen = rlen;
+                            metadata.score = score;
+                            metadata.ov = ov;
+                            metadata.rev = rev;
+                            metamap[make_pair(cname,rname)] = metadata;
+                        }
+                    }
+                }
+                else if (it->second.st == 2) // tool claimed it as < 2kb the first time, but a multi mapping could result in a FP
+                {
+                    if(ov > minOv-1)
+                    {
+                        fpBella++;
+                        tnBella--;
+
+                        metadata.st = 1;
+                        metadata.cstart = cstart;
+                        metadata.cend = cend;
+                        metadata.clen = clen;
+                        metadata.rstart = rstart;
+                        metadata.rend = rend;
+                        metadata.rlen = rlen;
+                        metadata.score = score;
+                        metadata.ov = ov;
+                        metadata.rev = rev;
+                        metamap[make_pair(cname,rname)] = metadata;
+                    }
+                }
+            }// if(cname != rname)
+        } // while(getline(bf, ln))
+    }
+    else
+    {
+        cout << "Error opening BELLA output" << endl;
+        exit(1);
+    }
+
+    ofstream output(outfile);
+    if(output.is_open())
+        for(it = metamap.begin(); it != metamap.end(); ++it)
+        {
+                output << it->second.st << ',' << it->second.score << ',' << it->second.ov << ',' << it->first.first << ',' << it->first.second << ',' << it->second.cstart
                     << ',' << it->second.cend << ',' << it->second.clen << ',' << it->second.rstart << ',' << it->second.rend << ',' << it->second.rlen << endl;
         }
     output.close();
