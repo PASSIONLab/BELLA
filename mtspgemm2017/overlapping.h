@@ -430,8 +430,6 @@ void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1,
 	int read1len = seq1.length();
 	int read2len = seq2.length();
 
-    // overlap length moved outside if(b_pars.adapThr) so it can be used later if outputting in PAF format  
-    // GGGG: we should include the overlap length in BELLA output format as well        
     int diffCol = endpV - begpV;
     int diffRow = endpH - begpH;
     int minLeft = min(begpV, begpH);
@@ -467,16 +465,18 @@ void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1,
 			passed = true;
 		}
 	}
+
 	if(passed)
 	{
         if(!b_pars.outputPaf)  // BELLA output format
         {
-            myBatch << read2.nametag << '\t' << read1.nametag << '\t' << count << '\t' << maxExtScore.score << '\t' << maxExtScore.strand << '\t' << 
+            myBatch << read2.nametag << '\t' << read1.nametag << '\t' << count << '\t' << maxExtScore.score << '\t' << ov << '\t' << maxExtScore.strand << '\t' << 
                 begpV << '\t' << endpV << '\t' << read2len << '\t' << begpH << '\t' << endpH << '\t' << read1len << endl;
                 // column seq name
                 // row seq name
                 // number of shared k-mer
                 // alignment score
+                // overlap estimation
                 // strand (n/c)
                 // column seq start
                 // column seq end
@@ -489,6 +489,13 @@ void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1,
         {
             /* field adjustment to match the PAF format */
             toPAF(begpV, endpV, read2len, begpH, endpH, read1len, maxExtScore.strand);
+            /* re-compute overlap estimation with extended alignment to the edges */
+            diffCol = endpV - begpV;
+            diffRow = endpH - begpH;
+            minLeft = min(begpV, begpH);
+            minRight = min(read2len - endpV, read1len - endpH);
+            ov = minLeft+minRight+(diffCol+diffRow)/2;
+
             string pafstrand;       // maxExtScore not modifiable   
             int mapq = 255;         // mapping quality (0-255; 255 for missing)         
             if(maxExtScore.strand == "n") pafstrand = "+";  
@@ -510,21 +517,6 @@ void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1,
                 // number of residue matches (alignment score)
                 // alignment block length (overlap length)
                 // mapping quality (0-255; 255 for missing)
-
-// Here's some additional info in minimap2 output
-// Tag Type     Description
-// _
-// tp  A        Type of aln: P/primary, S/secondary and I,i/inversion
-// cm  i        Number of minimizers on the chain
-// s1  i        Chaining score
-// dv   f       Approximate per-base sequence divergence
-// rl   i       Length of query regions harboring repetitive seeds
-        // An esample:     
-                // tp:A:S  
-                // cm:i:67 
-                // s1:i:680    
-                // dv:f:0.1064 
-                // rl:i:25
         }
 		++outputted;
 		numBasesAlignedTrue += (endpV-begpV);	
