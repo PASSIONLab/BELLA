@@ -111,8 +111,8 @@ int main(int argc, char const *argv[])
 			int tid = omp_get_thread_num();
 
 			std::vector<std::string> v = split (lines1[i], '\t');
-			std::string id1 = v[0];
-			std::string id2 = v[1];
+			std::string id1 = v[0]; 	// BELLA has names in position 0, 1
+			std::string id2 = v[1];	 	// BELLA has names in position 0, 1
 
 			local1[tid].push_back(std::make_pair(id1,id2));
 			local1[tid].push_back(std::make_pair(id2,id1));
@@ -124,8 +124,8 @@ int main(int argc, char const *argv[])
 			int MYTHREAD = omp_get_thread_num();
 
 			std::vector<std::string> v = split (lines2[j], '\t');
-			std::string id1 = v[2];
-			std::string id2 = v[3];
+			std::string id1 = v[2]; 	// diBELLA has names in position 2, 3
+			std::string id2 = v[3];	 	// diBELLA has names in position 2, 3
 
 			local2[MYTHREAD].push_back(std::make_pair(id1,id2));
 			local2[MYTHREAD].push_back(std::make_pair(id2,id1));
