@@ -59,6 +59,7 @@ Optional flag description:
 -r : kmerRift: bases separating two k-mers used as seeds for a read [1,000]
 -K : all (non-overlapping and separated by <kmerRift> bases) k-mers as alignment seeds [false]
 -f : k-mer list from Jellyfish (required if #DEFINE JELLYFISH enabled)
+-p : output in PAF format [false]
 ```
 **NOTE**: to use [Jellyfish](http://www.cbcb.umd.edu/software/jellyfish/) k-mer counting is necessary to enable **#DEFINE JELLYFISH.**
 
@@ -70,6 +71,11 @@ BELLA outputs alignments in a format similar to [BLASR's M4 format](https://gith
 
 ```HTML
 [A ID] [B ID] [# shared k-mers] [alignment score] [n=B fwd, c=B rc] [A start] [A end] [A length] [B start] [B end] [B length]
+```
+If **-p** option is used, BELLA outputs alignments in [PAF format](https://github.com/lh3/miniasm/blob/master/PAF.md). Example output (tab-delimited):
+
+```HTML
+[A ID] [A length] [A start] [A end] ["+" = B fwd, "-" = B rc] [B ID] [B length] [B start] [B end] [alignment score] [overlap estimate] [mapping quality]
 ```
 
 ## Performance Evaluation
@@ -98,7 +104,10 @@ make bench
 ```
 ./bench -g <grouth-truth-file> [-b <bella-output>] [-m <minimap/minimap2-output>] [-d <daligner-output>] [-l <blasr-output>] [-p <mhap-output>] [-o <fileout-name>] [-c <mecat-output>] [-i <mecat-idx2read-file>]
 ```
-
+If the output of BELLA is in PAF formatm, **-a** instead of **-b** should be used:
+```
+./bench -g <grouth-truth-file> [-a <bella-output>] [-m <minimap/minimap2-output>] [-d <daligner-output>] [-l <blasr-output>] [-p <mhap-output>] [-o <fileout-name>] [-c <mecat-output>] [-i <mecat-idx2read-file>]
+```
 To show the usage:
 ```
 ./bench -h
