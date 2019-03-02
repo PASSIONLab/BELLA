@@ -70,12 +70,12 @@ The parallelism depends on the available number of threads and on the available 
 BELLA outputs alignments in a format similar to [BLASR's M4 format](https://github.com/PacificBiosciences/blasr/wiki/Blasr-Output-Format). Example output (tab-delimited):
 
 ```HTML
-[A ID] [B ID] [# shared k-mers] [alignment score] [n=B fwd, c=B rc] [A start] [A end] [A length] [B start] [B end] [B length]
+[A ID] [B ID] [# shared k-mers] [alignment score] [overlap length] [n=B fwd, c=B rc] [A start] [A end] [A length] [B start] [B end] [B length]
 ```
 If **-p** option is used, BELLA outputs alignments in [PAF format](https://github.com/lh3/miniasm/blob/master/PAF.md). Example output (tab-delimited):
 
 ```HTML
-[A ID] [A length] [A start] [A end] ["+" = B fwd, "-" = B rc] [B ID] [B length] [B start] [B end] [alignment score] [overlap estimate] [mapping quality]
+[A ID] [A length] [A start] [A end] ["+" = B fwd, "-" = B rc] [B ID] [B length] [B start] [B end] [alignment score] [overlap length] [mapping quality]
 ```
 
 ## Performance Evaluation
