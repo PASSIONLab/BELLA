@@ -113,7 +113,7 @@ int main (int argc, char* argv[]) {
                 cout << " -i : MECAT index" << endl;
                 cout << " -r : BLASR" << endl;
                 cout << " -d : DALIGNER" << endl;
-                cout << " -o : filename" << endl;
+                cout << " -f : filename" << endl;
                 cout << " -h : usage" << endl;
                 /* done with this list, free it */
                 FreeOptList(thisOpt);
