@@ -114,7 +114,7 @@ int main (int argc, char* argv[]) {
                 cout << " -r : BLASR" << endl;
                 cout << " -d : DALIGNER" << endl;
                 cout << " -f : filename" << endl;
-                cout << " -h : usage" << endl;
+                cout << " -h : usage\n" << endl;
                 /* done with this list, free it */
                 FreeOptList(thisOpt);
                 return 0;
