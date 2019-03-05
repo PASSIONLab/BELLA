@@ -52,7 +52,7 @@ column 10 and 11 are still required but may be highly inaccurate. */
 
 int estimate (int begpV, int endpV, int lenV, int begpH, int endpH, int lenH)
 {
-    int diffV = begpV - begpV;
+    int diffV = endpV - begpV;
     int diffH = endpH - begpH;
     int minL  = min(begpV, begpH);
     int minR  = min(lenV - endpV, lenH - endpH);
