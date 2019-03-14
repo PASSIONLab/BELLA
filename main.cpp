@@ -211,8 +211,8 @@ int main (int argc, char *argv[]) {
                 cout << " -z : skip the pairwise alignment [false]" << endl;
                 cout << " -w : relaxMargin parameter for alignment on edges [300]" << endl;
                 cout << " -c : alignment score deviation from the mean [0.1]" << endl;
-                cout << " -n : filter out alignment on edge [false]\n" << endl;
-                cout << " -r : kmerRift: bases separating two k-mers used as seeds for a read [1,000]\n" << endl;
+                cout << " -n : filter out alignment on edge [false]" << endl;
+                cout << " -r : kmerRift: bases separating two k-mers used as seeds for a read [1,000]" << endl;
                 cout << " -p : output in PAF format [false]\n" << endl;
 
                 FreeOptList(thisOpt); // Done with this list, free it
