@@ -807,8 +807,8 @@ extendSeed(Seed<Simple, TConfig> & seed,
     SEQAN_ASSERT_LT(scoreGapOpen(scoringScheme), 0);
     SEQAN_ASSERT_LT(scoreGapExtend(scoringScheme), 0);
     SEQAN_ASSERT_EQ(scoreGapExtend(scoringScheme), scoreGapOpen(scoringScheme));
-    TScoreValue longestExtensionScoreLeft;
-    TScoreValue longestExtensionScoreRight;
+    TScoreValue longestExtensionScoreLeft  = 0;
+    TScoreValue longestExtensionScoreRight = 0;
     TScoreValue longestExtensionScore;
 
     if (direction == EXTEND_LEFT || direction == EXTEND_BOTH)
