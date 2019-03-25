@@ -288,7 +288,7 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
     	}
     }
     cout << "Second pass of k-mer counting took: " << omp_get_wtime() - firstpass << "s\n" << endl;
-
+    //cout << "countsdenovo.size() " << countsdenovo.size() << endl;
     // Reliable bounds computation using estimated error rate from phred quality score
     lower = computeLower(depth, erate, kmer_len);
     upper = computeUpper(depth, erate, kmer_len);
@@ -305,7 +305,15 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
     lt.unlock(); // unlock the table
 
     // Print some information about the table
-    cout << "Entries within reliable range: " << countsreliable_denovo.size() << endl;
+    if (countsreliable_denovo.size() == 0)
+    {
+        cout << "BELLA terminated: 0 entries within reliable range (reduce k-mer length)\n" << endl;
+        exit(0);
+    } 
+    else 
+    {
+        cout << "Entries within reliable range: " << countsreliable_denovo.size() << endl;
+    }
     //cout << "Bucket count: " << countsdenovo.bucket_count() << std::endl;
     //cout << "Load factor: " << countsdenovo.load_factor() << std::endl;
     countsdenovo.clear(); // free
