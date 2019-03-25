@@ -47,7 +47,6 @@
 
 #ifndef SEQAN_SEEDS_SEEDS_EXTENSION_H_
 #define SEQAN_SEEDS_SEEDS_EXTENSION_H_
-#define KMER_LENGTH 17
 
 namespace seqan {
 
@@ -287,6 +286,7 @@ extendSeed(Seed<Simple, TConfig> & seed,
            ExtensionDirection direction,
            Score<TScoreValue, TScoreSpec> const & scoringScheme,
            TScoreValue scoreDropOff,
+           TScoreValue kmerLen,
            UnGappedXDrop const &)
 {
     // For ungapped X-drop extension of Simple Seeds, we can simply
@@ -360,7 +360,7 @@ extendSeed(Seed<Simple, TConfig> & seed,
         setEndPositionV(seed, posV - mismatchingSuffixLength);
     }
 
-    tmpScore = tmpScoreRight + tmpScoreLeft + KMER_LENGTH;
+    tmpScore = tmpScoreRight + tmpScoreLeft + kmerLen;
     return (int)tmpScore;
 
     // TODO(holtgrew): Update score?!
@@ -792,6 +792,7 @@ extendSeed(Seed<Simple, TConfig> & seed,
            ExtensionDirection direction,
            Score<TScoreValue, TScoreSpec> const & scoringScheme,
            TScoreValue scoreDropOff,
+           TScoreValue kmerLen,
            GappedXDrop const &)
 {
     // For gapped X-drop extension of Simple Seeds, we can simply
@@ -843,7 +844,7 @@ extendSeed(Seed<Simple, TConfig> & seed,
     }
     
     longestExtensionScore = longestExtensionScoreRight + longestExtensionScoreLeft;
-    return (int)longestExtensionScore+KMER_LENGTH;
+    return (int)(longestExtensionScore + kmerLen);
     // TODO(holtgrew): Update seed's score?!
 }
 

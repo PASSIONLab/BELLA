@@ -95,12 +95,12 @@ seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rle
         setEndPositionV(seed, j+kmer_len);
 
         /* Perform match extension */
-        longestExtensionTemp = extendSeed(seed, twinRead, seqV, EXTEND_BOTH, scoringScheme, xdrop, GappedXDrop());
+        longestExtensionTemp = extendSeed(seed, twinRead, seqV, EXTEND_BOTH, scoringScheme, xdrop, kmer_len, GappedXDrop());
 
     } else
     {
         strand = 'n';
-        longestExtensionTemp = extendSeed(seed, seqH, seqV, EXTEND_BOTH, scoringScheme, xdrop, GappedXDrop());
+        longestExtensionTemp = extendSeed(seed, seqH, seqV, EXTEND_BOTH, scoringScheme, xdrop, kmer_len, GappedXDrop());
     } 
 
     longestExtensionScore.score = longestExtensionTemp;
