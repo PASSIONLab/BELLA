@@ -51,7 +51,7 @@ int computeUpper(int d, double e, int k)
 {
     long double a,b,c;
     double probability = 1;
-    double cumsum = 0;
+    double cumsum = 0, prev;
     int m = d;
 
     while(cumsum < MIN_PROB)
@@ -62,7 +62,11 @@ int computeUpper(int d, double e, int k)
         
         probability = a*b*c;
         cumsum = cumsum + probability;
+
+        if(cumsum == prev && cumsum < MIN_PROB)
+            break;
         --m;
+        prev = cumsum;
     }
     return (m+1);
 }
@@ -71,7 +75,7 @@ int computeLower(int d, double e, int k)
 {
     long double a,b,c;
     double probability = 1;
-    double cumsum = 0;
+    double cumsum = 0, prev;
     int m = 2;
 
     while(cumsum < MIN_PROB)
@@ -82,9 +86,17 @@ int computeLower(int d, double e, int k)
         
         probability = a*b*c;
         cumsum = cumsum + probability;
+
+        if(cumsum == prev && cumsum < MIN_PROB)
+            break;
         ++m;
+        prev = cumsum;
     }
-    return (m-1);
+
+    if (m-1 < 2)
+        return 2;
+    else 
+        return (m-1);
 }
 
 
