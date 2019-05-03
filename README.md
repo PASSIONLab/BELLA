@@ -118,6 +118,10 @@ To show the usage:
 
 You can download an _E. coli_ 30X dataset [here](https://bit.ly/2EEq3JM) to test BELLA. For this dataset, you can use the following single mapped ground truth to run the evaluation code: [ecsample_singlemapped_q10.txt](https://github.com/giuliaguidi/bella/files/3143607/ecsample_singlemapped_q10.txt). A detailed description of the procedure we use to generate the ground truth for real data can be found in our [preprint](https://doi.org/10.1101/464420).
 
+You can run the evaluation code located in /bench folder as: 
+
+`./bench -g ecsample_singlemapped_q10.txt -b <bella-output> -o <output-name-bench>`
+
 ## Citation
 
 To cite our work or to know more about our methods, please refer to:
