@@ -14,6 +14,7 @@ extern "C" {
 
 #include "truth.h"
 #include "overlapper.h" 
+#include "onlyoverlap.h" 
 #include "IntervalTree.h"
 #include <omp.h>
 #include <fstream>
@@ -47,10 +48,11 @@ int main (int argc, char* argv[]) {
     option_t *optList, *thisOpt;
     // Get list of command line options and their arguments 
     optList = NULL;
-    optList = GetOptList(argc, argv, (char*)"g:b:a:m:p:d:hl:zo:c:i:");
-   
+    optList = GetOptList(argc, argv, (char*)"g:b:a:m:p:d:hl:zo:c:i:O");
+
     int ovLen = 2000;   // min overlap length to be considered a true positive
     bool sim = false;   // simulated dataset [false]
+    bool oov = false;
     char *th = NULL;    // truth
     char *b = NULL;     // bella
     char *a = NULL;     // BELLA in PAF format
@@ -92,6 +94,7 @@ int main (int argc, char* argv[]) {
                 break;
             }
             case 'z': sim = true; break; // using simulated data
+            case 'O': oov = true; break; // using simulated data
             case 't': {
                 ovLen = atoi(thisOpt->argument);
                 break;
@@ -129,6 +132,7 @@ int main (int argc, char* argv[]) {
                 cout << " -z : Simulated data [false]" << endl;
                 cout << " -g : Ground truth file (required)" << endl;
                 cout << " -t : Overlap length [2000]" << endl;
+                cout << " -O : BELLA output only overlap [false]" << endl;
                 cout << " -b : BELLA output file" << endl;
                 cout << " -a : BELLA output file in PAF format" << endl;
                 cout << " -m : MINIMAP2 output file" << endl;
@@ -184,11 +188,22 @@ int main (int argc, char* argv[]) {
     multimap<string,readInfo> seqmap;
     uint32_t num = getTruth(thf,sim,ovLen,seqmap,num); // will contain ground truth cardinality
 
-    if(b != NULL)
+    if(oov)
     {
-        std::ifstream bf(b);
-        std::string out(o);
-        metricsBella(thf,bf,sim,ovLen,out,seqmap,num); // bella
+        if(b != NULL)
+        {
+            std::ifstream bf(b);
+            myBella(thf,bf,sim,ovLen,seqmap,num); // bella only overlaps (not alignment score, etc.)
+        }
+    }
+    else
+    {
+        if(b != NULL)
+        {
+            std::ifstream bf(b);
+            std::string out(o);
+            metricsBella(thf,bf,sim,ovLen,out,seqmap,num); // bella
+        }
     }
     if(a != NULL)
     {

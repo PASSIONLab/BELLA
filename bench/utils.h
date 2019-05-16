@@ -88,6 +88,7 @@ string idx2read(uint32_t idx, mecat_m & namestable)
     }
 }
 
+
 // mmap_m is a multimap where the read name is the key and the value is a 
 // data struct containing reference and read name, and start and end alignment 
 // of the read in the reference genome
