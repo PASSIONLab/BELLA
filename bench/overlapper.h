@@ -34,7 +34,7 @@ void metricsBella(ifstream & th, ifstream & bf, bool sim, int minOv, string & ou
     bella_m::iterator it;
     int alignmentLength, ov;
     string cname, rname, nkmer, score, rev, cstart, cend, clen, rstart, rend, rlen, ovlen;
-    uint32_t tpBella = 0, fpBella = 0, tnBella = 0;
+    uint32_t tpBella = 0, fpBella = 0, fnBella = 0, tnBella = 0;
 
     /* st = 0: tp */
     /* st = 1: fp */
@@ -117,7 +117,7 @@ void metricsBella(ifstream & th, ifstream & bf, bool sim, int minOv, string & ou
                         alignmentLength = computeLength(seqmap, cname, rname);
                         if(alignmentLength >= minOv) // FP
                         {
-                            fpBella++;
+                            fnBella++;
     
                             metadata.st = 1;
                             metadata.cstart = cstart;
@@ -161,7 +161,7 @@ void metricsBella(ifstream & th, ifstream & bf, bool sim, int minOv, string & ou
                         if(alignmentLength > minOv-1) // TP
                         {
                             tpBella++;
-                            fpBella--;
+                            fnBella--;
 
                             metadata.st = 0;
                             metadata.cstart = cstart;
@@ -218,11 +218,11 @@ void metricsBella(ifstream & th, ifstream & bf, bool sim, int minOv, string & ou
     output.close();
 
     cout << "BELLA:" << endl;
-    cout << "   .Pairs = " << tpBella+fpBella+tnBella << endl;
+    cout << "   .Pairs = " << tpBella+fpBella+tnBella+fnBella << endl;
     cout << "   .FP = " << fpBella << endl;
     cout << "   .TP = " << tpBella << endl;
     cout << "   .TN = " << tnBella << endl;
-    cout << "   .Recall = " << ((double)(tpBella*2)/(double)(numth))*100 << "%" << endl;
+    cout << "   .Recall = " << ((double)(tpBella*2)/(double)(numth+fnBella))*100 << "%" << endl;
     cout << "   .Precision = " << ((double)(tpBella)/(double)(tpBella+fpBella))*100 << "%" << endl;
     cout << "   .Specificity = " << ((double)(tnBella)/(double)(tnBella+fpBella))*100 << "%" << "\n" << endl;
 
