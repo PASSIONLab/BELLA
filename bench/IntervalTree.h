@@ -6,6 +6,8 @@
 #include <iostream>
 #include <memory>
 #include <fstream>
+#include <set>
+#include "def.h"
 
 using namespace std;
 
@@ -161,7 +163,7 @@ public:
 	return ov;
     }
 
-    void findOverlapping(K start, K stop, T value, intervalVector& overlapping, int thr) const {
+    void findOverlapping(K start, K stop, T value, intervalVector& overlapping, int minOverlap, std::multiset<entry, classcom>& Gfull) const {
         if (!intervals.empty() && ! (stop < intervals.front().start)) {
             for (typename intervalVector::const_iterator i = intervals.begin(); i != intervals.end(); ++i)
             {
@@ -169,7 +171,7 @@ public:
                 size_t alignment = 0;
 
                 if(i->value != value) // do not count self alignment 
-                {\
+                {
                     if(interval.start <= start) {
                         if(interval.stop >= start) {
                             alignment = min((interval.stop - start), (stop - start));
@@ -184,20 +186,25 @@ public:
                         alignment = min((stop - interval.start), (interval.stop - interval.start)); 
                     } 
                
-                    if(alignment >= thr)
+                    if(alignment >= minOverlap)
                     {
                         overlapping.push_back(interval);
-                    } 
+                        entry result;
+                        result.a       = i->value;
+                        result.b       = value;
+                        result.overlap = alignment;
+                        Gfull.insert(result);
+                    }
                 }
             } 
         }
 
         if (left && start <= center) {
-            left->findOverlapping(start, stop, value, overlapping, thr);
+            left->findOverlapping(start, stop, value, overlapping, minOverlap, Gfull);
         }
 
         if (right && stop >= center) {
-            right->findOverlapping(start, stop, value, overlapping, thr);
+            right->findOverlapping(start, stop, value, overlapping, minOverlap, Gfull);
         }
     }
 
