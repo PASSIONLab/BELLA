@@ -213,15 +213,86 @@ std::multiset<entry, classcom> readBellaOutput(std::ifstream& file)
 		//	std::cout << "What's up, dude?" << std::endl;
 		ientry.a = v[0];
 		ientry.b = v[1];
-		ientry.overlap = stoi(v[4]);
 
-		local[ithread].insert(ientry);
+		if(ientry.a != ientry.b) {
+			ientry.overlap = stoi(v[4]);
+			local[ithread].insert(ientry);
+		}
 	}
 
 	for(int i = 0; i < maxt; ++i)
 		result.insert(local[i].begin(), local[i].end());
 #ifdef DEBUG
 	std::cout << "Bella identified " << 2*result.size() << " overlaps" << std::endl;
+#endif
+	return result;
+};
+
+
+
+std::multiset<entry, classcom> readMinimapOutput(std::ifstream& file)
+{
+	int maxt = 1;
+#pragma omp parallel
+	{
+		maxt = omp_get_num_threads();
+	}
+
+	int nOverlap = std::count(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>(), '\n');
+	file.seekg(0,std::ios_base::beg);
+	std::vector<std::string> entries;
+
+	if(file)
+		for (int i = 0; i < nOverlap; ++i) {
+			std::string line;
+			std::getline(file, line);
+			entries.push_back(line);
+		}
+	file.close();
+
+	std::multiset<entry, classcom> result;
+	std::vector<std::multiset<entry, classcom>> local(maxt);
+
+#pragma omp parallel for
+	for(int i = 0; i < nOverlap; i++) {
+		std::stringstream linestream(entries[i]);
+		int ithread = omp_get_thread_num();
+
+		std::vector<std::string> v = split(entries[i], '\t');
+		entry ientry;
+
+	//	std::cout << "What's up, dude?" << std::endl;
+		ientry.a = "@" + v[0];
+		ientry.b = "@" + v[5];
+
+		if(ientry.a != ientry.b) {
+		//	paf format
+			int lenV = std::stoi(v[1]);
+			int begV = std::stoi(v[2]);
+			int endV = std::stoi(v[3]);
+			int lenH = std::stoi(v[6]);
+			int begH = std::stoi(v[7]);
+			int endH = std::stoi(v[8]);
+
+		//	coordinate are reported on the original strand in paf format
+			if(v[4] == "-") {
+				int tmp = begH;
+				begH = lenH - endH;
+				endH = lenH - tmp;
+			}
+
+		//	(int begV, int endV, int lenV, int begH, int endH, int lenH, int overlap)
+			estimateOverlap(begV, endV, lenV, 
+					begH, endH, lenH, ientry.overlap);
+
+			local[ithread].insert(ientry);
+		}
+	}
+
+	for(int i = 0; i < maxt; ++i)
+		result.insert(local[i].begin(), local[i].end());
+#ifdef DEBUG
+	std::cout << "Minimap2 identified " << 2*result.size() << " overlaps" << std::endl;
 #endif
 	return result;
 };
@@ -264,20 +335,23 @@ std::multiset<entry, classcom> readMecatOutput(std::ifstream& file, std::ifstrea
 		ientry.a = "@" + toread(v[0], namestable);
 		ientry.b = "@" + toread(v[1], namestable);
 
-	//	mecat format
-		int begV = std::stoi(v[5]);
-		int endV = std::stoi(v[6]);
-		int lenV = std::stoi(v[7]);
-		int begH = std::stoi(v[9]);
-		int endH = std::stoi(v[10]);
-		int lenH = std::stoi(v[11]);
 
-	//	the positions are zero-based and are based on the forward strand, whatever which strand the sequence is mapped
-	//	(int begV, int endV, int lenV, int begH, int endH, int lenH, int overlap)
-		estimateOverlap(begV, endV, lenV, 
-				begH, endH, lenH, ientry.overlap);
+		if(ientry.a != ientry.b) {
+		//	mecat format
+			int begV = std::stoi(v[5]);
+			int endV = std::stoi(v[6]);
+			int lenV = std::stoi(v[7]);
+			int begH = std::stoi(v[9]);
+			int endH = std::stoi(v[10]);
+			int lenH = std::stoi(v[11]);
 
-		local[ithread].insert(ientry);
+		//	the positions are zero-based and are based on the forward strand, whatever which strand the sequence is mapped
+		//	(int begV, int endV, int lenV, int begH, int endH, int lenH, int overlap)
+			estimateOverlap(begV, endV, lenV, 
+					begH, endH, lenH, ientry.overlap);
+
+			local[ithread].insert(ientry);
+		}
 	}
 
 	for(int i = 0; i < maxt; ++i)
@@ -288,7 +362,7 @@ std::multiset<entry, classcom> readMecatOutput(std::ifstream& file, std::ifstrea
 	return result;
 };
 
-std::multiset<entry, classcom> readMinimapOutput(std::ifstream& file)
+std::multiset<entry, classcom> readMhapOutput(std::ifstream& file)
 {
 	int maxt = 1;
 #pragma omp parallel
@@ -316,53 +390,110 @@ std::multiset<entry, classcom> readMinimapOutput(std::ifstream& file)
 		std::stringstream linestream(entries[i]);
 		int ithread = omp_get_thread_num();
 
-		std::vector<std::string> v = split(entries[i], '\t');
+		std::vector<std::string> v = split(entries[i], ' ');
 		entry ientry;
-
 	//	std::cout << "What's up, dude?" << std::endl;
 		ientry.a = "@" + v[0];
-		ientry.b = "@" + v[5];
+		ientry.b = "@" + v[1];
 
-	//	paf format
-		int lenV = std::stoi(v[1]);
-		int begV = std::stoi(v[2]);
-		int endV = std::stoi(v[3]);
-		int lenH = std::stoi(v[6]);
-		int begH = std::stoi(v[7]);
-		int endH = std::stoi(v[8]);
+		if(ientry.a != ientry.b) {
+		//	mhap m4 format
+			int begV = std::stoi(v[5]);
+			int endV = std::stoi(v[6]);
+			int lenV = std::stoi(v[7]);
+			int begH = std::stoi(v[9]);
+			int endH = std::stoi(v[10]);
+			int lenH = std::stoi(v[11]);
 
-	//	coordinate are reported on the original strand in paf format
-		if(v[4] == "-") {
-			int tmp = begH;
-			begH = lenH - endH;
-			endH = lenH - tmp;
+		//	figure out write to adam/sergey?
+			//if(v[8] == "1") {
+			//	int tmp = begH;
+			//	begH = lenH - endH;
+			//	endH = lenH - tmp;
+			//}
+
+		//	(int begV, int endV, int lenV, int begH, int endH, int lenH, int overlap)
+			estimateOverlap(begV, endV, lenV, 
+					begH, endH, lenH, ientry.overlap);
+
+			local[ithread].insert(ientry);
 		}
-
-	//	(int begV, int endV, int lenV, int begH, int endH, int lenH, int overlap)
-		estimateOverlap(begV, endV, lenV, 
-				begH, endH, lenH, ientry.overlap);
-
-		local[ithread].insert(ientry);
 	}
 
 	for(int i = 0; i < maxt; ++i)
 		result.insert(local[i].begin(), local[i].end());
 #ifdef DEBUG
-	std::cout << "Minimap2 identified " << 2*result.size() << " overlaps" << std::endl;
+	std::cout << "Mhap identified " << result.size() << " overlaps" << std::endl;
 #endif
 	return result;
 };
 
-//std::set<entry, classcom> readMhapOutput(std::ifstream& output)
-//{
-//
-//};
-//
-//std::set<entry, classcom> readBlasrOutput(std::ifstream& output)
-//{
-//
-//};
-//
+std::multiset<entry, classcom> readBlasrOutput(std::ifstream& file)
+{
+	int maxt = 1;
+#pragma omp parallel
+	{
+		maxt = omp_get_num_threads();
+	}
+
+	int nOverlap = std::count(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>(), '\n');
+	file.seekg(0,std::ios_base::beg);
+	std::vector<std::string> entries;
+
+	if(file)
+		for (int i = 0; i < nOverlap; ++i) {
+			std::string line;
+			std::getline(file, line);
+			entries.push_back(line);
+		}
+	file.close();
+
+	std::multiset<entry, classcom> result;
+	std::vector<std::multiset<entry, classcom>> local(maxt);
+
+#pragma omp parallel for
+	for(int i = 0; i < nOverlap; i++) {
+		std::stringstream linestream(entries[i]);
+		int ithread = omp_get_thread_num();
+
+		std::vector<std::string> v = split(entries[i], ' ');
+		entry ientry;
+	//	std::cout << "What's up, dude?" << std::endl;
+		ientry.a = "@" + v[0];
+		ientry.b = "@" + v[1];
+
+		if(ientry.a != ientry.b) {
+		//	blasr 4m format
+			int begV = std::stoi(v[5]);
+			int endV = std::stoi(v[6]);
+			int lenV = std::stoi(v[7]);
+			int begH = std::stoi(v[9]);
+			int endH = std::stoi(v[10]);
+			int lenH = std::stoi(v[11]);
+
+		//	figure out write to adam/sergey?
+			//if(v[8] == "1") {
+			//	int tmp = begH;
+			//	begH = lenH - endH;
+			//	endH = lenH - tmp;
+			//}
+
+		//	(int begV, int endV, int lenV, int begH, int endH, int lenH, int overlap)
+			estimateOverlap(begV, endV, lenV, 
+					begH, endH, lenH, ientry.overlap);
+
+			local[ithread].insert(ientry);
+		}
+	}
+
+	for(int i = 0; i < maxt; ++i)
+		result.insert(local[i].begin(), local[i].end());
+#ifdef DEBUG
+	std::cout << "Blasr identified " << result.size() << " overlaps" << std::endl;
+#endif
+	return result;
+};
+
 //std::set<entry, classcom> readDalignerOutput(std::ifstream& output)
 //{
 //

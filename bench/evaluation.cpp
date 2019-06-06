@@ -175,14 +175,22 @@ int main (int argc, char* argv[]) {
 		evaluate(Sset, Gset, minOverlap, duplicate);
 	}
 
-	//if(L) {
-	//	Sset = readBlasrOutput(L);
-	//	evaluate(Sset, Gset, minOverlap);
-	//} 
-	//if(H) {
-	//	Sset = readMhapOutput(H);
-	//	evaluate(Sset, Gset, minOverlap);
-	//}
+	if(H) {
+		std::ifstream reads(H);
+		Sset = readMhapOutput(reads);
+		duplicate = false;
+		std::cout << "Mhap" << std::endl;
+		evaluate(Sset, Gset, minOverlap, duplicate);
+	}
+
+	if(L) {
+		std::ifstream reads(L);
+		Sset = readBlasrOutput(reads);
+		duplicate = false;
+		std::cout << "Blasr" << std::endl;
+		evaluate(Sset, Gset, minOverlap, duplicate);
+	}
+
 	//if(D) {
 	//	Sset = readDalignerOutput(D);
 	//	evaluate(Sset, Gset, minOverlap);
