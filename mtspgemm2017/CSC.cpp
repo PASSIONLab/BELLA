@@ -297,7 +297,7 @@ void CSC<IT,NT>::MergeDuplicates (AddOperation addop)
 
     if(nnz > 0)
     {
-        //#pragma omp parallel for
+    #pragma omp parallel for
         for(int i=0; i<cols; ++i)
         {
             for(size_t j=colptr[i]; j<colptr[i+1]; ++j)
@@ -325,7 +325,7 @@ void CSC<IT,NT>::MergeDuplicates (AddOperation addop)
     rowids = new IT[nnz];
     values = new NT[nnz];
     
-//#pragma omp parallel for
+#pragma omp parallel for
     for(int i=0; i<cols; ++i)
     {
         copy(v_rowids[i].begin(), v_rowids[i].end(), rowids+colptr[i]);
@@ -363,7 +363,7 @@ CSC<IT,NT>::CSC(vector<tuple<IT,IT,NT>> & tuple, IT m, IT n, AddOperation addop)
         {
             tosort[work[get<1>(tuple[k])]++] = make_pair(get<0>(tuple[k]), get<2>(tuple[k]));
         }
-//#pragma omp parallel for
+#pragma omp parallel for
         for(int i=0; i<cols; ++i)
         {
             sort(tosort.begin() + colptr[i], tosort.begin() + colptr[i+1]);
