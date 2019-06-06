@@ -212,8 +212,8 @@ std::multiset<entry, classcom> readBellaOutput(std::ifstream& file)
 		entry ientry;
 
 		//	std::cout << "What's up, dude?" << std::endl;
-		ientry.a = v[0];
-		ientry.b = v[1];
+		ientry.a = "@" + v[0];
+		ientry.b = "@" + v[1];
 
 		if(ientry.a != ientry.b) {
 			ientry.overlap = stoi(v[4]);
@@ -228,7 +228,6 @@ std::multiset<entry, classcom> readBellaOutput(std::ifstream& file)
 #endif
 	return result;
 };
-
 
 
 std::multiset<entry, classcom> readMinimapOutput(std::ifstream& file)

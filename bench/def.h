@@ -28,11 +28,6 @@ struct entry {
 	int overlap;
 };
 
-bool operator== (entry& lhs, entry& rhs) {
-	if ((lhs.a == rhs.a && lhs.b == rhs.b) || (lhs.a == rhs.b && lhs.b == rhs.a)) return true;
-	else return false;
-}
-
 struct overlap {
 	std::string read;
 	std::string ref;
@@ -40,11 +35,11 @@ struct overlap {
 };
 
 bool operator< (const entry& lhs, const entry& rhs)
-{ return lhs.overlap < rhs.overlap; }
+	{ return (lhs.a < rhs.a) || ((!(rhs.a < lhs.a)) && (lhs.b < rhs.b)); }
 
 struct classcom {
 	bool operator() (const entry& lhs, const entry& rhs) const
-	{ return lhs.overlap < rhs.overlap; }
+	{ return (lhs.a < rhs.a) || ((!(rhs.a < lhs.a)) && (lhs.b < rhs.b)); }
 };
 
 std::vector<std::string> split (const std::string &s, char delim)

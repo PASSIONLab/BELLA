@@ -168,7 +168,7 @@ public:
             for (typename intervalVector::const_iterator i = intervals.begin(); i != intervals.end(); ++i)
             {
                 const interval& interval = *i;
-                size_t alignment = 0;
+                int alignment = 0;
 
                 if(i->value != value) // do not count self alignment 
                 {
