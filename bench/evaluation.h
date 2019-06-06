@@ -171,6 +171,7 @@ std::multiset<entry, classcom> readTruthOutput(std::ifstream& file, int minOverl
 	}
 
 #ifdef DEBUG
+	// in sam format all mapped segments in alignment lines are represented on the forward genomic strand
 	std::cout << std::endl;
 	std::cout << Gset.size() << " overlaps in the ground truth longer than " << minOverlap << " bp"<< std::endl;
 	std::cout << std::endl;
@@ -494,10 +495,70 @@ std::multiset<entry, classcom> readBlasrOutput(std::ifstream& file)
 	return result;
 };
 
-//std::set<entry, classcom> readDalignerOutput(std::ifstream& output)
-//{
-//
-//};
+std::multiset<entry, classcom> readDalignerOutput(std::ifstream& file)
+{
+	int maxt = 1;
+#pragma omp parallel
+	{
+		maxt = omp_get_num_threads();
+	}
+
+	int nOverlap = std::count(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>(), '\n');
+	file.seekg(0,std::ios_base::beg);
+	std::vector<std::string> entries;
+
+	if(file)
+		for (int i = 0; i < nOverlap; ++i) {
+			std::string line;
+			std::getline(file, line);
+			entries.push_back(line);
+		}
+	file.close();
+
+	std::multiset<entry, classcom> result;
+	std::vector<std::multiset<entry, classcom>> local(maxt);
+
+#pragma omp parallel for
+	for(int i = 0; i < nOverlap; i++) {
+		std::stringstream linestream(entries[i]);
+		int ithread = omp_get_thread_num();
+
+		std::vector<std::string> v = split(entries[i], ' ');
+		entry ientry;
+	//	std::cout << "What's up, dude?" << std::endl;
+		ientry.a = "@" + v[0];
+		ientry.b = "@" + v[1];
+
+		if(ientry.a != ientry.b) {
+		//	daligner format according to our script
+			int begV = std::stoi(v[3]);
+			int endV = std::stoi(v[4]);
+			int lenV = std::stoi(v[5]);
+			int begH = std::stoi(v[6]);
+			int endH = std::stoi(v[7]);
+			int lenH = std::stoi(v[8]);
+
+			if(v[2] == "c") {
+				int tmp = begH;
+				begH = lenH - endH;
+				endH = lenH - tmp;
+			}
+
+		//	(int begV, int endV, int lenV, int begH, int endH, int lenH, int overlap)
+			estimateOverlap(begV, endV, lenV, 
+					begH, endH, lenH, ientry.overlap);
+
+			local[ithread].insert(ientry);
+		}
+	}
+
+	for(int i = 0; i < maxt; ++i)
+		result.insert(local[i].begin(), local[i].end());
+#ifdef DEBUG
+	std::cout << "Daligner identified " << result.size() << " overlaps" << std::endl;
+#endif
+	return result;
+};
 
 void evaluate(std::multiset<entry, classcom>& Sset, const std::multiset<entry, classcom>& Gset, int minOverlap, bool toDuplicate)
 {

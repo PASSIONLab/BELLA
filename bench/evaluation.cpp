@@ -191,8 +191,11 @@ int main (int argc, char* argv[]) {
 		evaluate(Sset, Gset, minOverlap, duplicate);
 	}
 
-	//if(D) {
-	//	Sset = readDalignerOutput(D);
-	//	evaluate(Sset, Gset, minOverlap);
-	//}
+	if(D) {
+		std::ifstream reads(D);
+		Sset = readDalignerOutput(reads);
+		duplicate = false;
+		std::cout << "Daligner" << std::endl;
+		evaluate(Sset, Gset, minOverlap, duplicate);
+	}
 }
