@@ -145,34 +145,41 @@ int main (int argc, char* argv[]) {
 	free(optList);
 	free(thisOpt);
 
+	bool duplicate = false; // some software doesn't output both (A,B) and (B,A)
 	std::ifstream data(G);
-	std::multiset<entry, classcom> Gfull = readTruthOutput(data, minOverlap, isSimulated);
-	std::multiset<entry, classcom> Dfull;
+	std::multiset<entry, classcom> Gset = readTruthOutput(data, minOverlap, isSimulated); // ground truth
+	std::multiset<entry, classcom> Sset; // software output
 
 	if(B) {
 		std::ifstream reads(B);
-		Dfull = readBellaOutput(reads);
-		evaluate(Dfull, Gfull, minOverlap);
+		Sset = readBellaOutput(reads);
+		duplicate = true;
+		std::cout << "Bella" << std::endl;
+		evaluate(Sset, Gset, minOverlap, duplicate);
 	}
 
-	//if(m) {
-	//	Dfull = readMinimapOutput(m);
-	//	evaluate(Dfull, Gfull, minOverlap);
-	//}
+	if(m) {
+		std::ifstream reads(m);
+		Sset = readMinimapOutput(reads);
+		duplicate = true;
+		std::cout << "Minimap2" << std::endl;
+		evaluate(Sset, Gset, minOverlap, duplicate);
+	}
+
 	//if(M) {
-	//	Dfull = readMecatOutput(M, i);
-	//	evaluate(Dfull, Gfull, minOverlap);
+	//	Sset = readMecatOutput(M, i);
+	//	evaluate(Sset, Gset, minOverlap);
 	//}
 	//if(L) {
-	//	Dfull = readBlasrOutput(L);
-	//	evaluate(Dfull, Gfull, minOverlap);
+	//	Sset = readBlasrOutput(L);
+	//	evaluate(Sset, Gset, minOverlap);
 	//} 
 	//if(H) {
-	//	Dfull = readMhapOutput(H);
-	//	evaluate(Dfull, Gfull, minOverlap);
+	//	Sset = readMhapOutput(H);
+	//	evaluate(Sset, Gset, minOverlap);
 	//}
 	//if(D) {
-	//	Dfull = readDalignerOutput(D);
-	//	evaluate(Dfull, Gfull, minOverlap);
+	//	Sset = readDalignerOutput(D);
+	//	evaluate(Sset, Gset, minOverlap);
 	//}
 }
