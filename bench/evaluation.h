@@ -27,6 +27,10 @@
 #include <iomanip>
 #include "def.h"
 
+#ifndef DEBUG
+#define DEBUG
+#endif
+
 std::multiset<entry, classcom> cutShortOverlaps(std::multiset<entry, classcom>& s, int minOverlap) {
 
 	std::multiset<entry, classcom> Sset;
@@ -41,6 +45,38 @@ std::multiset<entry, classcom> cutShortOverlaps(std::multiset<entry, classcom>& 
 void estimateOverlap(int begV, int endV, int lenV, int begH, int endH, int lenH, int& overlap)
 {
 	overlap = min(begV, begH) + min(lenV - endV, lenH - endH) + ((endV - begV) + (endH - begH)) / 2;
+}
+
+// from mecat index file to a std::map<uint32_t, std::string>
+void tomap(std::ifstream& idx2read, std::map<std::string, std::string>& namestable)
+{
+	std::string num, name, seq, idx;
+
+	if(idx2read.is_open()) {
+		std::string line;
+		while(getline(idx2read, line)) {
+			std::stringstream lineStream(line);
+
+			getline(lineStream, num,	' ');
+			getline(lineStream, name,	' ');
+			getline(idx2read, seq);
+
+			idx = num;
+			name.erase(0, 1);	// remove first char '>'
+			namestable.insert(std::make_pair(idx, name));
+		}
+	}
+	else exit(1);
+}
+
+// from mecat numeric id to read name
+std::string toread(std::string& idx, std::map<std::string, std::string>& namestable)
+{
+	std::string name;
+	auto it = namestable.find(idx);
+
+	if(it != namestable.end()) return namestable[idx];
+	else exit(1);
 }
 
 std::multiset<entry, classcom> readTruthOutput(std::ifstream& file, int minOverlap, bool isSimulated)
@@ -185,7 +221,69 @@ std::multiset<entry, classcom> readBellaOutput(std::ifstream& file)
 	for(int i = 0; i < maxt; ++i)
 		result.insert(local[i].begin(), local[i].end());
 #ifdef DEBUG
-	std::cout << "BELLA identified " << 2*result.size() << " overlaps." << std::endl;
+	std::cout << "Bella identified " << 2*result.size() << " overlaps" << std::endl;
+#endif
+	return result;
+};
+
+std::multiset<entry, classcom> readMecatOutput(std::ifstream& file, std::ifstream& index)
+{
+	std::map<std::string, std::string> namestable;
+	tomap(index, namestable);
+
+	int maxt = 1;
+#pragma omp parallel
+	{
+		maxt = omp_get_num_threads();
+	}
+
+	int nOverlap = std::count(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>(), '\n');
+	file.seekg(0,std::ios_base::beg);
+	std::vector<std::string> entries;
+
+	if(file)
+		for (int i = 0; i < nOverlap; ++i) {
+			std::string line;
+			std::getline(file, line);
+			entries.push_back(line);
+		}
+	file.close();
+
+	std::multiset<entry, classcom> result;
+	std::vector<std::multiset<entry, classcom>> local(maxt);
+
+#pragma omp parallel for
+	for(int i = 0; i < nOverlap; i++) {
+		std::stringstream linestream(entries[i]);
+		int ithread = omp_get_thread_num();
+
+		std::vector<std::string> v = split(entries[i], '\t');
+		entry ientry;
+
+	//	std::cout << "What's up, dude?" << std::endl;
+		ientry.a = "@" + toread(v[0], namestable);
+		ientry.b = "@" + toread(v[1], namestable);
+
+	//	mecat format
+		int begV = std::stoi(v[5]);
+		int endV = std::stoi(v[6]);
+		int lenV = std::stoi(v[7]);
+		int begH = std::stoi(v[9]);
+		int endH = std::stoi(v[10]);
+		int lenH = std::stoi(v[11]);
+
+	//	the positions are zero-based and are based on the forward strand, whatever which strand the sequence is mapped
+	//	(int begV, int endV, int lenV, int begH, int endH, int lenH, int overlap)
+		estimateOverlap(begV, endV, lenV, 
+				begH, endH, lenH, ientry.overlap);
+
+		local[ithread].insert(ientry);
+	}
+
+	for(int i = 0; i < maxt; ++i)
+		result.insert(local[i].begin(), local[i].end());
+#ifdef DEBUG
+	std::cout << "Mecat identified " << 2*result.size() << " overlaps" << std::endl;
 #endif
 	return result;
 };
@@ -250,16 +348,11 @@ std::multiset<entry, classcom> readMinimapOutput(std::ifstream& file)
 	for(int i = 0; i < maxt; ++i)
 		result.insert(local[i].begin(), local[i].end());
 #ifdef DEBUG
-	std::cout << "MINIMAP2 identified " << 2*result.size() << " overlaps." << std::endl;
+	std::cout << "Minimap2 identified " << 2*result.size() << " overlaps" << std::endl;
 #endif
 	return result;
 };
 
-//std::set<entry, classcom> readMecatOutput(std::ifstream& output)
-//{
-//
-//};
-//
 //std::set<entry, classcom> readMhapOutput(std::ifstream& output)
 //{
 //

@@ -166,10 +166,15 @@ int main (int argc, char* argv[]) {
 		evaluate(Sset, Gset, minOverlap, duplicate);
 	}
 
-	//if(M) {
-	//	Sset = readMecatOutput(M, i);
-	//	evaluate(Sset, Gset, minOverlap);
-	//}
+	if(M) {
+		std::ifstream reads(M);
+		std::ifstream index(i);
+		Sset = readMecatOutput(reads, index);
+		duplicate = true;
+		std::cout << "Mecat" << std::endl;
+		evaluate(Sset, Gset, minOverlap, duplicate);
+	}
+
 	//if(L) {
 	//	Sset = readBlasrOutput(L);
 	//	evaluate(Sset, Gset, minOverlap);
