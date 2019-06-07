@@ -72,6 +72,7 @@ BELLA outputs alignments in a format similar to [BLASR's M4 format](https://gith
 ```HTML
 [A ID] [B ID] [# shared k-mers] [alignment score] [overlap length] [n=B fwd, c=B rc] [A start] [A end] [A length] [B start] [B end] [B length]
 ```
+The positions are zero-based and are based on the forward strand, whatever which strand the sequence is mapped.
 If **-p** option is used, BELLA outputs alignments in [PAF format](https://github.com/lh3/miniasm/blob/master/PAF.md). Example output (tab-delimited):
 
 ```HTML
