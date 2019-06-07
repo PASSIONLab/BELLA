@@ -199,7 +199,8 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
 
             		if(b_parameters.skipEstimate == false)
             		{
-                        	// accuracy
+				cout<<quals[i][j];        		
+                	// accuracy
                        		int bqual = (int)quals[i][j] - ASCIIBASE;
                         	double berror = pow(10,-(double)bqual/10);
                         	rerror += berror;
@@ -211,6 +212,7 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
                     	// remaining k qual position accuracy
                     	for(int j=len-kmer_len+1; j < len; j++)
                     	{
+				cout<<quals[i][j];
                         	int bqual = (int)quals[i][j] - ASCIIBASE;
                         	double berror = pow(10,-(double)bqual/10);
                         	rerror += berror;
@@ -218,6 +220,9 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
                     	rerror = rerror / len;
                     	allquals[MYTHREAD].push_back(rerror);
 		    }
+				
+		cout<<"\n";
+		cout<<rerror<<"\n";
                 } // for(int i=0; i<nreads; i++)
                 tlreads += nreads;
             } //while(fillstatus) 
@@ -317,6 +322,7 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
     //cout << "Bucket count: " << countsdenovo.bucket_count() << std::endl;
     //cout << "Load factor: " << countsdenovo.load_factor() << std::endl;
     countsdenovo.clear(); // free
+	exit(0);
 
 }
 #endif
