@@ -29,6 +29,8 @@
 #include <map>
 #include <unordered_map>
 #include <omp.h>
+#include <fstream>
+#include <typeinfo>
 
 #include "libcuckoo/cuckoohash_map.hh"
 #include "libbloom/bloom64.h"
@@ -164,6 +166,10 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
     double denovocount = omp_get_wtime();
     double cardinality;
     size_t totreads = 0;
+    
+
+    //for testing
+    ofstream outfile ("test_error_rate.txt");
 
     for(auto itr=allfiles.begin(); itr!=allfiles.end(); itr++) 
     {
@@ -198,8 +204,7 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
                         hlls[MYTHREAD].add((const char*) lexsmall.getBytes(), lexsmall.getNumBytes());
 
             		if(b_parameters.skipEstimate == false)
-            		{
-				cout<<quals[i][j];        		
+            		{        		
                 	// accuracy
                        		int bqual = (int)quals[i][j] - ASCIIBASE;
                         	double berror = pow(10,-(double)bqual/10);
@@ -212,17 +217,17 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
                     	// remaining k qual position accuracy
                     	for(int j=len-kmer_len+1; j < len; j++)
                     	{
-				cout<<quals[i][j];
                         	int bqual = (int)quals[i][j] - ASCIIBASE;
                         	double berror = pow(10,-(double)bqual/10);
                         	rerror += berror;
                     	}
+			
                     	rerror = rerror / len;
+			
                     	allquals[MYTHREAD].push_back(rerror);
 		    }
 				
-		cout<<"\n";
-		cout<<rerror<<"\n";
+		
                 } // for(int i=0; i<nreads; i++)
                 tlreads += nreads;
             } //while(fillstatus) 
@@ -231,7 +236,9 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
             #pragma omp critical
             totreads += tlreads;
         }
+	
     }
+    
 
     // Error estimation
     if(b_parameters.skipEstimate == false)
@@ -244,8 +251,13 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
                 erate += temp/(double)allquals[i].size();
             }
         erate = erate / (double)MAXTHREADS;
+	
+	
     }
 
+    cout<<erate<<"\n";
+    outfile<<erate<<"\n";
+    outfile.close();
     // HLL reduction (serial for now) to avoid double iteration
     for (int i = 1; i < MAXTHREADS; i++) 
     {
@@ -295,6 +307,7 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
     cout << "Second pass of k-mer counting took: " << omp_get_wtime() - firstpass << "s\n" << endl;
     //cout << "countsdenovo.size() " << countsdenovo.size() << endl;
     // Reliable bounds computation using estimated error rate from phred quality score
+    cout<<"error rate"<<erate<<"\n";
     lower = computeLower(depth, erate, kmer_len);
     upper = computeUpper(depth, erate, kmer_len);
 
