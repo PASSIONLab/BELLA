@@ -34,6 +34,8 @@
 
 #include "libcuckoo/cuckoohash_map.hh"
 #include "libbloom/bloom64.h"
+#include "gerbil/include/gerbil/Application.h"
+
 
 #include "kmercode/hash_funcs.h"
 #include "kmercode/Kmer.hpp"
@@ -167,7 +169,10 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
     double cardinality;
     size_t totreads = 0;
     
-
+    //
+	Application application(17,/*"/global/homes/q/qizhou/bella/paeruginosa30x_0001_5reads.fastq"*/"/global/cscratch1/sd/qizhou/synthetic_datasets/abaumannii30x_0001.fastq","tempDir",0,"outputTRY");
+        application.process();
+    //
     //for testing
     ofstream outfile ("test_error_rate.txt");
 
