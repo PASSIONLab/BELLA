@@ -197,6 +197,8 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
                         allkmers[MYTHREAD].push_back(lexsmall);
                         hlls[MYTHREAD].add((const char*) lexsmall.getBytes(), lexsmall.getNumBytes());
 
+                        // TODO: build a cuckoo hash table with the HOPC k-mer as a string for the key and counts/ids are the values
+
             		if(b_parameters.skipEstimate == false)
             		{
                         	// accuracy
@@ -262,13 +264,20 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
 #endif
 
     dictionary_t countsdenovo;
+    
+    cuckoohash_map<std::string, int> countsdenovo_hopc;
+    cuckoohash_map<std::string, int> countsreliable_hopc; //TODO: use these for HOPC
 
 #pragma omp parallel
-    {       
+    {
     	for(auto v:allkmers[MYTHREAD])
     	{
-        	bool inBloom = (bool) bloom_check_add(bm, v.getBytes(), v.getNumBytes(),1);
-        	if(inBloom) countsdenovo.insert(v, 0);
+          // TODO: add wrapper to check if we are using HOPC instead of having on all the time (but put outside of pragma)
+          Kmer hopc = v.getHOPC(); //TODO: create HOPC function so that this can work
+          bool inBloom = (bool) bloom_check_add(bm, hopc.getBytes(), hopc.getNumBytes(), 1); //TODO: alternatively, if I convert to HOPC as a string, then I need to figure out how to send it as bytes here
+          if(inBloom) countsdenovo.insert(hopc, 0); // TODO: understand this line and what it should be (should I be using v or hopc?)
+        	// bool inBloom = (bool) bloom_check_add(bm, v.getBytes(), v.getNumBytes(),1);
+        	// if(inBloom) countsdenovo.insert(v, 0);
     	}
     }
 

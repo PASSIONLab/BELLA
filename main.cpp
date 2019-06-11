@@ -361,10 +361,12 @@ if(b_parameters.alignEnd)
                     std::string kmerstrfromfastq = seqs[i].substr(j, kmer_len);
                     Kmer mykmer(kmerstrfromfastq.c_str());
                     // remember to use only ::rep() when building kmerdict as well
-                    Kmer lexsmall = mykmer.rep();
+                    Kmer lexsmall = mykmer.rep(); //TODO: decide how to handle rep() with HOPC versions
 
+                    auto hopc = lexsmall.getHOPC(); // TODO: make this method work
                     int idx; // kmer_id
-                    auto found = countsreliable.find(lexsmall,idx);
+                    auto found = countsreliable.find(hopc,idx); //TODO: look for HOPC instead of the regular kmer (because that's what we're storing)
+                    // auto found = countsreliable.find(lexsmall,idx);
                     if(found)
                     {
                         alloccurrences[MYTHREAD].emplace_back(std::make_tuple(read_id+i,idx,j)); // vector<tuple<read_id,kmer_id,kmerpos>>
