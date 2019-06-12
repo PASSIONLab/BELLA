@@ -331,7 +331,7 @@ void LocalSpGEMM(IT & start, IT & end, const CSC<IT,NT> & A, const CSC<IT,NT> & 
                 	{
                     		if (globalHashVec[hash].first == key) //key is found in hash table
                     		{
-                            		globalHashVec[hash].second = addop(result, globalHashVec[hash].second);
+                            		globalHashVec[hash].second = addop(result, globalHashVec[hash].second, key, i);
                         		break;
                     		}
                     		else if (globalHashVec[hash].first == -1) //key is not registered yet
@@ -580,27 +580,27 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
                 seqAnResult maxExtScore;
                 bool passed = false;
 
-                if(val->count == 1)
-                {
-                    auto it = val->pos.begin();
-                    int i = it->first, j = it->second;
+                //if(val->count == 1)
+                //{
+                auto it = val->pos.begin();
+                int i = it->first, j = it->second;
 
-                    maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, xdrop, kmer_len);
-                    PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
-                }
-                else
-                {
-                    for(auto it = val->pos.begin(); it != val->pos.end(); ++it) // if !b_pars.allKmer this should be at most two cycle
-                    {
-                        int i = it->first, j = it->second;
-
-                        maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, xdrop, kmer_len);
-                        PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
-
-                        if(passed)
-                            break;
-                    }
-                }
+                maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, xdrop, kmer_len);
+                PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
+                //}
+                //else
+                //{
+                //    for(auto it = val->pos.begin(); it != val->pos.end(); ++it) // if !b_pars.allKmer this should be at most two cycle
+                //    {
+                //        int i = it->first, j = it->second;
+//
+                //        maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, xdrop, kmer_len);
+                //        PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
+//
+                //        if(passed)
+                //            break;
+                //    }
+                //}
 #ifdef TIMESTEP
             numBasesAlignedThread += endPositionV(maxExtScore.seed)-beginPositionV(maxExtScore.seed);
 #endif
