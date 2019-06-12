@@ -170,7 +170,7 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
     size_t totreads = 0;
     
     //
-	Application application(17,/*"/global/homes/q/qizhou/bella/paeruginosa30x_0001_5reads.fastq"*/"/global/cscratch1/sd/qizhou/synthetic_datasets/abaumannii30x_0001.fastq","tempDir",0,"outputTRY");
+	gerbil::Application application(17,/*"/global/homes/q/qizhou/bella/paeruginosa30x_0001_5reads.fastq"*/"/global/cscratch1/sd/qizhou/synthetic_datasets/abaumannii30x_0001.fastq","tempDir",0,"outputTRY");
         application.process();
     //
     //for testing

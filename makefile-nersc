@@ -2,13 +2,25 @@ RMATPATH = mtspgemm2017/GTgraph/R-MAT
 SPRNPATH = mtspgemm2017/GTgraph/sprng2.0-lite
 SEQANPATH = seqan
 include mtspgemm2017/GTgraph/Makefile.var
-INCLUDE = -I$(SPRNPATH)/include #-I$(CURDIR)/libgaba
+INCLUDE = -I$(SPRNPATH)/include -I${BOOST_ROOT}/include   #-I$(CURDIR)/libgaba
 SEQINCLUDE = -I$(SEQANPATH)
 MLKINCLUDE = -I/opt/intel/composer_xe_2015.0.039/mkl/include
 LIBPATH = -L/opt/intel/composer_xe_2015.0.039/mkl/lib 
 COMPILER = g++
 CC = gcc
-CFLAGS = -I. -O3 -W -Wall -Wextra -pedantic -ansi -c
+CFLAGS = -I. -std=c++14 -O3 -W -Wall -Wextra -pedantic -ansi -c -fpermissive
+
+CUDACC := ${CUDA_ROOT}/bin/nvcc
+NVCC_FLAGS := -DGPU -O3
+
+
+CPP_SRC := $(wildcard gerbil/src/gerbil/*.cpp)
+CPP_OBJ := $(patsubst %.cpp,%.o,$(CPP_SRC))
+CPP_OBJ := $(filter-out gerbil/src/gerbil/toFasta.o,$(CPP_OBJ))
+INC_INT := -Igerbil/include/gerbil -Igerbil/include/cuda_ds -Igerbil/include/cuda_ds/CountingHashTable
+
+CUDA_SRC := $(wildcard gerbil/src/cuda_ds/*.cu)
+CUDA_OBJ := $(patsubst %.cu,%.o,$(CUDA_SRC))
 
 #SEQFLAGS = -DSEQAN_ARCH_SSE4=1 -DSEQAN_ARCH_AVX2=1 -DSEQAN_BGZF_NUM_THREADS=1
 
@@ -18,7 +30,8 @@ sprng:
 rmat:	sprng
 	(cd $(RMATPATH); $(MAKE); cd ../..)
 
-LIBS = -L$(CURDIR)/libbloom/build -lbloom #-L$(CURDIR)/libgaba -lgaba
+LIBS = -L$(CURDIR)/libbloom/build -lbloom -L${BOOST_LIB} -lboost_system -lboost_filesystem -lboost_regex -lpthread -lbz2 -lz
+   #-L$(CURDIR)/libgaba -lgaba
 
 Buffer.o: kmercode/Buffer.c
 	$(CC) -O3 -fopenmp -c -o Buffer.o kmercode/Buffer.c
@@ -45,9 +58,16 @@ Kmer.o:	kmercode/Kmer.cpp
 	$(COMPILER) -fopenmp -std=c++11 -O3 -c -o Kmer.o kmercode/Kmer.cpp
 
 # flags defined in mtspgemm2017/GTgraph/Makefile.var
-bella: main.cpp hash_funcs.o fq_reader.o Buffer.o Kmer.o bound.o optlist.o rmat bloomlib 
+bella: main.cpp hash_funcs.o fq_reader.o Buffer.o Kmer.o bound.o optlist.o rmat bloomlib $(CUDA_OBJ) $(CPP_OBJ)
 	#gabalib
-	$(COMPILER) -std=c++14 -O3 $(INCLUDE) -march=native -fopenmp -fpermissive $(SEQINCLUDE) -o bella hash_funcs.o Kmer.o Buffer.o fq_reader.o bound.o optlist.o main.cpp ${LIBS}
+	$(COMPILER) -std=c++14 -O3 $(INCLUDE) -march=native -fopenmp -fpermissive $(SEQINCLUDE) -o bella hash_funcs.o Kmer.o Buffer.o fq_reader.o bound.o optlist.o $(CPP_OBJ) $(CUDA_OBJ) main.cpp ${LIBS}
+
+%.o: %.cu
+	$(CUDACC) $(NVCC_FLAGS) -c $< -o $@
+
+%.o: %.cpp
+	$(CXX) $(CFLAGS) -c $< -o $@ $(INCLUDE)
+
 # add -D__LIBCUCKOO_SERIAL to run lubcuckoo in a single thread
 clean:
 	(cd mtspgemm2017/GTgraph; make clean; cd ../..)
