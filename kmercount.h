@@ -150,6 +150,44 @@ void JellyFishCount(char *kmer_file, dictionary_t & countsreliable_jelly, int lo
     countsjelly.clear(); // free 
 }
 
+
+
+void GerbilCount(string tempDir,string fileName,dictionary_t &countsreliable_denovo, int & lower, int & upper, int kmer_len, int depth, double & erate, size_t upperlimit, BELLApars & b_parameters){
+	gerbil::Application application(kmer_len,fileName,tempDir,1,"outputTRY",b_parameters.skipEstimate);
+        application.process();
+	erate = application.getErate();
+	lower = computeLower(depth, erate, kmer_len);
+    	upper = computeUpper(depth, erate, kmer_len);	
+	
+	vector<pair<string,unsigned int>> listKmer;
+	listKmer = application.getListKmer();
+
+	// Reliable k-mer filter on countsdenovo
+    	int kmer_id_denovo = 0;
+    	
+	
+	int listLength = listKmer.size();
+    	for(int i = 0; i<listLength; i++)
+        if (get<1>(listKmer[i]) >= lower && get<1>(listKmer[i]) <= upper)
+        {
+           	Kmer mykmer(get<0>(listKmer[i]).c_str());
+		countsreliable_denovo.insert(mykmer,kmer_id_denovo);
+        	++kmer_id_denovo;
+        }
+    	
+    	// Print some information about the table
+    	if (countsreliable_denovo.size() == 0)
+   	{
+        	cout << "BELLA terminated: 0 entries within reliable range (reduce k-mer length)\n" << endl;
+        	exit(0);
+    	}
+    	else
+    	{
+        	cout << "Entries within reliable range: " << countsreliable_denovo.size() << endl;
+    	}
+}
+
+
 /**
  * @brief DeNovoCount
  * @param allfiles
@@ -260,9 +298,7 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
 	
     }
 
-    cout<<erate<<"\n";
-    outfile<<erate<<"\n";
-    outfile.close();
+    
     // HLL reduction (serial for now) to avoid double iteration
     for (int i = 1; i < MAXTHREADS; i++) 
     {
