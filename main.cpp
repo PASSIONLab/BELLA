@@ -425,13 +425,11 @@ if(b_parameters.alignEnd)
                     Kmer mykmer(kmerstrfromfastq.c_str(), kmerstrfromfastq.length());
                     bool found;
                     int idx; // kmer_id
-                    Kmer lexsmall;
+                    Kmer lexsmall = mykmer.rep();
                     // remember to use only ::rep() when building kmerdict as well
                     // TODO: figure out what kmerdict is, because it doesn't actually exist
                     if (b_parameters.useHOPC) { // TODO: see if this if should be on the outside of a loop for efficiency
-                      lexsmall = mykmer.getHOPC(); // ::getHOPC() includes ::rep()
-                    } else {
-                      lexsmall = mykmer.rep();
+                      lexsmall = mykmer.getHOPC();
                     }
                     found = countsreliable.find(lexsmall, idx);
 
