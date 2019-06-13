@@ -133,7 +133,7 @@ Kmer::Kmer(const char *s, unsigned int len) {
 // pre:  
 // post: the DNA string in _km and is the same as in km 
 Kmer& Kmer::operator=(const Kmer& o) {
-  length = o.length; //TODO: test
+  length = o.length;
   if (this != &o) {
     for (size_t i = 0; i < N_LONGS; i++) {
       longs[i] = o.longs[i];
@@ -189,7 +189,7 @@ bool Kmer::operator<(const Kmer& o) const {
 // pre:  
 // post: b is true <==> the DNA strings in km1 and km2 are equal
 bool Kmer::operator==(const Kmer& o) const {
-  // TODO: define if they are not the same length
+  if(length != o.length) return false;
   for (size_t i = 0; i < N_LONGS; i++) {
     if (longs[i] != o.longs[i]) {
       return false;
@@ -206,7 +206,7 @@ void Kmer::set_kmer(const char *s, unsigned int len)  {
   size_t i,j,l;
   memset(bytes.data(),0,N_BYTES);
 
-  length = len; // TODO: test
+  length = len;
   for (i = 0; i < length; ++i) {
     j = i % 32;
     l = i/32;
@@ -325,7 +325,7 @@ Kmer Kmer::rep() const {
 Kmer Kmer::twin() const {
   Kmer km(*this);
 
-  size_t nlongs = (length+31)/32; // TODO: use length
+  size_t nlongs = (length+31)/32;
   
   for (size_t i = 0; i < nlongs; i++) {
     uint64_t v = longs[i];
@@ -359,19 +359,19 @@ Kmer Kmer::twin() const {
 // pre:  0 <= index < 8
 // post: gives the forward kmer with the (index % 4) character in 'A','C','G' or 'T' if index < 4
 //       else the backward kmer with the (index % 4) character in 'A','C','G' or 'T'
-Kmer Kmer::getLink(const size_t index) const {
-  assert(index >= 0 && index < 8);
-  char c;
-
-  switch (index % 4) {
-    case 0: c = 'A'; break;
-    case 1: c = 'C'; break;
-    case 2: c = 'G'; break;
-    case 3: c = 'T'; break;
-  }
-  
-  return (index < 4) ? forwardBase(c) : backwardBase(c);
-}
+// Kmer Kmer::getLink(const size_t index) const {
+//   assert(index >= 0 && index < 8);
+//   char c;
+// 
+//   switch (index % 4) {
+//     case 0: c = 'A'; break;
+//     case 1: c = 'C'; break;
+//     case 2: c = 'G'; break;
+//     case 3: c = 'T'; break;
+//   }
+// 
+//   return (index < 4) ? forwardBase(c) : backwardBase(c);
+// }
 
 
 // use:  fw = km.forwardBase(c)
@@ -379,42 +379,42 @@ Kmer Kmer::getLink(const size_t index) const {
 // post: fw is the forward kmer from km with last character c,
 //       i.e. if the DNA string in km is 'ACGT' and c equals 'T' then
 //       the DNA string in fw is 'CGTT'
-Kmer Kmer::forwardBase(const char b) const {
-  Kmer km(*this);
+// Kmer Kmer::forwardBase(const char b) const {
+//   Kmer km(*this);
+// 
+//   km.longs[0] = km.longs[0] << 2;
+//   size_t nlongs = (length+31)/32;
+//   for (size_t i = 1; i < nlongs; i++) {
+//     km.longs[i-1] |= (km.longs[i] & (3ULL<<62)) >> 62;
+//     km.longs[i]  = km.longs[i] << 2;
+//   }
+//   uint64_t x = (b & 4) >>1;
+//   km.longs[nlongs-1] |= (x + ((x ^ (b & 2)) >>1 )) << (2*(31-((length-1)%32)));
+// 
+//   return km;
+// /********
+//   km.shiftBackward(2);
+//   assert(k_bytes>0);
+//   km.bytes[k_bytes-1] &= Kmer::k_modmask;
+// 
+//   switch(b) {
+//     case 'A': km.bytes[k_bytes-1] |= 0x00 << s; break;
+//     case 'C': km.bytes[k_bytes-1] |= 0x01 << s; break;
+//     case 'G': km.bytes[k_bytes-1] |= 0x02 << s; break;
+//     case 'T': km.bytes[k_bytes-1] |= 0x03 << s; break;
+//   }
+// 
+//   return km;
+// */
+// }
 
-  km.longs[0] = km.longs[0] << 2;
-  size_t nlongs = (length+31)/32;
-  for (size_t i = 1; i < nlongs; i++) {
-    km.longs[i-1] |= (km.longs[i] & (3ULL<<62)) >> 62;
-    km.longs[i]  = km.longs[i] << 2;
-  }
-  uint64_t x = (b & 4) >>1;
-  km.longs[nlongs-1] |= (x + ((x ^ (b & 2)) >>1 )) << (2*(31-((length-1)%32)));
 
-  return km;
-/********
-  km.shiftBackward(2);
-  assert(k_bytes>0);
-  km.bytes[k_bytes-1] &= Kmer::k_modmask;
-
-  switch(b) {
-    case 'A': km.bytes[k_bytes-1] |= 0x00 << s; break;
-    case 'C': km.bytes[k_bytes-1] |= 0x01 << s; break;
-    case 'G': km.bytes[k_bytes-1] |= 0x02 << s; break;
-    case 'T': km.bytes[k_bytes-1] |= 0x03 << s; break;
-  }
-
-  return km;
-*/
-}
-
-
-bool Kmer::equalUpToLastBase(const Kmer & rhs)
-{
-	Kmer Ashifted = rhs.backwardBase('A');
-	Kmer Bshifted = backwardBase('A');
-	return (Ashifted == Bshifted);
-}
+// bool Kmer::equalUpToLastBase(const Kmer & rhs)
+// {
+// 	Kmer Ashifted = rhs.backwardBase('A');
+// 	Kmer Bshifted = backwardBase('A');
+// 	return (Ashifted == Bshifted);
+// }
 
 
 	
@@ -424,45 +424,45 @@ bool Kmer::equalUpToLastBase(const Kmer & rhs)
 // post: bw is the backward kmer from km with first character c,
 //       i.e. if the DNA string in km is 'ACGT' and c equals 'T' then
 //       the DNA string in bw is 'TACG'
-Kmer Kmer::backwardBase(const char b) const {
-  Kmer km(*this);
-  
-  size_t nlongs = (length+31)/32; // TODO: use length
-  km.longs[nlongs-1] = km.longs[nlongs-1] >>2;
-  km.longs[nlongs-1] &= (length%32) ? (((1ULL << (2*(length%32)))-1) << 2*(32-(length%32))) : ~0ULL;
-
-  for (size_t i = 1; i < nlongs; i++) {
-    km.longs[nlongs-i] |= (km.longs[nlongs-i-1] & 3ULL) << 62;
-    km.longs[nlongs-i-1] = km.longs[nlongs-i-1] >>2;
-  }
-  uint64_t x = (b & 4) >> 1;
-  km.longs[0] |= (x + ((x ^ (b & 2)) >> 1)) << 62;
-
-  return km;
-
-  /*
-  km.shiftForward(2);
-  assert(k_bytes>0);
-  km.bytes[k_bytes-1] &= Kmer::k_modmask;
-
-  if (k%4 == 0 and k_bytes < N_BYTES) {
-    km.bytes[k_bytes] = 0x00;
-  }
-
-  switch(b) {
-    case 'A': km.bytes[0] |= 0x00; break;
-    case 'C': km.bytes[0] |= 0x01; break;
-    case 'G': km.bytes[0] |= 0x02; break;
-    case 'T': km.bytes[0] |= 0x03; break;
-  }
-
-  return km;
-  */
-}
+// Kmer Kmer::backwardBase(const char b) const {
+//   Kmer km(*this);
+// 
+//   size_t nlongs = (length+31)/32;
+//   km.longs[nlongs-1] = km.longs[nlongs-1] >>2;
+//   km.longs[nlongs-1] &= (length%32) ? (((1ULL << (2*(length%32)))-1) << 2*(32-(length%32))) : ~0ULL;
+// 
+//   for (size_t i = 1; i < nlongs; i++) {
+//     km.longs[nlongs-i] |= (km.longs[nlongs-i-1] & 3ULL) << 62;
+//     km.longs[nlongs-i-1] = km.longs[nlongs-i-1] >>2;
+//   }
+//   uint64_t x = (b & 4) >> 1;
+//   km.longs[0] |= (x + ((x ^ (b & 2)) >> 1)) << 62;
+// 
+//   return km;
+// 
+//   /*
+//   km.shiftForward(2);
+//   assert(k_bytes>0);
+//   km.bytes[k_bytes-1] &= Kmer::k_modmask;
+// 
+//   if (k%4 == 0 and k_bytes < N_BYTES) {
+//     km.bytes[k_bytes] = 0x00;
+//   }
+// 
+//   switch(b) {
+//     case 'A': km.bytes[0] |= 0x00; break;
+//     case 'C': km.bytes[0] |= 0x01; break;
+//     case 'G': km.bytes[0] |= 0x02; break;
+//     case 'T': km.bytes[0] |= 0x03; break;
+//   }
+// 
+//   return km;
+//   */
+// }
 
 // use: hopc = km.getHOPC()
 // pre:
-// post: hopc is km.rep() with repeats removed and the last base repeated to reach length of k
+// post: hopc is km with repeats removed and the last base repeated to reach length of k
 //      i.e. if the sequence is ATTTGCC, then hopc will be ATGCCCC
 Kmer Kmer::getHOPC() const {
   // TODO: make it efficient
