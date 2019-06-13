@@ -59,9 +59,13 @@ class Kmer {
 
   Kmer twin() const;
   Kmer rep() const; // ABAB: return the smaller of itself (lexicographically) or its reversed-complement (i.e. twin)
-  Kmer getLink(const size_t index) const;
-  Kmer forwardBase(const char b) const;
-  Kmer backwardBase(const char b) const;
+  
+  // NOTE: commented out for version with Kmers of variable lengths because of lack of testing
+  // Kmer getLink(const size_t index) const;
+  // Kmer forwardBase(const char b) const;
+  // Kmer backwardBase(const char b) const;
+  // bool equalUpToLastBase(const Kmer & rhs);	// returns true for completely identical k-mers as well as k-mers that only differ at the last base
+
   Kmer getHOPC() const;
   std::string getBinary() const;  
   void toString(char * s) const;
@@ -86,7 +90,6 @@ class Kmer {
         return N_BYTES;
   }
   
-  bool equalUpToLastBase(const Kmer & rhs);	// returns true for completely identical k-mers as well as k-mers that only differ at the last base
 
   // static functions
   static void set_k(unsigned int _k);
