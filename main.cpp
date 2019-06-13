@@ -164,6 +164,13 @@ int main (int argc, char *argv[]) {
                 erate = strtod(thisOpt->argument, NULL);
                 break;
             }
+	    case 'g':{ // if set, this should explicitly allow Bella to use the error estimation from the reads
+		b_parameters.skipEstimate = false;
+	    }
+	    case 's':{
+		b_parameters.skipEstimate = true;
+		erate = 0.15;
+	    }
             case 'a': {
                 b_parameters.defaultThr = atoi(thisOpt->argument);
                 b_parameters.adapThr = false;
@@ -295,8 +302,8 @@ int main (int argc, char *argv[]) {
     // Error estimation and reliabe bounds computation within denovo counting
     cout << "\nRunning with up to " << MAXTHREADS << " threads" << endl;
     double all = omp_get_wtime();
-    DeNovoCount(allfiles, countsreliable, lower, upper, kmer_len, depth, erate, upperlimit, b_parameters);
-
+   // DeNovoCount(allfiles, countsreliable, lower, upper, kmer_len, depth, erate, upperlimit, b_parameters);
+    GerbilCount("tempDir","/global/cscratch1/sd/qizhou/synthetic_datasets/abaumannii30x_0001.fastq",countsreliable,lower, upper, kmer_len,  depth, erate,  upperlimit, b_parameters);
 #ifdef PRINT
     cout << "Error rate estimate is " << erate << endl;
     cout << "Reliable lower bound: " << lower << endl;

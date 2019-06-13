@@ -155,7 +155,10 @@ void JellyFishCount(char *kmer_file, dictionary_t & countsreliable_jelly, int lo
 void GerbilCount(string tempDir,string fileName,dictionary_t &countsreliable_denovo, int & lower, int & upper, int kmer_len, int depth, double & erate, size_t upperlimit, BELLApars & b_parameters){
 	gerbil::Application application(kmer_len,fileName,tempDir,1,"outputTRY",b_parameters.skipEstimate);
         application.process();
-	erate = application.getErate();
+
+	if(!b_parameters.skipEstimate){//error estimated by the tool
+		erate = application.getErate();
+	}	
 	lower = computeLower(depth, erate, kmer_len);
     	upper = computeUpper(depth, erate, kmer_len);	
 	
@@ -185,6 +188,7 @@ void GerbilCount(string tempDir,string fileName,dictionary_t &countsreliable_den
     	{
         	cout << "Entries within reliable range: " << countsreliable_denovo.size() << endl;
     	}
+	
 }
 
 
