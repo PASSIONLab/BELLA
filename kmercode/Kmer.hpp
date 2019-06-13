@@ -34,7 +34,7 @@ class Kmer {
 
   Kmer();
   Kmer(const Kmer& o);
-  explicit Kmer(const char *s);
+  explicit Kmer(const char *s, unsigned int len);
   void copyDataFrom(uint8_t *  mybytes)	// this is like a shadow constructor (to avoid accidental signature match with the existing constructor)
   {
 	  memcpy(longs.data(), mybytes, sizeof(uint64_t) * (N_LONGS));
@@ -53,7 +53,7 @@ class Kmer {
     return !(*this == o);
   }
 
-  void set_kmer(const char *s);
+  void set_kmer(const char *s, unsigned int len);
   uint64_t hash() const;
   
 
@@ -107,6 +107,8 @@ class Kmer {
     MERARR longs;
     BYTEARR bytes;
   };
+  
+  unsigned int length;
 
   // Unions are very useful for low-level programming tasks that involve writing to the same memory area 
   // but at different portions of the allocated memory space, for instance:

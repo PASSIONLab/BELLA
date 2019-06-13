@@ -103,6 +103,7 @@ static const uint64_t twin_table[256] = {
 // pre:  
 // post: the DNA string in km is AA....AAA (k times A) 
 Kmer::Kmer() {
+  length = k;
   for (size_t i = 0; i < N_LONGS; i++) {
     longs[i] = 0;
   }
@@ -113,6 +114,7 @@ Kmer::Kmer() {
 // pre:  s[0],...,s[k] are all equal to 'A','C','G' or 'T'
 // post: the DNA string in _km and is the same as in km 
 Kmer::Kmer(const Kmer& o) {
+  length = o.length;
   for (size_t i = 0; i < N_LONGS; i++) {
     longs[i] = o.longs[i];
   }
@@ -122,8 +124,8 @@ Kmer::Kmer(const Kmer& o) {
 // use:  km = Kmer(s);
 // pre:  s[0],...,s[k] are all equal to 'A','C','G' or 'T'
 // post: the DNA string in km is now the same as s
-Kmer::Kmer(const char *s) {
-  set_kmer(s);
+Kmer::Kmer(const char *s, unsigned int len) {
+  set_kmer(s, len);
 }
 
 
@@ -131,6 +133,7 @@ Kmer::Kmer(const char *s) {
 // pre:  
 // post: the DNA string in _km and is the same as in km 
 Kmer& Kmer::operator=(const Kmer& o) {
+  length = o.length; //TODO: test
   if (this != &o) {
     for (size_t i = 0; i < N_LONGS; i++) {
       longs[i] = o.longs[i];
@@ -186,6 +189,7 @@ bool Kmer::operator<(const Kmer& o) const {
 // pre:  
 // post: b is true <==> the DNA strings in km1 and km2 are equal
 bool Kmer::operator==(const Kmer& o) const {
+  // TODO: define if they are not the same length
   for (size_t i = 0; i < N_LONGS; i++) {
     if (longs[i] != o.longs[i]) {
       return false;
@@ -198,11 +202,12 @@ bool Kmer::operator==(const Kmer& o) const {
 // use:  km.set_kmer(s);
 // pre:  s[0],...,s[k-1] are all 'A','C','G' or 'T'
 // post: The DNA string in km is now equal to s 
-void Kmer::set_kmer(const char *s)  {
+void Kmer::set_kmer(const char *s, unsigned int len)  {
   size_t i,j,l;
   memset(bytes.data(),0,N_BYTES);
-    
-  for (i = 0; i < k; ++i) {
+
+  length = len; // TODO: test
+  for (i = 0; i < length; ++i) {
     j = i % 32;
     l = i/32;
     assert(*s != '\0');
@@ -320,7 +325,7 @@ Kmer Kmer::rep() const {
 Kmer Kmer::twin() const {
   Kmer km(*this);
 
-  size_t nlongs = (k+31)/32;
+  size_t nlongs = (length+31)/32; // TODO: use length
   
   for (size_t i = 0; i < nlongs; i++) {
     uint64_t v = longs[i];
@@ -335,9 +340,9 @@ Kmer Kmer::twin() const {
       (twin_table[(v>>56)]);
   }
 
-  size_t shift = (k%32) ? 2*(32-(k%32)) : 0 ;
+  size_t shift = (length%32) ? 2*(32-(length%32)) : 0 ;
   //  uint64_t shiftmask = (k%32) ? (((1ULL << (2 * (k%32)))-1)<< shift) : ~0x0ULL;
-  uint64_t shiftmask = (k%32) ? (((1ULL<< shift)-1) << (64-shift)) : 0ULL;
+  uint64_t shiftmask = (length%32) ? (((1ULL<< shift)-1) << (64-shift)) : 0ULL;
 
   
   km.longs[0] = km.longs[0] << shift;
@@ -378,13 +383,13 @@ Kmer Kmer::forwardBase(const char b) const {
   Kmer km(*this);
 
   km.longs[0] = km.longs[0] << 2;
-  size_t nlongs = (k+31)/32;
+  size_t nlongs = (length+31)/32;
   for (size_t i = 1; i < nlongs; i++) {
     km.longs[i-1] |= (km.longs[i] & (3ULL<<62)) >> 62;
     km.longs[i]  = km.longs[i] << 2;
   }
   uint64_t x = (b & 4) >>1;
-  km.longs[nlongs-1] |= (x + ((x ^ (b & 2)) >>1 )) << (2*(31-((k-1)%32)));
+  km.longs[nlongs-1] |= (x + ((x ^ (b & 2)) >>1 )) << (2*(31-((length-1)%32)));
 
   return km;
 /********
@@ -422,9 +427,9 @@ bool Kmer::equalUpToLastBase(const Kmer & rhs)
 Kmer Kmer::backwardBase(const char b) const {
   Kmer km(*this);
   
-  size_t nlongs = (k+31)/32;
+  size_t nlongs = (length+31)/32; // TODO: use length
   km.longs[nlongs-1] = km.longs[nlongs-1] >>2;
-  km.longs[nlongs-1] &= (k%32) ? (((1ULL << (2*(k%32)))-1) << 2*(32-(k%32))) : ~0ULL;
+  km.longs[nlongs-1] &= (length%32) ? (((1ULL << (2*(length%32)))-1) << 2*(32-(length%32))) : ~0ULL;
 
   for (size_t i = 1; i < nlongs; i++) {
     km.longs[nlongs-i] |= (km.longs[nlongs-i-1] & 3ULL) << 62;
@@ -463,9 +468,10 @@ Kmer Kmer::getHOPC() const {
   // TODO: make it efficient and accurate
   Kmer km(*this);
   km = km.rep();
+  if(length == 0) return km;
   std::string regular = km.toString();
   std::string hopc = "";
-  
+
   char last = regular[0];
   hopc += last;
   for(int i = 1; i < regular.length(); i++) {
@@ -474,11 +480,8 @@ Kmer Kmer::getHOPC() const {
       hopc += last;
     }
   }
-  while(hopc.length() < k) {
-    hopc += last;
-  }
 
-  Kmer newKmer(hopc.c_str());
+  Kmer newKmer(hopc.c_str(), hopc.length());
   return newKmer;
 }
 
@@ -514,7 +517,7 @@ std::string Kmer::getBinary() const {
 void Kmer::toString(char * s) const {
   size_t i,j,l;
   
-  for (i = 0; i < k; i++) {
+  for (i = 0; i < length; i++) { // TODO: use length
     j = i % 32;
     l = i / 32;
 

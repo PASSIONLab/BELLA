@@ -192,7 +192,7 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
                     for(int j=0; j<=len-kmer_len; j++)  
                     {
                         std::string kmerstrfromfastq = seqs[i].substr(j, kmer_len);
-                        Kmer mykmer(kmerstrfromfastq.c_str());
+                        Kmer mykmer(kmerstrfromfastq.c_str(), kmerstrfromfastq.length());
                         Kmer lexsmall = mykmer.rep();
                         // lexsmall = hopc.rep(); // choose the size of the bloom filter based on the hopc
                         if (b_parameters.useHOPC) {

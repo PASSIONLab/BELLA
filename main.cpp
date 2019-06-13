@@ -54,6 +54,57 @@ double deltaChernoff = 0.1;
 
 using namespace std;
 
+
+
+void testKmer() {
+  // TODO: remove this, this is just to test that the Kmer class works right with different lengths, etc
+  
+  cout << "Testing Kmer length" << endl;
+  // create kmer of the default length (17)
+    // with the default constructor
+  Kmer def();
+    // with the string constructor
+  Kmer str("AAAAAAAAAAAAAAAAA", 17);
+    // with the copy constructor
+  // Kmer copy(&def);
+    // with the assignment op
+  Kmer assign = str;
+  cout << "Length k passed" << endl;
+  cout << "HOPC: " << str.getHOPC() << endl;
+  
+  // create kmer of length 0
+    // with the string constructor
+  Kmer empty("", 0);
+    // with the copy and assignment constructors
+  // Kmer empty_copy(&empty);
+  Kmer empty_assign = empty;
+  cout << "Empty passed" << endl;
+  cout << "HOPC: " << empty.getHOPC() << endl;
+  
+  // create kmer of maximum length
+    // with the string constructor
+    // TODO: figure out how to do this
+
+  // create kmer of length 5
+  Kmer str5("ACTTG", 5);
+  // Kmer copy5(&str5);
+  Kmer assign5 = str5;
+  cout << "Length 5 passed" << endl;
+  cout << "HOPC: " << str5.getHOPC() << endl;
+
+  // create kmer of length 22
+  Kmer str20("ACTGGGGGGGTTTTAAAACCCC", 22);
+  // Kmer copy20(&str20);
+  Kmer assign20 = str20;
+  cout << "Length 22 passed" << endl;
+  cout << "HOPC: " << str20.getHOPC() << endl;
+
+  // perform comparison operations on these kmers
+
+
+  // decide if we need to be able to change the length of existing Kmers
+}
+
 int main (int argc, char *argv[]) {
 
     //
@@ -260,6 +311,13 @@ int main (int argc, char *argv[]) {
     Kmers kmersfromreads;
     vector<tuple<size_t,size_t,size_t>> occurrences;
     vector<tuple<size_t,size_t,size_t>> transtuples;
+
+    // TODO: remove this test:
+    cout << "\n\n\nTesting Kmer class" << endl;
+    testKmer();
+    cout << "\n\n\n" << endl;
+    
+    
     // 
     // File and setting used
     //
@@ -364,7 +422,7 @@ if(b_parameters.alignEnd)
                 for(int j=0; j<=len-kmer_len; j++)  
                 {
                     std::string kmerstrfromfastq = seqs[i].substr(j, kmer_len);
-                    Kmer mykmer(kmerstrfromfastq.c_str());
+                    Kmer mykmer(kmerstrfromfastq.c_str(), kmerstrfromfastq.length());
                     bool found;
                     int idx; // kmer_id
                     Kmer lexsmall;
