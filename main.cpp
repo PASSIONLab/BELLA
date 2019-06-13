@@ -280,6 +280,9 @@ int main (int argc, char *argv[]) {
     if(!b_parameters.allKmer)
         cout << "Seeding: two-kmer" << endl;
     else cout << "Seeding: all-kmer" << endl;
+    if(b_parameters.useHOPC)
+      cout << "Use HOPC: true" << endl;
+    else cout << "Use HOPC: false" << endl;
 #endif
 
     //
