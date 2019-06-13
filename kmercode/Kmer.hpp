@@ -62,6 +62,7 @@ class Kmer {
   Kmer getLink(const size_t index) const;
   Kmer forwardBase(const char b) const;
   Kmer backwardBase(const char b) const;
+  Kmer getHOPC() const;
   std::string getBinary() const;  
   void toString(char * s) const;
   std::string toString() const;

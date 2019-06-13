@@ -35,9 +35,10 @@ struct BELLApars
 	int relaxMargin;		// epsilon parameter for alignment on edges (w)
 	double deltaChernoff;	// delta computed via Chernoff bound (c)
     bool outputPaf;         // output in paf format (p)
+	bool 	useHOPC; 						// use HOPC representation 
 
 	BELLApars():totalMemory(8000.0), userDefMem(false), kmerRift(1000), skipEstimate(false), skipAlignment(false), allKmer(false), adapThr(true), defaultThr(50),
-			alignEnd(false), relaxMargin(300), deltaChernoff(0.2), outputPaf(false) {};
+			alignEnd(false), relaxMargin(300), deltaChernoff(0.2), outputPaf(false), useHOPC(false) {};
 };
 
 template <typename T>

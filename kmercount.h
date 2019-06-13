@@ -194,11 +194,12 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
                         std::string kmerstrfromfastq = seqs[i].substr(j, kmer_len);
                         Kmer mykmer(kmerstrfromfastq.c_str());
                         Kmer lexsmall = mykmer.rep();
+                        // lexsmall = hopc.rep(); // choose the size of the bloom filter based on the hopc
+                        if (b_parameters.useHOPC) {
+                          lexsmall = lexsmall.getHOPC();
+                        }
                         allkmers[MYTHREAD].push_back(lexsmall);
                         hlls[MYTHREAD].add((const char*) lexsmall.getBytes(), lexsmall.getNumBytes());
-
-                        // TODO: build a cuckoo hash table with the HOPC k-mer as a string for the key and counts/ids are the values
-
             		if(b_parameters.skipEstimate == false)
             		{
                         	// accuracy
@@ -265,20 +266,13 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
 
     dictionary_t countsdenovo;
     
-    cuckoohash_map<std::string, int> countsdenovo_hopc;
-    cuckoohash_map<std::string, int> countsreliable_hopc; //TODO: use these for HOPC
-
 #pragma omp parallel
     {
-    	for(auto v:allkmers[MYTHREAD])
-    	{
-          // TODO: add wrapper to check if we are using HOPC instead of having on all the time (but put outside of pragma)
-          Kmer hopc = v.getHOPC(); //TODO: create HOPC function so that this can work
-          bool inBloom = (bool) bloom_check_add(bm, hopc.getBytes(), hopc.getNumBytes(), 1); //TODO: alternatively, if I convert to HOPC as a string, then I need to figure out how to send it as bytes here
-          if(inBloom) countsdenovo.insert(hopc, 0); // TODO: understand this line and what it should be (should I be using v or hopc?)
-        	// bool inBloom = (bool) bloom_check_add(bm, v.getBytes(), v.getNumBytes(),1);
-        	// if(inBloom) countsdenovo.insert(v, 0);
-    	}
+      for(auto v:allkmers[MYTHREAD]) {
+          bool inBloom = (bool) bloom_check_add(bm, v.getBytes(), v.getNumBytes(),1);
+          if(inBloom) countsdenovo.insert(v, 0);
+          // If we are using HOPC, then allkmers[] already contains the HOPC representations from the fill stage
+      }
     }
 
     double firstpass = omp_get_wtime();
@@ -293,7 +287,7 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
     	for(auto v:allkmers[MYTHREAD])
     	{
         	// does nothing if the entry doesn't exist in the table
-        	countsdenovo.update_fn(v,updatecount);
+          countsdenovo.update_fn(v, updatecount);
     	}
     }
     cout << "Second pass of k-mer counting took: " << omp_get_wtime() - firstpass << "s\n" << endl;
@@ -301,19 +295,17 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
     // Reliable bounds computation using estimated error rate from phred quality score
     lower = computeLower(depth, erate, kmer_len);
     upper = computeUpper(depth, erate, kmer_len);
-
-    // Reliable k-mer filter on countsdenovo
+    
     int kmer_id_denovo = 0;
-    auto lt = countsdenovo.lock_table(); // our counting
+    auto lt = countsdenovo.lock_table();
     for (const auto &it : lt) 
-        if (it.second >= lower && it.second <= upper)
-        {
-            countsreliable_denovo.insert(it.first,kmer_id_denovo);
-            ++kmer_id_denovo;
-        }
+      if (it.second >= lower && it.second <= upper)
+      {
+        countsreliable_denovo.insert(it.first,kmer_id_denovo);
+        ++kmer_id_denovo;
+      }
     lt.unlock(); // unlock the table
-
-    // Print some information about the table
+    
     if (countsreliable_denovo.size() == 0)
     {
         cout << "BELLA terminated: 0 entries within reliable range (reduce k-mer length)\n" << endl;

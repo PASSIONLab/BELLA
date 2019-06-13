@@ -1,6 +1,6 @@
 #include "IntervalTree.h"
 #include "common.h"
-#include <omp.h>
+//#include <omp.h>
 #include <fstream>
 #include <iostream>
 #include <string>

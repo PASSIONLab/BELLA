@@ -457,24 +457,29 @@ Kmer Kmer::backwardBase(const char b) const {
 
 // use: hopc = km.getHOPC()
 // pre:
-// post: hopc is km with repeats removed and the last base repeated to reach length of k
+// post: hopc is km.rep() with repeats removed and the last base repeated to reach length of k
 //      i.e. if the sequence is ATTTGCC, then hopc will be ATGCCCC
 Kmer Kmer::getHOPC() const {
   // TODO: make it efficient and accurate
   Kmer km(*this);
-
-  size_t nlongs = (k+31)/32;
-
-  uint64_t last = km.nlongs[0]; //TODO: make sure this gets the first element of the Kmer
-  for(size_t i = 1; i < nlongs; i++) {
-    // TODO
-    // if last != next:
-    //  add next
-    //  last = next;
+  km = km.rep();
+  std::string regular = km.toString();
+  std::string hopc = "";
+  
+  char last = regular[0];
+  hopc += last;
+  for(int i = 1; i < regular.length(); i++) {
+    if (last != regular[i]) {
+      last = regular[i];
+      hopc += last;
+    }
   }
-  // for the rest of km:
-  //  add last
-  return km;
+  while(hopc.length() < k) {
+    hopc += last;
+  }
+
+  Kmer newKmer(hopc.c_str());
+  return newKmer;
 }
 
 

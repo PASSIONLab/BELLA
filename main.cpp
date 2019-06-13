@@ -68,7 +68,7 @@ int main (int argc, char *argv[]) {
     // Follow an option with a colon to indicate that it requires an argument.
 
     optList = NULL;
-    optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:Ka:ze:x:w:nc:m:r:p");
+    optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:Ka:ze:x:w:nc:m:r:p:u");
    
 
     char *kmer_file = NULL;                 // Reliable k-mer file from Jellyfish
@@ -197,6 +197,10 @@ int main (int argc, char *argv[]) {
                 b_parameters.deltaChernoff = stod(thisOpt->argument);
                 break;
             }
+            case 'u': {
+              b_parameters.useHOPC = true;
+              break;
+            }
             case 'h': {
                 cout << "Usage:\n" << endl;
                 cout << " -f : k-mer list from Jellyfish (required if Jellyfish k-mer counting is used)" << endl; // Reliable k-mers are selected by BELLA
@@ -213,6 +217,7 @@ int main (int argc, char *argv[]) {
                 cout << " -c : alignment score deviation from the mean [0.1]" << endl;
                 cout << " -n : filter out alignment on edge [false]" << endl;
                 cout << " -r : kmerRift: bases separating two k-mers used as seeds for a read [1,000]" << endl;
+                cout << " -u : HOPC: use HOPC representation for kmers [false]" << endl; // TODO: pick a better letter because u doesn't make sense
                 cout << " -p : output in PAF format [false]\n" << endl;
 
                 FreeOptList(thisOpt); // Done with this list, free it
@@ -360,13 +365,18 @@ if(b_parameters.alignEnd)
                 {
                     std::string kmerstrfromfastq = seqs[i].substr(j, kmer_len);
                     Kmer mykmer(kmerstrfromfastq.c_str());
-                    // remember to use only ::rep() when building kmerdict as well
-                    Kmer lexsmall = mykmer.rep(); //TODO: decide how to handle rep() with HOPC versions
-
-                    auto hopc = lexsmall.getHOPC(); // TODO: make this method work
+                    bool found;
                     int idx; // kmer_id
-                    auto found = countsreliable.find(hopc,idx); //TODO: look for HOPC instead of the regular kmer (because that's what we're storing)
-                    // auto found = countsreliable.find(lexsmall,idx);
+                    Kmer lexsmall;
+                    // remember to use only ::rep() when building kmerdict as well
+                    // TODO: figure out what kmerdict is, because it doesn't actually exist
+                    if (b_parameters.useHOPC) { // TODO: see if this if should be on the outside of a loop for efficiency
+                      lexsmall = mykmer.getHOPC(); // ::getHOPC() includes ::rep()
+                    } else {
+                      lexsmall = mykmer.rep();
+                    }
+                    found = countsreliable.find(lexsmall, idx);
+
                     if(found)
                     {
                         alloccurrences[MYTHREAD].emplace_back(std::make_tuple(read_id+i,idx,j)); // vector<tuple<read_id,kmer_id,kmerpos>>
