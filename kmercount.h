@@ -296,16 +296,18 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
     lower = computeLower(depth, erate, kmer_len);
     upper = computeUpper(depth, erate, kmer_len);
     
+    // Reliable k-mer filter on countsdenovo
     int kmer_id_denovo = 0;
-    auto lt = countsdenovo.lock_table();
+    auto lt = countsdenovo.lock_table(); // our counting
     for (const auto &it : lt) 
-      if (it.second >= lower && it.second <= upper)
-      {
-        countsreliable_denovo.insert(it.first,kmer_id_denovo);
-        ++kmer_id_denovo;
-      }
+        if (it.second >= lower && it.second <= upper)
+        {
+            countsreliable_denovo.insert(it.first,kmer_id_denovo);
+            ++kmer_id_denovo;
+        }
     lt.unlock(); // unlock the table
-    
+
+    // Print some information about the table
     if (countsreliable_denovo.size() == 0)
     {
         cout << "BELLA terminated: 0 entries within reliable range (reduce k-mer length)\n" << endl;
