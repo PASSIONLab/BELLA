@@ -68,7 +68,7 @@ int main (int argc, char *argv[]) {
     // Follow an option with a colon to indicate that it requires an argument.
 
     optList = NULL;
-    optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:Ka:ze:x:w:nc:m:r:p:u");
+    optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:Ka:ze:x:w:nc:m:r:pu:");
    
 
     char *kmer_file = NULL;                 // Reliable k-mer file from Jellyfish
@@ -199,6 +199,8 @@ int main (int argc, char *argv[]) {
             }
             case 'u': {
               b_parameters.useHOPC = true;
+              b_parameters.HOPCerate = strtod(thisOpt->argument, NULL);
+              cout << "HOPC enabled with error rate of " << b_parameters.HOPCerate << endl;
               break;
             }
             case 'h': {
@@ -217,7 +219,7 @@ int main (int argc, char *argv[]) {
                 cout << " -c : alignment score deviation from the mean [0.1]" << endl;
                 cout << " -n : filter out alignment on edge [false]" << endl;
                 cout << " -r : kmerRift: bases separating two k-mers used as seeds for a read [1,000]" << endl;
-                cout << " -u : HOPC: use HOPC representation for kmers [false]" << endl; // TODO: pick a better letter because u doesn't make sense
+                cout << " -u : use HOPC representation for kmers with HOPC erate [false, 0.035]" << endl; // TODO: pick a better letter because u doesn't make sense
                 cout << " -p : output in PAF format [false]\n" << endl;
 
                 FreeOptList(thisOpt); // Done with this list, free it
@@ -370,10 +372,12 @@ if(b_parameters.alignEnd)
                     std::string kmerstrfromfastq = seqs[i].substr(j, kmer_len);
                     Kmer mykmer(kmerstrfromfastq.c_str(), kmerstrfromfastq.length());
                     int idx; // kmer_id
-                    Kmer lexsmall = mykmer.rep();
-                    // remember to use only ::rep() when building kmerdict as well
-                    if (b_parameters.useHOPC) { // TODO: see if this if should be on the outside of a loop for efficiency
+                    Kmer lexsmall;
+                    if (b_parameters.useHOPC) {
                       lexsmall = mykmer.getHOPC();
+                    } else {
+                      // remember to use only ::rep() when building kmerdict as well
+                      lexsmall = mykmer.rep();
                     }
                     bool found = countsreliable.find(lexsmall, idx);
 

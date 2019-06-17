@@ -61,9 +61,10 @@ bool toEnd(int colStart, int colEnd, int colLen, int rowStart, int rowEnd, int r
  * @param i is the starting position of the k-mer on the first read
  * @param j is the starting position of the k-mer on the second read
  * @param xdrop
+ * @param useHOPC specifies whether HOPC representations of kmers are used
  * @return alignment score and extended seed
  */
-seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rlen, int i, int j, int xdrop, int kmer_len) {
+seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rlen, int i, int j, int xdrop, int kmer_len, bool useHOPC) {
 
     Score<int, Simple> scoringScheme(1,-1,-1);
 
@@ -83,7 +84,7 @@ seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rle
     /* we are reversing the "row", "col" is always on the forward strand */
     Dna5StringReverseComplement twin(seedH);
 
-    if(twin == seedV)
+    if( !useHOPC && (twin == seedV) )
     {
         strand = 'c';
         Dna5StringReverseComplement twinRead(seqH);

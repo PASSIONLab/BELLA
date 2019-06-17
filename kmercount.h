@@ -193,10 +193,11 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
                     {
                         std::string kmerstrfromfastq = seqs[i].substr(j, kmer_len);
                         Kmer mykmer(kmerstrfromfastq.c_str(), kmerstrfromfastq.length());
-                        Kmer lexsmall = mykmer.rep();
-                        // lexsmall = hopc.rep(); // choose the size of the bloom filter based on the hopc
+                        Kmer lexsmall;
                         if (b_parameters.useHOPC) {
-                          lexsmall = lexsmall.getHOPC();
+                          lexsmall = mykmer.getHOPC();
+                        } else {
+                          lexsmall = mykmer.rep();
                         }
                         allkmers[MYTHREAD].push_back(lexsmall);
                         hlls[MYTHREAD].add((const char*) lexsmall.getBytes(), lexsmall.getNumBytes());
@@ -293,8 +294,13 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
     cout << "Second pass of k-mer counting took: " << omp_get_wtime() - firstpass << "s\n" << endl;
     //cout << "countsdenovo.size() " << countsdenovo.size() << endl;
     // Reliable bounds computation using estimated error rate from phred quality score
-    lower = computeLower(depth, erate, kmer_len);
-    upper = computeUpper(depth, erate, kmer_len);
+    if(b_parameters.useHOPC) {
+      lower = computeLower(depth, b_parameters.HOPCerate, kmer_len);
+      upper = computeUpper(depth, b_parameters.HOPCerate, kmer_len);
+    } else {
+      lower = computeLower(depth, erate, kmer_len);
+      upper = computeUpper(depth, erate, kmer_len);
+    }
     
     // Reliable k-mer filter on countsdenovo
     int kmer_id_denovo = 0;

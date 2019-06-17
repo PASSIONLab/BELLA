@@ -121,8 +121,8 @@ Kmer::Kmer(const Kmer& o) {
 }
 
 
-// use:  km = Kmer(s);
-// pre:  s[0],...,s[k] are all equal to 'A','C','G' or 'T'
+// use:  km = Kmer(s, len);
+// pre:  s[0],...,s[len] are all equal to 'A','C','G' or 'T' and len < MAX_KMER_SIZE
 // post: the DNA string in km is now the same as s
 Kmer::Kmer(const char *s, unsigned int len) {
   set_kmer(s, len);
@@ -463,7 +463,7 @@ Kmer Kmer::twin() const {
 // use: hopc = km.getHOPC()
 // pre:
 // post: hopc is km with repeats removed and the last base repeated to reach length of k
-//      i.e. if the sequence is ATTTGCC, then hopc will be ATGCCCC
+//      i.e. if the sequence is ATTTGCC, then hopc will be ATGC
 Kmer Kmer::getHOPC() const {
   // TODO: make it efficient
   Kmer km(*this);
