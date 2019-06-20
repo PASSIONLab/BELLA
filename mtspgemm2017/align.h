@@ -84,7 +84,8 @@ seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rle
     /* we are reversing the "row", "col" is always on the forward strand */
     Dna5StringReverseComplement twin(seedH);
 
-    if( !useHOPC && (twin == seedV) )
+    // if( !useHOPC && (twin == seedV) )
+    if( twin == seedV )
     {
         strand = 'c';
         Dna5StringReverseComplement twinRead(seqH);
