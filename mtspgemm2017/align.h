@@ -23,6 +23,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include "../kmercode/Kmer.hpp"
 
 using namespace seqan;
 using namespace std;
@@ -84,8 +85,19 @@ seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rle
     /* we are reversing the "row", "col" is always on the forward strand */
     Dna5StringReverseComplement twin(seedH);
 
-    // if( !useHOPC && (twin == seedV) )
-    if( twin == seedV )
+    bool hopcReverse = false;
+    if (useHOPC) { // TODO: see if there is a way to get the information from the Kmer class
+      std::string hopcH = toHOPC(row.substr(i, kmer_len)); //TODO: check if this is accurate
+      std::string hopcV = toHOPC(col.substr(j, kmer_len));
+    
+      Dna5String hopcHdna(hopcH);
+    
+      Dna5StringReverseComplement hopcTwin(hopcHdna);
+    
+      hopcReverse = ( hopcTwin == hopcV );
+    }
+
+    if ( (twin == seedV) || hopcReverse )
     {
         strand = 'c';
         Dna5StringReverseComplement twinRead(seqH);

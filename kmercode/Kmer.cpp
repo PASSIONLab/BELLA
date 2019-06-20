@@ -460,30 +460,19 @@ Kmer Kmer::twin() const {
 //   */
 // }
 
-// use: hopc = km.getHOPC()
+// use: hopc = km.hopc()
 // pre:
 // post: hopc is km.rep() with repeats removed and the last base repeated to reach length of k
 //      i.e. if the sequence is ATTTGCC, then hopc will be ATGC
-Kmer Kmer::getHOPC() const {
+Kmer Kmer::hopc() const {
   // TODO: make it efficient
   Kmer km(*this);
   if(length == 0) return km;
-  std::string regular = km.rep().toString();
-  std::string hopc = "";
-
-  char last = regular[0];
-  hopc += last;
-  for(int i = 1; i < regular.length(); i++) {
-    if (last != regular[i]) {
-      last = regular[i];
-      hopc += last;
-    }
-  }
+  std::string hopc = toHOPC(km.rep().toString());
 
   Kmer newKmer(hopc.c_str(), hopc.length());
   return newKmer;
 }
-
 
 // use:  km.printBinary();
 // pre:   

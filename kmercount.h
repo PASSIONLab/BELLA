@@ -195,7 +195,7 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
                         Kmer mykmer(kmerstrfromfastq.c_str(), kmerstrfromfastq.length());
                         Kmer lexsmall;
                         if (b_parameters.useHOPC) {
-                          lexsmall = mykmer.getHOPC();
+                          lexsmall = mykmer.hopc();
                         } else {
                           lexsmall = mykmer.rep();
                         }

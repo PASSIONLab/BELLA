@@ -66,7 +66,7 @@ class Kmer {
   // Kmer backwardBase(const char b) const;
   // bool equalUpToLastBase(const Kmer & rhs);	// returns true for completely identical k-mers as well as k-mers that only differ at the last base
 
-  Kmer getHOPC() const;
+  Kmer hopc() const;
   std::string getBinary() const;  
   void toString(char * s) const;
   std::string toString() const;
@@ -165,5 +165,19 @@ namespace std
 inline std::ostream& operator<<(std::ostream& out, const Kmer& k){
     return out << k.toString();
 };
+
+inline std::string toHOPC(std::string original) {
+  std::string hopc = "";
+
+  char last = '\n';
+  for(auto c : original) {
+    if ( last != c ) {
+      last = c;
+      hopc += c;
+    }
+  }
+
+  return hopc;
+}
 
 #endif
