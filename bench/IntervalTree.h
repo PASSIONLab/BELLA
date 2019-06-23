@@ -163,7 +163,7 @@ public:
 	return ov;
     }
 
-    void findOverlapping(K start, K stop, T value, intervalVector& overlapping, int minOverlap, std::multiset<entry, classcom>& Gfull) const {
+    void findOverlapping(K start, K stop, T value, intervalVector& overlapping, int minOverlap, std::set<entry, classcom>& Gfull) const {
         if (!intervals.empty() && ! (stop < intervals.front().start)) {
             for (typename intervalVector::const_iterator i = intervals.begin(); i != intervals.end(); ++i)
             {

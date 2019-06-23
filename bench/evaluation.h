@@ -31,19 +31,7 @@
 #define DEBUG
 #endif
 
-std::multiset<entry, classcom> cutShortOverlaps(std::multiset<entry, classcom>& s, int minOverlap) {
-
-	std::multiset<entry, classcom> Sset;
-
-	for(auto it = s.begin(); it != s.end(); it++)
-		if(it->overlap >= minOverlap)
-			Sset.insert(*it);
-
-	return Sset;
-}
-
-void estimateOverlap(int begV, int endV, int lenV, int begH, int endH, int lenH, int& overlap)
-{
+void estimateOverlap(int begV, int endV, int lenV, int begH, int endH, int lenH, int& overlap) {
 	overlap = min(begV, begH) + min(lenV - endV, lenH - endH) + ((endV - begV) + (endH - begH)) / 2;
 }
 
@@ -79,7 +67,7 @@ std::string toread(std::string& idx, std::map<std::string, std::string>& namesta
 	else exit(1);
 }
 
-std::multiset<entry, classcom> readTruthOutput(std::ifstream& file, int minOverlap, bool isSimulated)
+std::set<entry, classcom> readTruthOutput(std::ifstream& file, int minOverlap, bool isSimulated)
 {
 	int maxt = 1;
 #pragma omp parallel
@@ -149,7 +137,7 @@ std::multiset<entry, classcom> readTruthOutput(std::ifstream& file, int minOverl
 
 	vector<Interval<std::string>> intervals;
 	vector<Interval<std::string>> queries;
-	std::multiset<entry, classcom> Gset;
+	std::set<entry, classcom> Gset;
 
 	for(auto key = intermediate.begin(); key != intermediate.end(); ++key) {
 		for(auto it = key->second.begin(); it != key->second.end(); ++it)
@@ -180,7 +168,7 @@ std::multiset<entry, classcom> readTruthOutput(std::ifstream& file, int minOverl
 	return Gset;
 };
 
-std::multiset<entry, classcom> readBellaOutput(std::ifstream& file)
+std::set<entry, classcom> readBellaOutput(std::ifstream& file, int minOverlap, bool alignment)
 {
 	int maxt = 1;
 #pragma omp parallel
@@ -200,12 +188,11 @@ std::multiset<entry, classcom> readBellaOutput(std::ifstream& file)
 		}
 	file.close();
 
-	std::multiset<entry, classcom> result;
-	std::vector<std::multiset<entry, classcom>> local(maxt);
+	std::set<entry, classcom> result;
+	std::vector<std::set<entry, classcom>> local(maxt);
 
 #pragma omp parallel for
 	for(int i = 0; i < nOverlap; i++) {
-		std::stringstream linestream(entries[i]);
 		int ithread = omp_get_thread_num();
 
 		std::vector<std::string> v = split(entries[i], '\t');
@@ -216,8 +203,16 @@ std::multiset<entry, classcom> readBellaOutput(std::ifstream& file)
 		ientry.b = "@" + v[1];
 
 		if(ientry.a != ientry.b) {
+
 			ientry.overlap = stoi(v[4]);
-			local[ithread].insert(ientry);
+
+			if(alignment) {
+				if(ientry.overlap >= minOverlap)
+					local[ithread].insert(ientry);
+			}
+			else {
+				local[ithread].insert(ientry);
+			}
 		}
 	}
 
@@ -229,8 +224,7 @@ std::multiset<entry, classcom> readBellaOutput(std::ifstream& file)
 	return result;
 };
 
-
-std::multiset<entry, classcom> readMinimapOutput(std::ifstream& file)
+std::set<entry, classcom> readMinimapOutput(std::ifstream& file, int minOverlap, bool alignment)
 {
 	int maxt = 1;
 #pragma omp parallel
@@ -250,12 +244,11 @@ std::multiset<entry, classcom> readMinimapOutput(std::ifstream& file)
 		}
 	file.close();
 
-	std::multiset<entry, classcom> result;
-	std::vector<std::multiset<entry, classcom>> local(maxt);
+	std::set<entry, classcom> result;
+	std::vector<std::set<entry, classcom>> local(maxt);
 
 #pragma omp parallel for
 	for(int i = 0; i < nOverlap; i++) {
-		std::stringstream linestream(entries[i]);
 		int ithread = omp_get_thread_num();
 
 		std::vector<std::string> v = split(entries[i], '\t');
@@ -285,7 +278,13 @@ std::multiset<entry, classcom> readMinimapOutput(std::ifstream& file)
 			estimateOverlap(begV, endV, lenV, 
 					begH, endH, lenH, ientry.overlap);
 
-			local[ithread].insert(ientry);
+			if(alignment) {
+				if(ientry.overlap >= minOverlap)
+					local[ithread].insert(ientry);
+			}
+			else {
+				local[ithread].insert(ientry);
+			}
 		}
 	}
 
@@ -297,7 +296,7 @@ std::multiset<entry, classcom> readMinimapOutput(std::ifstream& file)
 	return result;
 };
 
-std::multiset<entry, classcom> readMecatOutput(std::ifstream& file, std::ifstream& index)
+std::set<entry, classcom> readMecatOutput(std::ifstream& file, std::ifstream& index, int minOverlap, bool alignment)
 {
 	std::map<std::string, std::string> namestable;
 	tomap(index, namestable);
@@ -320,12 +319,11 @@ std::multiset<entry, classcom> readMecatOutput(std::ifstream& file, std::ifstrea
 		}
 	file.close();
 
-	std::multiset<entry, classcom> result;
-	std::vector<std::multiset<entry, classcom>> local(maxt);
+	std::set<entry, classcom> result;
+	std::vector<std::set<entry, classcom>> local(maxt);
 
 #pragma omp parallel for
 	for(int i = 0; i < nOverlap; i++) {
-		std::stringstream linestream(entries[i]);
 		int ithread = omp_get_thread_num();
 
 		std::vector<std::string> v = split(entries[i], '\t');
@@ -350,7 +348,13 @@ std::multiset<entry, classcom> readMecatOutput(std::ifstream& file, std::ifstrea
 			estimateOverlap(begV, endV, lenV, 
 					begH, endH, lenH, ientry.overlap);
 
-			local[ithread].insert(ientry);
+			if(alignment) {
+				if(ientry.overlap >= minOverlap)
+					local[ithread].insert(ientry);
+			}
+			else {
+				local[ithread].insert(ientry);
+			}
 		}
 	}
 
@@ -362,7 +366,7 @@ std::multiset<entry, classcom> readMecatOutput(std::ifstream& file, std::ifstrea
 	return result;
 };
 
-std::multiset<entry, classcom> readMhapOutput(std::ifstream& file)
+std::set<entry, classcom> readMhapOutput(std::ifstream& file, int minOverlap, bool alignment)
 {
 	int maxt = 1;
 #pragma omp parallel
@@ -382,21 +386,22 @@ std::multiset<entry, classcom> readMhapOutput(std::ifstream& file)
 		}
 	file.close();
 
-	std::multiset<entry, classcom> result;
-	std::vector<std::multiset<entry, classcom>> local(maxt);
+	std::set<entry, classcom> result;
+	std::vector<std::set<entry, classcom>> local(maxt);
 
 #pragma omp parallel for
 	for(int i = 0; i < nOverlap; i++) {
-		std::stringstream linestream(entries[i]);
 		int ithread = omp_get_thread_num();
 
 		std::vector<std::string> v = split(entries[i], ' ');
 		entry ientry;
-	//	std::cout << "What's up, dude?" << std::endl;
+
 		ientry.a = "@" + v[0];
 		ientry.b = "@" + v[1];
-
+		// 	0		1		2				3				4				5		6			7		8					9			10		11
+		// [A ID] [B ID] [% error] [# shared min-mers] [0=A fwd, 1=A rc] [A start] [A end] [A length] [0=B fwd, 1=B rc] [B start] [B end] [B length]
 		if(ientry.a != ientry.b) {
+
 		//	mhap m4 format
 			int begV = std::stoi(v[5]);
 			int endV = std::stoi(v[6]);
@@ -405,18 +410,17 @@ std::multiset<entry, classcom> readMhapOutput(std::ifstream& file)
 			int endH = std::stoi(v[10]);
 			int lenH = std::stoi(v[11]);
 
-		//	figure out write to adam/sergey?
-			//if(v[8] == "1") {
-			//	int tmp = begH;
-			//	begH = lenH - endH;
-			//	endH = lenH - tmp;
-			//}
-
 		//	(int begV, int endV, int lenV, int begH, int endH, int lenH, int overlap)
 			estimateOverlap(begV, endV, lenV, 
 					begH, endH, lenH, ientry.overlap);
 
-			local[ithread].insert(ientry);
+			if(alignment) {
+				if(ientry.overlap >= minOverlap)
+					local[ithread].insert(ientry);
+			}
+			else {
+				local[ithread].insert(ientry);
+			}
 		}
 	}
 
@@ -428,7 +432,7 @@ std::multiset<entry, classcom> readMhapOutput(std::ifstream& file)
 	return result;
 };
 
-std::multiset<entry, classcom> readBlasrOutput(std::ifstream& file)
+std::set<entry, classcom> readBlasrOutput(std::ifstream& file, int minOverlap, bool alignment)
 {
 	int maxt = 1;
 #pragma omp parallel
@@ -448,12 +452,11 @@ std::multiset<entry, classcom> readBlasrOutput(std::ifstream& file)
 		}
 	file.close();
 
-	std::multiset<entry, classcom> result;
-	std::vector<std::multiset<entry, classcom>> local(maxt);
+	std::set<entry, classcom> result;
+	std::vector<std::set<entry, classcom>> local(maxt);
 
 #pragma omp parallel for
 	for(int i = 0; i < nOverlap; i++) {
-		std::stringstream linestream(entries[i]);
 		int ithread = omp_get_thread_num();
 
 		std::vector<std::string> v = split(entries[i], ' ');
@@ -482,7 +485,13 @@ std::multiset<entry, classcom> readBlasrOutput(std::ifstream& file)
 			estimateOverlap(begV, endV, lenV, 
 					begH, endH, lenH, ientry.overlap);
 
-			local[ithread].insert(ientry);
+			if(alignment) {
+				if(ientry.overlap >= minOverlap)
+					local[ithread].insert(ientry);
+			}
+			else {
+				local[ithread].insert(ientry);
+			}
 		}
 	}
 
@@ -494,7 +503,7 @@ std::multiset<entry, classcom> readBlasrOutput(std::ifstream& file)
 	return result;
 };
 
-std::multiset<entry, classcom> readDalignerOutput(std::ifstream& file)
+std::set<entry, classcom> readDalignerOutput(std::ifstream& file, int minOverlap, bool alignment)
 {
 	int maxt = 1;
 #pragma omp parallel
@@ -514,12 +523,11 @@ std::multiset<entry, classcom> readDalignerOutput(std::ifstream& file)
 		}
 	file.close();
 
-	std::multiset<entry, classcom> result;
-	std::vector<std::multiset<entry, classcom>> local(maxt);
+	std::set<entry, classcom> result;
+	std::vector<std::set<entry, classcom>> local(maxt);
 
 #pragma omp parallel for
 	for(int i = 0; i < nOverlap; i++) {
-		std::stringstream linestream(entries[i]);
 		int ithread = omp_get_thread_num();
 
 		std::vector<std::string> v = split(entries[i], ' ');
@@ -547,7 +555,13 @@ std::multiset<entry, classcom> readDalignerOutput(std::ifstream& file)
 			estimateOverlap(begV, endV, lenV, 
 					begH, endH, lenH, ientry.overlap);
 
-			local[ithread].insert(ientry);
+			if(alignment) {
+				if(ientry.overlap >= minOverlap)
+					local[ithread].insert(ientry);
+			}
+			else {
+				local[ithread].insert(ientry);
+			}
 		}
 	}
 
@@ -559,10 +573,10 @@ std::multiset<entry, classcom> readDalignerOutput(std::ifstream& file)
 	return result;
 };
 
-void evaluate(std::multiset<entry, classcom>& Sset, const std::multiset<entry, classcom>& Gset, int minOverlap, bool toDuplicate)
+void evaluate(std::set<entry, classcom>& Sset, const std::set<entry, classcom>& Gset, 
+	int minOverlap, bool duplicate, bool alignment)
 {
-	std::multiset<entry, classcom> Tset;
-	Sset = cutShortOverlaps(Sset, minOverlap);
+	std::set<entry, classcom> Tset;
 
 	std::set_intersection(
 		Gset.begin(), Gset.end(),
@@ -571,7 +585,7 @@ void evaluate(std::multiset<entry, classcom>& Sset, const std::multiset<entry, c
 	);
 
 	float RC;
-	if(toDuplicate)
+	if(duplicate)
 	{
 	#ifdef DEBUG
 		std::cout << "\t* " << 2*Sset.size() << " overlaps longer than " << minOverlap << " bp" << std::endl;

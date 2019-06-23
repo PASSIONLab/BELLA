@@ -44,10 +44,11 @@ int main (int argc, char* argv[]) {
 
 	option_t *optList, *thisOpt;
 	optList = NULL;
-	optList = GetOptList(argc, argv, (char*)"G:B:m:M:zl:i:H:D:L:");
+	optList = GetOptList(argc, argv, (char*)"G:B:m:M:zl:i:H:D:L:ah");
 
 	int  	minOverlap  = 2000;
 	bool 	isSimulated = false;
+	bool 	isAligned   = true;
 	char*	G = NULL;
 	char*	B = NULL; 	// BELLA standard output
 	char*	m = NULL; 	// minimap/minimap2
@@ -112,9 +113,14 @@ int main (int argc, char* argv[]) {
 				D = strdup(thisOpt->argument);
 				break;
 			}
+			case 'a': {
+				isAligned = false;
+				break;
+			}
 			case 'h': {
 				std::cout << "\nUsage:\n" 							<< std::endl;
 				std::cout << " -z : Simulated data [false]" 		<< std::endl;
+				std::cout << " -a : isAligned [true]" 				<< std::endl;
 				std::cout << " -l : minOverlap length [2000]" 		<< std::endl;
 				std::cout << " -G : Ground truth file (required)" 	<< std::endl;
 				std::cout << " -B : BELLA standard output format" 	<< std::endl;
@@ -147,55 +153,56 @@ int main (int argc, char* argv[]) {
 
 	bool duplicate = false; // some software doesn't output both (A,B) and (B,A)
 	std::ifstream data(G);
-	std::multiset<entry, classcom> Gset = readTruthOutput(data, minOverlap, isSimulated); // ground truth
-	std::multiset<entry, classcom> Sset; // software output
+
+	std::set<entry, classcom> Gset = readTruthOutput(data, minOverlap, isSimulated); // ground truth
+	std::set<entry, classcom> Sset; // software output
 
 	if(B) {
 		std::ifstream reads(B);
-		Sset = readBellaOutput(reads);
+		Sset = readBellaOutput(reads, minOverlap, isAligned);
 		duplicate = true;
 		std::cout << "Bella" << std::endl;
-		evaluate(Sset, Gset, minOverlap, duplicate);
+		evaluate(Sset, Gset, minOverlap, duplicate, isAligned);
 	}
 
 	if(m) {
 		std::ifstream reads(m);
-		Sset = readMinimapOutput(reads);
+		Sset = readMinimapOutput(reads, minOverlap, isAligned);
 		duplicate = true;
 		std::cout << "Minimap2" << std::endl;
-		evaluate(Sset, Gset, minOverlap, duplicate);
+		evaluate(Sset, Gset, minOverlap, duplicate, isAligned);
 	}
 
 	if(M) {
 		std::ifstream reads(M);
 		std::ifstream index(i);
-		Sset = readMecatOutput(reads, index);
+		Sset = readMecatOutput(reads, index, minOverlap, isAligned);
 		duplicate = true;
 		std::cout << "Mecat" << std::endl;
-		evaluate(Sset, Gset, minOverlap, duplicate);
+		evaluate(Sset, Gset, minOverlap, duplicate, isAligned);
 	}
 
 	if(H) {
 		std::ifstream reads(H);
-		Sset = readMhapOutput(reads);
+		Sset = readMhapOutput(reads, minOverlap, isAligned);
 		duplicate = false;
 		std::cout << "Mhap" << std::endl;
-		evaluate(Sset, Gset, minOverlap, duplicate);
+		evaluate(Sset, Gset, minOverlap, duplicate, isAligned);
 	}
 
 	if(L) {
 		std::ifstream reads(L);
-		Sset = readBlasrOutput(reads);
+		Sset = readBlasrOutput(reads, minOverlap, isAligned);
 		duplicate = false;
 		std::cout << "Blasr" << std::endl;
-		evaluate(Sset, Gset, minOverlap, duplicate);
+		evaluate(Sset, Gset, minOverlap, duplicate, isAligned);
 	}
 
 	if(D) {
 		std::ifstream reads(D);
-		Sset = readDalignerOutput(reads);
+		Sset = readDalignerOutput(reads, minOverlap, isAligned);
 		duplicate = false;
 		std::cout << "Daligner" << std::endl;
-		evaluate(Sset, Gset, minOverlap, duplicate);
+		evaluate(Sset, Gset, minOverlap, duplicate, isAligned);
 	}
 }
