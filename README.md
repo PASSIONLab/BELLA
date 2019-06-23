@@ -119,7 +119,7 @@ You can download an _E. coli_ 30X dataset [here](https://bit.ly/2EEq3JM) to test
 
 You can run the evaluation code located in /bench folder as: 
 
-`./result -G ecsample_singlemapped_q10.txt -B <bella-output>
+```./result -G ecsample_singlemapped_q10.txt -B <bella-output>```
 
 ## Citation
 
