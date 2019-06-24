@@ -184,7 +184,7 @@ inline std::string kHOPC(std::string seq, int len) {
   std::string hopc = "";
 
   char last = '\n';
-  for (auto c : original) {
+  for (auto c : seq) {
     if ( last != c ) {
       last = c;
       hopc += c;

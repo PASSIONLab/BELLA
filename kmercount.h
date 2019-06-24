@@ -195,11 +195,14 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
                         Kmer mykmer(kmerstrfromfastq.c_str(), kmerstrfromfastq.length());
                         Kmer lexsmall;
                         if (b_parameters.useHOPC) {
-                          lexsmall = mykmer.kHOPC(seqs[i].substr(j), kmer_len);
-                          if ( lexsmall != "" ) {
+                          std::string km = kHOPC(seqs[i].substr(j), kmer_len);
+                          int len = km.length();
+                          if ( km != "" ) {
+                            Kmer newKmer(km.c_str(), len);
                             allkmers[MYTHREAD].push_back(lexsmall);
                             hlls[MYTHREAD].add((const char*) lexsmall.getBytes(), lexsmall.getNumBytes());
-                          }
+                            lexsmall = newKmer;
+                           }
                           // lexsmall = mykmer.hopc();
                         } else {
                           lexsmall = mykmer.rep();
