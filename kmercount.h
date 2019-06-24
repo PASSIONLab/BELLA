@@ -196,12 +196,12 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
                         Kmer lexsmall;
                         if (b_parameters.useHOPC) {
                           std::string km = kHOPC(seqs[i].substr(j), kmer_len);
-                          int len = km.length();
                           if ( km != "" ) {
-                            Kmer newKmer(km.c_str(), len);
+                            Kmer newKmer(km.c_str(), km.length());
+                            lexsmall = newKmer;
                             allkmers[MYTHREAD].push_back(lexsmall);
                             hlls[MYTHREAD].add((const char*) lexsmall.getBytes(), lexsmall.getNumBytes());
-                            lexsmall = newKmer;
+                            // cout << lexsmall << endl;
                            }
                           // lexsmall = mykmer.hopc();
                         } else {
