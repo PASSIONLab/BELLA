@@ -647,6 +647,7 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 
     std::ofstream ofs(filename, std::ios::binary | std::ios::app);
 #ifdef PRINT
+    // cout << endl;
     cout << "Creating or appending to output file with " << (double)bytestotal/(double)(1024 * 1024) << " MB" << endl;
 #endif
     ofs.seekp(bytestotal - 1);

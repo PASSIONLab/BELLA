@@ -87,7 +87,7 @@ seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rle
 
     bool hopcReverse = false;
     if (useHOPC) { // TODO: see if there is a way to get the information from the Kmer class
-      std::string hopcH = toHOPC(row.substr(i, kmer_len)); //TODO: check if this is accurate
+      std::string hopcH = toHOPC(row.substr(i, kmer_len));
       std::string hopcV = toHOPC(col.substr(j, kmer_len));
     
       Dna5String hopcHdna(hopcH);
@@ -95,6 +95,33 @@ seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rle
       Dna5StringReverseComplement hopcTwin(hopcHdna);
     
       hopcReverse = ( hopcTwin == hopcV );
+
+      // prints length of the two kmers - test 13.1
+      // std::string lengths = to_string(hopcH.length()) + "," + to_string(hopcV.length()) + "\n";
+      // cout << lengths << flush;
+      
+      // prints whether the original kmer was also equal - test 13.2
+      // if(hopcReverse) {
+      //   if (twin == seedV) {
+      //     cout << " equal " << flush;
+      //   } else {
+      //     cout << " not " << flush;
+      //   }
+      // } else {
+      //   if (seedH == seedV) {
+      //     cout << " equal " << flush;
+      //   } else {
+      //     cout << " not " << flush;
+      //   }
+      // }
+      
+      // prints the whether the evaluations agree (so the same part of "if" would be run) - test 13.3
+      // if ( (twin == seedV) == hopcReverse ) {
+      //   cout << " agree " << flush;
+      // } else {
+      //   cout << " not " << flush;
+      // }
+      
     }
 
     if ( (twin == seedV) || hopcReverse )
