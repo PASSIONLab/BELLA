@@ -195,12 +195,17 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
                         Kmer mykmer(kmerstrfromfastq.c_str(), kmerstrfromfastq.length());
                         Kmer lexsmall;
                         if (b_parameters.useHOPC) {
-                          lexsmall = mykmer.hopc();
+                          lexsmall = mykmer.kHOPC(seqs[i].substr(j), kmer_len);
+                          if ( lexsmall != "" ) {
+                            allkmers[MYTHREAD].push_back(lexsmall);
+                            hlls[MYTHREAD].add((const char*) lexsmall.getBytes(), lexsmall.getNumBytes());
+                          }
+                          // lexsmall = mykmer.hopc();
                         } else {
                           lexsmall = mykmer.rep();
+                          allkmers[MYTHREAD].push_back(lexsmall);
+                          hlls[MYTHREAD].add((const char*) lexsmall.getBytes(), lexsmall.getNumBytes());
                         }
-                        allkmers[MYTHREAD].push_back(lexsmall);
-                        hlls[MYTHREAD].add((const char*) lexsmall.getBytes(), lexsmall.getNumBytes());
             		if(b_parameters.skipEstimate == false)
             		{
                         	// accuracy

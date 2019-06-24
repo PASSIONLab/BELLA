@@ -374,7 +374,8 @@ if(b_parameters.alignEnd)
                     int idx; // kmer_id
                     Kmer lexsmall;
                     if (b_parameters.useHOPC) {
-                      lexsmall = mykmer.hopc();
+                      lexsmall = mykmer.kHOPC(seqs[i].substr(j), kmer_len);
+                      // lexsmall = mykmer.hopc();
                     } else {
                       // remember to use only ::rep() when building kmerdict as well
                       lexsmall = mykmer.rep();
