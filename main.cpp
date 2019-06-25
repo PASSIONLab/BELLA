@@ -450,9 +450,10 @@ if(b_parameters.alignEnd)
 				return value;
 			},
 	
-	[&kmerSize,&b_parameters,&reads] (spmatPtr_ & m1, spmatPtr_ & m2, int id1, int id2) // change CSC code
-			{
-				// number of common k-mer
+	// AB: not sure if these id1 and id2 are captured correctly, honestly...
+	[&kmerSize,&b_parameters,&reads] (spmatPtr_ & m1, spmatPtr_ & m2, int id1, int id2) // change CSC code 			
+	{
+				// number of common k-mers
 				m2->count = m2->count+m1->count;
 							
 				for(int i = 0; i < m1->pos.size(); ++i)
@@ -471,13 +472,15 @@ if(b_parameters.alignEnd)
 						int margin1 = std::min(begpH, begpV);
 						int margin2 = std::min(read1len - endpH, read2len - endpV);
 						m1->overlap[i] = margin1 + margin2 + kmerSize;
-						std::cout << "overlap length :" << m1->overlap[i] << std::endl;
 					}
+					std::cout << "overlap length :" << m1->overlap[i] << std::endl;
+					
 				}
-				for(int i = 0; i < m2->pos.size(); ++i)
+				vector<int> tobeinserted;
+				for(int i = 0; i < m2->pos.size(); ++i)	
 				{
 					// for each k-mer pair, estimate the overlap if it wasn't estimated before
-					// (AB: this should be done in multiplication operator once and not checked for each addition)					// 
+					// (AB: this should be done in multiplication operator once and not checked for each addition)					
 					if(m2->overlap[i] < 0)
 					{
 						int read1len = reads[id1].seq.length();
@@ -491,23 +494,29 @@ if(b_parameters.alignEnd)
 						int rightMargin = std::min(read1len - endpH, read2len - endpV);
 						m2->overlap[i] = leftMargin + rightMargin + kmerSize;
 					}
+					std::cout << "overlap length :" << m1->overlap[i] << std::endl;
+					
 					
 					bool orphan = true;
 					for(int j = 0; j < m1->pos.size(); ++j)
 					{
-						if(std::abs(m2->overlap[i]- m1->overlap[j]) < 500)
+						if(std::abs(m2->overlap[i]- m1->overlap[j]) < 500) // B is the bin length
 						{
-							m1->support[j]++;
+							m1->support[j] += m2->support[j];
 							orphan = false;
-							break;	// it can be close to no other k-mer in the m1 set
+							// we can be within (B=500) length of multiple overlap estimations, so we can't break
 						}
 					}
 					if(orphan)
 					{
-						m1->pos.push_back(m2->pos[i]);
-						m1->overlap.push_back(m2->overlap[i]);
-						m1->support.push_back(m2->support[i]);
+						tobeinserted.push_back(i);	// we don't want to immediately insert to m1 and increase computational complexity
 					}
+				}
+				for (auto i:tobeinserted)
+				{
+					m1->pos.push_back(m2->pos[i]);
+					m1->overlap.push_back(m2->overlap[i]);
+					m1->support.push_back(m2->support[i]);
 				}
 
 				std::cout << "Between " << id1 << " and " << id2 << std::endl;
