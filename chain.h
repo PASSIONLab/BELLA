@@ -31,14 +31,12 @@
 
 #include "mtspgemm2017/common.h"
 
-//	#define DBCHAIN
-
 // GG: check orientation
 bool
 checkstrand(const std::string& read1, const std::string& read2, const int begpH,
 	const int begpV, const int kmerSize) {
 
-	std::string seedH = read2.substr(begpH, kmerSize);
+	std::string seedH = read1.substr(begpH, kmerSize);
 	std::string seedV = read2.substr(begpV, kmerSize);
 
 	if(seedH != seedV) return false;
@@ -123,15 +121,14 @@ chainop(spmatPtr_& m1, spmatPtr_& m2, BELLApars& b_parameters,
 		m1->support.push_back(m2->support[i]);
 	}
 
-
-//#pragma omp critical
-//	{
-//		// GG: after testing correctness, this part can be removed
-//		// GG: we can then pass fewer parameters
-//		std::cout << "Between " << readname1 << " and " << readname2 << std::endl;
-//		std::copy(m1->overlap.begin(), m1->overlap.end(), std::ostream_iterator<int>(std::cout, " ")); std::cout << std::endl;
-//		std::copy(m1->support.begin(), m1->support.end(), std::ostream_iterator<int>(std::cout, " ")); std::cout << std::endl;
-//	}
+#pragma omp critical
+	{
+		// GG: after testing correctness, this part can be removed
+		// GG: we can then pass fewer parameters
+		std::cout << "Between " << readname1 << " and " << readname2 << std::endl;
+		std::copy(m1->overlap.begin(), m1->overlap.end(), std::ostream_iterator<int>(std::cout, " ")); std::cout << std::endl;
+		std::copy(m1->support.begin(), m1->support.end(), std::ostream_iterator<int>(std::cout, " ")); std::cout << std::endl;
+	}
 
 }
 
