@@ -368,8 +368,8 @@ void LocalSpGEMM(IT & start, IT & end, const CSC<IT,NT> & A, const CSC<IT,NT> & 
 
 		for (IT j=0; j< index; ++j)
 		{
-			sRowIdsofC[i-start][j] = globalHashVec[j].first;
-			sValuesofC[i-start][j] = globalHashVec[j].second;
+			RowIdsofC[i-start][j] = globalHashVec[j].first;
+			ValuesofC[i-start][j] = globalHashVec[j].second;
 		}
 	}
 
