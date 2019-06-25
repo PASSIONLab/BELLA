@@ -35,7 +35,7 @@ CSC<IT,NT> & CSC<IT,NT>::operator= (const CSC<IT,NT> & rhs)
 	{
 		if(nnz > 0)	// if the existing object is not empty
 		{
-			delete [] rowids;   // empty it
+			delete [] rowids;    // empty it
 			delete [] values;
 		}
 		if(cols > 0)

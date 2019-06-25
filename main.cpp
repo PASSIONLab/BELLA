@@ -28,6 +28,7 @@
 
 #include "libcuckoo/cuckoohash_map.hh"
 #include "kmercount.h"
+#include "chain.h"
 
 #include "kmercode/hash_funcs.h"
 #include "kmercode/Kmer.hpp"
@@ -68,7 +69,7 @@ int main (int argc, char *argv[]) {
 	// Follow an option with a colon to indicate that it requires an argument.
 
 	optList = NULL;
-	optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:Ka:ze:x:w:nc:m:r:p");
+	optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:Ka:ze:x:w:nc:m:r:pb:");
    
 
 	char *kmer_file = NULL;                 // Reliable k-mer file from Jellyfish
@@ -181,6 +182,10 @@ int main (int argc, char *argv[]) {
 				b_parameters.allKmer = true;
 				break;
 			}
+			case 'b': {
+				b_parameters.bin = atoi(thisOpt->argument);
+				break;
+			}
 			case 'm': {
 				b_parameters.totalMemory = stod(thisOpt->argument);
 				b_parameters.userDefMem = true;
@@ -190,8 +195,8 @@ int main (int argc, char *argv[]) {
 			case 'c': {
 				if(stod(thisOpt->argument) > 1.0 || stod(thisOpt->argument) < 0.0)
 				{
-					cout << "BELLA execution terminated: -c requires a value in [0,1]" << endl;
-					cout << "Run with -h to print out the command line options\n" << endl;
+					cout << "BELLA execution terminated: -c requires a value in [0,1]" 	<< endl;
+					cout << "Run with -h to print out the command line options\n" 		<< endl;
 					return 0;
 				}
 				b_parameters.deltaChernoff = stod(thisOpt->argument);
@@ -201,19 +206,20 @@ int main (int argc, char *argv[]) {
 				cout << "Usage:\n" << endl;
 				cout << " -f : k-mer list from Jellyfish (required if Jellyfish k-mer counting is used)" << endl; // Reliable k-mers are selected by BELLA
 				cout << " -i : list of fastq(s) (required)" << endl;
-				cout << " -o : output filename (required)" << endl;
-				cout << " -d : depth/coverage (required)" << endl; // TO DO: add depth estimation
-				cout << " -k : k-mer length [17]" << endl;
-				cout << " -a : use fixed alignment threshold [50]" << endl;
-				cout << " -x : alignment x-drop factor [7]" << endl;
-				cout << " -e : error rate [auto estimated from fastq]" << endl;
+				cout << " -o : output filename (required)" 	<< endl;
+				cout << " -d : depth/coverage (required)" 	<< endl; // TO DO: add depth estimation
+				cout << " -k : k-mer length [17]" 			<< endl;
+				cout << " -a : use fixed alignment threshold [50]" 		<< endl;
+				cout << " -x : alignment x-drop factor [7]" 			<< endl;
+				cout << " -e : error rate [auto estimated from fastq]" 	<< endl;
 				cout << " -m : total RAM of the system in MB [auto estimated if possible or 8,000 if not]" << endl;
-				cout << " -z : skip the pairwise alignment [false]" << endl;
-				cout << " -w : relaxMargin parameter for alignment on edges [300]" << endl;
-				cout << " -c : alignment score deviation from the mean [0.1]" << endl;
-				cout << " -n : filter out alignment on edge [false]" << endl;
+				cout << " -z : skip the pairwise alignment [false]" 				<< endl;
+				cout << " -w : relaxMargin parameter for alignment on edges [300]" 	<< endl;
+				cout << " -c : alignment score deviation from the mean [0.1]" 		<< endl;
+				cout << " -n : filter out alignment on edge [false]" 				<< endl;
 				cout << " -r : kmerRift: bases separating two k-mers used as seeds for a read [1,000]" << endl;
-				cout << " -p : output in PAF format [false]\n" << endl;
+				cout << " -b : bin size chaining algorithm [500]" 	<< endl;
+				cout << " -p : output in PAF format [false]\n" 		<< endl;
 
 				FreeOptList(thisOpt); // Done with this list, free it
 				return 0;
@@ -417,18 +423,21 @@ if(b_parameters.alignEnd)
 	double matcreat = omp_get_wtime();
 
 	size_t nkmer = countsreliable.size();
-	CSC<size_t,size_t> spmat(occurrences, read_id, nkmer, 
-							[] (size_t & p1, size_t & p2) 
-							{  
+	CSC<size_t, size_t> spmat(occurrences, read_id, nkmer, 
+							[] (size_t& p1, size_t& p2) 
+							{
 								return p1;
 							});
-	std::vector<tuple<size_t,size_t,size_t>>().swap(occurrences); // remove memory of occurences
+	// remove memory of transtuples
+	std::vector<tuple<size_t,size_t,size_t>>().swap(occurrences);
 
-	CSC<size_t,size_t> transpmat(transtuples, nkmer, read_id, 
-							[] (size_t & p1, size_t & p2) 
-							{  return p1;
+	CSC<size_t, size_t> transpmat(transtuples, nkmer, read_id, 
+							[] (size_t& p1, size_t& p2) 
+							{
+								return p1;
 							});
-	std::vector<tuple<size_t,size_t,size_t>>().swap(transtuples); // remove memory of transtuples
+	// remove memory of transtuples
+	std::vector<tuple<size_t, size_t, size_t>>().swap(transtuples);
 
 #ifdef PRINT
 	cout << "Sparse matrix construction took: " << omp_get_wtime()-matcreat << "s\n" << endl;
@@ -440,88 +449,30 @@ if(b_parameters.alignEnd)
 
 	spmatPtr_ getvaluetype(make_shared<spmatType_>());
 	HashSpGEMM(spmat, transpmat, 
-			[] (size_t & pi, size_t & pj)                     // n-th k-mer positions on read i and on read j
-			{   spmatPtr_ value(make_shared<spmatType_>());
-				value->count = 1;
-				value->pos.push_back(make_pair(pi, pj));
-				value->support.push_back(1);	// initial k-mer has support 1 
-				value->overlap.push_back(-1);	// unknown overlap initially
-				
-				return value;
-			},
-	
-	// AB: not sure if these id1 and id2 are captured correctly, honestly...
-	[&kmerSize,&b_parameters,&reads] (spmatPtr_ & m1, spmatPtr_ & m2, int id1, int id2) // change CSC code 			
-	{
-				// number of common k-mers
-				m2->count = m2->count+m1->count;
-							
-				for(int i = 0; i < m1->pos.size(); ++i)
-				{
-					// for each k-mer pair, estimate the overlap if it wasn't estimated before 
-					// (AB: this should be done in multiplication operator once and not checked for each addition)
-					if(m1->overlap[i] < 0)
-					{
-						int read1len = reads[id1].seq.length();
-						int read2len = reads[id2].seq.length();
-						int begpH = m1->pos[i].first;
-						int begpV = m1->pos[i].second;
-						int endpH = begpH + kmerSize;
-						int endpV = begpV + kmerSize;
+		// n-th k-mer positions on read i and on read j
+		// AB: not sure if these id1 and id2 are captured correctly, honestly
+		[&kmerSize, &reads] (const int& begpH, const int& begpV, const int& id1, const int& id2)
+		{
+			spmatPtr_ value(make_shared<spmatType_>());
 
-						int margin1 = std::min(begpH, begpV);
-						int margin2 = std::min(read1len - endpH, read2len - endpV);
-						m1->overlap[i] = margin1 + margin2 + kmerSize;
-					}
-					
-				}
-				vector<int> tobeinserted;
-				for(int i = 0; i < m2->pos.size(); ++i)	
-				{
-					// for each k-mer pair, estimate the overlap if it wasn't estimated before
-					// (AB: this should be done in multiplication operator once and not checked for each addition)					
-					if(m2->overlap[i] < 0)
-					{
-						int read1len = reads[id1].seq.length();
-						int read2len = reads[id2].seq.length();
-						int begpH = m2->pos[i].first;
-						int begpV = m2->pos[i].second;
-						int endpH = begpH + kmerSize;
-						int endpV = begpV + kmerSize;
+			std::string& read1 = reads[id1].seq;
+			std::string& read2 = reads[id2].seq;
 
-						int leftMargin  = std::min(begpH, begpV);
-						int rightMargin = std::min(read1len - endpH, read2len - endpV);
-						m2->overlap[i] = leftMargin + rightMargin + kmerSize;
-					}
-					
-					bool orphan = true;
-					for(int j = 0; j < m1->pos.size(); ++j)
-					{
-						if(std::abs(m2->overlap[i]- m1->overlap[j]) < 500) // B is the bin length
-						{
-							m1->support[j] += m2->support[j];
-							orphan = false;
-							// we can be within (B=500) length of multiple overlap estimations, so we can't break
-						}
-					}
-					if(orphan)
-					{
-						tobeinserted.push_back(i);	// we don't want to immediately insert to m1 and increase computational complexity
-					}
-				}
-				for (auto i:tobeinserted)
-				{
-					m1->pos.push_back(m2->pos[i]);
-					m1->overlap.push_back(m2->overlap[i]);
-					m1->support.push_back(m2->support[i]);
-				}
+			// GG: function in chain.h
+			multiop(value, read1, read2, begpH, begpV, kmerSize);
+			return value;
+		},
+		[&kmerSize, &b_parameters, &reads] (spmatPtr_& m1, spmatPtr_& m2, const int& id1, const int& id2)
+		{
+			// GG: after testing correctness, these variables can be removed
+			std::string& readname1 = reads[id1].nametag;
+			std::string& readname2 = reads[id2].nametag;
 
-				std::cout << "Between " << reads[id1].readid << " and " << reads[id2].readid << std::endl;
-				std::copy(m1->overlap.begin(), m1->overlap.end(), std::ostream_iterator<int>(std::cout, " ")); std::cout << std::endl;
-				std::copy(m1->support.begin(), m1->support.end(), std::ostream_iterator<int>(std::cout, " ")); std::cout << std::endl;
-				
-				return m1;
-			}, reads, getvaluetype, kmerSize, xdrop, out_file, b_parameters, ratioPhi); 
+			// GG: function in chain.h
+			chainop(m1, m2, b_parameters, readname1, readname2);
+			return m1;
+		},
+		reads, getvaluetype, kmerSize, xdrop, out_file, b_parameters, ratioPhi); 
 
 	cout << "Total running time: " << omp_get_wtime()-all << "s\n" << endl;
 	return 0;
