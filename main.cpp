@@ -473,7 +473,6 @@ if(b_parameters.alignEnd)
 						int margin2 = std::min(read1len - endpH, read2len - endpV);
 						m1->overlap[i] = margin1 + margin2 + kmerSize;
 					}
-					std::cout << "overlap length :" << m1->overlap[i] << std::endl;
 					
 				}
 				vector<int> tobeinserted;
@@ -494,8 +493,6 @@ if(b_parameters.alignEnd)
 						int rightMargin = std::min(read1len - endpH, read2len - endpV);
 						m2->overlap[i] = leftMargin + rightMargin + kmerSize;
 					}
-					std::cout << "overlap length :" << m2->overlap[i] << std::endl;
-					
 					
 					bool orphan = true;
 					for(int j = 0; j < m1->pos.size(); ++j)
@@ -519,7 +516,7 @@ if(b_parameters.alignEnd)
 					m1->support.push_back(m2->support[i]);
 				}
 
-				std::cout << "Between " << id1 << " and " << id2 << std::endl;
+				std::cout << "Between " << reads[id1].readid << " and " << reads[id2].readid << std::endl;
 				std::copy(m1->overlap.begin(), m1->overlap.end(), std::ostream_iterator<int>(std::cout, " ")); std::cout << std::endl;
 				std::copy(m1->support.begin(), m1->support.end(), std::ostream_iterator<int>(std::cout, " ")); std::cout << std::endl;
 				
