@@ -100,18 +100,16 @@ To run the evaluation program:
 cd bench
 ```
 ```
-make bench
+make result
 ```
 ```
-./bench -g <grouth-truth-file> [-b <bella-output>] [-m <minimap/minimap2-output>] [-d <daligner-output>] [-l <blasr-output>] [-p <mhap-output>] [-o <fileout-name>] [-c <mecat-output>] [-i <mecat-idx2read-file>]
+./result -G <grouth-truth-file> [-B <bella-output>] [-m <minimap/minimap2-output>] [-D <daligner-output>] [-L <blasr-output>] [-H <mhap-output>] [-M <mecat-output>] [-i <mecat-idx2read-file>]
 ```
-If the output of BELLA is in PAF format, **-a** instead of **-b** should be used:
-```
-./bench -g <grouth-truth-file> [-a <bella-output>] [-m <minimap/minimap2-output>] [-d <daligner-output>] [-l <blasr-output>] [-p <mhap-output>] [-o <fileout-name>] [-c <mecat-output>] [-i <mecat-idx2read-file>]
-```
+If the output of BELLA is in PAF format, you should run it using minimap2 **-m** flag.
+
 To show the usage:
 ```
-./bench -h
+./result -h
 ```
 **NOTE**: add -z flag if simulated data is used.
 
@@ -121,7 +119,7 @@ You can download an _E. coli_ 30X dataset [here](https://bit.ly/2EEq3JM) to test
 
 You can run the evaluation code located in /bench folder as: 
 
-`./bench -g ecsample_singlemapped_q10.txt -b <bella-output> -o <output-name-bench>`
+```./result -G ecsample_singlemapped_q10.txt -B <bella-output>```
 
 ## Citation
 
