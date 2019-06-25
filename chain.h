@@ -31,7 +31,6 @@
 
 #include "mtspgemm2017/common.h"
 
-//	#define ORIENTED
 //	#define DBCHAIN
 
 // GG: check orientation
@@ -54,8 +53,6 @@ overlapop(const std::string& read1, const std::string& read2, int begpH,
 	int read1len = read1.length();
 	int read2len = read2.length();
 
-	// GG: check consistency with Aydin's result, then introduce orientation
-#ifdef ORIENTED
 	// GG: checking strand
 	bool oriented = checkstrand(read1, read2, begpH, begpV, kmerSize);
 
@@ -63,7 +60,7 @@ overlapop(const std::string& read1, const std::string& read2, int begpH,
 	{
 		begpH = read1.length() - begpH - kmerSize;
 	}
-#endif
+
 	// GG: computing overlap length
 	int endpH = begpH + kmerSize;
 	int endpV = begpV + kmerSize;
@@ -126,16 +123,16 @@ chainop(spmatPtr_& m1, spmatPtr_& m2, BELLApars& b_parameters,
 		m1->support.push_back(m2->support[i]);
 	}
 
-#ifdef DBCHAIN
-#pragma omp critical
-	{
-		// GG: after testing correctness, this part can be removed
-		// GG: we can then pass fewer parameters
-		std::cout << "Between " << readname1 << " and " << readname2 << std::endl;
-		std::copy(m1->overlap.begin(), m1->overlap.end(), std::ostream_iterator<int>(std::cout, " ")); std::cout << std::endl;
-		std::copy(m1->support.begin(), m1->support.end(), std::ostream_iterator<int>(std::cout, " ")); std::cout << std::endl;
-	}
-#endif
+
+//#pragma omp critical
+//	{
+//		// GG: after testing correctness, this part can be removed
+//		// GG: we can then pass fewer parameters
+//		std::cout << "Between " << readname1 << " and " << readname2 << std::endl;
+//		std::copy(m1->overlap.begin(), m1->overlap.end(), std::ostream_iterator<int>(std::cout, " ")); std::cout << std::endl;
+//		std::copy(m1->support.begin(), m1->support.end(), std::ostream_iterator<int>(std::cout, " ")); std::cout << std::endl;
+//	}
+
 }
 
 #endif
