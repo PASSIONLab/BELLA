@@ -494,7 +494,7 @@ if(b_parameters.alignEnd)
 						int rightMargin = std::min(read1len - endpH, read2len - endpV);
 						m2->overlap[i] = leftMargin + rightMargin + kmerSize;
 					}
-					std::cout << "overlap length :" << m1->overlap[i] << std::endl;
+					std::cout << "overlap length :" << m2->overlap[i] << std::endl;
 					
 					
 					bool orphan = true;
