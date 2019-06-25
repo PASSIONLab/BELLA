@@ -444,63 +444,77 @@ if(b_parameters.alignEnd)
 			{   spmatPtr_ value(make_shared<spmatType_>());
 				value->count = 1;
 				value->pos.push_back(make_pair(pi, pj));
+				value->support.push_back(1);	// initial k-mer has support 1 
+				value->overlap.push_back(-1);	// unknown overlap initially
+				
 				return value;
 			},
+	
 	[&kmerSize,&b_parameters,&reads] (spmatPtr_ & m1, spmatPtr_ & m2, int id1, int id2) // change CSC code
 			{
 				// number of common k-mer
 				m2->count = m2->count+m1->count;
-				// dumbest code
-				//int maxoverlapm1 = 0, posm1;
-				//int maxoverlapm2 = 0, posm2;
-				std::vector<int> overlapVect(m2->count, 0);
-				std::vector<std::pair<int, int>> posVect(m2->count, std::make_pair(0, 0));
-				//#pragma omp parallel
-				//	{
-				//	#pragma omp for nowait
+							
 				for(int i = 0; i < m1->pos.size(); ++i)
 				{
-					// for each k-mer pair, estimate the overlap
-					int read1len = reads[id1].seq.length();
-					int read2len = reads[id2].seq.length();
-					int begpH = m1->pos[i].first;
-					int begpV = m1->pos[i].second;
-					int endpH = begpH + kmerSize;
-					int endpV = begpV + kmerSize;
+					// for each k-mer pair, estimate the overlap if it wasn't estimated before 
+					// (AB: this should be done in multiplication operator once and not checked for each addition)
+					if(m1->overlap[i] < 0)
+					{
+						int read1len = reads[id1].seq.length();
+						int read2len = reads[id2].seq.length();
+						int begpH = m1->pos[i].first;
+						int begpV = m1->pos[i].second;
+						int endpH = begpH + kmerSize;
+						int endpV = begpV + kmerSize;
 
-					int margin1 = std::min(begpH, begpV);
-					int margin2 = std::min(read1len - endpH, read2len - endpV);
-					int overlap = margin1 + margin2 + kmerSize;
-
-					++overlapVect[overlap];
-					posVect[overlap] = std::make_pair(begpH, begpV);
+						int margin1 = std::min(begpH, begpV);
+						int margin2 = std::min(read1len - endpH, read2len - endpV);
+						m1->overlap[i] = margin1 + margin2 + kmerSize;
+						std::cout << "overlap length :" << m1->overlap[i] << std::endl;
+					}
 				}
-			//#pragma omp for nowait
 				for(int i = 0; i < m2->pos.size(); ++i)
 				{
-					// for each k-mer pair, estimate the overlap
-					int read1len = reads[id1].seq.length();
-					int read2len = reads[id2].seq.length();
-					int begpH = m2->pos[i].first;
-					int begpV = m2->pos[i].second;
-					int endpH = begpH + kmerSize;
-					int endpV = begpV + kmerSize;
+					// for each k-mer pair, estimate the overlap if it wasn't estimated before
+					// (AB: this should be done in multiplication operator once and not checked for each addition)					// 
+					if(m2->overlap[i] < 0)
+					{
+						int read1len = reads[id1].seq.length();
+						int read2len = reads[id2].seq.length();
+						int begpH = m2->pos[i].first;
+						int begpV = m2->pos[i].second;
+						int endpH = begpH + kmerSize;
+						int endpV = begpV + kmerSize;
 
-					int leftMargin  = std::min(begpH, begpV);
-					int rightMargin = std::min(read1len - endpH, read2len - endpV);
-					int overlap = leftMargin + rightMargin + kmerSize;
-
-					++overlapVect[overlap];
-					posVect[overlap] = std::make_pair(begpH, begpV);
-					// m2->pos.push_back(m1->pos[i]);
+						int leftMargin  = std::min(begpH, begpV);
+						int rightMargin = std::min(read1len - endpH, read2len - endpV);
+						m2->overlap[i] = leftMargin + rightMargin + kmerSize;
+					}
+					
+					bool orphan = true;
+					for(int j = 0; j < m1->pos.size(); ++j)
+					{
+						if(std::abs(m2->overlap[i]- m1->overlap[j]) < 500)
+						{
+							m1->support[j]++;
+							orphan = false;
+							break;	// it can be close to no other k-mer in the m1 set
+						}
+					}
+					if(orphan)
+					{
+						m1->pos.push_back(m2->pos[i]);
+						m1->overlap.push_back(m2->overlap[i]);
+						m1->support.push_back(m2->support[i]);
+					}
 				}
 
-				m2->pos.clear();
-				int overlapMode = std::max_element(overlapVect.begin(), overlapVect.end()) - overlapVect.begin();
-				m2->pos.push_back(posVect[overlapMode]);
-			//	}
-			//	return the seed with larger overlap;
-				return m2;
+				std::cout << "Between " << id1 << " and " << id2 << std::endl;
+				std::copy(m1->overlap.begin(), m1->overlap.end(), std::ostream_iterator<int>(std::cout, " ")); std::cout << std::endl;
+				std::copy(m1->support.begin(), m1->support.end(), std::ostream_iterator<int>(std::cout, " ")); std::cout << std::endl;
+				
+				return m1;
 			}, reads, getvaluetype, kmerSize, xdrop, out_file, b_parameters, ratioPhi); 
 
 	cout << "Total running time: " << omp_get_wtime()-all << "s\n" << endl;

@@ -69,6 +69,8 @@ struct spmatType_ {
 
     int count = 0;              // number of shared k-mers
     vector<pair<int,int>> pos;  // vector of k-mer positions <read-i, read-j> (if !K, use at most 2 kmers, otherwise all)
+    vector<int> support;	// supports of the k-mer overlaps above
+    vector<int> overlap; 	// to avoid recomputing overlap
 };
 
 typedef shared_ptr<spmatType_> spmatPtr_; // pointer to spmatType_ datastruct
