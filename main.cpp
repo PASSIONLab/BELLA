@@ -375,7 +375,8 @@ if(b_parameters.alignEnd)
                     Kmer lexsmall;
                     if (b_parameters.useHOPC) {
                       std::string km = kHOPC(seqs[i].substr(j), kmer_len);
-                      Kmer newKmer(km.c_str(), km.length());
+                      int len = km.length();
+                      Kmer newKmer(km.c_str(), len);
                       lexsmall = newKmer;
                       // lexsmall = mykmer.hopc();
                     } else {
