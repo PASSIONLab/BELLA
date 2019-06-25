@@ -180,19 +180,4 @@ inline std::string toHOPC(std::string original) {
   return hopc;
 }
 
-inline std::string kHOPC(std::string seq, int len) {
-  std::string hopc = "";
-
-  char last = '\n';
-  for (auto c : original) {
-    if ( last != c ) {
-      last = c;
-      hopc += c;
-    }
-    if (hopc.length() == len) return hopc;
-  }
-
-  return "";
-}
-
 #endif
