@@ -306,7 +306,7 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
     int kmer_id_denovo = 0;
     auto lt = countsdenovo.lock_table(); // our counting
     for (const auto &it : lt) 
-        if (it.second > 1)
+        if (it.second >= lower && it.second <= upper)
         {
             countsreliable_denovo.insert(it.first,kmer_id_denovo);
             ++kmer_id_denovo;
