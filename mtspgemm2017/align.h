@@ -65,12 +65,12 @@ bool toEnd(int colStart, int colEnd, int colLen, int rowStart, int rowEnd, int r
  * @param useHOPC specifies whether HOPC representations of kmers are used
  * @return alignment score and extended seed
  */
-seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rlen, int i, int j, int xdrop, int kmer_len, bool useHOPC) {
+seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rlen, int i, int j, int xdrop, int kmer_len, bool useHOPC, bool iRev, bool jRev) {
 
     Score<int, Simple> scoringScheme(1,-1,-1);
 
-    Dna5String seqH(row); 
-    Dna5String seqV(col); 
+    Dna5String seqH(row);
+    Dna5String seqV(col);
     Dna5String seedH;
     Dna5String seedV;
     string strand;
@@ -85,51 +85,14 @@ seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rle
     /* we are reversing the "row", "col" is always on the forward strand */
     Dna5StringReverseComplement twin(seedH);
 
-    bool hopcReverse = false;
-    if (useHOPC) { // TODO: see if there is a way to get the information from the Kmer class
-      std::string hopcH = toHOPC(row.substr(i, kmer_len));
-      std::string hopcV = toHOPC(col.substr(j, kmer_len));
-    
-      Dna5String hopcHdna(hopcH);
-    
-      Dna5StringReverseComplement hopcTwin(hopcHdna);
-    
-      hopcReverse = ( hopcTwin == hopcV );
-
-      // prints length of the two kmers - test 13.1
-      // std::string lengths = to_string(hopcH.length()) + "," + to_string(hopcV.length()) + "\n";
-      // cout << lengths << flush;
-      
-      // prints whether the original kmer was also equal - test 13.2
-      // if(hopcReverse) {
-      //   if (twin == seedV) {
-      //     cout << " equal " << flush;
-      //   } else {
-      //     cout << " not " << flush;
-      //   }
-      // } else {
-      //   if (seedH == seedV) {
-      //     cout << " equal " << flush;
-      //   } else {
-      //     cout << " not " << flush;
-      //   }
-      // }
-      
-      // prints the whether the evaluations agree (so the same part of "if" would be run) - test 13.3
-      // if ( (twin == seedV) == hopcReverse ) {
-      //   cout << " agree " << flush;
-      // } else {
-      //   cout << " not " << flush;
-      // }
-      
-    }
+    bool hopcReverse = useHOPC && ( iRev != jRev );
 
     if ( (twin == seedV) || hopcReverse )
     {
         strand = 'c';
         Dna5StringReverseComplement twinRead(seqH);
         i = rlen-i-kmer_len;
-        
+
         setBeginPositionH(seed, i);
         setBeginPositionV(seed, j);
         setEndPositionH(seed, i+kmer_len);
@@ -142,7 +105,7 @@ seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rle
     {
         strand = 'n';
         longestExtensionTemp = extendSeed(seed, seqH, seqV, EXTEND_BOTH, scoringScheme, xdrop, kmer_len, GappedXDrop());
-    } 
+    }
 
     longestExtensionScore.score = longestExtensionTemp;
     longestExtensionScore.seed = seed;

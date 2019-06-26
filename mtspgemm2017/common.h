@@ -30,7 +30,7 @@ struct BELLApars
 	bool skipAlignment;  	// Do not align (z)
     bool allKmer;           // Use all possible kmers (non-overlapping and separated by <kmerRift> bases) as alignment seeds (K)
 	bool adapThr; 			// Apply adaptive alignment threshold (v)
-	int defaultThr;   		// default alignment score threshold (a), only matters when adapThr=false, to be deprecated	
+	int defaultThr;   		// default alignment score threshold (a), only matters when adapThr=false, to be deprecated
 	bool alignEnd;			// Filter out alignments not achieving end of the read "relaxed" (x)
 	int relaxMargin;		// epsilon parameter for alignment on edges (w)
 	double deltaChernoff;	// delta computed via Chernoff bound (c)
@@ -56,7 +56,7 @@ struct seqAnResult {
 
 struct readType_ {
 	std::string nametag;
-	std::string seq; 
+	std::string seq;
 	int readid;
 
     bool operator < (readType_ & str)
@@ -70,7 +70,7 @@ typedef vector<readType_> readVector_;
 struct spmatType_ {
 
     int count = 0;              // number of shared k-mers
-    vector<pair<int,int>> pos;  // vector of k-mer positions <read-i, read-j> (if !K, use at most 2 kmers, otherwise all)
+    vector<pair<pair<int,bool>,pair<int,bool>>> pos;  // vector of k-mer positions <read-i, read-j> (if !K, use at most 2 kmers, otherwise all)
 };
 
 typedef shared_ptr<spmatType_> spmatPtr_; // pointer to spmatType_ datastruct
@@ -79,9 +79,9 @@ typedef std::vector<Kmer> Kmers;
 
 struct alignmentInfo {
 
-    int64_t score;              // score 
-    uint32_t apos, bpos;        // (8) pos in the sections 
-    uint32_t alen, blen;        // (8) lengths of the segments 
+    int64_t score;              // score
+    uint32_t apos, bpos;        // (8) pos in the sections
+    uint32_t alen, blen;        // (8) lengths of the segments
 };
 
 #endif

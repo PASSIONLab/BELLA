@@ -17,8 +17,8 @@
 
 
 
-/* Short description: 
- *  - Store kmer strings by using 2 bits per base instead of 8 
+/* Short description:
+ *  - Store kmer strings by using 2 bits per base instead of 8
  *  - Easily return reverse complements of kmers, e.g. TTGG -> CCAA
  *  - Easily compare kmers
  *  - Provide hash of kmers
@@ -45,7 +45,7 @@ class Kmer {
   }
   static std::vector<Kmer> getKmers(std::string seq);
 
-  Kmer& operator=(const Kmer& o);  
+  Kmer& operator=(const Kmer& o);
   void set_deleted();
   bool operator<(const Kmer& o) const;
   bool operator==(const Kmer& o) const;
@@ -55,11 +55,11 @@ class Kmer {
 
   void set_kmer(const char *s, unsigned int len);
   uint64_t hash() const;
-  
+
 
   Kmer twin() const;
   Kmer rep() const; // ABAB: return the smaller of itself (lexicographically) or its reversed-complement (i.e. twin)
-  
+
   // NOTE: commented out for version with Kmers of variable lengths because of lack of testing
   // Kmer getLink(const size_t index) const;
   // Kmer forwardBase(const char b) const;
@@ -67,10 +67,11 @@ class Kmer {
   // bool equalUpToLastBase(const Kmer & rhs);	// returns true for completely identical k-mers as well as k-mers that only differ at the last base
 
   Kmer hopc() const;
-  std::string getBinary() const;  
+  bool rev;
+  std::string getBinary() const;
   void toString(char * s) const;
   std::string toString() const;
-	
+
   void copyDataInto(void * pointer) const
   {
 	// void * memcpy ( void * destination, const void * source, size_t num );
@@ -89,11 +90,11 @@ class Kmer {
   int getNumBytes() const {
         return N_BYTES;
   }
-  
+
 
   // static functions
   static void set_k(unsigned int _k);
-  static constexpr size_t numBytes() { 
+  static constexpr size_t numBytes() {
 	  return (sizeof(uint64_t) * (N_LONGS));
   }
 
@@ -110,10 +111,10 @@ class Kmer {
     MERARR longs;
     BYTEARR bytes;
   };
-  
+
   unsigned int length;
 
-  // Unions are very useful for low-level programming tasks that involve writing to the same memory area 
+  // Unions are very useful for low-level programming tasks that involve writing to the same memory area
   // but at different portions of the allocated memory space, for instance:
   //		union item {
   //			// The item is 16-bits
@@ -125,7 +126,7 @@ class Kmer {
   //  item tItem;
   //  tItem.theItem = 0xBEAD;
   //  tItem.portions.lo = 0xEF; // The item now equals 0xBEEF
-	
+
 
  // void shiftForward(int shift);
  // void shiftBackward(int shift);

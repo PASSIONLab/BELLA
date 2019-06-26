@@ -260,8 +260,8 @@ int main (int argc, char *argv[]) {
     vector<string> nametags;
     readVector_ reads;
     Kmers kmersfromreads;
-    vector<tuple<size_t,size_t,size_t>> occurrences;
-    vector<tuple<size_t,size_t,size_t>> transtuples;
+    vector<tuple<size_t,size_t,std::pair<int,bool>>> occurrences;
+    vector<tuple<size_t,size_t,std::pair<int,bool>>> transtuples;
     //
     // File and setting used
     //
@@ -337,8 +337,8 @@ if(b_parameters.alignEnd)
     cout << "\nRunning with up to " << MAXTHREADS << " threads" << endl;
 #endif
 
-    vector < vector<tuple<int,int,int>> > alloccurrences(MAXTHREADS);
-    vector < vector<tuple<int,int,int>> > alltranstuples(MAXTHREADS);
+    vector < vector<tuple<int,int,std::pair<int,bool>>> > alloccurrences(MAXTHREADS);
+    vector < vector<tuple<int,int,std::pair<int,bool>>> > alltranstuples(MAXTHREADS);
     vector < readVector_ > allreads(MAXTHREADS);
 
     for(auto itr=allfiles.begin(); itr!=allfiles.end(); itr++)
@@ -383,8 +383,8 @@ if(b_parameters.alignEnd)
 
                     if(found)
                     {
-                        alloccurrences[MYTHREAD].emplace_back(std::make_tuple(read_id+i,idx,j)); // vector<tuple<read_id,kmer_id,kmerpos>>
-                        alltranstuples[MYTHREAD].emplace_back(std::make_tuple(idx,read_id+i,j)); // transtuples.push_back(col_id,row_id,kmerpos)
+                        alloccurrences[MYTHREAD].emplace_back(std::make_tuple(read_id+i,idx,std::make_pair(j,lexsmall.rev))); // vector<tuple<read_id,kmer_id,kmerpos>>
+                        alltranstuples[MYTHREAD].emplace_back(std::make_tuple(idx,read_id+i,std::make_pair(j, lexsmall.rev))); // transtuples.push_back(col_id,row_id,kmerpos)
                     }
                 }
             } // for(int i=0; i<nreads; i++)
@@ -433,18 +433,18 @@ if(b_parameters.alignEnd)
     double matcreat = omp_get_wtime();
 
     size_t nkmer = countsreliable.size();
-    CSC<size_t,size_t> spmat(occurrences, read_id, nkmer,
-                            [] (size_t & p1, size_t & p2)
+    CSC<size_t,std::pair<int,bool>> spmat(occurrences, read_id, nkmer,
+                            [] (std::pair<int,bool> & p1, std::pair<int,bool> & p2)
                             {
                                 return p1;
                             });
-    std::vector<tuple<size_t,size_t,size_t>>().swap(occurrences); // remove memory of occurences
+    std::vector<tuple<size_t,size_t,std::pair<int,bool>>>().swap(occurrences); // remove memory of occurences
 
-    CSC<size_t,size_t> transpmat(transtuples, nkmer, read_id,
-                            [] (size_t & p1, size_t & p2)
+    CSC<size_t,std::pair<int,bool>> transpmat(transtuples, nkmer, read_id,
+                            [] (std::pair<int,bool> & p1, std::pair<int,bool> & p2)
                             {  return p1;
                             });
-    std::vector<tuple<size_t,size_t,size_t>>().swap(transtuples); // remove memory of transtuples
+    std::vector<tuple<size_t,size_t,std::pair<int,bool>>>().swap(transtuples); // remove memory of transtuples
 
 #ifdef PRINT
     cout << "Sparse matrix construction took: " << omp_get_wtime()-matcreat << "s\n" << endl;
@@ -456,7 +456,7 @@ if(b_parameters.alignEnd)
 
     spmatPtr_ getvaluetype(make_shared<spmatType_>());
     HashSpGEMM(spmat, transpmat,
-            [] (size_t & pi, size_t & pj)                     // n-th k-mer positions on read i and on read j
+            [] (std::pair<int,bool> & pi, std::pair<int,bool> & pj)                     // n-th k-mer positions on read i and on read j
             {   spmatPtr_ value(make_shared<spmatType_>());
                 value->count = 1;
                 value->pos.push_back(make_pair(pi, pj));
@@ -466,15 +466,15 @@ if(b_parameters.alignEnd)
             {
                 for(int i = 0; i < m1->pos.size(); ++i)
                 {
-                    int left  = m2->pos[i].first - kmer_len - b_parameters.kmerRift;
-                    int right = m2->pos[i].first + kmer_len + b_parameters.kmerRift;
-                    int newseed  = m1->pos[i].first;
+                    int left  = m2->pos[i].first.first - kmer_len - b_parameters.kmerRift;
+                    int right = m2->pos[i].first.first + kmer_len + b_parameters.kmerRift;
+                    int newseed  = m1->pos[i].first.first;
 
                     if(!isinrift(newseed, left, right))       // seeds separated by <kmerRift> bases
                     {
-                        left  = m2->pos[i].second - kmer_len - b_parameters.kmerRift;
-                        right = m2->pos[i].second + kmer_len + b_parameters.kmerRift;
-                        newseed  = m1->pos[i].second;
+                        left  = m2->pos[i].second.first - kmer_len - b_parameters.kmerRift;
+                        right = m2->pos[i].second.first + kmer_len + b_parameters.kmerRift;
+                        newseed  = m1->pos[i].second.first;
 
                         if(!isinrift(newseed, left, right))   // seeds separated by <kmerRift> bases
                             if(!b_parameters.allKmer)         // save at most two kmers as seeds
