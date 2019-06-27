@@ -340,6 +340,7 @@ if(b_parameters.alignEnd)
     vector < vector<tuple<int,int,std::pair<int,bool>>> > alloccurrences(MAXTHREADS);
     vector < vector<tuple<int,int,std::pair<int,bool>>> > alltranstuples(MAXTHREADS);
     vector < readVector_ > allreads(MAXTHREADS);
+    vector < int > len_sums(MAXTHREADS, 0);
 
     for(auto itr=allfiles.begin(); itr!=allfiles.end(); itr++)
     {
@@ -366,6 +367,7 @@ if(b_parameters.alignEnd)
                 temp.readid = read_id+i;
 
                 allreads[MYTHREAD].push_back(temp);
+                len_sums[MYTHREAD] += len;
 
                 for(int j=0; j<=len-kmer_len; j++)
                 {
@@ -396,10 +398,12 @@ if(b_parameters.alignEnd)
 
     size_t readcount = 0;
     size_t tuplecount = 0;
+    size_t readlensum = 0;
     for(int t=0; t<MAXTHREADS; ++t)
     {
         readcount += allreads[t].size();
         tuplecount += alloccurrences[t].size();
+        readlensum += len_sums[t];
     }
     reads.resize(readcount);
     occurrences.resize(tuplecount);
@@ -423,6 +427,7 @@ if(b_parameters.alignEnd)
 
 #ifdef PRINT
     cout << "Fastq(s) parsing fastq took: " << omp_get_wtime()-parsefastq << "s" << endl;
+    cout << "Average read length: " << (readlensum / readcount) << endl;
     cout << "Total number of reads: "<< read_id << "\n"<< endl;
 #endif
 
