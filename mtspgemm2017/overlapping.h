@@ -586,7 +586,7 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
                     int i = it->first.first, j = it->second.first;
                     int iRev = it->first.second, jRev = it->second.second;
 
-                    maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, xdrop, kmer_len, b_pars.useHOPC, iRev, jRev);
+                    maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, xdrop, kmer_len, b_pars.useHOPC, iRev, jRev, b_pars.cap);
                     PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
                 }
                 else
@@ -596,7 +596,7 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
                         int i = it->first.first, j = it->second.first;
                         int iRev = it->first.second, jRev = it->second.second;
 
-                        maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, xdrop, kmer_len, b_pars.useHOPC, iRev, jRev);
+                        maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, xdrop, kmer_len, b_pars.useHOPC, iRev, jRev, b_pars.cap);
                         PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
 
                         if(passed)

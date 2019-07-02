@@ -65,7 +65,7 @@ bool toEnd(int colStart, int colEnd, int colLen, int rowStart, int rowEnd, int r
  * @param useHOPC specifies whether HOPC representations of kmers are used
  * @return alignment score and extended seed
  */
-seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rlen, int i, int j, int xdrop, int kmer_len, bool useHOPC, bool iRev, bool jRev) {
+seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rlen, int i, int j, int xdrop, int kmer_len, bool useHOPC, bool iRev, bool jRev, int cap) {
 
     Score<int, Simple> scoringScheme(1,-1,-1);
 
@@ -85,9 +85,40 @@ seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rle
     /* we are reversing the "row", "col" is always on the forward strand */
     Dna5StringReverseComplement twin(seedH);
 
-    bool hopcReverse = useHOPC && ( iRev != jRev );
+    bool reverse = (twin == seedV) || (useHOPC && ( iRev != jRev ));
 
-    if ( (twin == seedV) || hopcReverse )
+    // Assess whether to align the pair based on the caps on the end of the kmer
+    bool skip_align = false;
+
+    if( cap ) {
+      // decide how to set skip_align
+      if( reverse ) {
+        // use a reversed version
+        std::string reverseCap = col.substr(j-cap, cap);
+        std::reverse(reverseCap.begin(), reverseCap.end());
+        skip_align = row.substr(i-cap, cap) == reverseCap;
+      } else {
+        // use the normal version
+        skip_align = row.substr(i-cap, cap) == col.substr(j-cap, cap);
+      }
+
+      if( reverse ) {
+        // use a reversed version
+        std::string reverseCap = col.substr(j+kmer_len, cap);
+        std::reverse(reverseCap.begin(), reverseCap.end());
+        skip_align = skip_align || row.substr(i+kmer_len, cap) == reverseCap;
+      } else {
+        // use the normal version
+        skip_align = skip_align || row.substr(i+kmer_len, cap) == col.substr(j+kmer_len, cap);
+      }
+
+      if(skip_align) {
+        longestExtensionScore.score = 0;
+        return longestExtensionScore;
+      }
+    }
+
+    if ( reverse )
     {
         strand = 'c';
         Dna5StringReverseComplement twinRead(seqH);

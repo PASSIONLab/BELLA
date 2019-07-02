@@ -68,7 +68,7 @@ int main (int argc, char *argv[]) {
     // Follow an option with a colon to indicate that it requires an argument.
 
     optList = NULL;
-    optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:Ka:ze:x:w:nc:m:r:pu:");
+    optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:Ka:ze:x:w:nc:m:r:pu:l:");
 
 
     char *kmer_file = NULL;                 // Reliable k-mer file from Jellyfish
@@ -203,6 +203,11 @@ int main (int argc, char *argv[]) {
 								cout << "HOPC enabled with error rate of " << b_parameters.HOPCerate << endl;
 								break;
 			      }
+						case 'l': {
+			        	b_parameters.cap = 0;
+								cout << "Cap of length " << b_parameters.cap << " required." << endl;
+								break;
+			      }
             case 'h': {
                 cout << "Usage:\n" << endl;
                 cout << " -f : k-mer list from Jellyfish (required if Jellyfish k-mer counting is used)" << endl; // Reliable k-mers are selected by BELLA
@@ -220,6 +225,7 @@ int main (int argc, char *argv[]) {
                 cout << " -n : filter out alignment on edge [false]" << endl;
                 cout << " -r : kmerRift: bases separating two k-mers used as seeds for a read [1,000]" << endl;
 								cout << " -u : use HOPC representation for kmers with HOPC erate [false]" << endl; // TODO: pick a better letter because u doesn't make sense
+								cout << " -l : length of cap required to be equal to align reads [0]" << endl; // TODO: describe more clearly
                 cout << " -p : output in PAF format [false]\n" << endl;
 
                 FreeOptList(thisOpt); // Done with this list, free it
