@@ -189,7 +189,9 @@ std::set<entry, classcom> readBellaOutput(std::ifstream& file, int minOverlap, b
 	file.close();
 
 	std::set<entry, classcom> result;
+	std::set<entry, classcom> result_short;
 	std::vector<std::set<entry, classcom>> local(maxt);
+	std::vector<std::set<entry, classcom>> local_short(maxt);
 
 #pragma omp parallel for
 	for(int i = 0; i < nOverlap; i++) {
@@ -209,6 +211,8 @@ std::set<entry, classcom> readBellaOutput(std::ifstream& file, int minOverlap, b
 			if(alignment) {
 				if(ientry.overlap >= minOverlap)
 					local[ithread].insert(ientry);
+				else
+					local_short[ithread].insert(ientry);
 			}
 			else {
 				local[ithread].insert(ientry);
@@ -216,8 +220,10 @@ std::set<entry, classcom> readBellaOutput(std::ifstream& file, int minOverlap, b
 		}
 	}
 
-	for(int i = 0; i < maxt; ++i)
+	for(int i = 0; i < maxt; ++i) {
 		result.insert(local[i].begin(), local[i].end());
+		result_short.insert(local_short[i].begin(), local_short[i].end());
+	}
 #ifdef DEBUG
 	std::cout << "Bella identified " << 2*result.size() << " overlaps" << std::endl;
 #endif
@@ -524,9 +530,7 @@ std::set<entry, classcom> readDalignerOutput(std::ifstream& file, int minOverlap
 	file.close();
 
 	std::set<entry, classcom> result;
-	std::set<entry, classcom> result_short;
 	std::vector<std::set<entry, classcom>> local(maxt);
-	std::vector<std::set<entry, classcom>> local_short(maxt);
 
 #pragma omp parallel for
 	for(int i = 0; i < nOverlap; i++) {
@@ -560,8 +564,6 @@ std::set<entry, classcom> readDalignerOutput(std::ifstream& file, int minOverlap
 			if(alignment) {
 				if(ientry.overlap >= minOverlap)
 					local[ithread].insert(ientry);
-				else
-					local_short[ithread].insert(ientry);
 			}
 			else {
 				local[ithread].insert(ientry);
@@ -571,10 +573,8 @@ std::set<entry, classcom> readDalignerOutput(std::ifstream& file, int minOverlap
 
 	for(int i = 0; i < maxt; ++i)
 		result.insert(local[i].begin(), local[i].end());
-		result_short.insert(local_short[i].begin(), local_short[i].end());
 #ifdef DEBUG
 	std::cout << "Daligner identified " << result.size() << " overlaps" << std::endl;
-	std::cout << "Daligner identified " << result_short.size() << " overlaps that did not meet the threshold of " << minOverlap << std::endl;
 #endif
 	return result;
 };
