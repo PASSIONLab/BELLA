@@ -204,7 +204,7 @@ int main (int argc, char *argv[]) {
 								break;
 			      }
 						case 'l': {
-			        	b_parameters.cap = 0;
+			        	b_parameters.cap = atoi(thisOpt->argument);
 								cout << "Cap of length " << b_parameters.cap << " required." << endl;
 								break;
 			      }
