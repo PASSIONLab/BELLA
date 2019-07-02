@@ -9,8 +9,8 @@
 #include <numeric>
 #include <vector>
 #include <map>
-#include <sys/types.h> 
-#include <sys/stat.h> 
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <math.h>
 #include <limits.h>
 #include <bitset>
@@ -18,7 +18,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <unistd.h>
-#include <ctype.h> 
+#include <ctype.h>
 #include <sstream>
 #include <set>
 #include <memory>
@@ -127,7 +127,7 @@ std::set<entry, classcom> readTruthOutput(std::ifstream& file, int minOverlap, b
 	for(int i = 0; i < maxt; ++i)
 	{
 		intermediate = std::accumulate(local[i].begin(), local[i].end(), intermediate,
-				[](std::map<std::string, std::vector<overlap>>& m, 
+				[](std::map<std::string, std::vector<overlap>>& m,
 					const std::pair<std::string, std::vector<overlap>>& v)
 				{
 					m[v.first].insert(m[v.first].end(), v.second.begin(), v.second.end());
@@ -275,7 +275,7 @@ std::set<entry, classcom> readMinimapOutput(std::ifstream& file, int minOverlap,
 			}
 
 		//	(int begV, int endV, int lenV, int begH, int endH, int lenH, int overlap)
-			estimateOverlap(begV, endV, lenV, 
+			estimateOverlap(begV, endV, lenV,
 					begH, endH, lenH, ientry.overlap);
 
 			if(alignment) {
@@ -345,7 +345,7 @@ std::set<entry, classcom> readMecatOutput(std::ifstream& file, std::ifstream& in
 
 		//	the positions are zero-based and are based on the forward strand, whatever which strand the sequence is mapped
 		//	(int begV, int endV, int lenV, int begH, int endH, int lenH, int overlap)
-			estimateOverlap(begV, endV, lenV, 
+			estimateOverlap(begV, endV, lenV,
 					begH, endH, lenH, ientry.overlap);
 
 			if(alignment) {
@@ -411,7 +411,7 @@ std::set<entry, classcom> readMhapOutput(std::ifstream& file, int minOverlap, bo
 			int lenH = std::stoi(v[11]);
 
 		//	(int begV, int endV, int lenV, int begH, int endH, int lenH, int overlap)
-			estimateOverlap(begV, endV, lenV, 
+			estimateOverlap(begV, endV, lenV,
 					begH, endH, lenH, ientry.overlap);
 
 			if(alignment) {
@@ -482,7 +482,7 @@ std::set<entry, classcom> readBlasrOutput(std::ifstream& file, int minOverlap, b
 			//}
 
 		//	(int begV, int endV, int lenV, int begH, int endH, int lenH, int overlap)
-			estimateOverlap(begV, endV, lenV, 
+			estimateOverlap(begV, endV, lenV,
 					begH, endH, lenH, ientry.overlap);
 
 			if(alignment) {
@@ -524,7 +524,9 @@ std::set<entry, classcom> readDalignerOutput(std::ifstream& file, int minOverlap
 	file.close();
 
 	std::set<entry, classcom> result;
+	std::set<entry, classcom> result_short;
 	std::vector<std::set<entry, classcom>> local(maxt);
+	std::vector<std::set<entry, classcom>> local_short(maxt);
 
 #pragma omp parallel for
 	for(int i = 0; i < nOverlap; i++) {
@@ -552,12 +554,14 @@ std::set<entry, classcom> readDalignerOutput(std::ifstream& file, int minOverlap
 			}
 
 		//	(int begV, int endV, int lenV, int begH, int endH, int lenH, int overlap)
-			estimateOverlap(begV, endV, lenV, 
+			estimateOverlap(begV, endV, lenV,
 					begH, endH, lenH, ientry.overlap);
 
 			if(alignment) {
 				if(ientry.overlap >= minOverlap)
 					local[ithread].insert(ientry);
+				else
+					local_short[ithread].insert(ientry);
 			}
 			else {
 				local[ithread].insert(ientry);
@@ -567,13 +571,15 @@ std::set<entry, classcom> readDalignerOutput(std::ifstream& file, int minOverlap
 
 	for(int i = 0; i < maxt; ++i)
 		result.insert(local[i].begin(), local[i].end());
+		result_short.insert(local_short[i].begin(), local_short[i].end());
 #ifdef DEBUG
 	std::cout << "Daligner identified " << result.size() << " overlaps" << std::endl;
+	std::cout << "Daligner identified " << result_short.size() << " overlaps that did not meet the threshold of " << minOverlap << std::endl;
 #endif
 	return result;
 };
 
-void evaluate(std::set<entry, classcom>& Sset, const std::set<entry, classcom>& Gset, 
+void evaluate(std::set<entry, classcom>& Sset, const std::set<entry, classcom>& Gset,
 	int minOverlap, bool duplicate, bool alignment)
 {
 	std::set<entry, classcom> Tset;

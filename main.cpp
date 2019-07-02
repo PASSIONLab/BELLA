@@ -219,7 +219,7 @@ int main (int argc, char *argv[]) {
                 cout << " -c : alignment score deviation from the mean [0.1]" << endl;
                 cout << " -n : filter out alignment on edge [false]" << endl;
                 cout << " -r : kmerRift: bases separating two k-mers used as seeds for a read [1,000]" << endl;
-								cout << " -u : use HOPC representation for kmers with HOPC erate [false, 0.035]" << endl; // TODO: pick a better letter because u doesn't make sense
+								cout << " -u : use HOPC representation for kmers with HOPC erate [false]" << endl; // TODO: pick a better letter because u doesn't make sense
                 cout << " -p : output in PAF format [false]\n" << endl;
 
                 FreeOptList(thisOpt); // Done with this list, free it
@@ -398,12 +398,10 @@ if(b_parameters.alignEnd)
 
     size_t readcount = 0;
     size_t tuplecount = 0;
-    size_t readlensum = 0;
     for(int t=0; t<MAXTHREADS; ++t)
     {
         readcount += allreads[t].size();
         tuplecount += alloccurrences[t].size();
-        readlensum += len_sums[t];
     }
     reads.resize(readcount);
     occurrences.resize(tuplecount);
@@ -427,7 +425,6 @@ if(b_parameters.alignEnd)
 
 #ifdef PRINT
     cout << "Fastq(s) parsing fastq took: " << omp_get_wtime()-parsefastq << "s" << endl;
-    cout << "Average read length: " << (readlensum / readcount) << endl;
     cout << "Total number of reads: "<< read_id << "\n"<< endl;
 #endif
 
