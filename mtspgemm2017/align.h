@@ -88,34 +88,37 @@ seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rle
     bool reverse = (twin == seedV) || (useHOPC && ( iRev != jRev ));
 
     // Assess whether to align the pair based on the caps on the end of the kmer
-    bool skip_align = false;
-
     if( cap ) {
-      // decide how to set skip_align
-      if( reverse ) {
-        // use a reversed version
-        std::string reverseCap = col.substr(j-cap, cap);
-        std::reverse(reverseCap.begin(), reverseCap.end());
-        skip_align = row.substr(i-cap, cap) == reverseCap;
-      } else {
-        // use the normal version
-        skip_align = row.substr(i-cap, cap) == col.substr(j-cap, cap);
+
+      std::string rowBeg, colBeg, rowEnd, colEnd;
+
+      try {
+        rowBeg = row.substr(i-cap, cap);
+        colBeg = col.substr(j-cap, cap);
+      } catch (const std::out_of_range& oor) {
+        rowBeg = colBeg = "";
       }
 
-      if( reverse ) {
-        // use a reversed version
-        std::string reverseCap = col.substr(j+kmer_len, cap);
-        std::reverse(reverseCap.begin(), reverseCap.end());
-        skip_align = skip_align || row.substr(i+kmer_len, cap) == reverseCap;
-      } else {
-        // use the normal version
-        skip_align = skip_align || row.substr(i+kmer_len, cap) == col.substr(j+kmer_len, cap);
+      try {
+        rowEnd = row.substr(i+kmer_len, cap);
+        colEnd = col.substr(j+kmer_len, cap);
+      } catch (const std::out_of_range& oor) {
+        rowEnd = colEnd = "";
       }
 
-      if(skip_align) {
+      if ( reverse ) {
+        colBeg.swap(colEnd);
+        std::reverse(colBeg.begin(), colBeg.end());
+        std::reverse(colEnd.begin(), colEnd.end());
+      }
+
+      if( (rowBeg != colBeg) || (rowEnd != colEnd) ) {
         longestExtensionScore.score = 0;
+        longestExtensionScore.seed = seed;
+        longestExtensionScore.strand = '0';
         return longestExtensionScore;
       }
+
     }
 
     if ( reverse )
