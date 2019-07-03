@@ -439,6 +439,7 @@ void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1,
 	if(b_pars.adapThr)
 	{
 		double newThr = (1-b_pars.deltaChernoff)*(ratioPhi*(double)ov);
+                if (newThr <= 0) cout << "Threshold: " << newThr << endl;
 
 		if((double)maxExtScore.score > newThr)
 		{
@@ -470,8 +471,10 @@ void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1,
 	{
         if(!b_pars.outputPaf)  // BELLA output format
         {
-            myBatch << read2.nametag << '\t' << read1.nametag << '\t' << count << '\t' << maxExtScore.score << '\t' << ov << '\t' << maxExtScore.strand << '\t' <<
-                begpV << '\t' << endpV << '\t' << read2len << '\t' << begpH << '\t' << endpH << '\t' << read1len << endl;
+            string output_str = read2.nametag + "\t" + read1.nametag + "\t" + to_string(count) + "\t" + to_string(maxExtScore.score) + "\t" + to_string(ov) + "\t" + maxExtScore.strand + "\t" + to_string(begpV) + "\t" + to_string(endpV) + "\t" + to_string(read2len) + "\t" + to_string(begpH) + "\t" + to_string(endpH) + "\t" + to_string(read1len) + "\n";
+            myBatch << output_str << flush;
+            //myBatch << read2.nametag << '\t' << read1.nametag << '\t' << count << '\t' << maxExtScore.score << '\t' << ov << '\t' << maxExtScore.strand << '\t' <<
+            //    begpV << '\t' << endpV << '\t' << read2len << '\t' << begpH << '\t' << endpH << '\t' << read1len << endl;
                 // column seq name
                 // row seq name
                 // number of shared k-mer
