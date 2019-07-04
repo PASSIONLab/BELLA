@@ -87,6 +87,8 @@ seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rle
 
     bool reverse = (twin == seedV) || (useHOPC && ( iRev != jRev ));
 
+    /*
+    // First version of cap implementation (item 24 in doc)
     if ( cap ) {
         // Assess whether to align the pair based on the caps on the end of the kmer
         std::string rowBeg, colBeg, rowEnd, colEnd;
@@ -119,6 +121,25 @@ seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rle
             longestExtensionScore.strand = '0';
             return longestExtensionScore;
         }
+    }
+    */
+
+    // Second version of cap implementation (item 25 in doc)
+    if ( cap ) {
+      int difs = 0;
+      if ( i > cap && j > cap && ( row.length() - i - kmer_len > cap ) && ( col.length() - j - kmer_len > cap ) ) {
+        std::string rowCap = row.substr(i-cap, 2*cap+kmer_len);
+        std::string colCap = col.substr(j-cap, 2*cap+kmer_len);
+        if ( reverse ) std::reverse(colCap.begin(), colCap.end());
+        for(int idx = 0; idx < 2*cap+kmer_len; idx++)
+          if (rowCap[idx] != colCap[idx]) difs++;
+        if ( difs > ( 2*cap ) || (!useHOPC && difs > cap ) ) {
+          longestExtensionScore.score = 0;
+          longestExtensionScore.seed = seed;
+          longestExtensionScore.strand = '0';
+          return longestExtensionScore;
+        }
+      }
     }
 
     if ( reverse )
