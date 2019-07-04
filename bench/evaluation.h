@@ -200,14 +200,13 @@ std::set<entry, classcom> readBellaOutput(std::ifstream& file, int minOverlap, b
 		std::vector<std::string> v = split(entries[i], '\t');
 		entry ientry;
 
-		if (v[4] == "0") std::cout << "Score of zero" << std::endl;
 		if (v.size() != 12) {
+			std::cout << "Entry of size " << v.size() << ": " << flush;
 			for(unsigned counter = 0; counter < v.size(); counter++)
 				std::cout << v[counter] << "\t";
 			std::cout << std::endl;
-			std::cout << v.size() << std::endl;
-                }
-                if (v[0][0] != 'm') { std::cout << "Invalid entry nametag on line " << i << ": " << v[0] << std::endl; continue; }
+			continue;
+    }
 
 		//	std::cout << "What's up, dude?" << std::endl;
 		ientry.a = "@" + v[0];

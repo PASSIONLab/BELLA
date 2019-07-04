@@ -87,51 +87,38 @@ seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rle
 
     bool reverse = (twin == seedV) || (useHOPC && ( iRev != jRev ));
 
-    // Assess whether to align the pair based on the caps on the end of the kmer
-    std::string rowBeg, colBeg, rowEnd, colEnd;
+    if ( cap ) {
+        // Assess whether to align the pair based on the caps on the end of the kmer
+        std::string rowBeg, colBeg, rowEnd, colEnd;
 
-    if ( i < cap || j < cap ) {
-        rowBeg = "";
-        colBeg = "";
-    } else {
-        rowBeg = row.substr(i-cap, cap);
-        colBeg = col.substr(j-cap, cap);
-    }
+        if ( i < cap || j < cap ) {
+            rowBeg = "";
+            colBeg = "";
+        } else {
+            rowBeg = row.substr(i-cap, cap);
+            colBeg = col.substr(j-cap, cap);
+        }
 
-    if ( ( row.length() - i - kmer_len < cap ) || ( col.length() - j - kmer_len < cap ) ) {
-        rowEnd = "";
-        colEnd = "";
-    } else {
-        rowEnd = row.substr(i+kmer_len, cap);
-        colEnd = col.substr(j+kmer_len, cap);
-    }
-/*
-    try {
-        rowBeg = row.substr(i-cap, cap);
-        colBeg = col.substr(j-cap, cap);
-    } catch (const std::out_of_range& oor) {
-        rowBeg = ""; colBeg = "";
-    }
+        if ( ( row.length() - i - kmer_len < cap ) || ( col.length() - j - kmer_len < cap ) ) {
+            rowEnd = "";
+            colEnd = "";
+        } else {
+            rowEnd = row.substr(i+kmer_len, cap);
+            colEnd = col.substr(j+kmer_len, cap);
+        }
 
-    try {
-        rowEnd = row.substr(i+kmer_len, cap);
-        colEnd = col.substr(j+kmer_len, cap);
-    } catch (const std::out_of_range& oor) {
-        rowEnd = ""; colEnd = "";
-    }
-*/
-    if ( reverse ) {
-        colBeg.swap(colEnd);
-        std::reverse(colBeg.begin(), colBeg.end());
-        std::reverse(colEnd.begin(), colEnd.end());
-    }
+        if ( reverse ) {
+            colBeg.swap(colEnd);
+            std::reverse(colBeg.begin(), colBeg.end());
+            std::reverse(colEnd.begin(), colEnd.end());
+        }
 
-    if( (rowBeg != colBeg) || (rowEnd != colEnd) ) {
-        //std::cout << "\nSkipping alignment because of non-matching caps\n" << std::endl;
-        longestExtensionScore.score = 0;
-        longestExtensionScore.seed = seed;
-        longestExtensionScore.strand = '0';
-        return longestExtensionScore;
+        if( (rowBeg != colBeg) || (rowEnd != colEnd) ) {
+            longestExtensionScore.score = 0;
+            longestExtensionScore.seed = seed;
+            longestExtensionScore.strand = '0';
+            return longestExtensionScore;
+        }
     }
 
     if ( reverse )
