@@ -137,6 +137,9 @@ int main (int argc, char *argv[]) {
                 delete line1;
                 delete line2;
 
+                // delete file to avoid errors in output
+                remove(out_file);
+
                 break;
             }
             case 'd': {
