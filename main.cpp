@@ -446,7 +446,7 @@ if(b_parameters.alignEnd)
 	//
 	// Overlap detection (sparse matrix multiplication) and seed-and-extend alignment
 	//
-
+	std:cout << "Bin size: " << b_parameters.bin << std::endl;
 	spmatPtr_ getvaluetype(make_shared<spmatType_>());
 	HashSpGEMM(spmat, transpmat, 
 		// n-th k-mer positions on read i and on read j
