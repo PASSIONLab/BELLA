@@ -7,7 +7,7 @@ optlist.o: ../optlist/optlist.c ../optlist/optlist.h
 	$(CC) $(CFLAGS) $<
 
 # flags defined in mtspgemm2017/GTgraph/Makefile.var
-result: evaluation.cpp optlist.o 
+result: evaluation.cpp optlist.o evaluation.h
 	$(COMPILER) -O3 -Wall -fopenmp -o result optlist.o evaluation.cpp
 
 # flags defined in mtspgemm2017/GTgraph/Makefile.var
