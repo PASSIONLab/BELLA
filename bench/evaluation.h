@@ -214,6 +214,8 @@ std::set<entry, classcom> readBellaOutput(std::ifstream& file, int minOverlap, b
 
 		if(ientry.a != ientry.b) {
 
+			ientry.overlap = stoi(v[4]);
+
 			if(alignment) {
 				if(ientry.overlap >= minOverlap)
 					local[ithread].insert(ientry);
