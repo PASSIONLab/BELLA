@@ -624,6 +624,7 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
                         if (!b_pars.cap || matchCaps(b_pars.cap, iRev != jRev, seq1, seq2, i, j, b_pars.useHOPC, kmer_len)) {
                           maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, xdrop, kmer_len, b_pars.useHOPC, iRev, jRev, b_pars.cap);
                           PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
+                          numAligned++;
                         }
 
                         if(passed || (b_pars.cap && !b_pars.allKmer && numAligned >= 2))

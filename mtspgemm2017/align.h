@@ -57,32 +57,33 @@ bool toEnd(int colStart, int colEnd, int colLen, int rowStart, int rowEnd, int r
 bool matchCaps(int cap, bool reverse, const std::string seq1, const std::string seq2, int start1, int start2, bool useHOPC, int kmer_len) {
     // First version of cap implementation (item 24 in doc)
     // Assess whether to align the pair based on the caps on the end of the kmer
-    // std::string beg1, beg2, end1, end2;
-    //
-    // if ( start1 < cap || start2 < cap ) {
-    //     beg1 = "";
-    //     beg2 = "";
-    // } else {
-    //     beg1 = seq1.substr(start1-cap, cap);
-    //     beg2 = seq2.substr(start2-cap, cap);
-    // }
-    //
-    // if ( ( seq1.length() - start1 - kmer_len < cap ) || ( seq2.length() - start2 - kmer_len < cap ) ) {
-    //     end1 = "";
-    //     end2 = "";
-    // } else {
-    //     end1 = seq1.substr(start1+kmer_len, cap);
-    //     end2 = seq2.substr(start2+kmer_len, cap);
-    // }
-    //
-    // if ( reverse ) {
-    //     beg2.swap(end2);
-    //     std::reverse(beg2.begin(), beg2.end());
-    //     std::reverse(end2.begin(), end2.end());
-    // }
-    //
-    // return (beg1 == beg2) && (end1 == end2);
+    std::string beg1, beg2, end1, end2;
+    
+    if ( start1 < cap || start2 < cap ) {
+        beg1 = "";
+        beg2 = "";
+    } else {
+        beg1 = seq1.substr(start1-cap, cap);
+        beg2 = seq2.substr(start2-cap, cap);
+    }
+    
+    if ( ( seq1.length() - start1 - kmer_len < cap ) || ( seq2.length() - start2 - kmer_len < cap ) ) {
+        end1 = "";
+        end2 = "";
+    } else {
+        end1 = seq1.substr(start1+kmer_len, cap);
+        end2 = seq2.substr(start2+kmer_len, cap);
+    }
+    
+    if ( reverse ) {
+        beg2.swap(end2);
+        std::reverse(beg2.begin(), beg2.end());
+        std::reverse(end2.begin(), end2.end());
+    }
+    
+    return (beg1 == beg2) && (end1 == end2);
 
+/*
     // Second version of cap implementation (item 25 in doc)
     int difs = 0;
     if ( start1 > cap && start2 > cap && ( seq1.length() - start1 - kmer_len > cap ) && ( seq2.length() - start2 - kmer_len > cap ) ) {
@@ -99,6 +100,7 @@ bool matchCaps(int cap, bool reverse, const std::string seq1, const std::string 
       // }
       return difs < (2*cap) || (!useHOPC && difs < cap);
     }
+*/
 }
 
 /**
