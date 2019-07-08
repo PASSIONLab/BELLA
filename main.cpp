@@ -488,7 +488,7 @@ if(b_parameters.alignEnd)
                         newseed  = m1->pos[i].second.first;
 
                         if(!isinrift(newseed, left, right))   // seeds separated by <kmerRift> bases
-                            if(!b_parameters.allKmer)         // save at most two kmers as seeds
+                            if(!b_parameters.allKmer && !b_parameters.cap)         // save at most two kmers as seeds
                             {
                                 m2->count = m2->count+m1->count;
                                 m2->pos.clear();  // free from previous positions and save only two pos

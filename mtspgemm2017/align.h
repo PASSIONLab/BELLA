@@ -54,6 +54,53 @@ bool toEnd(int colStart, int colEnd, int colLen, int rowStart, int rowEnd, int r
         return false;
 }
 
+bool matchCaps(int cap, bool reverse, const std::string seq1, const std::string seq2, int start1, int start2, bool useHOPC, int kmer_len) {
+    // First version of cap implementation (item 24 in doc)
+    // Assess whether to align the pair based on the caps on the end of the kmer
+    // std::string beg1, beg2, end1, end2;
+    //
+    // if ( start1 < cap || start2 < cap ) {
+    //     beg1 = "";
+    //     beg2 = "";
+    // } else {
+    //     beg1 = seq1.substr(start1-cap, cap);
+    //     beg2 = seq2.substr(start2-cap, cap);
+    // }
+    //
+    // if ( ( seq1.length() - start1 - kmer_len < cap ) || ( seq2.length() - start2 - kmer_len < cap ) ) {
+    //     end1 = "";
+    //     end2 = "";
+    // } else {
+    //     end1 = seq1.substr(start1+kmer_len, cap);
+    //     end2 = seq2.substr(start2+kmer_len, cap);
+    // }
+    //
+    // if ( reverse ) {
+    //     beg2.swap(end2);
+    //     std::reverse(beg2.begin(), beg2.end());
+    //     std::reverse(end2.begin(), end2.end());
+    // }
+    //
+    // return (beg1 == beg2) && (end1 == end2);
+
+    // Second version of cap implementation (item 25 in doc)
+    int difs = 0;
+    if ( start1 > cap && start2 > cap && ( seq1.length() - start1 - kmer_len > cap ) && ( seq2.length() - start2 - kmer_len > cap ) ) {
+      std::string cap1 = seq1.substr(start1-cap, 2*cap+kmer_len);
+      std::string cap2 = seq2.substr(start2-cap, 2*cap+kmer_len);
+      if ( reverse ) std::reverse(cap2.begin(), cap2.end());
+      for(int idx = 0; idx < 2*cap+kmer_len; idx++)
+        if (cap1[idx] != cap2[idx]) difs++;
+      // if ( difs > ( 2*cap ) || (!useHOPC && difs > cap ) ) {
+      //   longestExtensionScore.score = 0;
+      //   longestExtensionScore.seed = seed;
+      //   longestExtensionScore.strand = '0';
+      //   return longestExtensionScore;
+      // }
+      return difs < (2*cap) || (!useHOPC && difs < cap);
+    }
+}
+
 /**
  * @brief alignSeqAn does the seed-and-extend alignment
  * @param row
@@ -87,60 +134,15 @@ seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rle
 
     bool reverse = (twin == seedV) || (useHOPC && ( iRev != jRev ));
 
-    /*
-    // First version of cap implementation (item 24 in doc)
-    if ( cap ) {
-        // Assess whether to align the pair based on the caps on the end of the kmer
-        std::string rowBeg, colBeg, rowEnd, colEnd;
-
-        if ( i < cap || j < cap ) {
-            rowBeg = "";
-            colBeg = "";
-        } else {
-            rowBeg = row.substr(i-cap, cap);
-            colBeg = col.substr(j-cap, cap);
-        }
-
-        if ( ( row.length() - i - kmer_len < cap ) || ( col.length() - j - kmer_len < cap ) ) {
-            rowEnd = "";
-            colEnd = "";
-        } else {
-            rowEnd = row.substr(i+kmer_len, cap);
-            colEnd = col.substr(j+kmer_len, cap);
-        }
-
-        if ( reverse ) {
-            colBeg.swap(colEnd);
-            std::reverse(colBeg.begin(), colBeg.end());
-            std::reverse(colEnd.begin(), colEnd.end());
-        }
-
-        if( (rowBeg != colBeg) || (rowEnd != colEnd) ) {
-            longestExtensionScore.score = 0;
-            longestExtensionScore.seed = seed;
-            longestExtensionScore.strand = '0';
-            return longestExtensionScore;
-        }
-    }
-    */
-
-    // Second version of cap implementation (item 25 in doc)
-    if ( cap ) {
-      int difs = 0;
-      if ( i > cap && j > cap && ( row.length() - i - kmer_len > cap ) && ( col.length() - j - kmer_len > cap ) ) {
-        std::string rowCap = row.substr(i-cap, 2*cap+kmer_len);
-        std::string colCap = col.substr(j-cap, 2*cap+kmer_len);
-        if ( reverse ) std::reverse(colCap.begin(), colCap.end());
-        for(int idx = 0; idx < 2*cap+kmer_len; idx++)
-          if (rowCap[idx] != colCap[idx]) difs++;
-        if ( difs > ( 2*cap ) || (!useHOPC && difs > cap ) ) {
-          longestExtensionScore.score = 0;
-          longestExtensionScore.seed = seed;
-          longestExtensionScore.strand = '0';
-          return longestExtensionScore;
-        }
-      }
-    }
+    // use caps
+    // if ( cap ) {
+    //   if (!matchCaps(cap, reverse, row, col, i, j, useHOPC, kmer_len)) {
+    //     longestExtensionScore.score = 0;
+    //     longestExtensionScore.seed = seed;
+    //     longestExtensionScore.strand = '0';
+    //     return longestExtensionScore;
+    //   }
+    // }
 
     if ( reverse )
     {
