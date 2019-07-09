@@ -126,6 +126,7 @@ chainop(spmatPtr_& m1, spmatPtr_& m2, BELLApars& b_parameters,
 		m1->support.push_back(m2->support[i]);
 	}
 
+/*
 #pragma omp critical
 	{
 		// GG: after testing correctness, this part can be removed
@@ -134,6 +135,7 @@ chainop(spmatPtr_& m1, spmatPtr_& m2, BELLApars& b_parameters,
 		std::copy(m1->overlap.begin(), m1->overlap.end(), std::ostream_iterator<int>(std::cout, " ")); std::cout << std::endl;
 		std::copy(m1->support.begin(), m1->support.end(), std::ostream_iterator<int>(std::cout, " ")); std::cout << std::endl;
 	}
+	*/
 
 }
 
