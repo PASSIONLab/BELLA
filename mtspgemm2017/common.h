@@ -37,10 +37,9 @@ struct BELLApars
     bool outputPaf;         // output in paf format (p)
 	bool 	useHOPC; 						// use HOPC representation
 	double HOPCerate;			// error rate to use for HOPC kmers
-	int cap;						// bases before and after kmer that must be equal
 
 	BELLApars():totalMemory(8000.0), userDefMem(false), kmerRift(1000), skipEstimate(false), skipAlignment(false), allKmer(false), adapThr(true), defaultThr(50),
-			alignEnd(false), relaxMargin(300), deltaChernoff(0.2), outputPaf(false), useHOPC(false), HOPCerate(0.035), cap(0) {};
+			alignEnd(false), relaxMargin(300), deltaChernoff(0.2), outputPaf(false), useHOPC(false), HOPCerate(0.035) {};
 };
 
 template <typename T>
