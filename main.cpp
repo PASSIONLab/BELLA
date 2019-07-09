@@ -28,6 +28,7 @@
 
 #include "libcuckoo/cuckoohash_map.hh"
 #include "kmercount.h"
+#include "chain.h"
 
 #include "kmercode/hash_funcs.h"
 #include "kmercode/Kmer.hpp"
@@ -56,43 +57,43 @@ using namespace std;
 
 int main (int argc, char *argv[]) {
 
-    //
-    // Program name and purpose
-    //
-    cout << "\nBELLA - Long Read Aligner for De Novo Genome Assembly\n" << endl;
-    //
-    // Setup the input files
-    //
-    option_t *optList, *thisOpt;
-    // Get list of command line options and their arguments
-    // Follow an option with a colon to indicate that it requires an argument.
+	//
+	// Program name and purpose
+	//
+	cout << "\nBELLA - Long Read Aligner for De Novo Genome Assembly\n" << endl;
+	//
+	// Setup the input files
+	//
+	option_t *optList, *thisOpt;
+	// Get list of command line options and their arguments
+	// Follow an option with a colon to indicate that it requires an argument.
 
-    optList = NULL;
-    optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:Ka:ze:x:w:nc:m:r:pu:");
+	optList = NULL;
+	optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:Ka:ze:x:w:nc:m:r:pb:");
 
 
-    char *kmer_file = NULL;                 // Reliable k-mer file from Jellyfish
-    char *all_inputs_fofn = NULL;           // List of fastqs (i)
-    char *out_file = NULL;                  // output filename (o)
-    int kmer_len = 17;                      // default k-mer length (k)
-    int xdrop = 7;                          // default alignment x-drop factor (x)
-    double erate = 0.15;                    // default error rate (e)
-    int depth = 0;                          // depth/coverage required (d)
+	char *kmer_file = NULL;                 // Reliable k-mer file from Jellyfish
+	char *all_inputs_fofn = NULL;           // List of fastqs (i)
+	char *out_file = NULL;                  // output filename (o)
+	int kmer_len = 17;                      // default k-mer length (k)
+	int xdrop = 7;                          // default alignment x-drop factor (x)
+	double erate = 0.15;                    // default error rate (e)
+	int depth = 0;                          // depth/coverage required (d)
 
-    BELLApars b_parameters;
+	BELLApars b_parameters;
 
-    if(optList == NULL)
-    {
-        cout << "BELLA execution terminated: not enough parameters or invalid option" << endl;
-        cout << "Run with -h to print out the command line options\n" << endl;
-        return 0;
-    }
+	if(optList == NULL)
+	{
+		cout << "BELLA execution terminated: not enough parameters or invalid option" << endl;
+		cout << "Run with -h to print out the command line options\n" << endl;
+		return 0;
+	}
 
-    while (optList!=NULL) {
-        thisOpt = optList;
-        optList = optList->next;
-        switch (thisOpt->option) {
-            case 'f': {
+	while (optList!=NULL) {
+		thisOpt = optList;
+		optList = optList->next;
+		switch (thisOpt->option) {
+			case 'f': {
 #ifdef JELLYFISH
                 if(thisOpt->argument == NULL)
                 {
@@ -101,135 +102,137 @@ int main (int argc, char *argv[]) {
                     return 0;
                 }
 #endif
-                kmer_file = strdup(thisOpt->argument);
-                break;
-            }
-            case 'i': {
-                if(thisOpt->argument == NULL)
-                {
-                    cout << "BELLA execution terminated: -i requires an argument" << endl;
-                    cout << "Run with -h to print out the command line options\n" << endl;
-                    return 0;
-                }
-                all_inputs_fofn = strdup(thisOpt->argument);
-                break;
-            }
-            case 'p': b_parameters.outputPaf = true; break; // PAF format
-            case 'o': {
-                if(thisOpt->argument == NULL)
-                {
-                    cout << "BELLA execution terminated: -o requires an argument" << endl;
-                    cout << "Run with -h to print out the command line options\n" << endl;
-                    return 0;
-                }
-                char* line1 = strdup(thisOpt->argument);
-                char* line2 = strdup(".out");
-                size_t len1 = strlen(line1);
-                size_t len2 = strlen(line2);
+				kmer_file = strdup(thisOpt->argument);
+				break;
+			}
+			case 'i': {
+				if(thisOpt->argument == NULL)
+				{
+					cout << "BELLA execution terminated: -i requires an argument" << endl;
+					cout << "Run with -h to print out the command line options\n" << endl;
+					return 0;
+				}
+				all_inputs_fofn = strdup(thisOpt->argument);
+				break;
+			}
+			case 'p': b_parameters.outputPaf = true; break; // PAF format
+			case 'o': {
+				if(thisOpt->argument == NULL)
+				{
+					cout << "BELLA execution terminated: -o requires an argument" << endl;
+					cout << "Run with -h to print out the command line options\n" << endl;
+					return 0;
+				}
+				char* line1 = strdup(thisOpt->argument);
+				char* line2 = strdup(".out");
+				size_t len1 = strlen(line1);
+				size_t len2 = strlen(line2);
 
-                out_file = (char*)malloc(len1 + len2 + 1);
-                if (!out_file) abort();
+				out_file = (char*)malloc(len1 + len2 + 1);
+				if (!out_file) abort();
 
-                memcpy(out_file, line1, len1);
-                memcpy(out_file + len1, line2, len2);
-                out_file[len1 + len2] = '\0';
+				memcpy(out_file, line1, len1);
+				memcpy(out_file + len1, line2, len2);
+				out_file[len1 + len2] = '\0';
 
-                delete line1;
-                delete line2;
+				delete line1;
+				delete line2;
 
-                // delete file to avoid errors in output
-                remove(out_file);
+				break;
+			}
+			case 'd': {
+				if(thisOpt->argument == NULL)
+				{
+					cout << "BELLA execution terminated: -d requires an argument" << endl;
+					cout << "Run with -h to print out the command line options\n" << endl;
+					return 0;
+				}
+				depth = atoi(thisOpt->argument);
+				break;
+			}
+			case 'z': b_parameters.skipAlignment = true; break;
+			case 'n': b_parameters.alignEnd = true; break;
+			case 'k': {
+				kmer_len = atoi(thisOpt->argument);
+				break;
+			}
+			case 'r': {
+				b_parameters.kmerRift = atoi(thisOpt->argument);
+				break;
+			}
+			case 'e': {
+				b_parameters.skipEstimate = true;
+				erate = strtod(thisOpt->argument, NULL);
+				break;
+			}
+			case 'a': {
+				b_parameters.defaultThr = atoi(thisOpt->argument);
+				b_parameters.adapThr = false;
+				break;
+			}
+			case 'x': {
+				xdrop = atoi(thisOpt->argument);
+				break;
+			}
+			case 'w': {
+				b_parameters.relaxMargin = atoi(thisOpt->argument);
+				break;
+			}
+			case 'K': {
+				b_parameters.allKmer = true;
+				break;
+			}
+			case 'b': {
+				b_parameters.bin = atoi(thisOpt->argument);
+				break;
+			}
+			case 'm': {
+				b_parameters.totalMemory = stod(thisOpt->argument);
+				b_parameters.userDefMem = true;
+				cout << "User defined memory set to " << b_parameters.totalMemory << " MB " << endl;
+				break;
+			}
+			case 'c': {
+				if(stod(thisOpt->argument) > 1.0 || stod(thisOpt->argument) < 0.0)
+				{
+					cout << "BELLA execution terminated: -c requires a value in [0,1]" 	<< endl;
+					cout << "Run with -h to print out the command line options\n" 		<< endl;
+					return 0;
+				}
+				b_parameters.deltaChernoff = stod(thisOpt->argument);
+				break;
+			}
+      case 'u': {
+          b_parameters.useHOPC = true;
+          b_parameters.HOPCerate = strtod(thisOpt->argument, NULL);
+          cout << "HOPC enabled with error rate of " << b_parameters.HOPCerate << endl;
+          break;
+      }
+			case 'h': {
+				cout << "Usage:\n" << endl;
+				cout << " -f : k-mer list from Jellyfish (required if Jellyfish k-mer counting is used)" << endl; // Reliable k-mers are selected by BELLA
+				cout << " -i : list of fastq(s) (required)" << endl;
+				cout << " -o : output filename (required)" 	<< endl;
+				cout << " -d : depth/coverage (required)" 	<< endl; // TO DO: add depth estimation
+				cout << " -k : k-mer length [17]" 			<< endl;
+				cout << " -a : use fixed alignment threshold [50]" 		<< endl;
+				cout << " -x : alignment x-drop factor [7]" 			<< endl;
+				cout << " -e : error rate [auto estimated from fastq]" 	<< endl;
+				cout << " -m : total RAM of the system in MB [auto estimated if possible or 8,000 if not]" << endl;
+				cout << " -z : skip the pairwise alignment [false]" 				<< endl;
+				cout << " -w : relaxMargin parameter for alignment on edges [300]" 	<< endl;
+				cout << " -c : alignment score deviation from the mean [0.1]" 		<< endl;
+				cout << " -n : filter out alignment on edge [false]" 				<< endl;
+				cout << " -r : kmerRift: bases separating two k-mers used as seeds for a read [1,000]" << endl;
+				cout << " -b : bin size chaining algorithm [500]" 	<< endl;
+        cout << " -u : use HOPC representation for kmers with HOPC erate [false]" << endl; // TODO: pick a better letter because u doesn't make sense
+				cout << " -p : output in PAF format [false]\n" 		<< endl;
 
-                break;
-            }
-            case 'd': {
-                if(thisOpt->argument == NULL)
-                {
-                    cout << "BELLA execution terminated: -d requires an argument" << endl;
-                    cout << "Run with -h to print out the command line options\n" << endl;
-                    return 0;
-                }
-                depth = atoi(thisOpt->argument);
-                break;
-            }
-            case 'z': b_parameters.skipAlignment = true; break;
-            case 'n': b_parameters.alignEnd = true; break;
-            case 'k': {
-                kmer_len = atoi(thisOpt->argument);
-                break;
-            }
-            case 'r': {
-                b_parameters.kmerRift = atoi(thisOpt->argument);
-                break;
-            }
-            case 'e': {
-                b_parameters.skipEstimate = true;
-                erate = strtod(thisOpt->argument, NULL);
-                break;
-            }
-            case 'a': {
-                b_parameters.defaultThr = atoi(thisOpt->argument);
-                b_parameters.adapThr = false;
-                break;
-            }
-            case 'x': {
-                xdrop = atoi(thisOpt->argument);
-                break;
-            }
-            case 'w': {
-                b_parameters.relaxMargin = atoi(thisOpt->argument);
-                break;
-            }
-            case 'K': {
-                b_parameters.allKmer = true;
-                break;
-            }
-            case 'm': {
-                b_parameters.totalMemory = stod(thisOpt->argument);
-                b_parameters.userDefMem = true;
-                cout << "User defined memory set to " << b_parameters.totalMemory << " MB " << endl;
-                break;
-            }
-            case 'c': {
-                if(stod(thisOpt->argument) > 1.0 || stod(thisOpt->argument) < 0.0)
-                {
-                    cout << "BELLA execution terminated: -c requires a value in [0,1]" << endl;
-                    cout << "Run with -h to print out the command line options\n" << endl;
-                    return 0;
-                }
-                b_parameters.deltaChernoff = stod(thisOpt->argument);
-                break;
-            }
-						case 'u': {
-			        	b_parameters.useHOPC = true;
-								b_parameters.HOPCerate = strtod(thisOpt->argument, NULL);
-								cout << "HOPC enabled with error rate of " << b_parameters.HOPCerate << endl;
-								break;
-			      }
-            case 'h': {
-                cout << "Usage:\n" << endl;
-                cout << " -f : k-mer list from Jellyfish (required if Jellyfish k-mer counting is used)" << endl; // Reliable k-mers are selected by BELLA
-                cout << " -i : list of fastq(s) (required)" << endl;
-                cout << " -o : output filename (required)" << endl;
-                cout << " -d : depth/coverage (required)" << endl; // TO DO: add depth estimation
-                cout << " -k : k-mer length [17]" << endl;
-                cout << " -a : use fixed alignment threshold [50]" << endl;
-                cout << " -x : alignment x-drop factor [7]" << endl;
-                cout << " -e : error rate [auto estimated from fastq]" << endl;
-                cout << " -m : total RAM of the system in MB [auto estimated if possible or 8,000 if not]" << endl;
-                cout << " -z : skip the pairwise alignment [false]" << endl;
-                cout << " -w : relaxMargin parameter for alignment on edges [300]" << endl;
-                cout << " -c : alignment score deviation from the mean [0.1]" << endl;
-                cout << " -n : filter out alignment on edge [false]" << endl;
-                cout << " -r : kmerRift: bases separating two k-mers used as seeds for a read [1,000]" << endl;
-								cout << " -u : use HOPC representation for kmers with HOPC erate [false]" << endl; // TODO: pick a better letter because u doesn't make sense
-                cout << " -p : output in PAF format [false]\n" << endl;
-
-                FreeOptList(thisOpt); // Done with this list, free it
-                return 0;
-            }
-        }
-    }
+				FreeOptList(thisOpt); // Done with this list, free it
+				return 0;
+			}
+		}
+	}
 
 #ifdef JELLYFISH
     if(kmer_file == NULL || all_inputs_fofn == NULL || out_file == NULL || depth == 0)
@@ -437,71 +440,58 @@ if(b_parameters.alignEnd)
 
     double matcreat = omp_get_wtime();
 
-    size_t nkmer = countsreliable.size();
-    CSC<size_t,std::pair<int,bool>> spmat(occurrences, read_id, nkmer,
-                            [] (std::pair<int,bool> & p1, std::pair<int,bool> & p2)
-                            {
-                                return p1;
-                            });
-    std::vector<tuple<size_t,size_t,std::pair<int,bool>>>().swap(occurrences); // remove memory of occurences
+	size_t nkmer = countsreliable.size();
+	CSC<size_t, std::pair<int,bool>> spmat(occurrences, read_id, nkmer,
+							[] (std::pair<int,bool>& p1, std::pair<int,bool>& p2)
+							{
+								return p1;
+							});
+	// remove memory of transtuples
+	std::vector<tuple<size_t,size_t,std::pair<int,bool>>>().swap(occurrences);
 
-    CSC<size_t,std::pair<int,bool>> transpmat(transtuples, nkmer, read_id,
-                            [] (std::pair<int,bool> & p1, std::pair<int,bool> & p2)
-                            {  return p1;
-                            });
-    std::vector<tuple<size_t,size_t,std::pair<int,bool>>>().swap(transtuples); // remove memory of transtuples
+	CSC<size_t, std::pair<int,bool>> transpmat(transtuples, nkmer, read_id,
+							[] (std::pair<int,bool>& p1, std::pair<int,bool>& p2)
+							{
+								return p1;
+							});
+	// remove memory of transtuples
+	std::vector<tuple<size_t, size_t, std::pair<int,bool>>>().swap(transtuples);
 
 #ifdef PRINT
     cout << "Sparse matrix construction took: " << omp_get_wtime()-matcreat << "s\n" << endl;
 #endif
 
-    //
-    // Overlap detection (sparse matrix multiplication) and seed-and-extend alignment
-    //
+	//
+	// Overlap detection (sparse matrix multiplication) and seed-and-extend alignment
+	//
+	std:cout << "Bin size: " << b_parameters.bin << std::endl;
+	spmatPtr_ getvaluetype(make_shared<spmatType_>());
+	HashSpGEMM(spmat, transpmat,
+		// n-th k-mer positions on read i and on read j
+		// AB: not sure if these id1 and id2 are captured correctly, honestly
+		[&kmer_len, &reads] (const std::pair<int,bool>& begpH, const std::pair<int,bool>& begpV, const int& id1, const int& id2)
+		{
+			spmatPtr_ value(make_shared<spmatType_>());
 
-    spmatPtr_ getvaluetype(make_shared<spmatType_>());
-    HashSpGEMM(spmat, transpmat,
-            [] (std::pair<int,bool> & pi, std::pair<int,bool> & pj)                     // n-th k-mer positions on read i and on read j
-            {   spmatPtr_ value(make_shared<spmatType_>());
-                value->count = 1;
-                value->pos.push_back(make_pair(pi, pj));
-                return value;
-            },
-    [&kmer_len,&b_parameters] (spmatPtr_ & m1, spmatPtr_ & m2)
-            {
-                for(int i = 0; i < m1->pos.size(); ++i)
-                {
-                    int left  = m2->pos[i].first.first - kmer_len - b_parameters.kmerRift;
-                    int right = m2->pos[i].first.first + kmer_len + b_parameters.kmerRift;
-                    int newseed  = m1->pos[i].first.first;
+			std::string& read1 = reads[id1].seq;
+			std::string& read2 = reads[id2].seq;
 
-                    if(!isinrift(newseed, left, right))       // seeds separated by <kmerRift> bases
-                    {
-                        left  = m2->pos[i].second.first - kmer_len - b_parameters.kmerRift;
-                        right = m2->pos[i].second.first + kmer_len + b_parameters.kmerRift;
-                        newseed  = m1->pos[i].second.first;
+			// GG: function in chain.h
+			multiop(value, read1, read2, begpH, begpV, kmer_len);
+			return value;
+		},
+		[&kmer_len, &b_parameters, &reads] (spmatPtr_& m1, spmatPtr_& m2, const int& id1, const int& id2)
+		{
+			// GG: after testing correctness, these variables can be removed
+			std::string& readname1 = reads[id1].nametag;
+			std::string& readname2 = reads[id2].nametag;
 
-                        if(!isinrift(newseed, left, right))   // seeds separated by <kmerRift> bases
-                            if(!b_parameters.allKmer)         // save at most two kmers as seeds
-                            {
-                                m2->count = m2->count+m1->count;
-                                m2->pos.clear();  // free from previous positions and save only two pos
+			// GG: function in chain.h
+			chainop(m1, m2, b_parameters, readname1, readname2);
+			return m1;
+		},
+		reads, getvaluetype, kmer_len, xdrop, out_file, b_parameters, ratioPhi);
 
-                                m2->pos.push_back(make_pair(m2->pos[i].first, m2->pos[i].second));
-                                m2->pos.push_back(make_pair(m1->pos[i].first, m1->pos[i].second));
-
-                                break;
-                            }
-                            else   // save all possible kmers as seeds
-                            {
-                                m2->count = m2->count+m1->count;
-                                m2->pos.push_back(m1->pos[i]);
-                            }
-                    }
-                }
-                return m2;
-            }, reads, getvaluetype, kmer_len, xdrop, out_file, b_parameters, ratioPhi);
-
-    cout << "Total running time: " << omp_get_wtime()-all << "s\n" << endl;
-    return 0;
+	cout << "Total running time: " << omp_get_wtime()-all << "s\n" << endl;
+	return 0;
 }
