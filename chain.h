@@ -43,16 +43,6 @@ checkstrand(const std::string& read1, const std::string& read2, const int begpH,
 	else return true;
 }
 
-// places 2 overlaps with most support first in the list for alignment
-// does not sort any other elements
-void maximize_support(spmatPtr_& m) {
-		for(int i = 0; i < m->support.size(); i++) {
-				if (m->support[i] >= m->support[m->max_support]) {
-					m->max_support = i;
-				}
-		}
-}
-
 // GG: check strand and compute overlap length
 int
 overlapop(const std::string& read1, const std::string& read2, const std::pair<int,bool>& pair1,
@@ -147,7 +137,6 @@ chainop(spmatPtr_& m1, spmatPtr_& m2, BELLApars& b_parameters,
 	}
 	*/
 
-	maximize_support(m1);
 }
 
 #endif

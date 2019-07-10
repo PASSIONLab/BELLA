@@ -68,13 +68,39 @@ struct readType_ {
 
 typedef vector<readType_> readVector_;
 
+// sort function for sorting a vector of indices by the values in a vector of ints
+struct SortBy : std::binary_function<int, int, bool>
+{
+    SortBy(const std::vector<int>& par)
+    : vec(par)
+    {}
+
+    bool operator()(int idx1, int idx2) const
+    {
+        return vec[idx1] < vec[idx2];
+    }
+
+    const std::vector<int>& vec;
+};
+
 struct spmatType_ {
 
   int count = 0;              // number of shared k-mers
   vector<pair<pair<int,bool>,pair<int,bool>>> pos;  // vector of k-mer positions <read-i, read-j> (if !K, use at most 2 kmers, otherwise all)
 	vector<int> support;	        // supports of the k-mer overlaps above
 	vector<int> overlap; 	// to avoid recomputing overlap
-	int max_support; // index of overlap with most support
+	vector<int>* sorted_idx; // indices cooresponded to sorting of support
+
+	bool comp(const int i, const int j) {
+		return support[i] > support[j];
+	}
+
+	void sort() {
+		sorted_idx = new vector<int>(support.size());
+		std::iota(sorted_idx->begin(), sorted_idx->end(), 0);
+		std::sort(sorted_idx->begin(), sorted_idx->end(), SortBy(support));
+	}
+
 };
 
 typedef shared_ptr<spmatType_> spmatPtr_; // pointer to spmatType_ datastruct
