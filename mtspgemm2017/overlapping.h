@@ -606,6 +606,13 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 				if(!b_pars.allKmer && val->sorted_idx.size() > max_kmers) { // if not using all kmers, just use first two
 					val->sorted_idx.resize(max_kmers);
 				}
+				int max_support_kmers = 2;
+				if(!b_pars.allKmer) {
+					for(int idx : val->sorted_idx) {
+						if(val->pos[idx].size() > max_support_kmers)
+							val->pos[idx].resize(max_support_kmers);
+					}
+				}
 
 				if(val->count == 1 || val->sorted_idx.size() == 1)
 				{
