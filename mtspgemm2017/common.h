@@ -77,7 +77,7 @@ struct SortBy : std::binary_function<int, int, bool>
 
     bool operator()(int idx1, int idx2) const
     {
-        return vec[idx1] < vec[idx2];
+        return vec[idx1] > vec[idx2];
     }
 
     const std::vector<int>& vec;
@@ -89,16 +89,12 @@ struct spmatType_ {
   vector<vector<pair<pair<int,bool>,pair<int,bool>>>> pos;  // vector of k-mer positions <read-i, read-j> (if !K, use at most 2 kmers, otherwise all)
 	vector<int> support;	        // supports of the k-mer overlaps above
 	vector<int> overlap; 	// to avoid recomputing overlap
-	vector<int>* sorted_idx; // indices cooresponded to sorting of support
-
-	bool comp(const int i, const int j) {
-		return support[i] > support[j];
-	}
+	vector<int> sorted_idx; // indices cooresponded to sorting of support
 
 	void sort() {
-		sorted_idx = new vector<int>(support.size());
-		std::iota(sorted_idx->begin(), sorted_idx->end(), 0);
-		std::sort(sorted_idx->begin(), sorted_idx->end(), SortBy(support));
+		sorted_idx = vector<int>(support.size());
+		std::iota(sorted_idx.begin(), sorted_idx.end(), 0);
+		std::sort(sorted_idx.begin(), sorted_idx.end(), SortBy(support));
 	}
 
 };

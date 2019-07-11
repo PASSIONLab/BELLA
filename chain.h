@@ -106,12 +106,9 @@ chainop(spmatPtr_& m1, spmatPtr_& m2, BELLApars& b_parameters,
 		bool orphan = true;
 		for(int j = 0; j < m1->pos.size(); ++j)
 		{
-			// GG: TODO 500 as parameter
 			if(std::abs(m2->overlap[i] - m1->overlap[j]) < b_parameters.bin) // B is the bin length
 			{
 				m1->support[j] += m2->support[i];
-				// vector<pair<pair<int,bool>,pair<int,bool>>> vec{ m2->pos[i] };
-				// m1->pos[j].push_back(vec);
 				for(auto it : m2->pos[i]) {
 					m1->pos[j].push_back(it);
 				}
@@ -131,7 +128,6 @@ chainop(spmatPtr_& m1, spmatPtr_& m2, BELLApars& b_parameters,
 	{
 		vector<pair<pair<int,bool>,pair<int,bool>>> vec{ m2->pos[i] };
 		m1->pos.push_back(vec);
-		// m1->pos.push_back(m2->pos[i]);
 		m1->overlap.push_back(m2->overlap[i]);
 		m1->support.push_back(m2->support[i]);
 	}
