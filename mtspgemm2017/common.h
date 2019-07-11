@@ -38,9 +38,10 @@ struct BELLApars
 	double deltaChernoff;	// delta computed via Chernoff bound (c)
 	bool 	useHOPC; 						// use HOPC representation
 	double HOPCerate;			// error rate to use for HOPC kmers
+	int minOverlap; // minimum overlap required between sequences to run alignment
 
 	BELLApars():totalMemory(8000.0), userDefMem(false), kmerRift(1000), skipEstimate(false), skipAlignment(false), allKmer(false), adapThr(true), defaultThr(50),
-			alignEnd(false), relaxMargin(300), deltaChernoff(0.2), outputPaf(false), bin(500), useHOPC(false), HOPCerate(0.035) {};
+			alignEnd(false), relaxMargin(300), deltaChernoff(0.2), outputPaf(false), bin(500), useHOPC(false), HOPCerate(0.035), minOverlap(0) {};
 };
 
 template <typename T>
@@ -71,15 +72,8 @@ typedef vector<readType_> readVector_;
 // sort function for sorting a vector of indices by the values in a vector of ints
 struct SortBy : std::binary_function<int, int, bool>
 {
-    SortBy(const std::vector<int>& par)
-    : vec(par)
-    {}
-
-    bool operator()(int idx1, int idx2) const
-    {
-        return vec[idx1] > vec[idx2];
-    }
-
+    SortBy(const std::vector<int>& par) : vec(par) {}
+    bool operator()(int idx1, int idx2) const { return vec[idx1] > vec[idx2]; }
     const std::vector<int>& vec;
 };
 

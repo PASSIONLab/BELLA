@@ -78,17 +78,18 @@ overlapop(const std::string& read1, const std::string& read2, const std::pair<in
 // GG: multiply operation
 void
 multiop(spmatPtr_& value, const std::string& read1, const std::string& read2,
-	const std::pair<int,bool>& begpH, const std::pair<int,bool>& begpV, const int kmerSize) {
+	const std::pair<int,bool>& begpH, const std::pair<int,bool>& begpV, const int kmerSize, const BELLApars & b_pars) {
 
-	value->count = 1;
-	vector<pair<pair<int,bool>,pair<int,bool>>> vec{ make_pair(begpH, begpV) };
-	value->pos.push_back(vec);
-	// value->pos.push_back((make_pair(begpH, begpV)));
-	value->support.push_back(1);	// initial k-mer has support 1
-
-	// GG: check strand and compute overlap length
 	int overlap = overlapop(read1, read2, begpH, begpV, kmerSize);
-	value->overlap.push_back(overlap);
+	if(overlap > b_pars.minOverlap) {
+		value->count = 1;
+		vector<pair<pair<int,bool>,pair<int,bool>>> vec{ make_pair(begpH, begpV) };
+		value->pos.push_back(vec);
+		value->support.push_back(1);	// initial k-mer has support 1
+
+		// GG: check strand and compute overlap length
+		value->overlap.push_back(overlap);
+	}
 }
 
 // GG: chaining operation

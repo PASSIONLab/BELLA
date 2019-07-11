@@ -603,10 +603,10 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 				bool passed = false;
 				val->sort();
 				int max_kmers = 2;
+				int max_support_kmers = 2;
 				if(!b_pars.allKmer && val->sorted_idx.size() > max_kmers) { // if not using all kmers, just use first two
 					val->sorted_idx.resize(max_kmers);
 				}
-				int max_support_kmers = 2;
 				if(!b_pars.allKmer) {
 					for(int idx : val->sorted_idx) {
 						if(val->pos[idx].size() > max_support_kmers)
@@ -614,7 +614,38 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 					}
 				}
 
-				if(val->count == 1 || val->sorted_idx.size() == 1)
+/*
+				#pragma omp critical
+				{
+					if (val->count == 1 || val->sorted_idx.size() == 1) {
+						if(val->support.size() != 1)
+							std::cout << "Unexpect sort length" << std::endl;
+					} else {
+						// output for testing
+						std::cout << "count: " << val->count << std::endl;
+						std::cout << "sorted_idx: ";
+						for(int i = 0; i < val->sorted_idx.size(); i++) {
+							std::cout << val->sorted_idx[i] << " ";
+						}
+						std::cout << std::endl;
+						std::cout << "support: ";
+						for(int i = 0; i < val->support.size(); i++) {
+							std::cout << val->support[i] << " ";
+						}
+						// std::cout << std::endl;
+						// std::cout << "pos: ";
+						// for(int i : val->sorted_idx.size()) {
+						// 	for(int j = 0; j < val->pos[i].size(); j++) {
+						// 		std::cout << val->pos[i][j] << "\t";
+						// 	}
+						// 	std::cout << "\n";
+						// }
+						std::cout << "\n" << std::endl;
+					}
+				}
+*/
+
+				if(val->count == 1)
 				{
 						auto it = val->pos[val->sorted_idx[0]][0];
 						int i = it.first.first, j = it.second.first;
@@ -632,7 +663,7 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 							 PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
 
 							 if(passed)
-							 		break;
+								 break;
 						 }
 						 if(passed)
 						 		break;

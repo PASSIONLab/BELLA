@@ -69,7 +69,7 @@ int main (int argc, char *argv[]) {
 	// Follow an option with a colon to indicate that it requires an argument.
 
 	optList = NULL;
-	optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:Ka:ze:x:w:nc:m:r:pb:u:");
+	optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:Ka:ze:x:w:nc:m:r:pb:u:v:");
 
 
 	char *kmer_file = NULL;                 // Reliable k-mer file from Jellyfish
@@ -210,6 +210,11 @@ int main (int argc, char *argv[]) {
           cout << "HOPC enabled with error rate of " << b_parameters.HOPCerate << endl;
           break;
       }
+			case 'v': {
+					b_parameters.minOverlap = strtod(thisOpt->argument, NULL);
+					cout << "Minimum overlap of " << b_parameters.minOverlap << " bp." << endl;
+					break;
+			}
 			case 'h': {
 				cout << "Usage:\n" << endl;
 				cout << " -f : k-mer list from Jellyfish (required if Jellyfish k-mer counting is used)" << endl; // Reliable k-mers are selected by BELLA
@@ -228,6 +233,7 @@ int main (int argc, char *argv[]) {
 				cout << " -r : kmerRift: bases separating two k-mers used as seeds for a read [1,000]" << endl;
 				cout << " -b : bin size chaining algorithm [500]" 	<< endl;
         cout << " -u : use HOPC representation for kmers with HOPC erate [false]" << endl; // TODO: pick a better letter because u doesn't make sense
+				cout << " -v : minimum overlap to run alignment" << endl;
 				cout << " -p : output in PAF format [false]\n" 		<< endl;
 
 				FreeOptList(thisOpt); // Done with this list, free it
@@ -471,7 +477,7 @@ if(b_parameters.alignEnd)
 	HashSpGEMM(spmat, transpmat,
 		// n-th k-mer positions on read i and on read j
 		// AB: not sure if these id1 and id2 are captured correctly, honestly
-		[&kmer_len, &reads] (const std::pair<int,bool>& begpH, const std::pair<int,bool>& begpV, const int& id1, const int& id2)
+		[&kmer_len, &reads, &b_parameters] (const std::pair<int,bool>& begpH, const std::pair<int,bool>& begpV, const int& id1, const int& id2)
 		{
 			spmatPtr_ value(make_shared<spmatType_>());
 
@@ -479,7 +485,7 @@ if(b_parameters.alignEnd)
 			std::string& read2 = reads[id2].seq;
 
 			// GG: function in chain.h
-			multiop(value, read1, read2, begpH, begpV, kmer_len);
+			multiop(value, read1, read2, begpH, begpV, kmer_len, b_parameters);
 			return value;
 		},
 		[&kmer_len, &b_parameters, &reads] (spmatPtr_& m1, spmatPtr_& m2, const int& id1, const int& id2)
