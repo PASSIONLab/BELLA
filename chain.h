@@ -81,7 +81,9 @@ multiop(spmatPtr_& value, const std::string& read1, const std::string& read2,
 	const std::pair<int,bool>& begpH, const std::pair<int,bool>& begpV, const int kmerSize) {
 
 	value->count = 1;
-	value->pos.push_back(make_pair(begpH, begpV));
+	vector<pair<pair<int,bool>,pair<int,bool>>> vec{ make_pair(begpH, begpV) };
+	value->pos.push_back(vec);
+	// value->pos.push_back((make_pair(begpH, begpV)));
 	value->support.push_back(1);	// initial k-mer has support 1
 
 	// GG: check strand and compute overlap length
@@ -107,7 +109,13 @@ chainop(spmatPtr_& m1, spmatPtr_& m2, BELLApars& b_parameters,
 			// GG: TODO 500 as parameter
 			if(std::abs(m2->overlap[i] - m1->overlap[j]) < b_parameters.bin) // B is the bin length
 			{
-				m1->support[j] += m2->support[j];
+				m1->support[j] += m2->support[i];
+				// vector<pair<pair<int,bool>,pair<int,bool>>> vec{ m2->pos[i] };
+				// m1->pos[j].push_back(vec);
+				for(auto it : m2->pos[i]) {
+					m1->pos[j].push_back(it);
+				}
+				// m1->pos[j].push_back(m2->pos[j][0]);
 				orphan = false;
 				// we can be within (B=500) length of multiple overlap estimations, so we can't break
 			}
@@ -121,7 +129,9 @@ chainop(spmatPtr_& m1, spmatPtr_& m2, BELLApars& b_parameters,
 
 	for (auto i:tobeinserted)
 	{
-		m1->pos.push_back(m2->pos[i]);
+		vector<pair<pair<int,bool>,pair<int,bool>>> vec{ m2->pos[i] };
+		m1->pos.push_back(vec);
+		// m1->pos.push_back(m2->pos[i]);
 		m1->overlap.push_back(m2->overlap[i]);
 		m1->support.push_back(m2->support[i]);
 	}

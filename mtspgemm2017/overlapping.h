@@ -602,13 +602,14 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 				seqAnResult maxExtScore;
 				bool passed = false;
 				val->sort();
-				if(!b_pars.allKmer && val->sorted_idx->size() > 2) { // if not using all kmers, just use first two
-					val->sorted_idx->resize(2);
+				int max_kmers = 3;
+				if(!b_pars.allKmer && val->sorted_idx->size() > max_kmers) { // if not using all kmers, just use first two
+					val->sorted_idx->resize(max_kmers);
 				}
 
 				if(val->count == 1)
 				{
-						auto it = val->pos[val->sorted_idx->at(0)];
+						auto it = val->pos[val->sorted_idx->at(0)][0];
 						int i = it.first.first, j = it.second.first;
 
 						maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, xdrop, kmer_len, b_pars.useHOPC, it.first.second, it.second.second);
@@ -618,14 +619,19 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 				{
 					 for(auto idx = val->sorted_idx->begin(); idx != val->sorted_idx->end(); ++idx) {  // if !b_pars.allKmer this should be at most two cycles
 
-						  auto it = val->pos[*idx];
-						 	int i = it.first.first, j = it.second.first;
+						 for(auto it : val->pos[*idx]) {
+						 // for(auto it = val->pos[*idx].begin(); it != val->pos[*idx].end(); ++it) {
+							 // auto it = val->pos[*idx];
+							 int i = it.first.first, j = it.second.first;
 
-							maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, xdrop, kmer_len, b_pars.useHOPC, it.first.second, it.second.second);
-							PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
+							 maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, xdrop, kmer_len, b_pars.useHOPC, it.first.second, it.second.second);
+							 PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
 
-							if(passed)
-									break;
+							 if(passed)
+							 		break;
+						 }
+						 if(passed)
+						 		break;
 					 }
 				}
 #ifdef TIMESTEP
