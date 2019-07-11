@@ -109,4 +109,26 @@ seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rle
     return longestExtensionScore;
 }
 
+void alignLogan( vector<string> &target,
+                vector<string> &query,
+                vector<SeedL> &seeds,
+                int xdrop, 
+                int kmer_len,
+                vector<loganResult> longestExtensionScore){
+
+    ScoringSchemeL sscheme(1, -1, -1, -1);
+    int n_al = target.size();
+    int* res = malloc(n_al*size_of(int));
+    vector<ScoringSchemeL> scoring;
+    scoring.push_back(sscheme);
+    extendSeedL(seeds, EXTEND_BOTHL, target, query, scoring, xdrop, kmer_len, res, n_al, ngpus);
+    
+    for(int i=0; i<n_al; i++){
+        longestExtensionScore[i].score = res[i];
+        longestExtensionScore[i].seed = seeds[i];
+    }
+
+
+}
+
 #endif

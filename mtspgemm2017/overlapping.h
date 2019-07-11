@@ -79,6 +79,23 @@ double safety_net = 1.2;
     in = [2, 1, 3, 5]
     out = [0, 2, 3, 6, 11]
  */
+char dummycomplement (char n)
+{   
+    switch(n)
+    {   
+    case 'A':
+        return 'T';
+    case 'T':
+        return 'A';
+    case 'G':
+        return 'C';
+    case 'C':
+        return 'G';
+    }   
+    assert(false);
+    return ' ';
+}
+
 template <typename T>
 T* prefixsum(T* in, int size, int nthreads)
 {
@@ -545,6 +562,46 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
     }
 
     vector<stringstream> vss(numThreads); // any chance of false sharing here? depends on how stringstream is implemented. optimize later if needed...
+
+    vector<string> seq1s;
+    vector<string> seq2s;
+    vector<SeedL> seeds;
+    vector<loganResult> maxExtScoreL;
+
+for(IT j = start; j<end; ++j){//accumulate the sequences
+    for (IT i = colptrC[j]; i < colptrC[j+1]; ++i){
+        size_t rid = rowids[i-offset];  // row id
+        size_t cid = j;                 // column id
+        string seq1 = reads[rid].seq;    // get reference for readibility
+        string seq2 = reads[cid].seq;    // get reference for readibility
+        string strand = 'n';
+        SeedL seed(i, j, i+kmer_len, j+kmer_len);
+        string seedH = seq1.substr(beginPositionH(seed), endPositionH(seed));
+        string seedV = seq2.substr(beginPositionV(seed), endPositionV(seed));
+        std::transform(std::begin(seedH),std::end(seedH),std::begin(seedH),dummycomplement);
+
+        if(seedH == seedV){
+            strand = 'c';
+            seq1 = reads[rid].seq;
+            std::transform(std::begin(seq1),std::end(seq1),std::begin(seq1),dummycomplement);
+
+            setBeginPositionH(seed, rlen-i-kmer_len);
+            setBeginPositionV(seed, j);
+            setEndPositionH(seed, rlen-i);
+            setEndPositionV(seed, j+kmer_len);
+        }
+        loganResult localRes;
+        localRes.strand = strand;
+        seeds.push_back(seed);
+        seq1s.push_back(seq1);
+        seq2s.push_back(seq2);
+        maxExtScoreL.push_back(localRes);
+    }
+}
+
+    alignLogan(seq1s, seq2s, seeds, xdrop, kmer_len, maxExtScoreL);
+
+
 
 #pragma omp parallel for
     for(IT j = start; j<end; ++j) // for (end-start) columns of A^T A (one block)
