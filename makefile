@@ -2,7 +2,7 @@ RMATPATH = mtspgemm2017/GTgraph/R-MAT
 SPRNPATH = mtspgemm2017/GTgraph/sprng2.0-lite
 SEQANPATH = seqan
 include mtspgemm2017/GTgraph/Makefile.var
-INCLUDE = -I$(SPRNPATH)/include #-I$(CURDIR)/libgaba
+INCLUDE = -I$(SPRNPATH)/include -IloganGPU #-I$(CURDIR)/libgaba
 SEQINCLUDE = -I$(SEQANPATH)
 MLKINCLUDE = -I/opt/intel/composer_xe_2015.0.039/mkl/include
 LIBPATH = -L/opt/intel/composer_xe_2015.0.039/mkl/lib 
@@ -10,6 +10,8 @@ COMPILER = g++
 CC = gcc
 CFLAGS = -I. -O3 -W -Wall -Wextra -pedantic -ansi -c
 #SEQFLAGS = -DSEQAN_ARCH_SSE4=1 -DSEQAN_ARCH_AVX2=1 -DSEQAN_BGZF_NUM_THREADS=1
+COMPILER_GPU = nvcc
+CUDAFLAGS = -arch=sm_70 -O3 -maxrregcount=32 -std=c++14 -Xcompiler -fopenmp
 
 sprng:	
 	(cd $(SPRNPATH); $(MAKE); cd ../..)
@@ -47,6 +49,11 @@ Kmer.o:	kmercode/Kmer.cpp
 bella: main.cpp hash_funcs.o fq_reader.o Buffer.o Kmer.o bound.o optlist.o rmat bloomlib 
 	#gabalib
 	$(COMPILER) -std=c++14 -O3 $(INCLUDE) -march=native -fopenmp -fpermissive $(SEQINCLUDE) -o bella hash_funcs.o Kmer.o Buffer.o fq_reader.o bound.o optlist.o main.cpp ${LIBS}
+
+bella_gpu: main.cu hash_funcs.o fq_reader.o Buffer.o Kmer.o bound.o optlist.o rmat bloomlib
+	#gabalib
+	$(COMPILER_GPU) $(CUDAFLAGS) $(INCLUDE) $(SEQINCLUDE) -o bella hash_funcs.o Kmer.o Buffer.o fq_reader.o bound.o optlist.o main.cu ${LIBS}
+
 # makes evaluation
 result:
 	(cd bench; make result; cd ..)

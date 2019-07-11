@@ -118,9 +118,10 @@ void alignLogan( vector<string> &target,
 
     ScoringSchemeL sscheme(1, -1, -1, -1);
     int n_al = target.size();
-    int* res = malloc(n_al*size_of(int));
+    int* res = (int*)malloc(n_al*sizeof(int));
     vector<ScoringSchemeL> scoring;
     scoring.push_back(sscheme);
+    int ngpus = 1; //change this when compliting integration
     extendSeedL(seeds, EXTEND_BOTHL, target, query, scoring, xdrop, kmer_len, res, n_al, ngpus);
     
     for(int i=0; i<n_al; i++){

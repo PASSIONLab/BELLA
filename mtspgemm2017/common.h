@@ -55,7 +55,7 @@ struct seqAnResult {
 struct loganResult {
     int score;
     std::string strand;
-    LSeed seed;
+    SeedL seed;
 };
 
 

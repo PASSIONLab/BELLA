@@ -8,7 +8,7 @@
 #include<cassert>
 
 template<typename Tx_>
-const Tx_&  min(const Tx_& _Left, const Tx_& Right_)
+const Tx_&  min_logan(const Tx_& _Left, const Tx_& Right_)
 {   // return smaller of _Left and Right_
     if (_Left < Right_)
         return _Left;
@@ -17,7 +17,7 @@ const Tx_&  min(const Tx_& _Left, const Tx_& Right_)
 }
 
 template<typename Tx_, typename Ty_>
-Tx_  min(const Tx_& _Left, const Ty_& Right_)
+Tx_  min_logan(const Tx_& _Left, const Ty_& Right_)
 {   // return smaller of _Left and Right_
     return (Right_ < _Left ? Right_ : _Left);
 }
@@ -69,8 +69,8 @@ struct SeedL
 		beginPositionV(beginPositionV),
 		endPositionH(endPositionH),
 		endPositionV(endPositionV),
-		lowerDiagonal(min((beginPositionH - beginPositionV), (endPositionH - endPositionV))),
-		upperDiagonal(max((beginPositionH - beginPositionV), (endPositionH - endPositionV))),
+		lowerDiagonal(min_logan((beginPositionH - beginPositionV), (endPositionH - endPositionV))),
+		upperDiagonal(max_logan((beginPositionH - beginPositionV), (endPositionH - endPositionV))),
 		beginDiagonal((beginPositionH - beginPositionV)),
 		endDiagonal((endPositionH - endPositionV)),
 		score(0)
@@ -214,3 +214,4 @@ void
 __device__ __host__ setEndDiagonal(SeedL &myseed,int const value){
 	myseed.endDiagonal = value;
 }
+

@@ -25,7 +25,8 @@
 #include <map>
 #include <unordered_map>
 #include <omp.h>
-#include <"loganGPU/logan.cuh">
+
+#include "loganGPU/logan.cuh"
 
 #include "libcuckoo/cuckoohash_map.hh"
 #include "kmercount.h"

@@ -574,14 +574,15 @@ for(IT j = start; j<end; ++j){//accumulate the sequences
         size_t cid = j;                 // column id
         string seq1 = reads[rid].seq;    // get reference for readibility
         string seq2 = reads[cid].seq;    // get reference for readibility
-        string strand = 'n';
+        int rlen = seq1.length();
+	string strand = "n";
         SeedL seed(i, j, i+kmer_len, j+kmer_len);
-        string seedH = seq1.substr(beginPositionH(seed), endPositionH(seed));
-        string seedV = seq2.substr(beginPositionV(seed), endPositionV(seed));
+        string seedH = seq1.substr(getBeginPositionH(seed), getEndPositionH(seed));
+        string seedV = seq2.substr(getBeginPositionV(seed), getEndPositionV(seed));
         std::transform(std::begin(seedH),std::end(seedH),std::begin(seedH),dummycomplement);
 
         if(seedH == seedV){
-            strand = 'c';
+            strand = "c";
             seq1 = reads[rid].seq;
             std::transform(std::begin(seq1),std::end(seq1),std::begin(seq1),dummycomplement);
 
