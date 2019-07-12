@@ -6,8 +6,8 @@ INCLUDE = -I$(SPRNPATH)/include #-I$(CURDIR)/libgaba
 SEQINCLUDE = -I$(SEQANPATH)
 MLKINCLUDE = -I/opt/intel/composer_xe_2015.0.039/mkl/include
 LIBPATH = -L/opt/intel/composer_xe_2015.0.039/mkl/lib 
-COMPILER = g++-6
-CC = gcc-6
+COMPILER = g++
+CC = gcc
 CFLAGS = -I. -O3 -W -Wall -Wextra -pedantic -ansi -c
 #SEQFLAGS = -DSEQAN_ARCH_SSE4=1 -DSEQAN_ARCH_AVX2=1 -DSEQAN_BGZF_NUM_THREADS=1
 
