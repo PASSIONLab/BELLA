@@ -602,12 +602,12 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 				seqAnResult maxExtScore;
 				bool passed = false;
 				val->sort();
-				int max_kmers = 2;
-				int max_support_kmers = 2;
-				if(!b_pars.allKmer && val->sorted_idx.size() > max_kmers) { // if not using all kmers, just use first two
+				int max_kmers = 1; // maximum number of bins to run kmers from, or 0 for all
+				int max_support_kmers = 0; // maximum number of support kmers to run per bin, or 0 for all
+				if(!b_pars.allKmer && val->sorted_idx.size() > max_kmers && max_kmers) { // if not using all kmers, just use first two
 					val->sorted_idx.resize(max_kmers);
 				}
-				if(!b_pars.allKmer) {
+				if(!b_pars.allKmer && max_support_kmers) {
 					for(int idx : val->sorted_idx) {
 						if(val->pos[idx].size() > max_support_kmers)
 							val->pos[idx].resize(max_support_kmers);
