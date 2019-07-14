@@ -118,39 +118,11 @@ T* prefixsum(T* in, int size, int nthreads)
 }
 /* fix according to PAF format */
 
-void toPAF(size_t& begpV, size_t& endpV, const int lenV, size_t& begpH, size_t& endpH, const int lenH, const string& rev)
+void toOriginalCoordinates(size_t& begpH, size_t& endpH, const int lenH)
 {
-	/* first, extend to the end of the sequences */
-	if(begpH < begpV)
-	{
-		begpV = begpV - begpH;
-		begpH = 0;
-	}
-	else
-	{
-		begpH = begpH - begpV;
-		begpV = 0;
-	}
-
-	if((lenH - endpH) < (lenV - endpV))
-	{
-		endpV = endpV + (lenH - endpH);
-		endpH = lenH;
-	}
-	else
-	{
-		endpH = endpH + (lenV - endpV);
-		endpV = lenV;
-	}
-
-	/* second, (possibly) convert back the seqH seed position according to the original strand */
-	if(rev == "c")
-	{
-		size_t temp = begpH;
-		begpH = lenH-endpH;
-		endpH = lenH-temp;
-	}
-
+	size_t tmp = begpH;
+	begpH = lenH-endpH;
+	endpH = lenH-tmp;
 }
 
 // estimate the number of floating point operations of SpGEMM
@@ -327,14 +299,14 @@ void LocalSpGEMM(IT & start, IT & end, const CSC<IT,NT> & A, const CSC<IT,NT> & 
 			if(lowtriout && i >= key)
 				continue;
 
-			//	GG: modified to get read ids needed to compute overlap length
+			//	GG: modified to get read ids needed to compute alnlenerlap length
 			FT result =  multop(A.values[k], valueofB, key, i);
 
 			IT hash = (key*hashScale) & (ht_size-1);
 			while (1) //hash probing
 			{
 				if (globalHashVec[hash].first == key) //key is found in hash table
-				{	//	GG: addop temporary modify, remove key, i after testing
+				{	//	GG: addop temporary modify, remalnlene key, i after testing
 					globalHashVec[hash].second = addop(result, globalHashVec[hash].second, key, i);
 					break;
 				}
@@ -430,19 +402,19 @@ void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1,
 	// get references for better naming
 	const string& seq1 = read1.seq;
 	const string& seq2 = read2.seq;
-			
+
 	int read1len = seq1.length();
 	int read2len = seq2.length();
 
-	int diffCol = endpV - begpV;
-	int diffRow = endpH - begpH;
-	int minLeft = min(begpV, begpH);
-	int minRight = min(read2len - endpV, read1len - endpH);
-	int ov = minLeft+minRight+(diffCol+diffRow)/2;
+	int alnlenV = endpV - begpV;
+	int alnlenH = endpH - begpH;
+	int margin1 = min(begpV, begpH);
+	int margin2 = min(read2len - endpV, read1len - endpH);
+	int ovplen  = margin1 + margin2 + (alnlenV + alnlenH) / 2;
 
 	if(b_pars.adapThr)
 	{
-		double newThr = (1-b_pars.deltaChernoff)*(ratioPhi*(double)ov);
+		double newThr = (1-b_pars.deltaChernoff)*(ratioPhi*(double)ovplen);
 
 		if((double)maxExtScore.score > newThr)
 		{
@@ -472,59 +444,29 @@ void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1,
 
 	if(passed)
 	{
-		if(!b_pars.outputPaf)  // BELLA output format
+		if(!b_pars.outputPaf)	// BELLA output format
 		{
-			myBatch << read2.nametag << '\t' << read1.nametag << '\t' << count << '\t' << maxExtScore.score << '\t' << ov << '\t' << maxExtScore.strand << '\t' << 
+			myBatch << read2.nametag << '\t' << read1.nametag << '\t' << count << '\t' << maxExtScore.score << '\t' << ovplen << '\t' << maxExtScore.strand << '\t' << 
 				begpV << '\t' << endpV << '\t' << read2len << '\t' << begpH << '\t' << endpH << '\t' << read1len << endl;
-				// column seq name
-				// row seq name
-				// number of shared k-mer
-				// alignment score
-				// overlap estimation
-				// strand (n/c)
-				// column seq start
-				// column seq end
-				// column seq length
-				// row seq start
-				// row seq end
-				// row seq length
 		}
-		else    // PAF format is the output format used by minimap/minimap2: https://github.com/lh3/miniasm/blob/master/PAF.md
+		else
 		{
-			/* field adjustment to match the PAF format */
-			toPAF(begpV, endpV, read2len, begpH, endpH, read1len, maxExtScore.strand);
-			/* re-compute overlap estimation with extended alignment to the edges */
-			diffCol = endpV - begpV;
-			diffRow = endpH - begpH;
-			minLeft = min(begpV, begpH);
-			minRight = min(read2len - endpV, read1len - endpH);
-			ov = minLeft+minRight+(diffCol+diffRow)/2;
+			std::string pafstrand;	// maxExtScore not modifiable
+			int mapq = 255;			// mapping quality (0-255; 255 for missing)
 
-			string pafstrand;       // maxExtScore not modifiable   
-			int mapq = 255;         // mapping quality (0-255; 255 for missing)         
-			if(maxExtScore.strand == "n") pafstrand = "+";  
+			if(maxExtScore.strand == "n") pafstrand = "+";
 			else pafstrand = "-";
 
-			// If PAF is generated from an alignment, column 10 equals the number of sequence matches, 
-			// and column 11 equals the total number of sequence matches, mismatches, insertions and deletions in the alignment     
+			if(pafstrand == "-")
+				toOriginalCoordinates(begpH, endpH, read1len);
+
+			// PAF format is the output format used by minimap/minimap2: https://github.com/lh3/miniasm/blob/master/PAF.md
 			myBatch << read2.nametag << '\t' << read2len << '\t' << begpV << '\t' << endpV << '\t' << pafstrand << '\t' << 
-				read1.nametag << '\t' << read1len << '\t' << begpH << '\t' << endpH << '\t' << maxExtScore.score << '\t' << ov << '\t' << mapq << endl;
-				// column seq name
-				// column seq length
-				// column seq start
-				// column seq end
-				// strand (+/-)
-				// row seq name
-				// row seq length
-				// row seq start
-				// row seq end
-				// number of residue matches (alignment score)
-				// alignment block length (overlap length)
-				// mapping quality (0-255; 255 for missing)
+				read1.nametag << '\t' << read1len << '\t' << begpH << '\t' << endpH << '\t' << maxExtScore.score << '\t' << ovplen << '\t' << mapq << endl;
 		}
 		++outputted;
-		numBasesAlignedTrue += (endpV-begpV);	
-	}		
+		numBasesAlignedTrue += (endpV-begpV);
+	}
 	else
 	{
 		numBasesAlignedFalse += (endpV-begpV);
@@ -533,7 +475,7 @@ void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1,
 
 template <typename IT, typename FT>
 auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowids, FT * values, const readVector_ & reads, 
-								int kmer_len, int xdrop, char* filename, const BELLApars & b_pars, double ratioPhi)
+								int kmerSize, int xdrop, char* filename, const BELLApars & b_pars, double ratioPhi)
 {
 	size_t alignedpairs = 0;
 	size_t alignedbases = 0;
@@ -584,27 +526,17 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 				seqAnResult maxExtScore;
 				bool passed = false;
 
-				//if(val->count == 1)
-				//{
-				auto it = val->pos.begin();
-				int i = it->first, j = it->second;
+//#pragma omp critical
+//			{
+//				std::cout << "val->print()\t" << std::endl;
+//				val->print();
+//			}
+				std::pair<int, int> kmer = val->choose();
+				int i = kmer.first, j = kmer.second;
 
-				maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, xdrop, kmer_len);
+				maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, xdrop, kmerSize);
 				PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
-				//}
-				//else
-				//{
-				//    for(auto it = val->pos.begin(); it != val->pos.end(); ++it) // if !b_pars.allKmer this should be at most two cycle
-				//    {
-				//        int i = it->first, j = it->second;
-//
-				//        maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, xdrop, kmer_len);
-				//        PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
-//
-				//        if(passed)
-				//            break;
-				//    }
-				//}
+
 #ifdef TIMESTEP
 			numBasesAlignedThread += endPositionV(maxExtScore.seed)-beginPositionV(maxExtScore.seed);
 #endif
@@ -677,7 +609,7 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
  **/
 template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation>
 void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, const readVector_ & reads, 
-	FT & getvaluetype, int kmer_len, int xdrop, char* filename, const BELLApars & b_pars, double ratioPhi)
+	FT & getvaluetype, int kmerSize, int xdrop, char* filename, const BELLApars & b_pars, double ratioPhi)
 {
 	double free_memory = estimateMemory(b_pars);
 
@@ -732,7 +664,7 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
 	for(int b = 0; b < stages; ++b) 
 	{
 #ifdef TIMESTEP
-		double ovl = omp_get_wtime();
+		double alnlenl = omp_get_wtime();
 #endif
 		vector<IT> * RowIdsofC = new vector<IT>[colStart[b+1]-colStart[b]];    // row ids for each column of C (bunch of cols)
 		vector<FT> * ValuesofC = new vector<FT>[colStart[b+1]-colStart[b]];    // values for each column of C (bunch of cols)
@@ -740,8 +672,8 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
 		LocalSpGEMM(colStart[b], colStart[b+1], A, B, multop, addop, RowIdsofC, ValuesofC, colptrC, true);
 
 #ifdef TIMESTEP
-		double ov2 = omp_get_wtime();
-		cout << "\nColumns [" << colStart[b] << " - " << colStart[b+1] << "] overlap time: " << ov2-ovl << "s" << endl;
+		double alnlen2 = omp_get_wtime();
+		cout << "\nColumns [" << colStart[b] << " - " << colStart[b+1] << "] alnlenerlap time: " << alnlen2-alnlenl << "s" << endl;
 #endif
 
 		IT endnz = colptrC[colStart[b+1]];
@@ -762,12 +694,12 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
 		delete [] ValuesofC;
 
 		tuple<size_t, size_t, size_t, size_t, size_t, size_t, double> alignstats; // (alignedpairs, alignedbases, totalreadlen, outputted, alignedtrue, alignedfalse, timeoutputt)
-		alignstats = RunPairWiseAlignments(colStart[b], colStart[b+1], begnz, colptrC, rowids, values, reads, kmer_len, xdrop, filename, b_pars, ratioPhi);
+		alignstats = RunPairWiseAlignments(colStart[b], colStart[b+1], begnz, colptrC, rowids, values, reads, kmerSize, xdrop, filename, b_pars, ratioPhi);
 
 #ifdef TIMESTEP
 		if(!b_pars.skipAlignment)
 		{
-			double elapsed = omp_get_wtime()-ov2;
+			double elapsed = omp_get_wtime()-alnlen2;
 			double aligntime = elapsed-get<6>(alignstats); // substracting outputting time
 			cout << "\nColumns [" << colStart[b] << " - " << colStart[b+1] << "] alignment time: " << aligntime << "s | alignment rate: " << static_cast<double>(get<1>(alignstats))/aligntime;
 			cout << " bases/s | average read length: " <<static_cast<double>(get<2>(alignstats))/(2* get<0>(alignstats));

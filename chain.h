@@ -76,7 +76,8 @@ multiop(spmatPtr_& value, const std::string& read1, const std::string& read2,
 	int begpH, int begpV, const int kmerSize) {
 
 	value->count = 1;
-	value->pos.push_back(make_pair(begpH, begpV));
+	vector<pair<int, int>> vec{std::make_pair(begpH, begpV)};	// GG: to facilitate bin division
+	value->pos.push_back(vec);
 	value->support.push_back(1);	// initial k-mer has support 1
 
 	// GG: check strand and compute overlap length
@@ -99,18 +100,21 @@ chainop(spmatPtr_& m1, spmatPtr_& m2, BELLApars& b_parameters,
 		bool orphan = true;
 		for(int j = 0; j < m1->pos.size(); ++j)
 		{
-			// GG: TODO 500 as parameter
-			if(std::abs(m2->overlap[i] - m1->overlap[j]) < b_parameters.bin) // B is the bin length
+			if(std::abs(m2->overlap[i] - m1->overlap[j]) < b_parameters.bin)
 			{
-				m1->support[j] += m2->support[j];
-				orphan = false;
-				// we can be within (B=500) length of multiple overlap estimations, so we can't break
-			}
-		}
+				m1->support[j] += m2->support[i];
 
-		if(orphan)
-		{
-			tobeinserted.push_back(i);	// we don't want to immediately insert to m1 and increase computational complexity
+				for(auto it:m2->pos[i])
+					m1->pos[j].push_back(it);
+
+				orphan = false;
+				// we can be within b length of multiple overlap estimations, so we can't break
+			}
+
+			if(orphan)
+			{
+				tobeinserted.push_back(i);	// we don't want to immediately insert to m1 and increase computational complexity
+			}
 		}
 	}
 
@@ -121,14 +125,14 @@ chainop(spmatPtr_& m1, spmatPtr_& m2, BELLApars& b_parameters,
 		m1->support.push_back(m2->support[i]);
 	}
 
-#pragma omp critical
-	{
-		// GG: after testing correctness, this part can be removed
-		// GG: we can then pass fewer parameters
-		std::cout << "Between " << readname1 << " and " << readname2 << std::endl;
-		std::copy(m1->overlap.begin(), m1->overlap.end(), std::ostream_iterator<int>(std::cout, " ")); std::cout << std::endl;
-		std::copy(m1->support.begin(), m1->support.end(), std::ostream_iterator<int>(std::cout, " ")); std::cout << std::endl;
-	}
+//#pragma omp critical
+//	{
+//		// GG: after testing correctness, this part can be removed
+//		// GG: we can then pass fewer parameters
+//		std::cout << "Between " << readname1 << " and " << readname2 << std::endl;
+//		std::copy(m1->overlap.begin(), m1->overlap.end(), std::ostream_iterator<int>(std::cout, " ")); std::cout << std::endl;
+//		std::copy(m1->support.begin(), m1->support.end(), std::ostream_iterator<int>(std::cout, " ")); std::cout << std::endl;
+//	}
 
 }
 
