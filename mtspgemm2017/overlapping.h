@@ -526,20 +526,46 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 				seqAnResult maxExtScore;
 				bool passed = false;
 
-//#pragma omp critical
-//			{
-//				std::cout << "val->print()\t" << std::endl;
-//				val->print();
-//			}
-				std::pair<int, int> kmer = val->choose();
-				int i = kmer.first, j = kmer.second;
+#pragma omp critical
+				{
+				//	GG: order bins by decrescent number of supports and choose one kmer per bin to handles ties
+				//	vector<pair<int, int>> kmervect = val->choose();
+				//	GG: it's currently saving all k-mers positions for distribution analysis
+				vector<vector<pair<int, int>>> kmervect = val->choose();
+				if(kmervect.size() > 1)
+				{
+					std::cout << "SEQH\t" << reads[rid].nametag << "\tLENGTH\t" << seq1len << std::endl;
+					std::cout << "SEQV\t" << reads[cid].nametag << "\tLENGTH\t" << seq2len << std::endl;
 
-				maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, xdrop, kmerSize);
-				PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
+					val->print();
 
+					for(int i = 0; i < kmervect.size(); i++)
+					{
+						std::cout << "BIN\t" << i << std::endl;
+
+						for(auto it = kmervect[i].begin(); it != kmervect[i].end(); it++)
+						{
+							int i = it->first, j = it->second;
+
+							maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, xdrop, kmerSize);
+							PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
+
+							if(passed)
+							{
+								std::cout << i << '\t' << j << "\tTRUE"  << std::endl;
+							}
+							else
+							{
+								std::cout << i << '\t' << j << "\tFALSE" << std::endl;
+							}
+						}
+					}
+					std::cout << std::endl;
+				}
 #ifdef TIMESTEP
 			numBasesAlignedThread += endPositionV(maxExtScore.seed)-beginPositionV(maxExtScore.seed);
 #endif
+				}
 			}
 			else // if skipAlignment == false do alignment, else save just some info on the pair to file
 			{
