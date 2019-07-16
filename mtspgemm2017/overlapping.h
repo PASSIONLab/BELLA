@@ -603,7 +603,7 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 				bool passed = false;
 				val->sort();
 				int max_kmers = 1; // maximum number of bins to run kmers from, or 0 for all
-				int max_support_kmers = 0; // maximum number of support kmers to run per bin, or 0 for all
+				int max_support_kmers = 1; // maximum number of support kmers to run per bin, or 0 for all
 				if(!b_pars.allKmer && val->sorted_idx.size() > max_kmers && max_kmers) { // if not using all kmers, just use first two
 					val->sorted_idx.resize(max_kmers);
 				}
@@ -645,30 +645,33 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 				}
 */
 
-				if(val->count == 1)
-				{
+				if(val->count >= b_pars.minSharedKmers) {
+					if(val->count == 1)
+					{
 						auto it = val->pos[val->sorted_idx[0]][0];
 						int i = it.first.first, j = it.second.first;
 
 						maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, xdrop, kmer_len, b_pars.useHOPC, it.first.second, it.second.second);
 						PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
-				}
-				else
-				{
-					 for(int idx : val->sorted_idx) {
-						 for(auto it : val->pos[idx]) {
-							 int i = it.first.first, j = it.second.first;
+					}
+					else
+					{
+					 	for(int idx : val->sorted_idx) {
+							 for(auto it : val->pos[idx]) {
+								 int i = it.first.first, j = it.second.first;
 
-							 maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, xdrop, kmer_len, b_pars.useHOPC, it.first.second, it.second.second);
-							 PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
+							 	maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, xdrop, kmer_len, b_pars.useHOPC, it.first.second, it.second.second);
+							 	PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
 
-							 if(passed)
-								 break;
-						 }
-						 if(passed)
+							 	if(passed)
+									break;
+						 	}
+						 	if(passed)
 						 		break;
-					 }
+					 	}
+					}
 				}
+
 #ifdef TIMESTEP
 			numBasesAlignedThread += endPositionV(maxExtScore.seed)-beginPositionV(maxExtScore.seed);
 #endif

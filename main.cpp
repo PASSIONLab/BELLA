@@ -69,7 +69,7 @@ int main (int argc, char *argv[]) {
 	// Follow an option with a colon to indicate that it requires an argument.
 
 	optList = NULL;
-	optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:Ka:ze:x:w:nc:m:r:pb:u:v:");
+	optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:Ka:ze:x:w:nc:m:r:pb:u:v:s:");
 
 
 	char *kmer_file = NULL;                 // Reliable k-mer file from Jellyfish
@@ -204,16 +204,21 @@ int main (int argc, char *argv[]) {
 				b_parameters.deltaChernoff = stod(thisOpt->argument);
 				break;
 			}
-      case 'u': {
-          b_parameters.useHOPC = true;
-          b_parameters.HOPCerate = strtod(thisOpt->argument, NULL);
-          cout << "HOPC enabled with error rate of " << b_parameters.HOPCerate << endl;
-          break;
-      }
+			case 'u': {
+				b_parameters.useHOPC = true;
+				b_parameters.HOPCerate = strtod(thisOpt->argument, NULL);
+				cout << "HOPC enabled with error rate of " << b_parameters.HOPCerate << endl;
+				break;
+			}
 			case 'v': {
-					b_parameters.minOverlap = strtod(thisOpt->argument, NULL);
-					cout << "Minimum overlap of " << b_parameters.minOverlap << " bp." << endl;
-					break;
+				b_parameters.minOverlap = strtod(thisOpt->argument, NULL);
+				cout << "Minimum overlap of " << b_parameters.minOverlap << " bp." << endl;
+				break;
+			}
+			case 's': {
+				b_parameters.minSharedKmers = strtod(thisOpt->argument, NULL);
+				cout << "Minimum shared kmers for alignment: " << b_parameters.minSharedKmers << endl;
+				break;
 			}
 			case 'h': {
 				cout << "Usage:\n" << endl;
@@ -232,8 +237,9 @@ int main (int argc, char *argv[]) {
 				cout << " -n : filter out alignment on edge [false]" 				<< endl;
 				cout << " -r : kmerRift: bases separating two k-mers used as seeds for a read [1,000]" << endl;
 				cout << " -b : bin size chaining algorithm [500]" 	<< endl;
-        cout << " -u : use HOPC representation for kmers with HOPC erate [false]" << endl; // TODO: pick a better letter because u doesn't make sense
+				cout << " -u : use HOPC representation for kmers with HOPC erate [false]" << endl; // TODO: pick a better letter because u doesn't make sense
 				cout << " -v : minimum overlap to run alignment" << endl;
+				cout << " -s : minimum number of shared kmers required to run alignment" << endl;
 				cout << " -p : output in PAF format [false]\n" 		<< endl;
 
 				FreeOptList(thisOpt); // Done with this list, free it
@@ -293,7 +299,8 @@ int main (int argc, char *argv[]) {
         cout << "Compute alignment: false" << endl;
     else cout << "Compute alignment: true" << endl;
     if(!b_parameters.allKmer)
-        cout << "Seeding: two-kmer" << endl;
+        cout << "Seeding: one-kmer" << endl;
+	//cout << "Seeding: " << b_parameters.numSeeds << " kmers" << endl;
     else cout << "Seeding: all-kmer" << endl;
 		if(b_parameters.useHOPC)
 			cout << "Use HOPC: true with erate = " << b_parameters.HOPCerate << endl;
@@ -495,7 +502,7 @@ if(b_parameters.alignEnd)
 			std::string& readname2 = reads[id2].nametag;
 
 			// GG: function in chain.h
-			chainop(m1, m2, b_parameters, readname1, readname2);
+			chainop(m1, m2, b_parameters, readname1, readname2, kmer_len);
 			return m1;
 		},
 		reads, getvaluetype, kmer_len, xdrop, out_file, b_parameters, ratioPhi);

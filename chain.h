@@ -95,7 +95,7 @@ multiop(spmatPtr_& value, const std::string& read1, const std::string& read2,
 // GG: chaining operation
 void
 chainop(spmatPtr_& m1, spmatPtr_& m2, BELLApars& b_parameters,
-	const std::string& readname1, const std::string& readname2)
+	const std::string& readname1, const std::string& readname, const int kmerSize)
 {
 
 	// number of common k-mer
@@ -107,7 +107,7 @@ chainop(spmatPtr_& m1, spmatPtr_& m2, BELLApars& b_parameters,
 		bool orphan = true;
 		for(int j = 0; j < m1->pos.size(); ++j)
 		{
-			if(std::abs(m2->overlap[i] - m1->overlap[j]) < b_parameters.bin) // B is the bin length
+			if(std::abs(m2->overlap[i] - m1->overlap[j]) < b_parameters.bin && std::abs(m2->overlap[i] - m1->overlap[j]) > kmerSize) // B is the bin length
 			{
 				m1->support[j] += m2->support[i];
 				for(auto it : m2->pos[i]) {
@@ -142,7 +142,7 @@ chainop(spmatPtr_& m1, spmatPtr_& m2, BELLApars& b_parameters,
 		std::copy(m1->overlap.begin(), m1->overlap.end(), std::ostream_iterator<int>(std::cout, " ")); std::cout << std::endl;
 		std::copy(m1->support.begin(), m1->support.end(), std::ostream_iterator<int>(std::cout, " ")); std::cout << std::endl;
 	}
-	*/
+*/
 
 }
 

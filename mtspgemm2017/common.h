@@ -39,9 +39,10 @@ struct BELLApars
 	bool 	useHOPC; 						// use HOPC representation
 	double HOPCerate;			// error rate to use for HOPC kmers
 	int minOverlap; // minimum overlap required between sequences to run alignment
+	int minSharedKmers; // minimum shared kmers required for alignment to run
 
 	BELLApars():totalMemory(8000.0), userDefMem(false), kmerRift(1000), skipEstimate(false), skipAlignment(false), allKmer(false), adapThr(true), defaultThr(50),
-			alignEnd(false), relaxMargin(300), deltaChernoff(0.2), outputPaf(false), bin(500), useHOPC(false), HOPCerate(0.035), minOverlap(0) {};
+			alignEnd(false), relaxMargin(300), deltaChernoff(0.2), outputPaf(false), bin(500), useHOPC(false), HOPCerate(0.035), minOverlap(0), minSharedKmers(1) {};
 };
 
 template <typename T>
