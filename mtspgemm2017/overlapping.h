@@ -395,7 +395,7 @@ void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1,
 	// {begin/end}Position{V/H}: Returns the begin/end position of the seed in the query (vertical/horizonral direction)
 	// these four return seqan:Tposition objects
 	auto begpV = beginPositionV(maxseed);
-	auto endpV = endPositionV(maxseed);	
+	auto endpV = endPositionV(maxseed);
 	auto begpH = beginPositionH(maxseed);
 	auto endpH = endPositionH(maxseed);
 
@@ -475,7 +475,7 @@ void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1,
 
 template <typename IT, typename FT>
 auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowids, FT * values, const readVector_ & reads, 
-								int kmerSize, int xdrop, char* filename, const BELLApars & b_pars, double ratioPhi)
+		int xdrop, char* filename, const BELLApars & b_pars, double ratioPhi)
 {
 	size_t alignedpairs = 0;
 	size_t alignedbases = 0;
@@ -526,46 +526,41 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 				seqAnResult maxExtScore;
 				bool passed = false;
 
-#pragma omp critical
-				{
+//#pragma omp critical
+//				{
 				//	GG: order bins by decrescent number of supports and choose one kmer per bin to handles ties
 				//	vector<pair<int, int>> kmervect = val->choose();
 				//	GG: it's currently saving all k-mers positions for distribution analysis
-				vector<vector<pair<int, int>>> kmervect = val->choose();
-				if(kmervect.size() > 1)
+				if(val->count > b_pars.minKmers)
 				{
-					std::cout << "SEQH\t" << reads[rid].nametag << "\tLENGTH\t" << seq1len << std::endl;
-					std::cout << "SEQV\t" << reads[cid].nametag << "\tLENGTH\t" << seq2len << std::endl;
+					pair<int, int> kmer = val->choose();
 
-					val->print();
-
-					for(int i = 0; i < kmervect.size(); i++)
-					{
-						std::cout << "BIN\t" << i << std::endl;
-
-						for(auto it = kmervect[i].begin(); it != kmervect[i].end(); it++)
-						{
-							int i = it->first, j = it->second;
-
-							maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, xdrop, kmerSize);
-							PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
-
-							if(passed)
-							{
-								std::cout << i << '\t' << j << "\tTRUE"  << std::endl;
-							}
-							else
-							{
-								std::cout << i << '\t' << j << "\tFALSE" << std::endl;
-							}
-						}
-					}
-					std::cout << std::endl;
+					//{
+					//	std::cout << "SEQH\t" << reads[rid].nametag << "\tLENGTH\t" << seq1len << std::endl;
+					//	std::cout << "SEQV\t" << reads[cid].nametag << "\tLENGTH\t" << seq2len << std::endl;
+					//	val->print();
+					//	for(int i = 0; i < kmervect.size(); i++)
+					//	{
+						//	std::cout << "BIN\t" << i << std::endl;
+						//	for(auto it = kmervect.begin(); it != kmervect.end(); it++)
+						//	{
+					int i = kmer.first, j = kmer.second;
+					maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, xdrop, b_pars.kmerSize);
+					PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
+					//	if(passed)
+					//	{
+					//		std::cout << i << '\t' << j << "\tTRUE"  << std::endl;
+					//	}
+					//	else
+					//	{
+					//		std::cout << i << '\t' << j << "\tFALSE" << std::endl;
+					//	}
 				}
+				//	std::cout << std::endl;
 #ifdef TIMESTEP
 			numBasesAlignedThread += endPositionV(maxExtScore.seed)-beginPositionV(maxExtScore.seed);
 #endif
-				}
+//				}
 			}
 			else // if skipAlignment == false do alignment, else save just some info on the pair to file
 			{
@@ -635,7 +630,7 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
  **/
 template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation>
 void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, const readVector_ & reads, 
-	FT & getvaluetype, int kmerSize, int xdrop, char* filename, const BELLApars & b_pars, double ratioPhi)
+	FT & getvaluetype, int xdrop, char* filename, const BELLApars & b_pars, double ratioPhi)
 {
 	double free_memory = estimateMemory(b_pars);
 
@@ -699,7 +694,7 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
 
 #ifdef TIMESTEP
 		double alnlen2 = omp_get_wtime();
-		cout << "\nColumns [" << colStart[b] << " - " << colStart[b+1] << "] alnlenerlap time: " << alnlen2-alnlenl << "s" << endl;
+		cout << "\nColumns [" << colStart[b] << " - " << colStart[b+1] << "] overlap time: " << alnlen2-alnlenl << "s" << endl;
 #endif
 
 		IT endnz = colptrC[colStart[b+1]];
@@ -720,7 +715,7 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
 		delete [] ValuesofC;
 
 		tuple<size_t, size_t, size_t, size_t, size_t, size_t, double> alignstats; // (alignedpairs, alignedbases, totalreadlen, outputted, alignedtrue, alignedfalse, timeoutputt)
-		alignstats = RunPairWiseAlignments(colStart[b], colStart[b+1], begnz, colptrC, rowids, values, reads, kmerSize, xdrop, filename, b_pars, ratioPhi);
+		alignstats = RunPairWiseAlignments(colStart[b], colStart[b+1], begnz, colptrC, rowids, values, reads, xdrop, filename, b_pars, ratioPhi);
 
 #ifdef TIMESTEP
 		if(!b_pars.skipAlignment)

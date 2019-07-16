@@ -25,7 +25,9 @@ struct BELLApars
 	double totalMemory;	// in MB, default is ~ 8GB
 	bool userDefMem;
 
-	int  kmerRift;
+	int  kmerSize;			// KmerSize
+	int  kmerRift;			// minDistance between Kmer
+	int  minKmers;			// minNumberSharedKmers
 	bool skipEstimate;  	// Do not estimate error but use user-defined error (e)
 	bool skipAlignment;  	// Do not align (z)
 	bool allKmer;           // Use all possible kmers (non-overlapping and separated by <kmerRift> bases) as alignment seeds (K)
@@ -37,7 +39,7 @@ struct BELLApars
 	int  bin;				// bin size chaining algorithm (b)
 	double deltaChernoff;	// delta computed via Chernoff bound (c)
 
-	BELLApars():totalMemory(8000.0), userDefMem(false), kmerRift(1000), skipEstimate(false), skipAlignment(false), allKmer(false), adapThr(true), defaultThr(50),
+	BELLApars():totalMemory(8000.0), userDefMem(false), kmerSize(17), kmerRift(kmerSize), minKmers(1), skipEstimate(false), skipAlignment(false), allKmer(false), adapThr(true), defaultThr(50),
 			alignEnd(false), relaxMargin(300), outputPaf(false), bin(500), deltaChernoff(0.2) {};
 };
 
@@ -98,23 +100,16 @@ struct spmatType_ {
 	}
 
 	//	GG: choose does also sorting and return the position of the first k-mer in each bin
-	//	vector<pair<int, int>> choose() {
-	//	GG: choose does also sorting and return the positions all of all the k-mers
-	vector<vector<pair<int, int>>> choose() {
+	pair<int, int> choose() {
 
 		ids = vector<int>(support.size());					// number of support
 		std::iota(ids.begin(), ids.end(), 0);				// assign an id
 		std::sort(ids.begin(), ids.end(), SortBy(support));	// sort support by supporting k-mers
 
-		//	ids.resize(1);	// GG: we don't care about other support, we want only the majority voted one
-		//	vector<pair<int, int>> kmervect;
-		vector<vector<pair<int, int>>> kmervect;
-		for(auto i = ids.begin(); i != ids.end(); i++)	// GG: keep saved one k-mer per bin in case of bins with ties or similar number of support
-			kmervect.push_back(pos[*i]);				// GG: keep saving all k-mers positions for distirbutions purpose
-			//	kmervect.push_back(pos[*i][0]);			// GG: same for the number of kmers in the choosen bin, we need only one
+		ids.resize(1);			// GG: we don't care about other support, we want only the majority voted one
+		pos[ids[0]].resize(1);	// GG: same for the number of kmers in the choosen bin, we need only one
 
-		//	return pos[ids[0]][0];	// GG: returning choosen seed
-		return kmervect;			// GG: return vector of choosen seeds of size nbins to manage ties
+		return pos[ids[0]][0];	// GG: returning choosen seed
 	}
 };
 

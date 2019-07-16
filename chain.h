@@ -31,7 +31,7 @@
 
 #include "mtspgemm2017/common.h"
 
-// GG: check orientation
+//	GG: check orientation
 bool
 checkstrand(const std::string& read1, const std::string& read2, const int begpH,
 	const int begpV, const int kmerSize) {
@@ -43,7 +43,7 @@ checkstrand(const std::string& read1, const std::string& read2, const int begpH,
 	else return true;
 }
 
-// GG: check strand and compute overlap length
+//	GG: check strand and compute overlap length
 int
 overlapop(const std::string& read1, const std::string& read2, int begpH, 
 	int begpV, const int kmerSize) {
@@ -70,7 +70,7 @@ overlapop(const std::string& read1, const std::string& read2, int begpH,
 	return overlap;
 }
 
-// GG: multiply operation
+//	GG: multiply operation
 void
 multiop(spmatPtr_& value, const std::string& read1, const std::string& read2, 
 	int begpH, int begpV, const int kmerSize) {
@@ -85,30 +85,46 @@ multiop(spmatPtr_& value, const std::string& read1, const std::string& read2,
 	value->overlap.push_back(overlap);
 }
 
-// GG: chaining operation
+template <typename T,typename U>
+std::pair<T,U> distance(const std::pair<T,U>& l, const std::pair<T,U>& r) {
+	return {std::abs(l.first - r.first), std::abs(l.second - r.second)};
+}
+
+template <typename T,typename U>
+bool operator>(const std::pair<T,U>& l, const T& c) {
+	if(l.first > c && l.second > c) return true;
+	else return false;
+}
+
+//	GG: binning operation
 void
-chainop(spmatPtr_& m1, spmatPtr_& m2, BELLApars& b_parameters, 
+chainop(spmatPtr_& m1, spmatPtr_& m2, BELLApars& b_pars, 
 	const std::string& readname1, const std::string& readname2)
 {
-
 	// number of common k-mer
 	m1->count = m1->count + m2->count;
-
 	vector<int> tobeinserted;
+	vector<vector<pair<int,int>>> kmertobeinserted(m1->pos.size());
+
 	for(int i = 0; i < m2->pos.size(); ++i)	
 	{
 		bool orphan = true;
 		for(int j = 0; j < m1->pos.size(); ++j)
 		{
-			if(std::abs(m2->overlap[i] - m1->overlap[j]) < b_parameters.bin)
+			if(std::abs(m2->overlap[i] - m1->overlap[j]) < b_pars.bin)
 			{
-				m1->support[j] += m2->support[i];
-
-				for(auto it:m2->pos[i])
-					m1->pos[j].push_back(it);
-
-				orphan = false;
-				// we can be within b length of multiple overlap estimations, so we can't break
+				for(auto kmer1:m1->pos[j])
+				{
+					for(auto kmer2:m2->pos[i])
+					{
+						//	GG: kmer need to be not overlapping and at least <kmerRift> distant from each other (kmerRift = kmerSize deafult)
+						if(distance(kmer1, kmer2) > b_pars.kmerRift)
+						{
+							kmertobeinserted[j].push_back(kmer2);
+						}
+					}
+				}
+				orphan = false;	// we can be within b length of multiple overlap estimations, so we can't break
 			}
 
 			if(orphan)
@@ -118,22 +134,19 @@ chainop(spmatPtr_& m1, spmatPtr_& m2, BELLApars& b_parameters,
 		}
 	}
 
+	for (int j = 0; j < kmertobeinserted.size(); j++)
+	{
+		m1->support[j] += kmertobeinserted[j].size();
+		m1->count	   += kmertobeinserted[j].size();
+		m1->pos[j].insert(m1->pos[j].end(), kmertobeinserted[j].begin(), kmertobeinserted[j].end());
+	}
+
 	for (auto i:tobeinserted)
 	{
 		m1->pos.push_back(m2->pos[i]);
 		m1->overlap.push_back(m2->overlap[i]);
 		m1->support.push_back(m2->support[i]);
 	}
-
-//#pragma omp critical
-//	{
-//		// GG: after testing correctness, this part can be removed
-//		// GG: we can then pass fewer parameters
-//		std::cout << "Between " << readname1 << " and " << readname2 << std::endl;
-//		std::copy(m1->overlap.begin(), m1->overlap.end(), std::ostream_iterator<int>(std::cout, " ")); std::cout << std::endl;
-//		std::copy(m1->support.begin(), m1->support.end(), std::ostream_iterator<int>(std::cout, " ")); std::cout << std::endl;
-//	}
-
 }
 
 #endif

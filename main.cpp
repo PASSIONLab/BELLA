@@ -69,16 +69,14 @@ int main (int argc, char *argv[]) {
 	// Follow an option with a colon to indicate that it requires an argument.
 
 	optList = NULL;
-	optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:Ka:ze:x:w:nc:m:r:pb:");
-   
+	optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:Ka:ze:x:w:nc:m:r:pb:s:");
 
-	char *kmer_file = NULL;                 // Reliable k-mer file from Jellyfish
-	char *all_inputs_fofn = NULL;           // List of fastqs (i)
-	char *out_file = NULL;                  // output filename (o)
-	int kmerSize = 17;                      // default k-mer length (k)
-	int xdrop = 7;                          // default alignment x-drop factor (x)
-	double erate = 0.15;                    // default error rate (e) 
-	int depth = 0;                          // depth/coverage required (d)
+	char *kmer_file = NULL;			// Reliable k-mer file from Jellyfish
+	char *all_inputs_fofn = NULL;	// List of fastqs (i)
+	char *out_file = NULL;			// output filename (o)
+	int xdrop = 7;					// default alignment x-drop factor (x)
+	int depth = 0;					// depth/coverage required (d)
+	double erate = 0.15;			// default error rate (e) 
 
 	BELLApars b_parameters;
 
@@ -153,11 +151,15 @@ int main (int argc, char *argv[]) {
 			case 'z': b_parameters.skipAlignment = true; break;
 			case 'n': b_parameters.alignEnd = true; break; 
 			case 'k': {
-				kmerSize = atoi(thisOpt->argument);
+				b_parameters.kmerSize = atoi(thisOpt->argument);
 				break;
 			}
 			case 'r': {
 				b_parameters.kmerRift = atoi(thisOpt->argument);
+				break;
+			}
+			case 's': {
+				b_parameters.minKmers = atoi(thisOpt->argument);
 				break;
 			}
 			case 'e': {
@@ -208,7 +210,7 @@ int main (int argc, char *argv[]) {
 				cout << " -i : list of fastq(s) (required)" << endl;
 				cout << " -o : output filename (required)" 	<< endl;
 				cout << " -d : depth/coverage (required)" 	<< endl; // TO DO: add depth estimation
-				cout << " -k : k-mer length [17]" 			<< endl;
+				cout << " -k : kmerSize [17]" 			<< endl;
 				cout << " -a : use fixed alignment threshold [50]" 		<< endl;
 				cout << " -x : alignment x-drop factor [7]" 			<< endl;
 				cout << " -e : error rate [auto estimated from fastq]" 	<< endl;
@@ -217,7 +219,8 @@ int main (int argc, char *argv[]) {
 				cout << " -w : relaxMargin parameter for alignment on edges [300]" 	<< endl;
 				cout << " -c : alignment score deviation from the mean [0.1]" 		<< endl;
 				cout << " -n : filter out alignment on edge [false]" 				<< endl;
-				cout << " -r : kmerRift: bases separating two k-mers used as seeds for a read [1,000]" << endl;
+				cout << " -r : kmerRift: bases separating two k-mers used as seeds for a read [kmerSize]" << endl;
+				cout << " -s : minKmers: minimum number of shared k-mers to compute alignment [1]" << endl;
 				cout << " -b : bin size chaining algorithm [500]" 	<< endl;
 				cout << " -p : output in PAF format [false]\n" 		<< endl;
 
@@ -251,7 +254,7 @@ int main (int argc, char *argv[]) {
 	vector<filedata> allfiles = GetFiles(all_inputs_fofn);
 	int lower, upper; // reliable range lower and upper bound
 	double ratioPhi;
-	Kmer::set_k(kmerSize);
+	Kmer::set_k(b_parameters.kmerSize);
 	size_t upperlimit = 10000000; // in bytes
 	Kmers kmervect;
 	vector<string> seqs;
@@ -267,19 +270,21 @@ int main (int argc, char *argv[]) {
 #ifdef PRINT
 #ifdef JELLYFISH
 	cout << "K-mer counting: Jellyfish" << endl;
-	cout << "Input k-mer file: " << kmer_file << endl;
+	cout << "Input k-mer file: " 		<< kmer_file << endl;
 #endif
-	cout << "K-mer counting: BELLA" << endl;
-	cout << "Output filename: " << out_file << endl;
-	cout << "K-mer length: " << kmerSize << endl;
-	cout << "X-drop: " << xdrop << endl;
-	cout << "Depth: " << depth << "X" << endl;
+	cout << "K-mer counting: BELLA"	<< endl;
+	cout << "Output filename: "		<< out_file << endl;
+	cout << "K-mer length: "		<< b_parameters.kmerSize << endl;
+	cout << "X-drop: " 				<< xdrop << endl;
+	cout << "Depth: " 				<< depth << "X" << endl;
 	if(b_parameters.skipAlignment)
-		cout << "Compute alignment: false" << endl;
-	else cout << "Compute alignment: true" << endl;
+		cout << "Compute alignment: false" 	<< endl;
+	else
+		cout << "Compute alignment: true" 	<< endl;
 	if(!b_parameters.allKmer)
 		cout << "Seeding: two-kmer" << endl;
-	else cout << "Seeding: all-kmer" << endl;
+	else
+		cout << "Seeding: all-kmer" << endl;
 #endif
 
 	//
@@ -290,18 +295,18 @@ int main (int argc, char *argv[]) {
 #ifdef JELLYFISH
 	// Reliable bounds computation for Jellyfish using default error rate
 	double all = omp_get_wtime();
-	lower = computeLower(depth,erate,kmerSize);
-	upper = computeUpper(depth,erate,kmerSize);
-	cout << "Error rate is " << erate << endl;
-	cout << "Reliable lower bound: " << lower << endl;
-	cout << "Reliable upper bound: " << upper << endl;
+	lower = computeLower(depth, erate, b_parameters.kmerSize);
+	upper = computeUpper(depth, erate, b_parameters.kmerSize);
+	cout << "Error rate is " << erate 	<< endl;
+	cout << "Reliable lower bound: " 	<< lower << endl;
+	cout << "Reliable upper bound: " 	<< upper << endl;
 	JellyFishCount(kmer_file, countsreliable, lower, upper);
 
 #else
 	// Error estimation and reliabe bounds computation within denovo counting
 	cout << "\nRunning with up to " << MAXTHREADS << " threads" << endl;
 	double all = omp_get_wtime();
-	DeNovoCount(allfiles, countsreliable, lower, upper, kmerSize, depth, erate, upperlimit, b_parameters);
+	DeNovoCount(allfiles, countsreliable, lower, upper, depth, erate, upperlimit, b_parameters);
 
 #ifdef PRINT
 	cout << "Error rate estimate is " << erate << endl;
@@ -361,10 +366,10 @@ if(b_parameters.alignEnd)
 				temp.readid = read_id+i;
 
 				allreads[MYTHREAD].push_back(temp);
-						
-				for(int j=0; j<=len-kmerSize; j++)  
+
+				for(int j = 0; j <= len - b_parameters.kmerSize; j++)  
 				{
-					std::string kmerstrfromfastq = seqs[i].substr(j, kmerSize);
+					std::string kmerstrfromfastq = seqs[i].substr(j, b_parameters.kmerSize);
 					Kmer mykmer(kmerstrfromfastq.c_str());
 					// remember to use only ::rep() when building kmerdict as well
 					Kmer lexsmall = mykmer.rep();
@@ -451,7 +456,7 @@ if(b_parameters.alignEnd)
 	HashSpGEMM(spmat, transpmat, 
 		// n-th k-mer positions on read i and on read j
 		// AB: not sure if these id1 and id2 are captured correctly, honestly
-		[&kmerSize, &reads] (const int& begpH, const int& begpV, const int& id1, const int& id2)
+		[&b_parameters, &reads] (const int& begpH, const int& begpV, const int& id1, const int& id2)
 		{
 			spmatPtr_ value(make_shared<spmatType_>());
 
@@ -459,10 +464,10 @@ if(b_parameters.alignEnd)
 			std::string& read2 = reads[id2].seq;
 
 			// GG: function in chain.h
-			multiop(value, read1, read2, begpH, begpV, kmerSize);
+			multiop(value, read1, read2, begpH, begpV, b_parameters.kmerSize);
 			return value;
 		},
-		[&kmerSize, &b_parameters, &reads] (spmatPtr_& m1, spmatPtr_& m2, const int& id1, const int& id2)
+		[&b_parameters, &reads] (spmatPtr_& m1, spmatPtr_& m2, const int& id1, const int& id2)
 		{
 			// GG: after testing correctness, these variables can be removed
 			std::string& readname1 = reads[id1].nametag;
@@ -472,7 +477,7 @@ if(b_parameters.alignEnd)
 			chainop(m1, m2, b_parameters, readname1, readname2);
 			return m1;
 		},
-		reads, getvaluetype, kmerSize, xdrop, out_file, b_parameters, ratioPhi); 
+		reads, getvaluetype, xdrop, out_file, b_parameters, ratioPhi); 
 
 	cout << "Total running time: " << omp_get_wtime()-all << "s\n" << endl;
 	return 0;
