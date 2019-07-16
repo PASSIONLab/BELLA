@@ -92,6 +92,17 @@ multiop(spmatPtr_& value, const std::string& read1, const std::string& read2,
 	}
 }
 
+template <typename T,typename U>
+std::pair<T,U> distance(const std::pair<std::pair<T,U>,std::pair<T,U>>& l, const std::pair<std::pair<T,U>,std::pair<T,U>>& r) {
+	return {std::abs(l.first.first - r.first.first), std::abs(l.second.first - r.second.first)};
+}
+
+template <typename T,typename U>
+bool operator>(const std::pair<T,U>& l, const T& c) {
+	if(l.first > c && l.second > c) return true;
+	else return false;
+}
+
 // GG: chaining operation
 void
 chainop(spmatPtr_& m1, spmatPtr_& m2, BELLApars& b_parameters,
@@ -102,18 +113,25 @@ chainop(spmatPtr_& m1, spmatPtr_& m2, BELLApars& b_parameters,
 	m1->count = m1->count + m2->count;
 
 	vector<int> tobeinserted;
+	vector<vector<pair<pair<int,bool>,pair<int,bool>>>> kmertobeinserted(m1->pos.size());
+
 	for(int i = 0; i < m2->pos.size(); ++i)
 	{
 		bool orphan = true;
 		for(int j = 0; j < m1->pos.size(); ++j)
 		{
-			if(std::abs(m2->overlap[i] - m1->overlap[j]) < b_parameters.bin && std::abs(m2->overlap[i] - m1->overlap[j]) > kmerSize) // B is the bin length
+			if(std::abs(m2->overlap[i] - m1->overlap[j]) < b_parameters.bin) // B is the bin length
 			{
-				m1->support[j] += m2->support[i];
-				for(auto it : m2->pos[i]) {
-					m1->pos[j].push_back(it);
+
+				for(auto kmer1:m1->pos[j]) {
+					for(auto kmer2:m2->pos[i]) {
+						//	GG: kmer need to be not overlapping and at least <kmerRift> distant from each other (kmerRift = kmerSize deafult)
+						if(distance(kmer1, kmer2) > b_parameters.kmerRift)
+						{
+							kmertobeinserted[j].push_back(kmer2);
+						}
+					}
 				}
-				// m1->pos[j].push_back(m2->pos[j][0]);
 				orphan = false;
 				// we can be within (B=500) length of multiple overlap estimations, so we can't break
 			}
@@ -123,6 +141,12 @@ chainop(spmatPtr_& m1, spmatPtr_& m2, BELLApars& b_parameters,
 		{
 			tobeinserted.push_back(i);	// we don't want to immediately insert to m1 and increase computational complexity
 		}
+	}
+
+	for (int j = 0; j < kmertobeinserted.size(); j++) {
+		m1->support[j] += kmertobeinserted[j].size();
+		m1->count	   += kmertobeinserted[j].size();
+		m1->pos[j].insert(m1->pos[j].end(), kmertobeinserted[j].begin(), kmertobeinserted[j].end());
 	}
 
 	for (auto i:tobeinserted)
