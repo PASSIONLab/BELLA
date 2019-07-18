@@ -111,7 +111,7 @@ chainop(spmatPtr_& m1, spmatPtr_& m2, BELLApars& b_pars,
 		bool orphan = true;
 		for(int j = 0; j < m1->pos.size(); ++j)
 		{
-			if(std::abs(m2->overlap[i] - m1->overlap[j]) < b_pars.bin)
+			if(std::abs(m2->overlap[i] - m1->overlap[j]) < b_pars.binSize)
 			{
 				for(auto kmer1:m1->pos[j])
 				{

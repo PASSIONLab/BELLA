@@ -386,9 +386,9 @@ double estimateMemory(const BELLApars & b_pars)
 	return free_memory;
 }
 
-void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1, const readType_ & read2, 
-					const BELLApars & b_pars, double ratioPhi, int count, stringstream & myBatch, size_t & outputted,
-					size_t & numBasesAlignedTrue, size_t & numBasesAlignedFalse, bool & passed)
+void PostAlignDecision(const seqAnResult& maxExtScore, const readType_& read1, const readType_& read2, 
+					const BELLApars& b_pars, double ratioPhi, int count, stringstream& myBatch, size_t& outputted,
+					size_t& numBasesAlignedTrue, size_t& numBasesAlignedFalse, bool& passed, int chainLen)
 {
 	auto maxseed = maxExtScore.seed;	// returns a seqan:Seed object
 
@@ -406,15 +406,40 @@ void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1,
 	int read1len = seq1.length();
 	int read2len = seq2.length();
 
-	int alnlenV = endpV - begpV;
-	int alnlenH = endpH - begpH;
-	int margin1 = min(begpV, begpH);
-	int margin2 = min(read2len - endpV, read1len - endpH);
-	int ovplen  = margin1 + margin2 + (alnlenV + alnlenH) / 2;
+	//	GG: check maxOverhang (from MK)
+	if(std::min(begpV, begpH) > b_pars.maxOverhang)
+		return;
+	if (std::min(read1len - endpH, read2len - endpV) > b_pars.maxOverhang)
+		return;
 
-	if(b_pars.adapThr)
+	//	GG: check strand skipping paccio pattern (from MK)
+	if(maxExtScore.strand = "c")
 	{
-		double newThr = (1-b_pars.deltaChernoff)*(ratioPhi*(double)ovplen);
+		int intersect = std::min(endV, endH) - 
+									std::max(begpV, begpH);
+
+		if(intersect > - b_pars.maxJump)
+			return;	// GG: this suggest a chimeric read but we should be more careful here
+	}
+
+	// GG: divergence estimation
+	int overlapLenV = endpV - begpV;
+	int overlapLenH = endpH - begpH;
+	int lenDiff     = std::abs(overlapLenV - overlapLenH);
+	float normLen   = max(overlapLenV, overlapLenH);
+
+	if(b_pars.seqDiv)
+	{
+		float matchRate = chainLen / normLen;
+		float overlapDivergence = std::log(1/matchRate) / kmerSize; //	GG: from MK
+
+		if(lenDiff > overlapDivergence * std::min(overlapLenV, overlapLenH))
+			return;
+		//	GG: finish and testing
+	}
+	else if(b_pars.adapThr)
+	{
+		double newThr = (1 - b_pars.deltaChernoff) * (ratioPhi * normLen);
 
 		if((double)maxExtScore.score > newThr)
 		{
@@ -446,7 +471,7 @@ void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1,
 	{
 		if(!b_pars.outputPaf)	// BELLA output format
 		{
-			myBatch << read2.nametag << '\t' << read1.nametag << '\t' << count << '\t' << maxExtScore.score << '\t' << ovplen << '\t' << maxExtScore.strand << '\t' << 
+			myBatch << read2.nametag << '\t' << read1.nametag << '\t' << count << '\t' << maxExtScore.score << '\t' << normLen << '\t' << maxExtScore.strand << '\t' << 
 				begpV << '\t' << endpV << '\t' << read2len << '\t' << begpH << '\t' << endpH << '\t' << read1len << endl;
 		}
 		else
@@ -462,7 +487,7 @@ void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1,
 
 			// PAF format is the output format used by minimap/minimap2: https://github.com/lh3/miniasm/blob/master/PAF.md
 			myBatch << read2.nametag << '\t' << read2len << '\t' << begpV << '\t' << endpV << '\t' << pafstrand << '\t' << 
-				read1.nametag << '\t' << read1len << '\t' << begpH << '\t' << endpH << '\t' << maxExtScore.score << '\t' << ovplen << '\t' << mapq << endl;
+				read1.nametag << '\t' << read1len << '\t' << begpH << '\t' << endpH << '\t' << maxExtScore.score << '\t' << normLen << '\t' << mapq << endl;
 		}
 		++outputted;
 		numBasesAlignedTrue += (endpV-begpV);
@@ -507,8 +532,9 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 
 		for (IT i = colptrC[j]; i < colptrC[j+1]; ++i)  // all nonzeros in that column of A^T A
 		{
-			size_t rid = rowids[i-offset];  // row id
-			size_t cid = j;                 // column id
+			size_t rid = rowids[i-offset];	// row id
+			size_t cid = j;					// column id
+
 			const string& seq1 = reads[rid].seq;	// get reference for readibility
 			const string& seq2 = reads[cid].seq;	// get reference for readibility
 				
@@ -526,41 +552,21 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 				seqAnResult maxExtScore;
 				bool passed = false;
 
-//#pragma omp critical
-//				{
-				//	GG: order bins by decrescent number of supports and choose one kmer per bin to handles ties
-				//	vector<pair<int, int>> kmervect = val->choose();
-				//	GG: it's currently saving all k-mers positions for distribution analysis
-				if(val->count > b_pars.minKmers)
-				{
-					pair<int, int> kmer = val->choose();
+				int chainLen = val->chain();		// number of matching kmer into the majority voted bin
+				if(chainLen < b_pars.minSurvivedKmers)
+					continue;
 
-					//{
-					//	std::cout << "SEQH\t" << reads[rid].nametag << "\tLENGTH\t" << seq1len << std::endl;
-					//	std::cout << "SEQV\t" << reads[cid].nametag << "\tLENGTH\t" << seq2len << std::endl;
-					//	val->print();
-					//	for(int i = 0; i < kmervect.size(); i++)
-					//	{
-						//	std::cout << "BIN\t" << i << std::endl;
-						//	for(auto it = kmervect.begin(); it != kmervect.end(); it++)
-						//	{
-					int i = kmer.first, j = kmer.second;
-					maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, xdrop, b_pars.kmerSize);
-					PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
-					//	if(passed)
-					//	{
-					//		std::cout << i << '\t' << j << "\tTRUE"  << std::endl;
-					//	}
-					//	else
-					//	{
-					//		std::cout << i << '\t' << j << "\tFALSE" << std::endl;
-					//	}
-				}
-				//	std::cout << std::endl;
+				pair<int, int> kmer = val->choose();
+				int i = kmer.first, j = kmer.second;
+
+				//	GG: nucleotide alignment
+				maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, xdrop, b_pars.kmerSize);
+				PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], 
+					outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed, chainLen);
+
 #ifdef TIMESTEP
 			numBasesAlignedThread += endPositionV(maxExtScore.seed)-beginPositionV(maxExtScore.seed);
 #endif
-//				}
 			}
 			else // if skipAlignment == false do alignment, else save just some info on the pair to file
 			{

@@ -25,22 +25,28 @@ struct BELLApars
 	double totalMemory;	// in MB, default is ~ 8GB
 	bool userDefMem;
 
-	int  kmerSize;			// KmerSize
-	int  kmerRift;			// minDistance between Kmer
-	int  minKmers;			// minNumberSharedKmers
-	bool skipEstimate;  	// Do not estimate error but use user-defined error (e)
-	bool skipAlignment;  	// Do not align (z)
-	bool allKmer;           // Use all possible kmers (non-overlapping and separated by <kmerRift> bases) as alignment seeds (K)
-	bool adapThr; 			// Apply adaptive alignment threshold (v)
-	int  defaultThr;   		// default alignment score threshold (a), only matters when adapThr=false, to be deprecated	
-	bool alignEnd;			// Filter out alignments not achieving end of the read "relaxed" (x)
-	int  relaxMargin;		// epsilon parameter for alignment on edges (w)
-	bool outputPaf;         // output in paf format (p)
-	int  bin;				// bin size chaining algorithm (b)
-	double deltaChernoff;	// delta computed via Chernoff bound (c)
+	int		kmerSize;				// KmerSize
+	int		kmerRift;				// minDistance between Kmer
+	int		minOverlap;				// minOverlap length to detect (used to select the number number of shared kmer)
+	int		minSurvivedKmers;		// GG: to be mathematically determine via Markov chain with minOverlap and error rate
+	int		maxOverhang;			// maxOverhang
+	int		maxJump;				// maxJump to detect chimeric sequences
+	float	maxDivergence;			// maxDivergence to output a pair
+	bool	skipEstimate;			// Do not estimate error but use user-defined error (e)
+	bool	skipAlignment;			// Do not align (z)
+	bool	allKmer;				// Use all possible kmers (non-overlapping and separated by <kmerRift> bases) as alignment seeds (K)
+	bool	adapThr;				// Apply adaptive alignment threshold (v)
+	bool	seqDiv;					// seqDivergence as threshold
+	int		defaultThr;				// default alignment score threshold (a), only matters when adapThr=false, to be deprecated	
+	bool	alignEnd;				// Filter out alignments not achieving end of the read "relaxed" (x)
+	int		relaxMargin;			// epsilon parameter for alignment on edges (w)
+	bool	outputPaf;				// output in paf format (p)
+	int		binSize					// bin size chaining algorithm (b)
+	double	deltaChernoff;			// delta computed via Chernoff bound (c)
 
-	BELLApars():totalMemory(8000.0), userDefMem(false), kmerSize(17), kmerRift(kmerSize), minKmers(1), skipEstimate(false), skipAlignment(false), allKmer(false), adapThr(true), defaultThr(50),
-			alignEnd(false), relaxMargin(300), outputPaf(false), bin(500), deltaChernoff(0.2) {};
+	BELLApars():totalMemory(8000.0), userDefMem(false), kmerSize(17), kmerRift(kmerSize), minOverlap(1000), minSurvivedKmers(1000), maxOverhang(1500), maxJump(1500),
+		maxDivergence(0.25), skipEstimate(false), skipAlignment(false), allKmer(false), adapThr(false), seqDiv(true), defaultThr(50), alignEnd(false),
+			relaxMargin(300), outputPaf(false), binSize(500), deltaChernoff(0.2) {};
 };
 
 template <typename T>
@@ -84,24 +90,31 @@ struct spmatType_ {
 	vector<int> overlap; 				// overlap values
 	vector<int> ids;					// indices corresponded to sorting of support (GG:?)
 
-	//	GG: debug
+	//	GG: sort according to support number
 	void sort() {
 		ids = vector<int>(support.size());					// number of support
 		std::iota(ids.begin(), ids.end(), 0);				// assign an id
 		std::sort(ids.begin(), ids.end(), SortBy(support));	// sort support by supporting k-mers
 	}
 
-	//	GG: debug
+	//	GG: print overlap estimate and support number
 	void print() {
-		std::cout << "OVERLAPS\t";
 		std::copy(overlap.begin(), overlap.end(), std::ostream_iterator<int>(std::cout, "\t")); std::cout << std::endl;
-		std::cout << "SUPPORTS\t";
 		std::copy(support.begin(), support.end(), std::ostream_iterator<int>(std::cout, "\t")); std::cout << std::endl;
+	}
+
+	//	GG: number of kmer supporting the most voted bin
+	int chain() {
+		ids = vector<int>(support.size());					// number of support
+		std::iota(ids.begin(), ids.end(), 0);				// assign an id
+		std::sort(ids.begin(), ids.end(), SortBy(support));	// sort support by supporting k-mers
+
+		ids.resize(1);			// GG: we don't care about other support, we want only the majority voted one
+		return ids[0].size();	// number of kmer in the most voted bin
 	}
 
 	//	GG: choose does also sorting and return the position of the first k-mer in each bin
 	pair<int, int> choose() {
-
 		ids = vector<int>(support.size());					// number of support
 		std::iota(ids.begin(), ids.end(), 0);				// assign an id
 		std::sort(ids.begin(), ids.end(), SortBy(support));	// sort support by supporting k-mers
