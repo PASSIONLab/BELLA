@@ -69,14 +69,12 @@ int main (int argc, char *argv[]) {
 	// Follow an option with a colon to indicate that it requires an argument.
 
 	optList = NULL;
-	optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:Ka:ze:x:w:nc:m:r:pb:s:");
+	optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:a:ze:x:c:m:r:pb:s:");
 
-	char *kmer_file = NULL;			// Reliable k-mer file from Jellyfish
-	char *all_inputs_fofn = NULL;	// List of fastqs (i)
-	char *out_file = NULL;			// output filename (o)
-	int xdrop = 7;					// default alignment x-drop factor (x)
-	int depth = 0;					// depth/coverage required (d)
-	double erate = 0.15;			// default error rate (e) 
+	char	*kmer_file 			= NULL;	// Reliable k-mer file from Jellyfish
+	char	*all_inputs_fofn 	= NULL;	// List of fastqs (i)
+	char	*out_file 			= NULL;	// output filename (o)
+	int		coverage 			= 0;	// Coverage required (d)
 
 	BELLApars b_parameters;
 
@@ -145,11 +143,10 @@ int main (int argc, char *argv[]) {
 					cout << "Run with -h to print out the command line options\n" << endl;
 					return 0;
 				}
-				depth = atoi(thisOpt->argument);  
+				coverage = atoi(thisOpt->argument);  
 				break;
 			}
 			case 'z': b_parameters.skipAlignment = true; break;
-			case 'n': b_parameters.alignEnd = true; break; 
 			case 'k': {
 				b_parameters.kmerSize = atoi(thisOpt->argument);
 				break;
@@ -164,7 +161,7 @@ int main (int argc, char *argv[]) {
 			}
 			case 'e': {
 				b_parameters.skipEstimate = true;
-				erate = strtod(thisOpt->argument, NULL);
+				b_parameters.errorRate = strtod(thisOpt->argument, NULL);
 				break;
 			}
 			case 'a': {
@@ -173,15 +170,7 @@ int main (int argc, char *argv[]) {
 				break;
 			}
 			case 'x': {
-				xdrop = atoi(thisOpt->argument);
-				break;
-			} 
-			case 'w': {
-				b_parameters.relaxMargin = atoi(thisOpt->argument);
-				break;
-			}
-			case 'K': {
-				b_parameters.allKmer = true;
+				b_parameters.xDrop = atoi(thisOpt->argument);
 				break;
 			}
 			case 'b': {
@@ -209,7 +198,7 @@ int main (int argc, char *argv[]) {
 				cout << " -f : k-mer list from Jellyfish (required if Jellyfish k-mer counting is used)" << endl; // Reliable k-mers are selected by BELLA
 				cout << " -i : list of fastq(s) (required)" << endl;
 				cout << " -o : output filename (required)" 	<< endl;
-				cout << " -d : depth/coverage (required)" 	<< endl; // TO DO: add depth estimation
+				cout << " -d : coverage/coverage (required)" 	<< endl; // TO DO: add coverage estimation
 				cout << " -k : kmerSize [17]" 			<< endl;
 				cout << " -a : use fixed alignment threshold [50]" 		<< endl;
 				cout << " -x : alignment x-drop factor [7]" 			<< endl;
@@ -231,14 +220,14 @@ int main (int argc, char *argv[]) {
 	}
 
 #ifdef JELLYFISH
-	if(kmer_file == NULL || all_inputs_fofn == NULL || out_file == NULL || depth == 0)
+	if(kmer_file == NULL || all_inputs_fofn == NULL || out_file == NULL || coverage == 0)
 	{
 		cout << "BELLA execution terminated: missing arguments" << endl;
 		cout << "Run with -h to print out the command line options\n" << endl;
 		return 0;
 	}
 #else
-	if(all_inputs_fofn == NULL || out_file == NULL || depth == 0)
+	if(all_inputs_fofn == NULL || out_file == NULL || coverage == 0)
 	{
 		cout << "BELLA execution terminated: missing arguments" << endl;
 		cout << "Run with -h to print out the command line options\n" << endl;
@@ -269,22 +258,24 @@ int main (int argc, char *argv[]) {
 	//
 #ifdef PRINT
 #ifdef JELLYFISH
-	cout << "K-mer counting: Jellyfish" << endl;
-	cout << "Input k-mer file: " 		<< kmer_file << endl;
+	cout << "kmerFile: "				<< kmer_file						<< std::endl;
 #endif
-	cout << "K-mer counting: BELLA"	<< endl;
-	cout << "Output filename: "		<< out_file << endl;
-	cout << "K-mer length: "		<< b_parameters.kmerSize << endl;
-	cout << "X-drop: " 				<< xdrop << endl;
-	cout << "Depth: " 				<< depth << "X" << endl;
-	if(b_parameters.skipAlignment)
-		cout << "Compute alignment: false" 	<< endl;
-	else
-		cout << "Compute alignment: true" 	<< endl;
-	if(!b_parameters.allKmer)
-		cout << "Seeding: two-kmer" << endl;
-	else
-		cout << "Seeding: all-kmer" << endl;
+	std::cout << std::fixed;
+	std::cout << std::setprecision(2);
+	std::cout << "outputFile:	"		<< out_file							<< std::endl;
+	std::cout << "inputCoverage:	"	<< coverage							<< std::endl;
+	std::cout << "kmerSize:	"			<< b_parameters.kmerSize			<< std::endl;
+	std::cout << "kmerRift:	"			<< b_parameters.kmerRift			<< std::endl;
+	std::cout << "minOverlap:	"		<< b_parameters.minOverlap			<< std::endl;
+	std::cout << "minNumKmers:	"		<< b_parameters.minSurvivedKmers	<< std::endl;
+	std::cout << "maxOverhang:	"		<< b_parameters.maxOverhang			<< std::endl;
+	std::cout << "maxJump:	"			<< b_parameters.maxJump				<< std::endl;
+	std::cout << "maxDivergence:	"	<< b_parameters.maxDivergence		<< std::endl;
+	std::cout << "outputPaf:	"		<< b_parameters.outputPaf			<< std::endl;
+	std::cout << "binSize:	"			<< b_parameters.binSize				<< std::endl;
+	std::cout << "deltaChernoff:	"	<< b_parameters.deltaChernoff		<< std::endl;
+	std::cout << "runAlignment:	"		<< !b_parameters.skipAlignment		<< std::endl;
+	std::cout << "seqAn xDrop:	"		<< b_parameters.xDrop				<< std::endl;
 #endif
 
 	//
@@ -292,37 +283,35 @@ int main (int argc, char *argv[]) {
 	//
 
 	dictionary_t countsreliable;
+
 #ifdef JELLYFISH
 	// Reliable bounds computation for Jellyfish using default error rate
 	double all = omp_get_wtime();
-	lower = computeLower(depth, erate, b_parameters.kmerSize);
-	upper = computeUpper(depth, erate, b_parameters.kmerSize);
-	cout << "Error rate is " << erate 	<< endl;
-	cout << "Reliable lower bound: " 	<< lower << endl;
-	cout << "Reliable upper bound: " 	<< upper << endl;
-	JellyFishCount(kmer_file, countsreliable, lower, upper);
+	lower = computeLower(coverage, b_parameters.errorRate, b_parameters.kmerSize);
+	upper = computeUpper(coverage, b_parameters.errorRate, b_parameters.kmerSize);
 
+	std::cout << "errorRate:	"				<< b_parameters.errorRate	<< std::endl;
+	std::cout << "kmerFrequencyLowerBound:	"	<< lower					<< std::endl;
+	std::cout << "kmerFrequencyUpperBound:	"	<< upper					<< std::endl;
+
+	JellyFishCount(kmer_file, countsreliable, lower, upper);
 #else
 	// Error estimation and reliabe bounds computation within denovo counting
-	cout << "\nRunning with up to " << MAXTHREADS << " threads" << endl;
+	std::cout << "numThreads:	"				<< MAXTHREADS	<< "\n"		<< std::endl;
 	double all = omp_get_wtime();
-	DeNovoCount(allfiles, countsreliable, lower, upper, depth, erate, upperlimit, b_parameters);
+	DeNovoCount(allfiles, countsreliable, lower, upper, coverage, b_parameters.errorRate, upperlimit, b_parameters);
 
 #ifdef PRINT
-	cout << "Error rate estimate is " << erate << endl;
-	cout << "Reliable lower bound: " << lower << endl;
-	cout << "Reliable upper bound: " << upper << endl;
+	std::cout << "errorRate:	"				<< b_parameters.errorRate	<< std::endl;
+	std::cout << "kmerFrequencyLowerBound:	"	<< lower					<< std::endl;
+	std::cout << "kmerFrequencyUpperBound:	"	<< upper					<< std::endl;
 if(b_parameters.adapThr)
 {
-	ratioPhi = adaptiveSlope(erate);
-	cout << "Deviation from expected alignment score: " << b_parameters.deltaChernoff << endl;
-	cout << "Constant of adaptive threshold: " << ratioPhi*(1-b_parameters.deltaChernoff)<< endl;
+	ratioPhi = adaptiveSlope(b_parameters.errorRate);
+	std::cout << "adaptiveThreshold constant:	"	<< ratioPhi * (1-b_parameters.deltaChernoff)	<< "\n" << std::endl;
 }
-else cout << "Default alignment score threshold: " << b_parameters.defaultThr << endl;
-if(b_parameters.alignEnd)
-{
-	cout << "Constraint: alignment on edge with a margin of " << b_parameters.relaxMargin << " bps" << endl;
-}
+else
+	std::cout << "userDefinedThreshold:	"	<< b_parameters.defaultThr	<< "\n" << std::endl;
 #endif // PRINT
 #endif // DENOVO COUNTING
 
@@ -333,12 +322,8 @@ if(b_parameters.alignEnd)
 	double parsefastq = omp_get_wtime();
 	size_t read_id = 0; // read_id needs to be global (not just per file)
 
-#ifdef PRINT
-	cout << "\nRunning with up to " << MAXTHREADS << " threads" << endl;
-#endif
-
-	vector < vector<tuple<int,int,int>> > alloccurrences(MAXTHREADS);   
-	vector < vector<tuple<int,int,int>> > alltranstuples(MAXTHREADS);   
+	vector < vector<tuple<int,int,int>> > alloccurrences(MAXTHREADS);
+	vector < vector<tuple<int,int,int>> > alltranstuples(MAXTHREADS);
 	vector < readVector_ > allreads(MAXTHREADS);
 
 	for(auto itr=allfiles.begin(); itr!=allfiles.end(); itr++)
@@ -417,8 +402,8 @@ if(b_parameters.alignEnd)
 	std::vector<string>().swap(quals);       // free memory of quals
 
 #ifdef PRINT
-	cout << "Fastq(s) parsing fastq took: " << omp_get_wtime()-parsefastq << "s" << endl;
-	cout << "Total number of reads: "<< read_id << "\n"<< endl;
+	std::cout << "Fastq parsing took:	"		<< omp_get_wtime()	-	parsefastq << "s" << std::endl;
+	std::cout << "Total number of reads:	"	<< read_id	<< "\n" << std::endl;
 #endif
 
 	//
@@ -445,13 +430,12 @@ if(b_parameters.alignEnd)
 	std::vector<tuple<size_t, size_t, size_t>>().swap(transtuples);
 
 #ifdef PRINT
-	cout << "Sparse matrix construction took: " << omp_get_wtime()-matcreat << "s\n" << endl;
+	std::cout << "Sparse matrix construction took:	" << omp_get_wtime()-matcreat << "s\n" << std::endl;
 #endif
 
 	//
 	// Overlap detection (sparse matrix multiplication) and seed-and-extend alignment
 	//
-	std:cout << "Bin size: " << b_parameters.binSize << std::endl;
 	spmatPtr_ getvaluetype(make_shared<spmatType_>());
 	HashSpGEMM(spmat, transpmat, 
 		// n-th k-mer positions on read i and on read j
@@ -477,8 +461,8 @@ if(b_parameters.alignEnd)
 			chainop(m1, m2, b_parameters, readname1, readname2);
 			return m1;
 		},
-		reads, getvaluetype, xdrop, out_file, b_parameters, ratioPhi); 
+		reads, getvaluetype, b_parameters.xDrop, out_file, b_parameters, ratioPhi); 
 
-	cout << "Total running time: " << omp_get_wtime()-all << "s\n" << endl;
+	std::cout << "Total running time:	" << omp_get_wtime()-all << "s\n" << std::endl;
 	return 0;
 } 

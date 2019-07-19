@@ -22,30 +22,28 @@ extern "C" {
 
 struct BELLApars
 {
-	double totalMemory;	// in MB, default is ~ 8GB
-	bool userDefMem;
+	int		kmerSize;			// KmerSize
+	int		kmerRift;			// minDistance between Kmer
+	int		minOverlap;			// minOverlap length to detect (used to select the number number of shared kmer)
+	int		minSurvivedKmers;	// GG: to be mathematically determine via Markov chain with minOverlap and error rate
+	int		maxOverhang;		// maxOverhang
+	int		maxJump;			// maxJump to detect chimeric sequences
+	int		binSize;			// bin size chaining algorithm (b)
+	int		defaultThr;			// default alignment score threshold (a), only matters when adapThr=false, GG: to be deprecated
+	int		xDrop;				// seqAn xDrop value (7)
+	bool	skipEstimate;		// Do not estimate error but use user-defined error (e)
+	bool	skipAlignment;		// Do not align (z)
+	bool	adapThr;			// Apply adaptive alignment threshold (v)
+	bool	outputPaf;			// output in paf format (p)
+	bool	userDefMem;
+	float	maxDivergence;		// maxDivergence to output a pair
+	double	deltaChernoff;		// delta computed via Chernoff bound (c)
+	double	totalMemory;		// in MB, default is ~ 8GB
+	double	errorRate;			// default error rate if estimation is disable (e)
 
-	int		kmerSize;				// KmerSize
-	int		kmerRift;				// minDistance between Kmer
-	int		minOverlap;				// minOverlap length to detect (used to select the number number of shared kmer)
-	int		minSurvivedKmers;		// GG: to be mathematically determine via Markov chain with minOverlap and error rate
-	int		maxOverhang;			// maxOverhang
-	int		maxJump;				// maxJump to detect chimeric sequences
-	float	maxDivergence;			// maxDivergence to output a pair
-	bool	skipEstimate;			// Do not estimate error but use user-defined error (e)
-	bool	skipAlignment;			// Do not align (z)
-	bool	allKmer;				// Use all possible kmers (non-overlapping and separated by <kmerRift> bases) as alignment seeds (K)
-	bool	adapThr;				// Apply adaptive alignment threshold (v)
-	int		defaultThr;				// default alignment score threshold (a), only matters when adapThr=false, to be deprecated	
-	bool	alignEnd;				// Filter out alignments not achieving end of the read "relaxed" (x)
-	int		relaxMargin;			// epsilon parameter for alignment on edges (w)
-	bool	outputPaf;				// output in paf format (p)
-	int		binSize;					// bin size chaining algorithm (b)
-	double	deltaChernoff;			// delta computed via Chernoff bound (c)
-
-	BELLApars():totalMemory(8000.0), userDefMem(false), kmerSize(17), kmerRift(kmerSize), minOverlap(1000), minSurvivedKmers(1), maxOverhang(1500), maxJump(1500),
-		maxDivergence(0.25), skipEstimate(false), skipAlignment(false), allKmer(false), adapThr(true), defaultThr(50), alignEnd(false),
-			relaxMargin(300), outputPaf(false), binSize(500), deltaChernoff(0.2) {};
+	BELLApars(): kmerSize(17), kmerRift(kmerSize), minOverlap(1000), minSurvivedKmers(1), maxOverhang(1500), maxJump(1500), binSize(500), defaultThr(0),
+					xDrop(7), skipEstimate(false), skipAlignment(false), adapThr(true), outputPaf(false), userDefMem(false), maxDivergence(0.25),
+						deltaChernoff(0.10), totalMemory(8000.0), errorRate(0.15) {};
 };
 
 template <typename T>

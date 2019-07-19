@@ -424,7 +424,7 @@ int getChainLen(const string& seqH, const string& seqV, const int begpH, const i
 	const int begpV, const int endpV, const int size, const string& strand)
 	{
 		//	GG: TODO modify Kmer to accept different kmerSizes
-		cuckoohash_map<Kmer, bool> countsubkmers;
+		cuckoohash_map<Kmer, int> countsubkmers;
 		int matchingSubKmers = 0;
 		//	std::unordered_mapKmer, bool> countsubkmers;
 
@@ -448,11 +448,12 @@ int getChainLen(const string& seqH, const string& seqV, const int begpH, const i
 			Kmer mykmer(kmerstrfromstr.c_str(), kmerstrfromstr.length());
 			Kmer lexsmall = mykmer.rep();
 
-			auto found = countsubkmers.find(lexsmall);
-			if(found)
-				matchingSubKmers++;
+			//auto found = countsubkmers.find(lexsmall);
+			//if(found)
+			//	matchingSubKmers++;
 		}
-		return matchingSubKmers * size;
+		//return (matchingSubKmers * size);
+		return 100;
 	}
 
 void PostAlignDecision(const seqAnResult& maxExtScore, const readType_& read1, const readType_& read2, 
@@ -499,8 +500,7 @@ void PostAlignDecision(const seqAnResult& maxExtScore, const readType_& read1, c
 	//	GG: return chainLen = numLmers * size with size < kmerSize
 	//	GG: this needs to be a parameter
 	int size     = 15;
-	int chainLen = getChainLen(seq1, seq2, begpH, endpH, 
-		begpV, endpV, size, maxExtScore.strand);
+	int chainLen = getChainLen(seq1, seq2, begpH, endpH, begpV, endpV, size, maxExtScore.strand);
 
 	float matchRate     = chainLen / normLen;
 	float seqDivergence = std::log(1 / matchRate) / size;
@@ -513,32 +513,15 @@ void PostAlignDecision(const seqAnResult& maxExtScore, const readType_& read1, c
 
 	if(b_pars.adapThr)
 	{
-		double newThr = (1 - b_pars.deltaChernoff) * (ratioPhi * normLen);
-
-		if((double)maxExtScore.score > newThr)
+		float mythreshold = (1 - b_pars.deltaChernoff) * (ratioPhi * (float)normLen);
+		if((float)maxExtScore.score > mythreshold)
 		{
-			if(b_pars.alignEnd)
-			{
-				if(toEnd(begpV, endpV, read2len, begpH, endpH, read1len, b_pars.relaxMargin))
-					passed = true;
-			}
-			else 
-			{
-				passed = true;
-			}
+			passed = true;
 		}
 	}
 	else if(maxExtScore.score > b_pars.defaultThr)
 	{
-		if(b_pars.alignEnd)
-		{
-			if(toEnd(begpV, endpV, read2len, begpH, endpH, read1len, b_pars.relaxMargin))
-				passed = true;
-		}
-		else 
-		{
-			passed = true;
-		}
+		passed = true;
 	}
 
 	if(passed)
@@ -561,7 +544,7 @@ void PostAlignDecision(const seqAnResult& maxExtScore, const readType_& read1, c
 
 			// PAF format is the output format used by minimap/minimap2: https://github.com/lh3/miniasm/blob/master/PAF.md
 			myBatch << read2.nametag << '\t' << read2len << '\t' << begpV << '\t' << endpV << '\t' << pafstrand << '\t' << 
-				read1.nametag << '\t' << read1len << '\t' << begpH << '\t' << endpH << '\t' << (int)(normLen * seqDivergence) << '\t' << normLen << '\t' << mapq << endl;
+				read1.nametag << '\t' << read1len << '\t' << begpH << '\t' << endpH << '\t' << (int)((float)normLen * seqDivergence) << '\t' << normLen << '\t' << mapq << endl;
 		}
 		++outputted;
 		numBasesAlignedTrue += (endpV-begpV);
@@ -594,11 +577,11 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 #pragma omp parallel for
 	for(IT j = start; j<end; ++j) // for (end-start) columns of A^T A (one block)
 	{
-		size_t numAlignmentsThread = 0;
-		size_t numBasesAlignedThread = 0;
-		size_t readLengthsThread = 0;
-		size_t numBasesAlignedTrue = 0;
-		size_t numBasesAlignedFalse = 0;
+		size_t numAlignmentsThread		= 0;
+		size_t numBasesAlignedThread	= 0;
+		size_t readLengthsThread		= 0;
+		size_t numBasesAlignedTrue		= 0;
+		size_t numBasesAlignedFalse		= 0;
 
 		size_t outputted = 0;
 
@@ -676,7 +659,7 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 
 	std::ofstream ofs(filename, std::ios::binary | std::ios::app);
 #ifdef PRINT
-	cout << "Creating or appending to output file with " << (double)bytestotal/(double)(1024 * 1024) << " MB" << endl;
+	cout << "Creating output file with	" << (double)bytestotal/(double)(1024 * 1024) << " MB" << endl;
 #endif
 	ofs.seekp(bytestotal - 1);
 	ofs.write("", 1); // this will likely create a sparse file so the actual disks won't spin yet
@@ -715,7 +698,7 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
 	double free_memory = estimateMemory(b_pars);
 
 #ifdef PRINT
-	cout << "Available RAM is assumed to be: " << free_memory / (1024 * 1024) << " MB" << endl;
+	cout << "RAM is assumed to be:	" << free_memory / (1024 * 1024) << " MB" << endl;
 #endif
 
 	int numThreads = 1;
@@ -729,7 +712,7 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
 	IT flops = flopptr[B.cols];
 
 #ifdef PRINT    
-	cout << "FLOPS is " << flops << endl;
+	cout << "FLOPS is\t" << flops << endl;
 #endif
 
 	IT* colnnzC = estimateNNZ_Hash(A, B, flopC, true);
@@ -740,14 +723,17 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
 	IT nnzc = colptrC[B.cols];
 	double compression_ratio = (double)flops / nnzc;
 
-
 	uint64_t required_memory = safety_net * nnzc * (sizeof(FT)+sizeof(IT));	// required memory to form the output
 	int stages = std::ceil((double) required_memory/ free_memory); 	// form output in stages 
 	uint64_t nnzcperstage = free_memory / (safety_net * (sizeof(FT)+sizeof(IT)));
 
 #ifdef PRINT
-	cout << "nnz(output): " << nnzc << " | free memory: " << free_memory << " | required memory: " << required_memory << endl; 
-	cout << "Stages: " << stages << " | max nnz per stage: " << nnzcperstage << endl;    
+	std::cout << "nnz (output):	"			<< nnzc					<< std::endl;
+	std::cout << "Compression ratio:	"	<< compression_ratio	<< std::endl;
+	std::cout << "Free memory:	"		<< free_memory		<< std::endl;
+	std::cout << "Required memory:	"	<< required_memory	<< std::endl; 
+	std::cout << "SpGEMM stages:	"	<< stages			<< std::endl;
+//	std::cout << "max nnz per stage:	"	<< nnzcperstage		<< std::endl;
 #endif
 
 	IT * colStart = new IT[stages+1];	// one array is enough to set stage boundaries	              
@@ -774,7 +760,7 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
 
 #ifdef TIMESTEP
 		double alnlen2 = omp_get_wtime();
-		cout << "\nColumns [" << colStart[b] << " - " << colStart[b+1] << "] overlap time: " << alnlen2-alnlenl << "s" << endl;
+		cout << "\nColumns [" << colStart[b] << " - " << colStart[b+1] << "] overlap time:	" << alnlen2-alnlenl << "s" << endl;
 #endif
 
 		IT endnz = colptrC[colStart[b+1]];
@@ -802,14 +788,16 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
 		{
 			double elapsed = omp_get_wtime()-alnlen2;
 			double aligntime = elapsed-get<6>(alignstats); // substracting outputting time
-			cout << "\nColumns [" << colStart[b] << " - " << colStart[b+1] << "] alignment time: " << aligntime << "s | alignment rate: " << static_cast<double>(get<1>(alignstats))/aligntime;
-			cout << " bases/s | average read length: " <<static_cast<double>(get<2>(alignstats))/(2* get<0>(alignstats));
-			cout << " | read pairs aligned this stage: " << get<0>(alignstats) << endl;
-			cout << "Average length of successful alignment " << static_cast<double>(get<4>(alignstats)) / get<3>(alignstats) << " bps" << endl;
-			cout << "Average length of failed alignment " << static_cast<double>(get<5>(alignstats)) / (get<0>(alignstats) - get<3>(alignstats)) << " bps" << endl;		
+			std::cout << "\nColumns ["				<< colStart[b]	<< " - "			<< colStart[b+1] << "]" << std::endl;
+			std::cout << "alignmentTime:	"		<< aligntime	<< "s"				<< std::endl;
+			std::cout << "alignmentRate:	"		<< (int)(static_cast<double>(get<1>(alignstats)) / aligntime) 				<< " bases/s" << std::endl;
+			std::cout << "averageReadLength:	"	<< (int)(static_cast<double>(get<2>(alignstats)) / (2* get<0>(alignstats)))	<< std::endl;
+			std::cout << "numPairs aligned:	"		<< get<0>(alignstats)	<< std::endl;
+			cout << "averageLength of successful alignment:	"	<< (int)(static_cast<double>(get<4>(alignstats)) / get<3>(alignstats))							<< " bps" << endl;
+			cout << "averageLength of failed alignment:	"		<< (int)(static_cast<double>(get<5>(alignstats)) / (get<0>(alignstats) - get<3>(alignstats)))	<< " bps" << endl;
 	   }
 #endif
-		cout << "\nOutputted " << get<3>(alignstats) << " lines in " << get<6>(alignstats) << "s" << endl;
+		cout << "\nOutputted " << get<3>(alignstats) << " lines in	" << get<6>(alignstats) << "s" << endl;
 		delete [] rowids;
 		delete [] values;
 
