@@ -388,6 +388,38 @@ double estimateMemory(const BELLApars & b_pars)
 	return free_memory;
 }
 
+char
+complementbase(char n) {
+	switch(n)
+	{
+	case 'A':
+		return 'T';
+	case 'T':
+		return 'A';
+	case 'G':
+		return 'C';
+	case 'C':
+		return 'G';
+	}
+	assert(false);
+	return ' ';
+}
+
+std::string
+reversecomplement(const std::string& seq) {
+
+	std::string cpyseq = seq;
+	std::reverse(cpyseq.begin(), cpyseq.end());
+
+	std::transform(
+		std::begin(cpyseq),
+		std::end  (cpyseq),
+		std::begin(cpyseq),
+	complementbase);
+
+	return cpyseq;
+}
+
 int getChainLen(const string& seqH, const string& seqV, const int begpH, const int endpH, 
 	const int begpV, const int endpV, const int size, const string& strand)
 	{
@@ -407,7 +439,7 @@ int getChainLen(const string& seqH, const string& seqV, const int begpH, const i
 		std::string seqHcpy = seqH;
 		if(strand == "c")
 		{
-			//	GG: routine to revese the string, begp and endp are already ok
+			seqHcpy = reversecomplement(seqH);
 		}
 
 		for(int i = begpH; i < endpH - size + 1; i++)
