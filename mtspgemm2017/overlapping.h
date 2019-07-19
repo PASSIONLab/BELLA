@@ -7,6 +7,7 @@
 #include "../kmercode/common.h"
 #include "../kmercode/fq_reader.h"
 #include "../kmercode/ParallelFASTQ.h"
+#include "../libcuckoo/cuckoohash_map.hh"
 #include <seqan/sequence.h>
 #include <seqan/align.h>
 #include <seqan/score.h>
@@ -388,14 +389,14 @@ double estimateMemory(const BELLApars & b_pars)
 }
 
 int getChainLen(const string& seqH, const string& seqV, const int begpH, const int endpH, 
-	const int begpV, const int endpV, const int size, const char strand)
+	const int begpV, const int endpV, const int size, const string& strand)
 	{
 
-		cuckoohash<Kmer, bool> countsubkmers;
+		cuckoohash_map<Kmer, bool> countsubkmers;
 		int matchingSubKmers = 0;
-	//	std::unordered_mapKmer, bool> countsubkmers;
+		//	std::unordered_mapKmer, bool> countsubkmers;
 
-		for(int i = begpV; j < endpV - size + 1; i++)
+		for(int i = begpV; i < endpV - size + 1; i++)
 		{
 			std::string kmerstrfromstr = seqV.substr(i, size);
 			Kmer mykmer(kmerstrfromstr.c_str());
@@ -409,7 +410,7 @@ int getChainLen(const string& seqH, const string& seqV, const int begpH, const i
 			//	GG: routine to revese the string, begp and endp are already ok
 		}
 
-		for(int i = begpH; j < endpH - size + 1; i++)
+		for(int i = begpH; i < endpH - size + 1; i++)
 		{
 			std::string kmerstrfromstr = seqHcpy.substr(i, size);
 			Kmer mykmer(kmerstrfromstr.c_str());
@@ -466,7 +467,8 @@ void PostAlignDecision(const seqAnResult& maxExtScore, const readType_& read1, c
 	//	GG: return chainLen = numLmers * size with size < kmerSize
 	//	GG: this needs to be a parameter
 	int size     = 15;
-	int chainLen = getChainLen(seq1, seq2, begpH, endpH, begpV, endpV, size);
+	int chainLen = getChainLen(seq1, seq2, begpH, endpH, 
+		begpV, endpV, size, maxExtScore.strand);
 
 	float matchRate     = chainLen / normLen;
 	float seqDivergence = std::log(1 / matchRate) / size;
@@ -592,8 +594,8 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 				seqAnResult maxExtScore;
 				bool passed = false;
 
-				int chainLen = val->chain();		// number of matching kmer into the majority voted bin
-				if(chainLen < b_pars.minSurvivedKmers)
+				int matches = val->chain();				//	GG: number of matching kmer into the majority voted bin
+				if (matches < b_pars.minSurvivedKmers)	//	GG: b_pars.minSurvivedKmers should be function of Markov chain
 					continue;
 
 				pair<int, int> kmer = val->choose();
@@ -602,7 +604,7 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 				//	GG: nucleotide alignment
 				maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, xdrop, b_pars.kmerSize);
 				PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], 
-					outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed, chainLen);
+					outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
 
 #ifdef TIMESTEP
 			numBasesAlignedThread += endPositionV(maxExtScore.seed)-beginPositionV(maxExtScore.seed);
