@@ -28,6 +28,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <set> 
 
 using namespace seqan;
 
@@ -386,9 +387,44 @@ double estimateMemory(const BELLApars & b_pars)
 	return free_memory;
 }
 
+int getChainLen(const string& seqH, const string& seqV, const int begpH, const int endpH, 
+	const int begpV, const int endpV, const int size, const char strand)
+	{
+
+		cuckoohash<Kmer, bool> countsubkmers;
+		int matchingSubKmers = 0;
+	//	std::unordered_mapKmer, bool> countsubkmers;
+
+		for(int i = begpV; j < endpV - size + 1; i++)
+		{
+			std::string kmerstrfromstr = seqV.substr(i, size);
+			Kmer mykmer(kmerstrfromstr.c_str());
+			Kmer lexsmall = mykmer.rep();
+			countsubkmers.insert(lexsmall, 1);
+		}
+
+		std::string seqHcpy = seqH;
+		if(strand == "c")
+		{
+			//	GG: routine to revese the string, begp and endp are already ok
+		}
+
+		for(int i = begpH; j < endpH - size + 1; i++)
+		{
+			std::string kmerstrfromstr = seqHcpy.substr(i, size);
+			Kmer mykmer(kmerstrfromstr.c_str());
+			Kmer lexsmall = mykmer.rep();
+
+			auto found = countsubkmers.find(lexsmall);
+			if(found)
+				matchingSubKmers++;
+		}
+		return matchingSubKmers * size;
+	}
+
 void PostAlignDecision(const seqAnResult& maxExtScore, const readType_& read1, const readType_& read2, 
 					const BELLApars& b_pars, double ratioPhi, int count, stringstream& myBatch, size_t& outputted,
-					size_t& numBasesAlignedTrue, size_t& numBasesAlignedFalse, bool& passed, int chainLen)
+					size_t& numBasesAlignedTrue, size_t& numBasesAlignedFalse, bool& passed)
 {
 	auto maxseed = maxExtScore.seed;	// returns a seqan:Seed object
 
@@ -400,8 +436,8 @@ void PostAlignDecision(const seqAnResult& maxExtScore, const readType_& read1, c
 	auto endpH = endPositionH(maxseed);
 
 	// get references for better naming
-	const string& seq1 = read1.seq;
-	const string& seq2 = read2.seq;
+	const string& seq1 = read1.seq;	// H
+	const string& seq2 = read2.seq;	// Vzw
 
 	int read1len = seq1.length();
 	int read2len = seq2.length();
@@ -413,31 +449,35 @@ void PostAlignDecision(const seqAnResult& maxExtScore, const readType_& read1, c
 		return;
 
 	//	GG: check strand skipping paccio pattern (from MK)
-	if(maxExtScore.strand = "c")
+	if(maxExtScore.strand == "c")
 	{
-		int intersect = std::min(endV, endH) - 
+		int intersect = std::min(endpV, endpH) - 
 									std::max(begpV, begpH);
-
-		if(intersect > - b_pars.maxJump)
+		if(intersect < -b_pars.maxJump)	//	GG: double check sign
 			return;	// GG: this suggest a chimeric read but we should be more careful here
 	}
 
-	// GG: divergence estimation
+	//	GG: divergence estimation
 	int overlapLenV = endpV - begpV;
 	int overlapLenH = endpH - begpH;
-	int lenDiff     = std::abs(overlapLenV - overlapLenH);
-	float normLen   = max(overlapLenV, overlapLenH);
+	int normLen     = max(overlapLenV, overlapLenH);
 
-	if(b_pars.seqDiv)
-	{
-		float matchRate = chainLen / normLen;
-		float overlapDivergence = std::log(1/matchRate) / kmerSize; //	GG: from MK
+	//	GG: we want a separate function to recount smaller kmer and compute the sequence divergence
+	//	GG: return chainLen = numLmers * size with size < kmerSize
+	//	GG: this needs to be a parameter
+	int size     = 15;
+	int chainLen = getChainLen(seq1, seq2, begpH, endpH, begpV, endpV, size);
 
-		if(lenDiff > overlapDivergence * std::min(overlapLenV, overlapLenH))
-			return;
-		//	GG: finish and testing
-	}
-	else if(b_pars.adapThr)
+	float matchRate     = chainLen / normLen;
+	float seqDivergence = std::log(1 / matchRate) / size;
+
+//	GG: debug
+//	#pragma omp critical
+//		{
+//			std::cout << seqDivergence << '\t' << matchRate << '\t' << normLen << '\t' << chainLen << std::endl;
+//		}
+
+	if(b_pars.adapThr)
 	{
 		double newThr = (1 - b_pars.deltaChernoff) * (ratioPhi * normLen);
 
@@ -487,7 +527,7 @@ void PostAlignDecision(const seqAnResult& maxExtScore, const readType_& read1, c
 
 			// PAF format is the output format used by minimap/minimap2: https://github.com/lh3/miniasm/blob/master/PAF.md
 			myBatch << read2.nametag << '\t' << read2len << '\t' << begpV << '\t' << endpV << '\t' << pafstrand << '\t' << 
-				read1.nametag << '\t' << read1len << '\t' << begpH << '\t' << endpH << '\t' << maxExtScore.score << '\t' << normLen << '\t' << mapq << endl;
+				read1.nametag << '\t' << read1len << '\t' << begpH << '\t' << endpH << '\t' << (int)(normLen * seqDivergence) << '\t' << normLen << '\t' << mapq << endl;
 		}
 		++outputted;
 		numBasesAlignedTrue += (endpV-begpV);

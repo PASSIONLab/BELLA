@@ -88,7 +88,7 @@ seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rle
 		strand = 'c';
 		Dna5StringReverseComplement twinRead(seqH);
 		i = rlen-i-kmer_len;
-		
+
 		setBeginPositionH(seed, i);
 		setBeginPositionV(seed, j);
 		setEndPositionH(seed, i+kmer_len);

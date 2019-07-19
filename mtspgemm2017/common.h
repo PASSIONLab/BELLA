@@ -36,16 +36,15 @@ struct BELLApars
 	bool	skipAlignment;			// Do not align (z)
 	bool	allKmer;				// Use all possible kmers (non-overlapping and separated by <kmerRift> bases) as alignment seeds (K)
 	bool	adapThr;				// Apply adaptive alignment threshold (v)
-	bool	seqDiv;					// seqDivergence as threshold
 	int		defaultThr;				// default alignment score threshold (a), only matters when adapThr=false, to be deprecated	
 	bool	alignEnd;				// Filter out alignments not achieving end of the read "relaxed" (x)
 	int		relaxMargin;			// epsilon parameter for alignment on edges (w)
 	bool	outputPaf;				// output in paf format (p)
-	int		binSize					// bin size chaining algorithm (b)
+	int		binSize;					// bin size chaining algorithm (b)
 	double	deltaChernoff;			// delta computed via Chernoff bound (c)
 
-	BELLApars():totalMemory(8000.0), userDefMem(false), kmerSize(17), kmerRift(kmerSize), minOverlap(1000), minSurvivedKmers(1000), maxOverhang(1500), maxJump(1500),
-		maxDivergence(0.25), skipEstimate(false), skipAlignment(false), allKmer(false), adapThr(false), seqDiv(true), defaultThr(50), alignEnd(false),
+	BELLApars():totalMemory(8000.0), userDefMem(false), kmerSize(17), kmerRift(kmerSize), minOverlap(1000), minSurvivedKmers(1), maxOverhang(1500), maxJump(1500),
+		maxDivergence(0.25), skipEstimate(false), skipAlignment(false), allKmer(false), adapThr(true), defaultThr(50), alignEnd(false),
 			relaxMargin(300), outputPaf(false), binSize(500), deltaChernoff(0.2) {};
 };
 
@@ -109,8 +108,8 @@ struct spmatType_ {
 		std::iota(ids.begin(), ids.end(), 0);				// assign an id
 		std::sort(ids.begin(), ids.end(), SortBy(support));	// sort support by supporting k-mers
 
-		ids.resize(1);			// GG: we don't care about other support, we want only the majority voted one
-		return ids[0].size();	// number of kmer in the most voted bin
+		ids.resize(1);				// GG: we don't care about other support, we want only the majority voted one
+		return support[ids[0]];		// number of kmer in the most voted bin
 	}
 
 	//	GG: choose does also sorting and return the position of the first k-mer in each bin

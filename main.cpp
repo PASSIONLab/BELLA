@@ -159,7 +159,7 @@ int main (int argc, char *argv[]) {
 				break;
 			}
 			case 's': {
-				b_parameters.minKmers = atoi(thisOpt->argument);
+				b_parameters.minSurvivedKmers = atoi(thisOpt->argument);
 				break;
 			}
 			case 'e': {
@@ -185,7 +185,7 @@ int main (int argc, char *argv[]) {
 				break;
 			}
 			case 'b': {
-				b_parameters.bin = atoi(thisOpt->argument);
+				b_parameters.binSize = atoi(thisOpt->argument);
 				break;
 			}
 			case 'm': {
@@ -220,7 +220,7 @@ int main (int argc, char *argv[]) {
 				cout << " -c : alignment score deviation from the mean [0.1]" 		<< endl;
 				cout << " -n : filter out alignment on edge [false]" 				<< endl;
 				cout << " -r : kmerRift: bases separating two k-mers used as seeds for a read [kmerSize]" << endl;
-				cout << " -s : minKmers: minimum number of shared k-mers to compute alignment [1]" << endl;
+				cout << " -s : minSurvivedKmers: minimum number of shared k-mers to compute alignment [1]" << endl;
 				cout << " -b : bin size chaining algorithm [500]" 	<< endl;
 				cout << " -p : output in PAF format [false]\n" 		<< endl;
 
@@ -451,7 +451,7 @@ if(b_parameters.alignEnd)
 	//
 	// Overlap detection (sparse matrix multiplication) and seed-and-extend alignment
 	//
-	std:cout << "Bin size: " << b_parameters.bin << std::endl;
+	std:cout << "Bin size: " << b_parameters.binSize << std::endl;
 	spmatPtr_ getvaluetype(make_shared<spmatType_>());
 	HashSpGEMM(spmat, transpmat, 
 		// n-th k-mer positions on read i and on read j
