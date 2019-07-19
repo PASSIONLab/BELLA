@@ -192,7 +192,7 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
 					for(int j = 0; j<= len - b_parameters.kmerSize; j++)  
 					{
 						std::string kmerstrfromfastq = seqs[i].substr(j, b_parameters.kmerSize);
-						Kmer mykmer(kmerstrfromfastq.c_str());
+						Kmer mykmer(kmerstrfromfastq.c_str(), kmerstrfromfastq.length());
 						Kmer lexsmall = mykmer.rep();
 						allkmers[MYTHREAD].push_back(lexsmall);
 						hlls[MYTHREAD].add((const char*) lexsmall.getBytes(), lexsmall.getNumBytes());

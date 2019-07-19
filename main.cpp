@@ -370,7 +370,7 @@ if(b_parameters.alignEnd)
 				for(int j = 0; j <= len - b_parameters.kmerSize; j++)  
 				{
 					std::string kmerstrfromfastq = seqs[i].substr(j, b_parameters.kmerSize);
-					Kmer mykmer(kmerstrfromfastq.c_str());
+					Kmer mykmer(kmerstrfromfastq.c_str(), kmerstrfromfastq.length());
 					// remember to use only ::rep() when building kmerdict as well
 					Kmer lexsmall = mykmer.rep();
 

@@ -423,7 +423,7 @@ reversecomplement(const std::string& seq) {
 int getChainLen(const string& seqH, const string& seqV, const int begpH, const int endpH, 
 	const int begpV, const int endpV, const int size, const string& strand)
 	{
-
+		//	GG: TODO modify Kmer to accept different kmerSizes
 		cuckoohash_map<Kmer, bool> countsubkmers;
 		int matchingSubKmers = 0;
 		//	std::unordered_mapKmer, bool> countsubkmers;
@@ -431,7 +431,7 @@ int getChainLen(const string& seqH, const string& seqV, const int begpH, const i
 		for(int i = begpV; i < endpV - size + 1; i++)
 		{
 			std::string kmerstrfromstr = seqV.substr(i, size);
-			Kmer mykmer(kmerstrfromstr.c_str());
+			Kmer mykmer(kmerstrfromstr.c_str(), kmerstrfromstr.length());
 			Kmer lexsmall = mykmer.rep();
 			countsubkmers.insert(lexsmall, 1);
 		}
@@ -445,7 +445,7 @@ int getChainLen(const string& seqH, const string& seqV, const int begpH, const i
 		for(int i = begpH; i < endpH - size + 1; i++)
 		{
 			std::string kmerstrfromstr = seqHcpy.substr(i, size);
-			Kmer mykmer(kmerstrfromstr.c_str());
+			Kmer mykmer(kmerstrfromstr.c_str(), kmerstrfromstr.length());
 			Kmer lexsmall = mykmer.rep();
 
 			auto found = countsubkmers.find(lexsmall);
