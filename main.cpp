@@ -186,7 +186,7 @@ int main (int argc, char *argv[]) {
 			case 'c': {
 				if(stod(thisOpt->argument) > 1.0 || stod(thisOpt->argument) < 0.0)
 				{
-					cout << "BELLA execution terminated: -c requires a value in [0,1]" 	<< endl;
+					cout << "BELLA execution terminated: -c requires a value in [0, 1]" 	<< endl;
 					cout << "Run with -h to print out the command line options\n" 		<< endl;
 					return 0;
 				}
@@ -195,23 +195,21 @@ int main (int argc, char *argv[]) {
 			}
 			case 'h': {
 				cout << "Usage:\n" << endl;
-				cout << " -f : k-mer list from Jellyfish (required if Jellyfish k-mer counting is used)" << endl; // Reliable k-mers are selected by BELLA
-				cout << " -i : list of fastq(s) (required)" << endl;
-				cout << " -o : output filename (required)" 	<< endl;
-				cout << " -d : coverage/coverage (required)" 	<< endl; // TO DO: add coverage estimation
-				cout << " -k : kmerSize [17]" 			<< endl;
-				cout << " -a : use fixed alignment threshold [50]" 		<< endl;
-				cout << " -x : alignment x-drop factor [7]" 			<< endl;
-				cout << " -e : error rate [auto estimated from fastq]" 	<< endl;
-				cout << " -m : total RAM of the system in MB [auto estimated if possible or 8,000 if not]" << endl;
-				cout << " -z : skip the pairwise alignment [false]" 				<< endl;
-				cout << " -w : relaxMargin parameter for alignment on edges [300]" 	<< endl;
-				cout << " -c : alignment score deviation from the mean [0.1]" 		<< endl;
-				cout << " -n : filter out alignment on edge [false]" 				<< endl;
-				cout << " -r : kmerRift: bases separating two k-mers used as seeds for a read [kmerSize]" << endl;
-				cout << " -s : minSurvivedKmers: minimum number of shared k-mers to compute alignment [1]" << endl;
-				cout << " -b : bin size chaining algorithm [500]" 	<< endl;
-				cout << " -p : output in PAF format [false]\n" 		<< endl;
+				cout << " -f : List from Jellyfish (required if Jellyfish kmerCounting is used)" 	<< endl; // Reliable k-mers are selected by BELLA
+				cout << " -i : List of fastq(s)	(required)" 	<< endl;
+				cout << " -o : Output filename	(required)" 	<< endl;
+				cout << " -d : Dataset coverage	(required)" 	<< endl; // TO DO: add coverage estimation
+				cout << " -k : KmerSize [17]" 					<< endl;
+				cout << " -a : User-defined alignment threshold [false, 0]" 		<< endl;
+				cout << " -x : SeqAn xDrop [7]" 									<< endl;
+				cout << " -e : Error rate [auto estimated from fastq]" 				<< endl;
+				cout << " -m : Total RAM of the system in MB [auto estimated if possible or 8,000 if not]" << endl;
+				cout << " -z : Do not run pairwise alignment [false]" 				<< endl;
+				cout << " -c : Deviation from the mean alignment score [0.10]" 		<< endl;
+				cout << " -r : KmerRift: bases separating two k-mers [kmerSize]"	<< endl;
+				cout << " -s : Common k-mers threshold to compute alignment [1]"	<< endl;
+				cout << " -b : Bin size binning algorithm [500]" 	<< endl;
+				cout << " -p : Output in PAF format [false]\n" 		<< endl;
 
 				FreeOptList(thisOpt); // Done with this list, free it
 				return 0;
