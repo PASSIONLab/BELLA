@@ -427,6 +427,124 @@ double estimateMemory(const BELLApars & b_pars)
     return free_memory;
 }
 
+void PostAlignDecisionGPU(const loganResult & maxExtScore, const readType_ & read1, const readType_ & read2, 
+					const BELLApars & b_pars, double ratioPhi, int count, stringstream & myBatch, size_t & outputted,
+					size_t & numBasesAlignedTrue, size_t & numBasesAlignedFalse, bool & passed)
+{
+	SeedL maxseed = maxExtScore.seed;	// returns a seqan:Seed object
+
+	// {begin/end}Position{V/H}: Returns the begin/end position of the seed in the query (vertical/horizonral direction)
+	// these four return seqan:Tposition objects
+	size_t begpV = getBeginPositionV(maxseed);
+	size_t endpV = getEndPositionV(maxseed);	
+	size_t begpH = getBeginPositionH(maxseed);
+	size_t endpH = getEndPositionH(maxseed);
+
+	// get references for better naming
+	const string& seq1 = read1.seq;
+	const string& seq2 = read2.seq;
+			
+	int read1len = seq1.length();
+	int read2len = seq2.length();
+
+    int diffCol = endpV - begpV;
+    int diffRow = endpH - begpH;
+    int minLeft = min(begpV, begpH);
+    int minRight = min(read2len - endpV, read1len - endpH);
+    int ov = minLeft+minRight+(diffCol+diffRow)/2;
+
+	if(b_pars.adapThr)
+	{
+		double newThr = (1-b_pars.deltaChernoff)*(ratioPhi*(double)ov);
+
+		if((double)maxExtScore.score > newThr)
+		{
+			if(b_pars.alignEnd)
+			{
+				if(toEnd(begpV, endpV, read2len, begpH, endpH, read1len, b_pars.relaxMargin))
+					passed = true;
+			}
+			else 
+			{
+				passed = true;
+			}
+		}
+	}
+	else if(maxExtScore.score > b_pars.defaultThr)
+	{
+		if(b_pars.alignEnd)
+		{
+			if(toEnd(begpV, endpV, read2len, begpH, endpH, read1len, b_pars.relaxMargin))
+				passed = true;
+		}
+		else 
+		{
+			passed = true;
+		}
+	}
+
+	if(passed)
+	{
+        if(!b_pars.outputPaf)  // BELLA output format
+        {
+            myBatch << read2.nametag << '\t' << read1.nametag << '\t' << count << '\t' << maxExtScore.score << '\t' << ov << '\t' << maxExtScore.strand << '\t' << 
+                begpV << '\t' << endpV << '\t' << read2len << '\t' << begpH << '\t' << endpH << '\t' << read1len << endl;
+                // column seq name
+                // row seq name
+                // number of shared k-mer
+                // alignment score
+                // overlap estimation
+                // strand (n/c)
+                // column seq start
+                // column seq end
+                // column seq length
+                // row seq start
+                // row seq end
+                // row seq length
+        }
+        else    // PAF format is the output format used by minimap/minimap2: https://github.com/lh3/miniasm/blob/master/PAF.md
+        {
+            /* field adjustment to match the PAF format */
+            toPAF(begpV, endpV, read2len, begpH, endpH, read1len, maxExtScore.strand);
+            /* re-compute overlap estimation with extended alignment to the edges */
+            diffCol = endpV - begpV;
+            diffRow = endpH - begpH;
+            minLeft = min(begpV, begpH);
+            minRight = min(read2len - endpV, read1len - endpH);
+            ov = minLeft+minRight+(diffCol+diffRow)/2;
+
+            string pafstrand;       // maxExtScore not modifiable   
+            int mapq = 255;         // mapping quality (0-255; 255 for missing)         
+            if(maxExtScore.strand == "n") pafstrand = "+";  
+            else pafstrand = "-";
+
+            // If PAF is generated from an alignment, column 10 equals the number of sequence matches, 
+            // and column 11 equals the total number of sequence matches, mismatches, insertions and deletions in the alignment     
+            myBatch << read2.nametag << '\t' << read2len << '\t' << begpV << '\t' << endpV << '\t' << pafstrand << '\t' << 
+                read1.nametag << '\t' << read1len << '\t' << begpH << '\t' << endpH << '\t' << maxExtScore.score << '\t' << ov << '\t' << mapq << endl;
+                // column seq name
+                // column seq length
+                // column seq start
+                // column seq end
+                // strand (+/-)
+                // row seq name
+                // row seq length
+                // row seq start
+                // row seq end
+                // number of residue matches (alignment score)
+                // alignment block length (overlap length)
+                // mapping quality (0-255; 255 for missing)
+        }
+		++outputted;
+		numBasesAlignedTrue += (endpV-begpV);	
+	}		
+	else
+	{
+		numBasesAlignedFalse += (endpV-begpV);
+	}
+}
+
+
 void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1, const readType_ & read2, 
 					const BELLApars & b_pars, double ratioPhi, int count, stringstream & myBatch, size_t & outputted,
 					size_t & numBasesAlignedTrue, size_t & numBasesAlignedFalse, bool & passed)
@@ -546,7 +664,7 @@ void PostAlignDecision(const seqAnResult & maxExtScore, const readType_ & read1,
 
 template <typename IT, typename FT>
 auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowids, FT * values, const readVector_ & reads, 
-								int kmer_len, int xdrop, char* filename, const BELLApars & b_pars, double ratioPhi)
+								int kmer_len, int xdrop, char* filename, const BELLApars & b_pars, double ratioPhi, int ngpus)
 {
     size_t alignedpairs = 0;
     size_t alignedbases = 0;
@@ -568,45 +686,59 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
     vector<SeedL> seeds;
     vector<loganResult> maxExtScoreL;
 
-for(IT j = start; j<end; ++j){//accumulate the sequences
-    for (IT i = colptrC[j]; i < colptrC[j+1]; ++i){
-        size_t rid = rowids[i-offset];  // row id
-        size_t cid = j;                 // column id
-        string seq1 = reads[rid].seq;    // get reference for readibility
-        string seq2 = reads[cid].seq;    // get reference for readibility
-        int rlen = seq1.length();
-	string strand = "n";
-        SeedL seed(i, j, i+kmer_len, j+kmer_len);
-        string seedH = seq1.substr(getBeginPositionH(seed), getEndPositionH(seed));
-        string seedV = seq2.substr(getBeginPositionV(seed), getEndPositionV(seed));
-        std::transform(std::begin(seedH),std::end(seedH),std::begin(seedH),dummycomplement);
-
-        if(seedH == seedV){
-            strand = "c";
-            seq1 = reads[rid].seq;
-            std::transform(std::begin(seq1),std::end(seq1),std::begin(seq1),dummycomplement);
-
-            setBeginPositionH(seed, rlen-i-kmer_len);
-            setBeginPositionV(seed, j);
-            setEndPositionH(seed, rlen-i);
-            setEndPositionV(seed, j+kmer_len);
+#pragma omp parallel for
+    for(IT j = start; j<end; ++j){//accumulate the sequences
+        for (IT i = colptrC[j]; i < colptrC[j+1]; ++i){
+	        size_t rid = rowids[i-offset];  // row id
+	        size_t cid = j;                 // column id
+	        string seq1 = reads[rid].seq;    // get reference for readibility
+	        string seq2 = reads[cid].seq;    // get reference for readibility
+	        spmatPtr_ val = values[i-offset];
+		
+		auto it = val->pos.begin();//check these 2 lines
+	        int indi = it->first, indj = it->second;
+		
+		int rlen = seq1.length();
+		string strand = "n";
+	        SeedL seed(indi, indj, indi+kmer_len, indj+kmer_len);
+	        string seedH = seq1.substr(getBeginPositionH(seed), kmer_len);
+	        string seedV = seq2.substr(getBeginPositionV(seed), kmer_len);
+		std::reverse(std::begin(seedH),std::end(seedH));
+		std::transform(std::begin(seedH),std::end(seedH),std::begin(seedH),dummycomplement);
+		//std::reverse(std::begin(seedH),std::end(seedH));
+	        if(seedH == seedV){
+	            strand = "c";
+	            seq1 = reads[rid].seq;
+		    std::reverse(std::begin(seq1),std::end(seq1));
+	            std::transform(std::begin(seq1),std::end(seq1),std::begin(seq1),dummycomplement);
+	
+	            setBeginPositionH(seed, rlen-indi-kmer_len);
+	            setBeginPositionV(seed, indj);
+	            setEndPositionH(seed, rlen-indi);
+	            setEndPositionV(seed, indj+kmer_len);
+	        }
+	        loganResult localRes;
+	        localRes.strand = strand;
+	        seeds.push_back(seed);
+	        seq1s.push_back(seq1);
+	        seq2s.push_back(seq2);
+	        maxExtScoreL.push_back(localRes);
         }
-        loganResult localRes;
-        localRes.strand = strand;
-        seeds.push_back(seed);
-        seq1s.push_back(seq1);
-        seq2s.push_back(seq2);
-        maxExtScoreL.push_back(localRes);
     }
-}
-
-    alignLogan(seq1s, seq2s, seeds, xdrop, kmer_len, maxExtScoreL);
-
-
-
+    //auto s1 = seq1s.begin();
+    //auto s2 = seq2s.begin();
+    //auto seedb = seeds.begin();
+    //auto scb =  maxExtScoreL.begin();
+    //for(int i=0; i<seeds.size(); i+=100000){
+    //	alignLogan(s1+i, s2+i, seedb+i, xdrop, kmer_len, scb+i, ngpus);
+    //}
+    alignLogan(seq1s,seq2s,seeds,xdrop,kmer_len,maxExtScoreL,ngpus);
+    //cout<<"SEQAN: "<<endl;
+    int index = 0;
 #pragma omp parallel for
     for(IT j = start; j<end; ++j) // for (end-start) columns of A^T A (one block)
     {
+	
         size_t numAlignmentsThread = 0;
         size_t numBasesAlignedThread = 0;
         size_t readLengthsThread = 0;
@@ -635,32 +767,36 @@ for(IT j = start; j<end; ++j){//accumulate the sequences
                 numAlignmentsThread++;
                 readLengthsThread = readLengthsThread + seq1len + seq2len;
 #endif
-                seqAnResult maxExtScore;
+		loganResult maxExtScore = maxExtScoreL[index];
+		index++;
                 bool passed = false;
-
                 if(val->count == 1)
                 {
                     auto it = val->pos.begin();
                     int i = it->first, j = it->second;
 
-                    maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, xdrop, kmer_len);
-                    PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
+                    //maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, xdrop, kmer_len);
+                    PostAlignDecisionGPU(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
                 }
                 else
                 {
                     for(auto it = val->pos.begin(); it != val->pos.end(); ++it) // if !b_pars.allKmer this should be at most two cycle
                     {
                         int i = it->first, j = it->second;
+			//cout<<"IN"<<endl;
+                        //maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, xdrop, kmer_len);
+                        PostAlignDecisionGPU(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
 
-                        maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, xdrop, kmer_len);
-                        PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
-
-                        if(passed)
-                            break;
+                        if(passed){
+                        //   	cout<<"PASSED"<<endl;
+				break;
+			}
                     }
                 }
 #ifdef TIMESTEP
-            numBasesAlignedThread += endPositionV(maxExtScore.seed)-beginPositionV(maxExtScore.seed);
+            numBasesAlignedThread += getEndPositionV(maxExtScore.seed)-getBeginPositionV(maxExtScore.seed);
+	    //numBasesAlignedThread += endPositionV(maxExtScore.seed)-beginPositionV(maxExtScore.seed);
+
 #endif
             }
             else // if skipAlignment == false do alignment, else save just some info on the pair to file
@@ -682,6 +818,7 @@ for(IT j = start; j<end; ++j){//accumulate the sequences
             totfailbases += numBasesAlignedFalse;
         }
 #endif
+
     } // all columns from start...end (omp for loop)
 
     double outputting = omp_get_wtime();
@@ -721,8 +858,8 @@ for(IT j = start; j<end; ++j){//accumulate the sequences
     }
     delete [] bytes;
     double timeoutputt = omp_get_wtime()-outputting;
-
     return make_tuple(alignedpairs, alignedbases, totalreadlen, totaloutputt, totsuccbases, totfailbases, timeoutputt);
+    
 }
 
 
@@ -731,7 +868,7 @@ for(IT j = start; j<end; ++j){//accumulate the sequences
  **/
 template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation>
 void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, const readVector_ & reads, 
-    FT & getvaluetype, int kmer_len, int xdrop, char* filename, const BELLApars & b_pars, double ratioPhi)
+    FT & getvaluetype, int kmer_len, int xdrop, char* filename, const BELLApars & b_pars, double ratioPhi, int ngpus)
 {
     double free_memory = estimateMemory(b_pars);
 
@@ -816,7 +953,7 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
         delete [] ValuesofC;
 
         tuple<size_t, size_t, size_t, size_t, size_t, size_t, double> alignstats; // (alignedpairs, alignedbases, totalreadlen, outputted, alignedtrue, alignedfalse, timeoutputt)
-        alignstats = RunPairWiseAlignments(colStart[b], colStart[b+1], begnz, colptrC, rowids, values, reads, kmer_len, xdrop, filename, b_pars, ratioPhi);
+        alignstats = RunPairWiseAlignments(colStart[b], colStart[b+1], begnz, colptrC, rowids, values, reads, kmer_len, xdrop, filename, b_pars, ratioPhi, ngpus);
 
 #ifdef TIMESTEP
         if(!b_pars.skipAlignment)

@@ -61,6 +61,7 @@ int main (int argc, char *argv[]) {
     //
     // Program name and purpose
     //
+    cudaFree(0);
     cout << "\nBELLA - Long Read Aligner for De Novo Genome Assembly\n" << endl;
     //
     // Setup the input files
@@ -70,7 +71,7 @@ int main (int argc, char *argv[]) {
     // Follow an option with a colon to indicate that it requires an argument.
 
     optList = NULL;
-    optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:Ka:ze:x:w:nc:m:r:p");
+    optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:Ka:ze:x:w:nc:m:r:p:g:");
    
 
     char *kmer_file = NULL;                 // Reliable k-mer file from Jellyfish
@@ -80,6 +81,7 @@ int main (int argc, char *argv[]) {
     int xdrop = 7;                          // default alignment x-drop factor (x)
     double erate = 0.15;                    // default error rate (e) 
     int depth = 0;                          // depth/coverage required (d)
+    int ngpus = 0;		            // num of gpus
 
     BELLApars b_parameters;
 
@@ -178,6 +180,10 @@ int main (int argc, char *argv[]) {
                 xdrop = atoi(thisOpt->argument);
                 break;
             } 
+	    case 'g': {
+		ngpus = atoi(thisOpt->argument);
+                break;
+	    }
             case 'w': {
                 b_parameters.relaxMargin = atoi(thisOpt->argument);
                 break;
@@ -218,8 +224,9 @@ int main (int argc, char *argv[]) {
                 cout << " -c : alignment score deviation from the mean [0.1]" << endl;
                 cout << " -n : filter out alignment on edge [false]" << endl;
                 cout << " -r : kmerRift: bases separating two k-mers used as seeds for a read [1,000]" << endl;
-                cout << " -p : output in PAF format [false]\n" << endl;
-
+                cout << " -p : output in PAF format [false]" << endl;
+		cout << " -g : specify number of available gpus\n" << endl;
+		
                 FreeOptList(thisOpt); // Done with this list, free it
                 return 0;
             }
@@ -484,7 +491,7 @@ if(b_parameters.alignEnd)
                     }
                 }
                 return m2;
-            }, reads, getvaluetype, kmer_len, xdrop, out_file, b_parameters, ratioPhi); 
+            }, reads, getvaluetype, kmer_len, xdrop, out_file, b_parameters, ratioPhi, ngpus); 
 
     cout << "Total running time: " << omp_get_wtime()-all << "s\n" << endl;
     return 0;

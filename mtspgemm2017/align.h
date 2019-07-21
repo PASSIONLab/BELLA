@@ -79,10 +79,10 @@ seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rle
     TSeed seed(i, j, i+kmer_len, j+kmer_len);
     seedH = infix(seqH, beginPositionH(seed), endPositionH(seed));
     seedV = infix(seqV, beginPositionV(seed), endPositionV(seed));
-
+    cout<<seedH<<endl;
     /* we are reversing the "row", "col" is always on the forward strand */
     Dna5StringReverseComplement twin(seedH);
-
+    cout<<twin<<endl;
     if(twin == seedV)
     {
         strand = 'c';
@@ -114,18 +114,23 @@ void alignLogan( vector<string> &target,
                 vector<SeedL> &seeds,
                 int xdrop, 
                 int kmer_len,
-                vector<loganResult> longestExtensionScore){
+                vector<loganResult> &longestExtensionScore,
+		int ngpus){
 
     ScoringSchemeL sscheme(1, -1, -1, -1);
     int n_al = target.size();
     int* res = (int*)malloc(n_al*sizeof(int));
     vector<ScoringSchemeL> scoring;
     scoring.push_back(sscheme);
-    int ngpus = 1; //change this when compliting integration
-    extendSeedL(seeds, EXTEND_BOTHL, target, query, scoring, xdrop, kmer_len, res, n_al, ngpus);
+   
     
+    //cout<<"LOGAN RESULTS"<<endl;
+    extendSeedL(seeds, EXTEND_BOTHL, target, query, scoring, xdrop, kmer_len, res, n_al, ngpus);
+
+    //cout<<query[0]<<endl;
     for(int i=0; i<n_al; i++){
-        longestExtensionScore[i].score = res[i];
+	longestExtensionScore[i].score = res[i];
+	//cout<<longestExtensionScore[i].score<<endl;
         longestExtensionScore[i].seed = seeds[i];
     }
 

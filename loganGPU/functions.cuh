@@ -700,15 +700,15 @@ inline void extendSeedL(vector<SeedL> &seeds,
 		global_left[i] = false;
 		global_right[i] = false;
 		if(shared_left[i]>=MAX_SIZE_ANTIDIAG){
-			//cudaErrchk(cudaMalloc(&ant_l[i], sizeof(short)*shared_left[i]*3*dim));
-			//global_left[i] = true;
-			shared_left[i]=MAX_SIZE_ANTIDIAG;
+			cudaErrchk(cudaMalloc(&ant_l[i], sizeof(short)*shared_left[i]*3*dim));
+			global_left[i] = true;
+			//shared_left[i]=MAX_SIZE_ANTIDIAG;
 			cout<<"LEFT GLOBAL GPU "<< i <<endl;
 		}
 		if(shared_right[i]>=MAX_SIZE_ANTIDIAG){
-			//cudaErrchk(cudaMalloc(&ant_r[i], sizeof(short)*shared_right[i]*3*dim));
-			//global_right[i] = true;
-			shared_right[i]=MAX_SIZE_ANTIDIAG;
+			cudaErrchk(cudaMalloc(&ant_r[i], sizeof(short)*shared_right[i]*3*dim));
+			global_right[i] = true;
+			//shared_right[i]=MAX_SIZE_ANTIDIAG;
 			cout<<"RIGHT GLOBAL GPU "<< i <<endl;
 		}
 		//compute antidiagonal offsets
@@ -727,7 +727,6 @@ inline void extendSeedL(vector<SeedL> &seeds,
 		suffQ[i] = (char*)malloc(sizeof(char)*totalLengthQSuff[i]);
 		suffT[i] = (char*)malloc(sizeof(char)*totalLengthTSuff[i]);
 		//generate prefix and suffix on the CPU
-		//std::cout << "SETTING UP PREF/SUFF" << std::endl;
 		reverse_copy(query[0+i*nSequences].c_str(),query[0+i*nSequences].c_str()+offsetLeftQ[i][0],prefQ[i]);
 		//memcpy(prefQ[i], query[0+i*nSequences].c_str(), offsetLeftQ[i][0]);
 		memcpy(prefT[i], target[0+i*nSequences].c_str(), offsetLeftT[i][0]);
@@ -748,7 +747,6 @@ inline void extendSeedL(vector<SeedL> &seeds,
 
 		}
 	}
-
 	for(int i = 0; i < ngpus; i++){
 		int dim = nSequences;
 		if(i==ngpus-1)
