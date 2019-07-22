@@ -686,54 +686,53 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
     vector<SeedL> seeds;
     vector<loganResult> maxExtScoreL;
 
-#pragma omp parallel for
+    int counter_acc = 0;
+//#pragma omp parallel for
     for(IT j = start; j<end; ++j){//accumulate the sequences
         for (IT i = colptrC[j]; i < colptrC[j+1]; ++i){
-	        size_t rid = rowids[i-offset];  // row id
-	        size_t cid = j;                 // column id
-	        string seq1 = reads[rid].seq;    // get reference for readibility
-	        string seq2 = reads[cid].seq;    // get reference for readibility
 	        spmatPtr_ val = values[i-offset];
+		for(auto it = val->pos.begin(); it != val->pos.end(); ++it){
 		
-		auto it = val->pos.begin();//check these 2 lines
-	        int indi = it->first, indj = it->second;
+	        	size_t rid = rowids[i-offset];  // row id
+                	size_t cid = j;                 // column id
+                	string seq1 = reads[rid].seq;    // get reference for readibility
+                	string seq2 = reads[cid].seq;    // get reference for readibility
+			int indi = it->first, indj = it->second;
 		
-		int rlen = seq1.length();
-		string strand = "n";
-	        SeedL seed(indi, indj, indi+kmer_len, indj+kmer_len);
-	        string seedH = seq1.substr(getBeginPositionH(seed), kmer_len);
-	        string seedV = seq2.substr(getBeginPositionV(seed), kmer_len);
-		std::reverse(std::begin(seedH),std::end(seedH));
-		std::transform(std::begin(seedH),std::end(seedH),std::begin(seedH),dummycomplement);
-		//std::reverse(std::begin(seedH),std::end(seedH));
-	        if(seedH == seedV){
-	            strand = "c";
-	            seq1 = reads[rid].seq;
-		    std::reverse(std::begin(seq1),std::end(seq1));
-	            std::transform(std::begin(seq1),std::end(seq1),std::begin(seq1),dummycomplement);
+			int rlen = seq1.length();
+			string strand = "n";
+	        	SeedL seed(indi, indj, indi+kmer_len, indj+kmer_len);
+	        	string seedH = seq1.substr(getBeginPositionH(seed), kmer_len);
+	        	string seedV = seq2.substr(getBeginPositionV(seed), kmer_len);
+			std::reverse(std::begin(seedH),std::end(seedH));
+			std::transform(std::begin(seedH),std::end(seedH),std::begin(seedH),dummycomplement);
+			
+	        	if(seedH == seedV){
+	        	    strand = "c";
+	        	    seq1 = reads[rid].seq;
+			    std::reverse(std::begin(seq1),std::end(seq1));
+	        	    std::transform(std::begin(seq1),std::end(seq1),std::begin(seq1),dummycomplement);
 	
-	            setBeginPositionH(seed, rlen-indi-kmer_len);
-	            setBeginPositionV(seed, indj);
-	            setEndPositionH(seed, rlen-indi);
-	            setEndPositionV(seed, indj+kmer_len);
-	        }
-	        loganResult localRes;
-	        localRes.strand = strand;
-	        seeds.push_back(seed);
-	        seq1s.push_back(seq1);
-	        seq2s.push_back(seq2);
-	        maxExtScoreL.push_back(localRes);
+	        	    setBeginPositionH(seed, rlen-indi-kmer_len);
+	        	    setBeginPositionV(seed, indj);
+	        	    setEndPositionH(seed, rlen-indi);
+	        	    setEndPositionV(seed, indj+kmer_len);
+	        	}
+	        	loganResult localRes;
+	        	localRes.strand = strand;
+	        	
+			seeds.push_back(seed);
+	        	seq1s.push_back(seq1);
+	        	seq2s.push_back(seq2);
+	        	maxExtScoreL.push_back(localRes);
+			counter_acc++;
+		}
         }
     }
-    //auto s1 = seq1s.begin();
-    //auto s2 = seq2s.begin();
-    //auto seedb = seeds.begin();
-    //auto scb =  maxExtScoreL.begin();
-    //for(int i=0; i<seeds.size(); i+=100000){
-    //	alignLogan(s1+i, s2+i, seedb+i, xdrop, kmer_len, scb+i, ngpus);
-    //}
+    cout<<"STARTING ALIGNMENT"<<endl;
     alignLogan(seq1s,seq2s,seeds,xdrop,kmer_len,maxExtScoreL,ngpus);
-    //cout<<"SEQAN: "<<endl;
+    cout<<"COMPLETED ALIGNMENT"<<endl;
+    
     int index = 0;
 #pragma omp parallel for
     for(IT j = start; j<end; ++j) // for (end-start) columns of A^T A (one block)
@@ -758,9 +757,9 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
             	
             int seq1len = seq1.length();
             int seq2len = seq2.length();
-
-            spmatPtr_ val = values[i-offset];
-
+	    
+	    spmatPtr_ val = values[i-offset];
+	    //cout<<val->count<<endl;
             if(!b_pars.skipAlignment) // fix -z to not print 
             {
 #ifdef TIMESTEP
@@ -768,33 +767,31 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
                 readLengthsThread = readLengthsThread + seq1len + seq2len;
 #endif
 		loganResult maxExtScore = maxExtScoreL[index];
-		index++;
+		//index++;
                 bool passed = false;
                 if(val->count == 1)
                 {
                     auto it = val->pos.begin();
-                    int i = it->first, j = it->second;
+                    //int i = it->first, j = it->second;
 
                     //maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, xdrop, kmer_len);
                     PostAlignDecisionGPU(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
-                }
-                else
+                }else{
+		for(auto it = val->pos.begin(); it != val->pos.end(); ++it) // if !b_pars.allKmer this should be at most two cycle
                 {
-                    for(auto it = val->pos.begin(); it != val->pos.end(); ++it) // if !b_pars.allKmer this should be at most two cycle
-                    {
-                        int i = it->first, j = it->second;
-			//cout<<"IN"<<endl;
-                        //maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, xdrop, kmer_len);
-                        PostAlignDecisionGPU(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
-
-                        if(passed){
-                        //   	cout<<"PASSED"<<endl;
-				break;
-			}
-                    }
+                    //int i = it->first, j = it->second;
+		    loganResult maxExtScore = maxExtScoreL[index];
+		    //cout<<"IN"<<endl;
+                    //maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, xdrop, kmer_len);
+                    if(!passed)
+		        PostAlignDecisionGPU(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
+		    index++;
+			
+                
+                }
                 }
 #ifdef TIMESTEP
-            numBasesAlignedThread += getEndPositionV(maxExtScore.seed)-getBeginPositionV(maxExtScore.seed);
+                numBasesAlignedThread += getEndPositionV(maxExtScore.seed)-getBeginPositionV(maxExtScore.seed);
 	    //numBasesAlignedThread += endPositionV(maxExtScore.seed)-beginPositionV(maxExtScore.seed);
 
 #endif

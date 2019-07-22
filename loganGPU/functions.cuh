@@ -703,13 +703,13 @@ inline void extendSeedL(vector<SeedL> &seeds,
 			cudaErrchk(cudaMalloc(&ant_l[i], sizeof(short)*shared_left[i]*3*dim));
 			global_left[i] = true;
 			//shared_left[i]=MAX_SIZE_ANTIDIAG;
-			cout<<"LEFT GLOBAL GPU "<< i <<endl;
+			//cout<<"LEFT GLOBAL GPU "<< i <<endl;
 		}
 		if(shared_right[i]>=MAX_SIZE_ANTIDIAG){
 			cudaErrchk(cudaMalloc(&ant_r[i], sizeof(short)*shared_right[i]*3*dim));
 			global_right[i] = true;
 			//shared_right[i]=MAX_SIZE_ANTIDIAG;
-			cout<<"RIGHT GLOBAL GPU "<< i <<endl;
+			//cout<<"RIGHT GLOBAL GPU "<< i <<endl;
 		}
 		//compute antidiagonal offsets
 		partial_sum(offsetLeftQ[i].begin(),offsetLeftQ[i].end(),offsetLeftQ[i].begin());	
@@ -791,7 +791,7 @@ inline void extendSeedL(vector<SeedL> &seeds,
 	
 	auto end_t1 = NOW;
 	duration<double> transfer1=end_t1-start_t1;
-	std::cout << "Input setup time: " << transfer1.count() << std::endl;
+	//std::cout << "Input setup time: " << transfer1.count() << std::endl;
 	auto start_c = NOW;
 	
 	//execute kernels
@@ -834,7 +834,7 @@ inline void extendSeedL(vector<SeedL> &seeds,
 
 	auto end_c = NOW;
 	duration<double> compute = end_c-start_c;
-	std::cout << "Compute time: " << compute.count() << std::endl;
+	//std::cout << "Compute time: " << compute.count() << std::endl;
 
 	cudaErrchk(cudaPeekAtLastError());
 
@@ -867,7 +867,7 @@ inline void extendSeedL(vector<SeedL> &seeds,
 	
 		if(global_left[i])
 			cudaErrchk(cudaFree(ant_l[i])); 
-			if(global_right[i])
+		if(global_right[i])
 			cudaErrchk(cudaFree(ant_r[i]));
 
 	}
