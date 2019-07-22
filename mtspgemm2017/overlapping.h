@@ -448,17 +448,19 @@ int getChainLen(const string& seqH, const string& seqV, const int begpH, const i
 			Kmer mykmer(kmerstrfromstr.c_str(), kmerstrfromstr.length());
 			Kmer lexsmall = mykmer.rep();
 
-			//auto found = countsubkmers.find(lexsmall);
-			//if(found)
-			//	matchingSubKmers++;
+			int proxy;
+			auto found = countsubkmers.find(lexsmall, proxy);
+			if(found)
+				matchingSubKmers++;
 		}
-		//return (matchingSubKmers * size);
-		return 100;
+
+		int chainLen = matchingSubKmers * size;
+		return chainLen;
 	}
 
 void PostAlignDecision(const seqAnResult& maxExtScore, const readType_& read1, const readType_& read2, 
 					const BELLApars& b_pars, double ratioPhi, int count, stringstream& myBatch, size_t& outputted,
-					size_t& numBasesAlignedTrue, size_t& numBasesAlignedFalse, bool& passed)
+					size_t& numBasesAlignedTrue, size_t& numBasesAlignedFalse, bool& passed, int& matches)
 {
 	auto maxseed = maxExtScore.seed;	// returns a seqan:Seed object
 
@@ -496,20 +498,26 @@ void PostAlignDecision(const seqAnResult& maxExtScore, const readType_& read1, c
 	int overlapLenH = endpH - begpH;
 	int normLen     = max(overlapLenV, overlapLenH);
 
+	//	GG: too short
+	if(normLen < b_pars.minOverlap)
+		return;
+
 	//	GG: we want a separate function to recount smaller kmer and compute the sequence divergence
 	//	GG: return chainLen = numLmers * size with size < kmerSize
 	//	GG: this needs to be a parameter
-	int size     = 15;
-	int chainLen = getChainLen(seq1, seq2, begpH, endpH, begpV, endpV, size, maxExtScore.strand);
+	//	int size     = 15;
+	int chainLen        = matches * b_pars.kmerSize;
+	//	int chainLen = getChainLen(seq1, seq2, begpH, endpH, begpV, endpV, size, maxExtScore.strand);
+	float matchRate     = (float)chainLen / (float)normLen;
+		  matchRate     = std::min(matchRate, 1.0f);
+	float seqDivergence = std::log(1 / matchRate) / b_pars.kmerSize;
+	//	float seqDivergence = std::log(1 / matchRate) / size;
 
-	float matchRate     = chainLen / normLen;
-	float seqDivergence = std::log(1 / matchRate) / size;
-
-//	GG: debug
-//	#pragma omp critical
-//		{
-//			std::cout << seqDivergence << '\t' << matchRate << '\t' << normLen << '\t' << chainLen << std::endl;
-//		}
+	//	GG: debug
+	//#pragma omp critical
+	//	{
+	//		std::cout << seqDivergence << '\t' << matchRate << '\t' << normLen << '\t' << chainLen << std::endl;
+	//	}
 
 	if(b_pars.adapThr)
 	{
@@ -619,7 +627,7 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 				//	GG: nucleotide alignment
 				maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, xdrop, b_pars.kmerSize);
 				PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], 
-					outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
+					outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed, matches);
 
 #ifdef TIMESTEP
 			numBasesAlignedThread += endPositionV(maxExtScore.seed)-beginPositionV(maxExtScore.seed);
