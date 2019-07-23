@@ -732,7 +732,11 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
     cout<<"STARTING ALIGNMENT"<<endl;
     alignLogan(seq1s,seq2s,seeds,xdrop,kmer_len,maxExtScoreL,ngpus);
     cout<<"COMPLETED ALIGNMENT"<<endl;
-    
+
+    //for(int i = 0; i < maxExtScoreL.size(); i++){
+    //	cout<<maxExtScoreL[i].score<<endl;
+    //}
+ 
     int index = 0;
 #pragma omp parallel for
     for(IT j = start; j<end; ++j) // for (end-start) columns of A^T A (one block)
