@@ -121,6 +121,7 @@ struct spmatType_ {
 
 		return pos[ids[0]][0];	// GG: returning choosen seed
 	}
+
 };
 
 typedef shared_ptr<spmatType_> spmatPtr_; // pointer to spmatType_ datastruct

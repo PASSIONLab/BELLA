@@ -478,6 +478,27 @@ void PostAlignDecision(const seqAnResult& maxExtScore, const readType_& read1, c
 	int read1len = seq1.length();
 	int read2len = seq2.length();
 
+	//	GG: divergence estimation
+	int overlapLenV = endpV - begpV;
+	int overlapLenH = endpH - begpH;
+	int normLen     = max(overlapLenV, overlapLenH);
+	int minLen      = min(overlapLenV, overlapLenH);
+
+//////////////////////////////////////////////////////////////////
+//						FILTER OUT OVERLAPS						//
+//////////////////////////////////////////////////////////////////
+
+	//	GG: too short
+	if(minLen < b_pars.minOverlap)
+		return;
+
+	//	GG: filter overlaps that way to divergent in length
+	//	GG: this shouldn't happen to us
+	float ovpDiv = 0.5;
+	float lengthDiff = std::abs(overlapLenV - overlapLenH);
+	if(lengthDiff > ovpDiv * minLen)
+		return;
+
 	//	GG: check maxOverhang (from MK)
 	if(std::min(begpV, begpH) > b_pars.maxOverhang)
 		return;
@@ -493,15 +514,6 @@ void PostAlignDecision(const seqAnResult& maxExtScore, const readType_& read1, c
 			return;	// GG: this suggest a chimeric read but we should be more careful here
 	}
 
-	//	GG: divergence estimation
-	int overlapLenV = endpV - begpV;
-	int overlapLenH = endpH - begpH;
-	int normLen     = max(overlapLenV, overlapLenH);
-
-	//	GG: too short
-	if(normLen < b_pars.minOverlap)
-		return;
-
 	//	GG: we want a separate function to recount smaller kmer and compute the sequence divergence
 	//	GG: return chainLen = numLmers * size with size < kmerSize
 	//	GG: this needs to be a parameter
@@ -512,6 +524,11 @@ void PostAlignDecision(const seqAnResult& maxExtScore, const readType_& read1, c
 		  matchRate     = std::min(matchRate, 1.0f);
 	float seqDivergence = std::log(1 / matchRate) / b_pars.kmerSize;
 	//	float seqDivergence = std::log(1 / matchRate) / size;
+
+	if(seqDivergence > b_pars.maxDivergence)
+		return;
+
+//////////////////////////////////////////////////////////////////
 
 	//	GG: debug
 	//#pragma omp critical
@@ -623,6 +640,11 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 
 				pair<int, int> kmer = val->choose();
 				int i = kmer.first, j = kmer.second;
+
+				//	GG: nucleotide alignment
+				maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, xdrop, b_pars.kmerSize);
+				PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], 
+					outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed, matches);
 
 				//	GG: nucleotide alignment
 				maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, xdrop, b_pars.kmerSize);
