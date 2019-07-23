@@ -773,10 +773,11 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
                 {
                     auto it = val->pos.begin();
                     //int i = it->first, j = it->second;
-
+		    loganResult maxExtScore = maxExtScoreL[index];
                     //maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, xdrop, kmer_len);
                     PostAlignDecisionGPU(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
-                }else{
+                    index++;
+		}else{
 		for(auto it = val->pos.begin(); it != val->pos.end(); ++it) // if !b_pars.allKmer this should be at most two cycle
                 {
                     //int i = it->first, j = it->second;
