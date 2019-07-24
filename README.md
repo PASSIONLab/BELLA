@@ -40,7 +40,7 @@ Build using makefile:
 ln -s makefile-nersc Makefile && make bella
 ```
 
-## Run
+### Run
 
 To run with default setting:
 ```
@@ -75,7 +75,7 @@ Optional flag description:
 -b : Bin size binning algorithm [500]
 -p : Output in PAF format [false]
 ```
-## Error Rate
+### Error Rate
 
 The error rate is an important parameter in BELLA as it is used to choose which k-mers contribute to the overlap detection.
 
@@ -85,7 +85,7 @@ The user should either:
 * **-q** = confirm that the data has quality values and we can estimate the error rate from the data set
 * **-u** = confirm that we can use a default error rate (0.15)
 
-## Kmer Counting
+### K-mer Counting
 
 BELLA can run with three different k-mer counting options:
 
@@ -93,7 +93,7 @@ BELLA can run with three different k-mer counting options:
 * **Gerbil**: BELLA uses Gerbil k-mer counter (**-g**). GPU-accelerated version can be used.
 * **Jellyfish**: BELLA uses [Jellyfish](http://www.cbcb.umd.edu/software/jellyfish/) k-mer counter. It is necessary to install Jellyfish, add **-DJELLYFISH** when compiling BELLA, and give Jellyfish output file to BELLA as input parameter. Differently from Gerbil, the k-mer counting does not happen within BELLA.
 
-## Memory Usage
+### Memory Usage
 
 The parallelism during the overlap detection phase depends on the available number of threads and on the available RAM [Default: 8000MB].
 
