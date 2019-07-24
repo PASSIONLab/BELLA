@@ -7,9 +7,20 @@ To achieve fast overlapping without sketching, BELLA uses sparse matrix-matrix m
 
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
 
-### Prerequisites
+### Prerequisites and Dependencies
 
-**COMPILER:** the software **requires gcc-6 or higher** with OpenMP to be compiled.  
+**COMPILER:** the software **requires gcc-6** with OpenMP and Gerbil to be compiled.
+**BOOST** to use Gerbil kmerCounting.
+You can install it on macOS using:
+```
+brew install boost
+```
+For Ubuntu:
+```
+sudo apt-get install libboost-all-dev
+```
+[**CUDA**](https://docs.nvidia.com/cuda/) to compile and use Gerbil. You need CUDA to compile Gerbil even if you do not plan to use the GPU-accelerated version. This will change soon.
+
 To run the evaluation test python3 and simplesam package are required. It can be installed via pip: 
 ```
 pip install simplesam
@@ -20,6 +31,7 @@ pip install simplesam
 Clone the repository and enter it:
 
 ```
+git clone --recurse-submodules https://github.com/giuliaguidi/bella
 cd bella
 ```
 Build using makefile:
@@ -32,7 +44,7 @@ ln -s makefile-nersc Makefile && make bella
 
 To run with default setting:
 ```
-./bella -i <text-file-listing-all-input-fastq-files> -o <out-filename> -d <depth>
+./bella -i <text-file-listing-all-input-fastq-files> -o <out-filename> -d <covverage>
 ```
 BELLA requires a text file containing the path to the input fastq file(s) as the argument for the -i option.
 Example: [input-example.txt](https://github.com/giuliaguidi/bella/files/2620924/input-example.txt)
@@ -44,22 +56,23 @@ To show the usage:
 
 Optional flag description: 
 ```
--i : list of fastq(s) (required)
--o : output filename (required)
--d : depth (required)
--k : k-mer length [17]
--a : fixed alignment threshold [50]
--x : alignment x-drop factor [7]
--e : error rate [auto estimated from fastq]
--m : total RAM of the system in MB [auto estimated if possible or 8,000 if not]
--z : skip the pairwise alignment [false]
--w : relaxMargin parameter for alignment on edges [300]
--c : alignment score deviation from the mean [0.1]
--n : filter out alignment on edge [false]
--r : kmerRift: bases separating two k-mers used as seeds for a read [1,000]
--K : all (non-overlapping and separated by <kmerRift> bases) k-mers as alignment seeds [false]
--f : k-mer list from Jellyfish (required if #DEFINE JELLYFISH enabled)
--p : output in PAF format [false]
+-f : List from Jellyfish (required if Jellyfish kmerCounting is used)
+-i : List of fastq(s)	(required)
+-o : Output filename	(required)
+-d : Dataset coverage	(required)
+-k : KmerSize [17]
+-a : User-defined alignment threshold [false, 0]
+-x : SeqAn xDrop [7]
+-e : Error rate [0.15]
+-q : Estimare error rate from the dataset [false]
+-g : Use Gerbil as kmerCounter [false]
+-m : Total RAM of the system in MB [auto estimated if possible or 8,000 if not]
+-z : Do not run pairwise alignment [false]
+-c : Deviation from the mean alignment score [0.10]
+-r : KmerRift: bases separating two k-mers [kmerSize]
+-s : Common k-mers threshold to compute alignment [1]
+-b : Bin size binning algorithm [500]
+-p : Output in PAF format [false]
 ```
 **NOTE**: to use [Jellyfish](http://www.cbcb.umd.edu/software/jellyfish/) k-mer counting is necessary to enable **#DEFINE JELLYFISH.**
 
@@ -137,6 +150,7 @@ To cite our work or to know more about our methods, please refer to:
 
 * [**Daniel Rokhsar**](https://mcb.berkeley.edu/labs/rokhsar/)
 * [**Katherine Yelick**](https://people.eecs.berkeley.edu/~yelick/)
+* [**Qi Zhou**](https://it.linkedin.com/in/qizhou1512/)
 
 ## Copyright Notice
  
