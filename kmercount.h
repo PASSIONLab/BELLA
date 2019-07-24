@@ -162,22 +162,22 @@ void GerbilCount(string tempDir,string fileName,dictionary_t &countsreliable_den
 	lower = computeLower(depth, erate, kmer_len);
     	upper = computeUpper(depth, erate, kmer_len);	
 	
-	vector<pair<string,unsigned int>> listKmer;
+	vector<pair<string,unsigned int>> *listKmer;
 	listKmer = application.getListKmer();
 
 	// Reliable k-mer filter on countsdenovo
     	int kmer_id_denovo = 0;
     	
 	
-	int listLength = listKmer.size();
+	int listLength = (*listKmer).size();
     	for(int i = 0; i<listLength; i++)
-        if (get<1>(listKmer[i]) >= lower && get<1>(listKmer[i]) <= upper)
+        if (get<1>((*listKmer)[i]) >= lower && get<1>((*listKmer)[i]) <= upper)
         {
-           	Kmer mykmer(get<0>(listKmer[i]).c_str());
+           	Kmer mykmer(get<0>((*listKmer)[i]).c_str());
 		countsreliable_denovo.insert(mykmer,kmer_id_denovo);
         	++kmer_id_denovo;
         }
-    	
+    	delete listKmer;	
     	// Print some information about the table
     	if (countsreliable_denovo.size() == 0)
    	{
@@ -211,12 +211,8 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
     double cardinality;
     size_t totreads = 0;
     
-    //
-	gerbil::Application application(17,/*"/global/homes/q/qizhou/bella/paeruginosa30x_0001_5reads.fastq"*/"/global/cscratch1/sd/qizhou/synthetic_datasets/abaumannii30x_0001.fastq","tempDir",0,"outputTRY",false);
-        application.process();
-    //
-    //for testing
-    ofstream outfile ("test_error_rate.txt");
+   
+    
 
     for(auto itr=allfiles.begin(); itr!=allfiles.end(); itr++) 
     {

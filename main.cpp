@@ -302,8 +302,7 @@ int main (int argc, char *argv[]) {
     // Error estimation and reliabe bounds computation within denovo counting
     cout << "\nRunning with up to " << MAXTHREADS << " threads" << endl;
     double all = omp_get_wtime();
-   // DeNovoCount(allfiles, countsreliable, lower, upper, kmer_len, depth, erate, upperlimit, b_parameters);
-    GerbilCount("tempDir","/global/cscratch1/sd/qizhou/synthetic_datasets/abaumannii30x_0001.fastq",countsreliable,lower, upper, kmer_len,  depth, erate,  upperlimit, b_parameters);
+    GerbilCount("tempDir",all_inputs_fofn,countsreliable,lower, upper, kmer_len,  depth, erate,  upperlimit, b_parameters);
 #ifdef PRINT
     cout << "Error rate estimate is " << erate << endl;
     cout << "Reliable lower bound: " << lower << endl;
