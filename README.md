@@ -3,6 +3,21 @@
 BELLA is a computationally efficient and highly accurate long-read to long-read aligner and overlapper. BELLA uses a k-mer seed-based approach to detect overlaps between noisy, long-read data. BELLA provides a novel algorithm for pruning k-mers that are unlikely to be useful in overlap detection and whose presence would only incur unnecessary computational costs. This reliable k-mers detection algorithm explicitly maximizes the probability of retaining k-mers that belong to unique regions of the genome.
 To achieve fast overlapping without sketching, BELLA uses sparse matrix-matrix multiplication and utilizes high-performance software and libraries developed for this sparse matrix subroutine. BELLA’s overlap detection has been coupled with a state-of-the-art [seed-and-extend banded-alignment](https://github.com/seqan/seqan) method. BELLA’s alignment step implements a new method to separate true alignments from false positives depending on the alignment score.
 
+## Content
+
+*	[Getting Started](#getting-started)
+*	[Prerequisites and Dependencies](#prerequisities-and-dependencies)
+*	[Compile](#compile)
+*	[Run](#run)
+*	[Error Rate](#error-rate)
+*	[K-mer Counting](#k-mer-counting)
+*	[Memory Usage](#memory-usage)
+*	[Output Format](#output-format)
+*	[Performance Evaluation](#performance-evaluation)
+*	[Demo](#demo)
+*	[I get 0 outputs, what is likely going wrong?](#I-get-0-outputs,-what-is-likely-going-wrong?)
+*	[Citation](#citation)
+
 ## Getting Started
 
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
@@ -98,7 +113,6 @@ BELLA can run with three different k-mer counting options:
 The parallelism during the overlap detection phase depends on the available number of threads and on the available RAM [Default: 8000MB].
 
 Use **-DLINUX** for Linux or **-DOSX** for macOS at compile time to estimate available RAM from your machine. 
-
 If your machine has more RAM than the default one, using **-DLINUX** or **-DOSX** would **make the ovelap detection phase faster**. 
 
 ## Output Format
@@ -159,7 +173,7 @@ You can run the evaluation code located in /bench folder as:
 
 ## I get 0 outputs, what is likely going wrong?
 
-
+Error rate estimation went wrong.
 
 ## Citation
 
