@@ -6,6 +6,7 @@ INCLUDE = -I$(SPRNPATH)/include -I${BOOST_ROOT}/include   #-I$(CURDIR)/libgaba
 SEQINCLUDE = -I$(SEQANPATH)
 MLKINCLUDE = -I/opt/intel/composer_xe_2015.0.039/mkl/include
 LIBPATH = -L/opt/intel/composer_xe_2015.0.039/mkl/lib 
+
 COMPILER = g++
 CC = gcc
 CFLAGS =-std=c++11 -fpermissive -w -O3 -I. -c #-I. -std=c++14 -O3 -W -Wall -Wextra -pedantic -ansi -c -fpermissive
@@ -22,8 +23,6 @@ INC_INT := -Igerbil/include/gerbil -Igerbil/include/cuda_ds -Igerbil/include/cud
 
 CUDA_SRC := $(wildcard gerbil/src/cuda_ds/*.cu)
 CUDA_OBJ := $(patsubst %.cu,%.o,$(CUDA_SRC))
-
-#SEQFLAGS = -DSEQAN_ARCH_SSE4=1 -DSEQAN_ARCH_AVX2=1 -DSEQAN_BGZF_NUM_THREADS=1
 
 sprng:	
 	(cd $(SPRNPATH); $(MAKE); cd ../..)
