@@ -646,11 +646,6 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 				PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], 
 					outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed, matches);
 
-				//	GG: nucleotide alignment
-				maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, xdrop, b_pars.kmerSize);
-				PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], 
-					outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed, matches);
-
 #ifdef TIMESTEP
 			numBasesAlignedThread += endPositionV(maxExtScore.seed)-beginPositionV(maxExtScore.seed);
 #endif
