@@ -69,7 +69,7 @@ int main (int argc, char *argv[]) {
 	// Follow an option with a colon to indicate that it requires an argument.
 
 	optList = NULL;
-	optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:a:ze:x:c:m:r:pb:s:");
+	optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:a:ze:x:c:m:r:pb:s:q:gu:");
 
 	char	*kmer_file 			= NULL;	// Reliable k-mer file from Jellyfish
 	char	*all_inputs_fofn 	= NULL;	// List of fastqs (i)
@@ -159,16 +159,21 @@ int main (int argc, char *argv[]) {
 				b_parameters.minSurvivedKmers = atoi(thisOpt->argument);
 				break;
 			}
-      case 'e': { // Default: skipEstimate and errorRate = 0.15
+			case 'e': { // User suggests erro rate
 				b_parameters.skipEstimate = true;
 				b_parameters.errorRate = strtod(thisOpt->argument, NULL);
 				break;
 			}
-      case 'q': { // Read set has quality values and BELLA can use it to estimate the error rate
+			case 'q': { // Read set has quality values and BELLA can use it to estimate the error rate
 				b_parameters.skipEstimate = false;
 				break;
 			}
-      case 'g': { // use Gerbil as kmerCounter
+			case 'u': {	// Default: skipEstimate and errorRate = 0.15
+				b_parameters.skipEstimate = true;
+				b_parameters.errorRate = 0.15;	// Default value
+				break;
+			}
+			 case 'g': { // use Gerbil as kmerCounter
 				b_parameters.useGerbil = true;
 				break;
 			}
@@ -211,7 +216,9 @@ int main (int argc, char *argv[]) {
 				cout << " -a : User-defined alignment threshold [false, 0]" 		<< endl;
 				cout << " -x : SeqAn xDrop [7]" 									<< endl;
 				cout << " -e : Error rate [0.15]" 				<< endl;
-        cout << " -q : Estimare error rate from the dataset [false]" 				<< endl;
+				cout << " -q : Estimare error rate from the dataset [false]" 	<< endl;
+				cout << " -u : Use default error rate setting [false]"			<< endl;
+				cout << " -g : Use Gerbil as kmerCounter [false]" 				<< endl;
 				cout << " -m : Total RAM of the system in MB [auto estimated if possible or 8,000 if not]" << endl;
 				cout << " -z : Do not run pairwise alignment [false]" 				<< endl;
 				cout << " -c : Deviation from the mean alignment score [0.10]" 		<< endl;
@@ -238,6 +245,15 @@ int main (int argc, char *argv[]) {
 	{
 		cout << "BELLA execution terminated: missing arguments" << endl;
 		cout << "Run with -h to print out the command line options\n" << endl;
+		return 0;
+	}
+	if(b_parameters.errorRate == 0.00 && b_parameters.skipEstimate == true)
+	{
+		cout << "BELLA execution terminated.\n
+		The user should either:\n
+		* -e = suggest an error rate\n
+		* -q = confirm that the data has quality values and we can estimate the error rate from the data set\n
+		* -u = confirm that we can use a default error rate (0.15)\n" << endl;
 		return 0;
 	}
 #endif

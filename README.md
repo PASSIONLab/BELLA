@@ -9,26 +9,26 @@ These instructions will get you a copy of the project up and running on your loc
 
 ### Prerequisites and Dependencies
 
-**COMPILER:** the software **requires gcc-6** with OpenMP and Gerbil to be compiled.
-**BOOST** to use Gerbil kmerCounting.
-You can install it on macOS using:
+* **COMPILER:** the software **requires gcc-6** with OpenMP and Gerbil to be compiled.
+* **BOOST** to use Gerbil kmerCounting.
+You can install BOOST on macOS using:
 ```
 brew install boost
 ```
-For Ubuntu:
+On Linux:
 ```
 sudo apt-get install libboost-all-dev
 ```
-[**CUDA**](https://docs.nvidia.com/cuda/) to compile and use Gerbil. You need CUDA to compile Gerbil even if you do not plan to use the GPU-accelerated version. This will change soon.
+* [**CUDA**](https://docs.nvidia.com/cuda/) to compile and use Gerbil. You need CUDA to compile Gerbil even if you do not plan to use the GPU-accelerated version. **This will change soon.**
 
-To run the evaluation test python3 and simplesam package are required. It can be installed via pip: 
+* **Python3** and **simplesam** are required to generare the ground truth data. You can install simplesam via [pip](https://pip.pypa.io/en/stable/installing/): 
 ```
 pip install simplesam
 ```
 
-### Installing
+### Compile
 
-Clone the repository and enter it:
+Clone the repository, its submodule, and enter it:
 
 ```
 git clone --recurse-submodules https://github.com/giuliaguidi/bella
@@ -40,7 +40,7 @@ Build using makefile:
 ln -s makefile-nersc Makefile && make bella
 ```
 
-## Running BELLA
+## Run
 
 To run with default setting:
 ```
@@ -65,6 +65,7 @@ Optional flag description:
 -x : SeqAn xDrop [7]
 -e : Error rate [0.15]
 -q : Estimare error rate from the dataset [false]
+-u : Use default error rate setting [false]
 -g : Use Gerbil as kmerCounter [false]
 -m : Total RAM of the system in MB [auto estimated if possible or 8,000 if not]
 -z : Do not run pairwise alignment [false]
@@ -74,9 +75,31 @@ Optional flag description:
 -b : Bin size binning algorithm [500]
 -p : Output in PAF format [false]
 ```
-**NOTE**: to use [Jellyfish](http://www.cbcb.umd.edu/software/jellyfish/) k-mer counting is necessary to enable **#DEFINE JELLYFISH.**
+## Error Rate
 
-The parallelism depends on the available number of threads and on the available RAM [Default: 8000MB]. Use -DLINUX for Linux or -DOSX for macOS at compile time to estimate available RAM from your machine.
+The error rate is an important parameter in BELLA as it is used to choose which k-mers contribute to the overlap detection.
+
+The user should either:
+
+* **-e** = suggest an error rate
+* **-q** = confirm that the data has quality values and we can estimate the error rate from the data set
+* **-u** = confirm that we can use a default error rate (0.15)
+
+## Kmer Counting
+
+BELLA can run with three different k-mer counting options:
+
+* **Default**: BELLA uses its own fast k-mer counter based on a [Bloom filter](https://en.wikipedia.org/wiki/Bloom_filter) data structure. This is the fastest CPU-based option but it is limited by the available RAM. If BELLA goes **out-of-memory during the k-mer counting stage**, you should use Gerbil k-mer counter instead. 
+* **Gerbil**: BELLA uses Gerbil k-mer counter (**-g**). GPU-accelerated version can be used.
+* **Jellyfish**: BELLA uses [Jellyfish](http://www.cbcb.umd.edu/software/jellyfish/) k-mer counter. It is necessary to install Jellyfish, add **-DJELLYFISH** when compiling BELLA, and give Jellyfish output file to BELLA as input parameter. Differently from Gerbil, the k-mer counting does not happen within BELLA.
+
+## Memory Usage
+
+The parallelism during the overlap detection phase depends on the available number of threads and on the available RAM [Default: 8000MB].
+
+Use **-DLINUX** for Linux or **-DOSX** for macOS at compile time to estimate available RAM from your machine. 
+
+If your machine has more RAM than the default one, using **-DLINUX** or **-DOSX** would **make the ovelap detection phase faster**. 
 
 ## Output Format
 
@@ -133,6 +156,10 @@ You can download an _E. coli_ 30X dataset [here](https://bit.ly/2EEq3JM) to test
 You can run the evaluation code located in /bench folder as: 
 
 ```./result -G ecsample_singlemapped_q10.txt -B <bella-output>```
+
+## I get 0 outputs, what is likely going wrong?
+
+
 
 ## Citation
 
