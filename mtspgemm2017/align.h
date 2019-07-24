@@ -24,7 +24,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#define BATCH_SIZE 10000
+#define BATCH_SIZE 50000
 
 using namespace seqan;
 using namespace std;
@@ -124,13 +124,13 @@ void alignLogan( vector<string> &target,
     //int* res = (int*)malloc(BATCH_SIZE*sizeof(int));
     vector<ScoringSchemeL> scoring;
     scoring.push_back(sscheme);
-    int n_al_loc=BATCH_SIZE; 
+    int n_al_loc=BATCH_SIZE*ngpus; 
     
     //divide the alignment in batches of 100K alignments
-    for(int i=0; i < n_al; i+=BATCH_SIZE){ 
+    for(int i=0; i < n_al; i+=BATCH_SIZE*ngpus){ 
 	//cout<<"BATCH "<<i/BATCH_SIZE<<endl;
-	if(n_al<i+BATCH_SIZE)
-		n_al_loc = n_al%BATCH_SIZE;
+	if(n_al<i+BATCH_SIZE*ngpus)
+		n_al_loc = n_al%(BATCH_SIZE*ngpus);
 	//else
 	//	n_al_loc = n_al%BATCH_SIZE;	
 

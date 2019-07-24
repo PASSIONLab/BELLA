@@ -3,7 +3,7 @@
 // Author: G. Guidi, A. Zeni
 // Date:   6 March 2019
 //==================================================================
-#define N_THREADS 512 
+#define N_THREADS 256 
 #define N_BLOCKS 500000 
 #define MIN -32768
 #define BYTES_INT 4
@@ -700,15 +700,15 @@ inline void extendSeedL(vector<SeedL> &seeds,
 		global_left[i] = false;
 		global_right[i] = false;
 		if(shared_left[i]>=MAX_SIZE_ANTIDIAG){
-			cudaErrchk(cudaMalloc(&ant_l[i], sizeof(short)*shared_left[i]*3*dim));
-			global_left[i] = true;
-			//shared_left[i]=MAX_SIZE_ANTIDIAG;
+			//cudaErrchk(cudaMalloc(&ant_l[i], sizeof(short)*shared_left[i]*3*dim));
+			//global_left[i] = true;
+			shared_left[i]=MAX_SIZE_ANTIDIAG;
 			//cout<<"LEFT GLOBAL GPU "<< i <<endl;
 		}
 		if(shared_right[i]>=MAX_SIZE_ANTIDIAG){
-			cudaErrchk(cudaMalloc(&ant_r[i], sizeof(short)*shared_right[i]*3*dim));
-			global_right[i] = true;
-			//shared_right[i]=MAX_SIZE_ANTIDIAG;
+			//cudaErrchk(cudaMalloc(&ant_r[i], sizeof(short)*shared_right[i]*3*dim));
+			//global_right[i] = true;
+			shared_right[i]=MAX_SIZE_ANTIDIAG;
 			//cout<<"RIGHT GLOBAL GPU "<< i <<endl;
 		}
 		//compute antidiagonal offsets

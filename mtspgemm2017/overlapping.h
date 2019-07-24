@@ -686,7 +686,7 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
     vector<SeedL> seeds;
     vector<loganResult> maxExtScoreL;
 
-    int counter_acc = 0;
+    //int counter_acc = 0;
 //#pragma omp parallel for
     for(IT j = start; j<end; ++j){//accumulate the sequences
         for (IT i = colptrC[j]; i < colptrC[j+1]; ++i){
@@ -725,7 +725,7 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 	        	seq1s.push_back(seq1);
 	        	seq2s.push_back(seq2);
 	        	maxExtScoreL.push_back(localRes);
-			counter_acc++;
+			//counter_acc++;
 		}
         }
     }
@@ -738,7 +738,7 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
     //}
  
     int index = 0;
-#pragma omp parallel for
+//#pragma omp parallel for
     for(IT j = start; j<end; ++j) // for (end-start) columns of A^T A (one block)
     {
 	
