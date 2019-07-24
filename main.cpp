@@ -159,9 +159,17 @@ int main (int argc, char *argv[]) {
 				b_parameters.minSurvivedKmers = atoi(thisOpt->argument);
 				break;
 			}
-			case 'e': {
+      case 'e': { // Default: skipEstimate and errorRate = 0.15
 				b_parameters.skipEstimate = true;
 				b_parameters.errorRate = strtod(thisOpt->argument, NULL);
+				break;
+			}
+      case 'q': { // Read set has quality values and BELLA can use it to estimate the error rate
+				b_parameters.skipEstimate = false;
+				break;
+			}
+      case 'g': { // use Gerbil as kmerCounter
+				b_parameters.useGerbil = true;
 				break;
 			}
 			case 'a': {
@@ -202,7 +210,8 @@ int main (int argc, char *argv[]) {
 				cout << " -k : KmerSize [17]" 					<< endl;
 				cout << " -a : User-defined alignment threshold [false, 0]" 		<< endl;
 				cout << " -x : SeqAn xDrop [7]" 									<< endl;
-				cout << " -e : Error rate [auto estimated from fastq]" 				<< endl;
+				cout << " -e : Error rate [0.15]" 				<< endl;
+        cout << " -q : Estimare error rate from the dataset [false]" 				<< endl;
 				cout << " -m : Total RAM of the system in MB [auto estimated if possible or 8,000 if not]" << endl;
 				cout << " -z : Do not run pairwise alignment [false]" 				<< endl;
 				cout << " -c : Deviation from the mean alignment score [0.10]" 		<< endl;
@@ -294,11 +303,20 @@ int main (int argc, char *argv[]) {
 
 	JellyFishCount(kmer_file, countsreliable, lower, upper);
 #else
-	// Error estimation and reliabe bounds computation within denovo counting
+if(b_parameters.useGerbil)
+{
+  // Reliable range computation within denovo counting
+  cout << "\nRunning with up to " << MAXTHREADS << " threads" << endl;
+  double all = omp_get_wtime();
+  GerbilDeNovoCount("tempDir", all_inputs_fofn, countsreliable, lower, upper, coverage, upperlimit, b_parameters);
+}
+else
+{ 
+	// Reliable range computation within denovo counting
 	std::cout << "numThreads:	"				<< MAXTHREADS	<< "\n"		<< std::endl;
 	double all = omp_get_wtime();
-	DeNovoCount(allfiles, countsreliable, lower, upper, coverage, b_parameters.errorRate, upperlimit, b_parameters);
-
+	DeNovoCount(allfiles, countsreliable, lower, upper, coverage, upperlimit, b_parameters);
+}
 #ifdef PRINT
 	std::cout << "errorRate:	"				<< b_parameters.errorRate	<< std::endl;
 	std::cout << "kmerFrequencyLowerBound:	"	<< lower					<< std::endl;

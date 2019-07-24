@@ -29,9 +29,13 @@
 #include <map>
 #include <unordered_map>
 #include <omp.h>
+#include <fstream>
+#include <typeinfo>
 
 #include "libcuckoo/cuckoohash_map.hh"
 #include "libbloom/bloom64.h"
+#include "gerbil/include/gerbil/Application.h"
+
 
 #include "kmercode/hash_funcs.h"
 #include "kmercode/Kmer.hpp"
@@ -145,6 +149,50 @@ void JellyFishCount(char *kmer_file, dictionary_t & countsreliable_jelly, int lo
 	//cout << "Bucket count Jellyfish: " << countsjelly.bucket_count() << std::endl;
 	//cout << "Load factor Jellyfish: " << countsjelly.load_factor() << std::endl;
 	countsjelly.clear(); // free 
+}
+
+void GerbilDeNovoCount(std::string& tempDir, std::string& fileName, dictionary_t& countsreliable_denovo, int& lower, int& upper, 
+                 int& coverage, size_t upperlimit, BELLApars& b_pars)
+{
+	gerbil::Application application(b_pars.kmerSize, fileName, tempDir, 1, "outputTRY", b_pars.skipEstimate);
+        application.process();
+
+	if(!b_parameters.skipEstimate) // Estimare error rate from the reads
+  {
+		b_parameters.errorRate = application.getErate();
+	}	
+  
+	lower = computeLower(coverage, b_pars.errorRate, b_pars.kmerSize);
+  upper = computeUpper(coverage, b_pars.errorRate, b_pars.kmerSize);	
+	
+	vector<pair<string,unsigned int>> *listKmer;
+	listKmer = application.getListKmer();
+
+	// Reliable kmer filter on countsdenovo
+  int kmer_id_denovo = 0;
+ 
+	int listLength = (*listKmer).size();
+  for(int i = 0; i<listLength; i++) 
+  {
+    if(get<1>((*listKmer)[i]) >= lower && get<1>((*listKmer)[i]) <= upper)
+    {
+      Kmer mykmer(get<0>((*listKmer)[i]).c_str());
+      countsreliable_denovo.insert(mykmer, kmer_id_denovo);
+      ++kmer_id_denovo;
+    }
+  }
+  delete listKmer;	
+  
+  // Print some information about the table
+  if(countsreliable_denovo.size() == 0)
+  {
+    cout << "BELLA terminated: 0 entries within reliable range (reduce k-mer length)\n" << endl;
+    exit(0);
+  }
+  else
+  {
+    cout << "Entries within reliable range: " << countsreliable_denovo.size() << endl;
+  }
 }
 
 /**
