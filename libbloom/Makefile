@@ -24,7 +24,7 @@ BUILD_OS := $(shell uname)
 
 BUILD=$(TOP)/build
 INC=-I$(TOP) -I$(TOP)/murmur2
-CC=g++ -Wall ${OPT}
+CC=g++-6 -Wall ${OPT}
 
 
 ifeq ($(DEBUG),1)

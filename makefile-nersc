@@ -7,22 +7,25 @@ SEQINCLUDE = -I$(SEQANPATH)
 MLKINCLUDE = -I/opt/intel/composer_xe_2015.0.039/mkl/include
 LIBPATH = -L/opt/intel/composer_xe_2015.0.039/mkl/lib 
 
-COMPILER = g++
-CC = gcc
+COMPILER = g++-6
+CC = gcc-6
 CFLAGS =-std=c++11 -fpermissive -w -O3 -I. -c #-I. -std=c++14 -O3 -W -Wall -Wextra -pedantic -ansi -c -fpermissive
 
-NVCC_LIB := -L${CUDA_ROOT}/lib64 -lcudart
-CUDACC := ${CUDA_ROOT}/bin/nvcc
-NVCC_FLAGS := -DGPU -O3
-
+ifdef __NVCC__
+	NVCC_LIB := -L${CUDA_ROOT}/lib64 -lcudart
+	CUDACC := ${CUDA_ROOT}/bin/nvcc
+	NVCC_FLAGS := -DGPU -O3
+endif
 
 CPP_SRC := $(wildcard gerbil/src/gerbil/*.cpp)
 CPP_OBJ := $(patsubst %.cpp,%.o,$(CPP_SRC))
 CPP_OBJ := $(filter-out gerbil/src/gerbil/toFasta.o,$(CPP_OBJ))
-INC_INT := -Igerbil/include/gerbil -Igerbil/include/cuda_ds -Igerbil/include/cuda_ds/CountingHashTable
 
-CUDA_SRC := $(wildcard gerbil/src/cuda_ds/*.cu)
-CUDA_OBJ := $(patsubst %.cu,%.o,$(CUDA_SRC))
+ifdef __NVCC__
+	INC_INT := -Igerbil/include/gerbil -Igerbil/include/cuda_ds -Igerbil/include/cuda_ds/CountingHashTable
+	CUDA_SRC := $(wildcard gerbil/src/cuda_ds/*.cu)
+	CUDA_OBJ := $(patsubst %.cu,%.o,$(CUDA_SRC))
+endif
 
 sprng:	
 	(cd $(SPRNPATH); $(MAKE); cd ../..)
@@ -62,11 +65,13 @@ bella: main.cpp hash_funcs.o fq_reader.o Buffer.o Kmer.o bound.o optlist.o rmat 
 	#gabalib
 	$(COMPILER) -std=c++14 -O3 $(INCLUDE) -march=native -fopenmp -fpermissive $(SEQINCLUDE) -o bella hash_funcs.o Kmer.o Buffer.o fq_reader.o bound.o optlist.o main.cpp ${LIBS} $(CPP_OBJ) $(CUDA_OBJ) $(NVCC_LIB)
 
+ifdef __NVCC__
 %.o: %.cu
 	$(CUDACC) $(NVCC_FLAGS) -c $< -o $@
+endif
 
 %.o: %.cpp
-	$(CXX) $(CFLAGS) -c $< -o $@ $(INCLUDE)
+	$(COMPILER) $(CFLAGS) -c $< -o $@ $(INCLUDE)
 
 # add -D__LIBCUCKOO_SERIAL to run lubcuckoo in a single thread
 clean:
