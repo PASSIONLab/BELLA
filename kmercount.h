@@ -282,11 +282,11 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
 	if(b_pars.skipEstimate == false)
 	{
 		b_pars.errorRate = 0.0; // reset to 0 here, otherwise it cointains default or user-defined values
-		#pragma omp for reduction(+:b_pars.errorRate)
+		#pragma omp for reduction(+:(b_pars.errorRate))
 		for (int i = 0; i < MAXTHREADS; i++) 
 			{
-				double temp = std::accumulate(allquals[i].begin(),allquals[i].end(), 0.0);
-				b_pars.errorRate += temp/(double)allquals[i].size();
+				double temp = std::accumulate(allquals[i].begin(), allquals[i].end(), 0.0);
+				b_pars.errorRate += temp / (double)allquals[i].size();
 			}
 		b_pars.errorRate = b_pars.errorRate / (double)MAXTHREADS;
 	}

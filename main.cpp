@@ -319,18 +319,19 @@ int main (int argc, char *argv[]) {
 
 	JellyFishCount(kmer_file, countsreliable, lower, upper);
 #else
+	double all;
 if(b_parameters.useGerbil)
 {
 	// Reliable range computation within denovo counting
 	cout << "\nRunning with up to " << MAXTHREADS << " threads" << endl;
-	double all = omp_get_wtime();
-	GerbilDeNovoCount("tempDir", all_inputs_fofn, countsreliable, lower, upper, coverage, upperlimit, b_parameters);
+	all = omp_get_wtime();
+	GerbilDeNovoCount("tempDir", std::string(all_inputs_fofn), countsreliable, lower, upper, coverage, upperlimit, b_parameters);
 }
 else
 { 
 	// Reliable range computation within denovo counting
 	std::cout << "numThreads:	"				<< MAXTHREADS	<< "\n"		<< std::endl;
-	double all = omp_get_wtime();
+	all = omp_get_wtime();
 	DeNovoCount(allfiles, countsreliable, lower, upper, coverage, upperlimit, b_parameters);
 }
 #ifdef PRINT
