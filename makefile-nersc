@@ -7,8 +7,8 @@ SEQINCLUDE = -I$(SEQANPATH)
 MLKINCLUDE = -I/opt/intel/composer_xe_2015.0.039/mkl/include
 LIBPATH = -L/opt/intel/composer_xe_2015.0.039/mkl/lib 
 
-COMPILER = g++-6
-CC = gcc-6
+COMPILER = g++
+CC = gcc
 CFLAGS =-std=c++11 -fpermissive -w -O3 -I. -c #-I. -std=c++14 -O3 -W -Wall -Wextra -pedantic -ansi -c -fpermissive
 
 ifdef __NVCC__
