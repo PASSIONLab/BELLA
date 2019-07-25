@@ -25,14 +25,10 @@ These instructions will get you a copy of the project up and running on your loc
 ### Dependencies
 
 * **COMPILER:** the software **requires gcc-6** with OpenMP and Gerbil to be compiled.
-* **BOOST** to use Gerbil kmerCounting.
-You can install BOOST on macOS using:
+* **BOOST/1.67.0** to use Gerbil kmerCounting.
+You can install BOOST/1.67.0 using [conda](https://anaconda.org/anaconda/boost):
 ```
-brew install boost
-```
-On Linux:
-```
-sudo apt-get install libboost-all-dev
+conda install -c anaconda boost
 ```
 * [**CUDA**](https://docs.nvidia.com/cuda/) to compile and use Gerbil. You need CUDA to compile Gerbil even if you do not plan to use the GPU-accelerated version. **This will change soon.**
 
@@ -136,7 +132,9 @@ The repository contains also the code to get the recall/precision of BELLA and o
 * **Ground truth generation for real data set**: SAMparser.py allows to transform the BWA-MEM/Minimap2 .sam output file in a simpler format usable as input to the evaluation code when using real data set. 
 
 ```
-python3 SAMparser.py <bwamem/minimap2-output>
+samtools view -h -Sq 10 -F 4 aln.sam > mapped_q10.sam	# remove reads with quality values smaller than 10
+samtools view -h mapped_q10.sam | grep -v -e 'XA:Z:' -e 'SA:Z:' | samtools view -S -h > unique_mapped_q10.sam	# remove reads mapped to multiple locations
+python3 SAMparser.py <bwamem/minimap2-output>	# output input file for the evaluation code
 ```
 
 * **Ground truth generation for synthetic data set**: mafconvert.py allows to transform the .MAF file from PBSIM (Pacbio read simulator) in a simpler format usable as input to the evaluation code when using synthetic data set.
