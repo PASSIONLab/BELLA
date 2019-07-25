@@ -18,7 +18,7 @@ To achieve fast overlapping without sketching, BELLA uses sparse matrix-matrix m
 *	[I get 0 outputs, what is likely going wrong?](#i-get-0-outputs-what-is-likely-going-wrong)
 *	[Citation](#citation)
 
-## Getting Started macOS
+## Getting Started on macOS
 
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
 
@@ -99,8 +99,8 @@ BELLA can run with three different k-mer counting options:
 
 The parallelism during the overlap detection phase depends on the available number of threads and on the available RAM [Default: 8000MB].
 
-Use **-DLINUX** for Linux or **-DOSX** for macOS at compile time to estimate available RAM from your machine. 
-If your machine has more RAM than the default one, using **-DLINUX** or **-DOSX** would **make the ovelap detection phase faster**. 
+Use **-DOSX** at compile time to estimate available RAM from your machine. 
+If your machine has more RAM than the default one, using **-DOSX** would **make the ovelap detection phase faster**. 
 
 ## Output Format
 
