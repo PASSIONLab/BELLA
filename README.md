@@ -24,14 +24,7 @@ These instructions will get you a copy of the project up and running on your loc
 
 ### Dependencies
 
-* **COMPILER:** the software **requires gcc-6** with OpenMP and Gerbil to be compiled.
-* **BOOST/1.67.0** to use Gerbil kmerCounting.
-You can install BOOST/1.67.0 using [conda](https://anaconda.org/anaconda/boost):
-```
-conda install -c anaconda boost
-```
-* [**CUDA**](https://docs.nvidia.com/cuda/) to compile and use Gerbil. You need CUDA to compile Gerbil even if you do not plan to use the GPU-accelerated version. **This will change soon.**
-
+* **COMPILER:** the software **requires gcc-6 or higher** with OpenMP to be compiled.
 * **Python3** and **simplesam** are required to generare the ground truth data. You can install simplesam via [pip](https://pip.pypa.io/en/stable/installing/): 
 ```
 pip install simplesam
@@ -42,13 +35,13 @@ pip install simplesam
 Clone the repository, its submodule, and enter it:
 
 ```
-git clone --recurse-submodules https://github.com/giuliaguidi/bella
+git clone https://github.com/giuliaguidi/bella
 cd bella
 ```
 Build using makefile:
 
 ```
-ln -s makefile-nersc Makefile && make bella
+ln -s makefile-mac Makefile && make bella
 ```
 
 ### Run
@@ -77,7 +70,6 @@ Optional flag description:
 -e : Error rate [0.15]
 -q : Estimare error rate from the dataset [false]
 -u : Use default error rate setting [false]
--g : Use Gerbil as kmerCounter [false]
 -m : Total RAM of the system in MB [auto estimated if possible or 8,000 if not]
 -z : Do not run pairwise alignment [false]
 -c : Deviation from the mean alignment score [0.10]
@@ -100,8 +92,7 @@ The user should either:
 
 BELLA can run with three different k-mer counting options:
 
-* **Default**: BELLA uses its own fast k-mer counter based on a [Bloom filter](https://en.wikipedia.org/wiki/Bloom_filter) data structure. This is the fastest CPU-based option but it is limited by the available RAM. If BELLA goes **out-of-memory during the k-mer counting stage**, you should use Gerbil k-mer counter instead. 
-* **Gerbil**: BELLA uses a modified version of [Gerbil](https://github.com/QiZhou1512/gerbil) k-mer counter (**-g**). GPU-accelerated version can be used.
+* **Default**: BELLA uses its own fast k-mer counter based on a [Bloom filter](https://en.wikipedia.org/wiki/Bloom_filter) data structure. This is the fastest CPU-based option but it is limited by the available RAM. If BELLA goes **out-of-memory during the k-mer counting stage**, you should use BELLA version on the **master branch** and use Gerbil k-mer counter. **Gerbil k-mer counter only works for Linux-based machine**.
 * **Jellyfish**: BELLA uses [Jellyfish](http://www.cbcb.umd.edu/software/jellyfish/) k-mer counter. It is necessary to install Jellyfish, add **-DJELLYFISH** when compiling BELLA, and give Jellyfish output file to BELLA as input parameter. Differently from Gerbil, the k-mer counting does not happen within BELLA.
 
 ### Memory Usage
@@ -190,7 +181,6 @@ To cite our work or to know more about our methods, please refer to:
 
 * [**Daniel Rokhsar**](https://mcb.berkeley.edu/labs/rokhsar/)
 * [**Katherine Yelick**](https://people.eecs.berkeley.edu/~yelick/)
-* [**Qi Zhou**](https://it.linkedin.com/in/qizhou1512/)
 
 ## Copyright Notice
  

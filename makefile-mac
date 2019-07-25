@@ -6,10 +6,10 @@ INCLUDE = -I$(SPRNPATH)/include #-I$(CURDIR)/libgaba
 SEQINCLUDE = -I$(SEQANPATH)
 MLKINCLUDE = -I/opt/intel/composer_xe_2015.0.039/mkl/include
 LIBPATH = -L/opt/intel/composer_xe_2015.0.039/mkl/lib 
-COMPILER = g++-6
-CC = gcc-6
-CFLAGS = -I. -O3 -W -Wall -Wextra -pedantic -ansi -c
-#SEQFLAGS = -DSEQAN_ARCH_SSE4=1 -DSEQAN_ARCH_AVX2=1 -DSEQAN_BGZF_NUM_THREADS=1
+
+COMPILER = g++
+CC = gcc
+CFLAGS =-std=c++11 -fpermissive -w -O3 -I. -c #-I. -std=c++14 -O3 -W -Wall -Wextra -pedantic -ansi -c -fpermissive
 
 sprng:	
 	(cd $(SPRNPATH); $(MAKE); cd ../..)
@@ -17,7 +17,7 @@ sprng:
 rmat:	sprng
 	(cd $(RMATPATH); $(MAKE); cd ../..)
 
-LIBS = -L$(CURDIR)/libbloom/build -lbloom #-L$(CURDIR)/libgaba -lgaba
+LIBS = -L$(CURDIR)/libbloom/build -lbloom 
 
 Buffer.o: kmercode/Buffer.c
 	$(CC) -O3 -fopenmp -c -o Buffer.o kmercode/Buffer.c
@@ -34,9 +34,6 @@ hash_funcs.o: kmercode/hash_funcs.c
 bloomlib:
 	$(MAKE) -C libbloom all
 
-#gabalib:
-#	$(MAKE) -C libgaba all
-
 optlist.o:	optlist/optlist.c optlist/optlist.h
 	$(CC) $(CFLAGS) $<
 
@@ -44,13 +41,11 @@ Kmer.o:	kmercode/Kmer.cpp
 	$(COMPILER) -fopenmp -std=c++11 -O3 -c -o Kmer.o kmercode/Kmer.cpp
 
 # flags defined in mtspgemm2017/GTgraph/Makefile.var
-bella: main.cpp hash_funcs.o fq_reader.o Buffer.o Kmer.o bound.o optlist.o rmat bloomlib 
-	#gabalib
+bella: main.cpp hash_funcs.o fq_reader.o Buffer.o Kmer.o bound.o optlist.o rmat bloomlib
 	$(COMPILER) -std=c++14 -O3 $(INCLUDE) -march=native -fopenmp -fpermissive $(SEQINCLUDE) -o bella hash_funcs.o Kmer.o Buffer.o fq_reader.o bound.o optlist.o main.cpp ${LIBS}
-# add -D__LIBCUCKOO_SERIAL to run lubcuckoo in a single thread
+
 clean:
 	(cd mtspgemm2017/GTgraph; make clean; cd ../..)
 	rm -f *.o
 	rm -f bella
 	$(MAKE) -C libbloom clean
-	$(MAKE) -C libgaba clean
