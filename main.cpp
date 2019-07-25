@@ -218,7 +218,6 @@ int main (int argc, char *argv[]) {
 				cout << " -e : Error rate [0.15]" 				<< endl;
 				cout << " -q : Estimare error rate from the dataset [false]" 	<< endl;
 				cout << " -u : Use default error rate setting [false]"			<< endl;
-				cout << " -g : Use Gerbil as kmerCounter [false]" 				<< endl;
 				cout << " -m : Total RAM of the system in MB [auto estimated if possible or 8,000 if not]" << endl;
 				cout << " -z : Do not run pairwise alignment [false]" 				<< endl;
 				cout << " -c : Deviation from the mean alignment score [0.10]" 		<< endl;
@@ -264,7 +263,6 @@ int main (int argc, char *argv[]) {
 	// Declarations 
 	//
 	vector<filedata> allfiles     = GetFiles(all_inputs_fofn);
-	std::string all_inputs_gerbil = std::string(all_inputs_fofn); 
 	int lower, upper; // reliable range lower and upper bound
 	double ratioPhi;
 	Kmer::set_k(b_parameters.kmerSize);
@@ -320,22 +318,10 @@ int main (int argc, char *argv[]) {
 
 	JellyFishCount(kmer_file, countsreliable, lower, upper);
 #else
-	double all;
-if(b_parameters.useGerbil)
-{
-	// Reliable range computation within denovo counting
-	cout << "\nRunning with up to " << MAXTHREADS << " threads" << endl;
-	std::string tempDirName = "tempDir";
-	all = omp_get_wtime();
-	GerbilDeNovoCount(tempDirName, all_inputs_gerbil, countsreliable, lower, upper, coverage, upperlimit, b_parameters);
-}
-else
-{ 
 	// Reliable range computation within denovo counting
 	std::cout << "numThreads:	"				<< MAXTHREADS	<< "\n"		<< std::endl;
-	all = omp_get_wtime();
+	double all = omp_get_wtime();
 	DeNovoCount(allfiles, countsreliable, lower, upper, coverage, upperlimit, b_parameters);
-}
 #ifdef PRINT
 	std::cout << "errorRate:	"				<< b_parameters.errorRate	<< std::endl;
 	std::cout << "kmerFrequencyLowerBound:	"	<< lower					<< std::endl;
