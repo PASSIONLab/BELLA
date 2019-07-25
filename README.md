@@ -6,23 +6,23 @@ To achieve fast overlapping without sketching, BELLA uses sparse matrix-matrix m
 ## Content
 
 *	[Getting Started](#getting-started)
-*	[Prerequisites and Dependencies](#prerequisities-and-dependencies)
-*	[Compile](#compile)
-*	[Run](#run)
-*	[Error Rate](#error-rate)
-*	[K-mer Counting](#k-mer-counting)
-*	[Memory Usage](#memory-usage)
+	*	[Dependencies](#dependencies)
+	*	[Compile](#compile)
+	*	[Run](#run)
+	*	[Error Rate](#error-rate)
+	*	[K-mer Counting](#k-mer-counting)
+	*	[Memory Usage](#memory-usage)
 *	[Output Format](#output-format)
 *	[Performance Evaluation](#performance-evaluation)
 *	[Demo](#demo)
-*	[I get 0 outputs, what is likely going wrong?](#I-get-0-outputs,-what-is-likely-going-wrong?)
+*	[I get 0 outputs, what is likely going wrong?](#i-get-0-outputs-what-is-likely-going-wrong)
 *	[Citation](#citation)
 
 ## Getting Started
 
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
 
-### Prerequisites and Dependencies
+### Dependencies
 
 * **COMPILER:** the software **requires gcc-6** with OpenMP and Gerbil to be compiled.
 * **BOOST** to use Gerbil kmerCounting.
@@ -133,13 +133,13 @@ If **-p** option is used, BELLA outputs alignments in [PAF format](https://githu
 
 The repository contains also the code to get the recall/precision of BELLA and other long-read aligners (Minimap, Minimap2, DALIGNER, MHAP and BLASR).
 
-**Ground truth generation for real data set**: SAMparser.py allows to transform the BWA-MEM/Minimap2 .sam output file in a simpler format usable as input to the evaluation code when using real data set. 
+* **Ground truth generation for real data set**: SAMparser.py allows to transform the BWA-MEM/Minimap2 .sam output file in a simpler format usable as input to the evaluation code when using real data set. 
 
 ```
 python3 SAMparser.py <bwamem/minimap2-output>
 ```
 
-**Ground truth generation for synthetic data set**: mafconvert.py allows to transform the .MAF file from PBSIM (Pacbio read simulator) in a simpler format usable as input to the evaluation code when using synthetic data set.
+* **Ground truth generation for synthetic data set**: mafconvert.py allows to transform the .MAF file from PBSIM (Pacbio read simulator) in a simpler format usable as input to the evaluation code when using synthetic data set.
 
 ```
 python mafconvert.py axt <maf-file> > <ground-truth.txt>
