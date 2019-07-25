@@ -34,7 +34,7 @@
 #define LAG607B  9
 #define LAG1279B 10
 
-#define CHECK 1
+#define CHECKS 1
 
 #define MAX_PACKED_LENGTH 24000
 
@@ -60,13 +60,13 @@
 #define sprng  MPINAME(get_rn_dbl_simple)
 #endif
 
-#elif !defined(CHECK_POINTERS)
+#elif !defined(CHECKS_POINTERS)
 
 #define free_sprng free_rng
 #define pack_sprng pack_rng
 #define unpack_sprng unpack_rng
 #define isprng  get_rn_int
-#define spawn_sprng(A,B,C) spawn_rng(A,B,C,!CHECK)
+#define spawn_sprng(A,B,C) spawn_rng(A,B,C,!CHECKS)
 #define init_sprng init_rng
 #define print_sprng print_rng
 
@@ -82,7 +82,7 @@
 #define pack_sprng(A,B) ((checkID(A)==NULL) ? 0 : pack_rng(A,B))
 #define unpack_sprng(A) addID(unpack_rng(A))
 #define isprng(A)  ((checkID(A)==NULL) ? -1 : get_rn_int(A))
-#define spawn_sprng(A,B,C) ((checkID(A)==NULL) ? 0 : spawn_rng(A,B,C,CHECK))
+#define spawn_sprng(A,B,C) ((checkID(A)==NULL) ? 0 : spawn_rng(A,B,C,CHECKS))
 #define init_sprng(A,B,C,D,E) addID(init_rng(A,B,C,D,E))
 #define print_sprng(A) ((checkID(A)==NULL) ? 0 : print_rng(A))
 

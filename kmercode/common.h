@@ -10,7 +10,7 @@
 #include <sys/stat.h>
 #include <omp.h>
 
-#define MAX_KMER_SIZE 128
+#define MAX_KMER_SIZEK 128
 
 #define MAX_FILE_PATH 1000
 #define NO_GZIP
