@@ -30,7 +30,7 @@ You can install BOOST/1.67.0 using [conda](https://anaconda.org/anaconda/boost):
 ```
 conda install -c anaconda boost
 ```
-* [**CUDA**](https://docs.nvidia.com/cuda/) to compile and use Gerbil. You need CUDA to compile Gerbil even if you do not plan to use the GPU-accelerated version. **This will change soon.**
+* [**CUDA**](https://docs.nvidia.com/cuda/) to compile and use GPU-accelerated Gerbil. You **do not** need CUDA to use CPU-based Gerbil.
 
 * **Python3** and **simplesam** are required to generare the ground truth data. You can install simplesam via [pip](https://pip.pypa.io/en/stable/installing/): 
 ```
