@@ -92,7 +92,7 @@ The user should either:
 
 BELLA can run with three different k-mer counting options:
 
-* **Default**: BELLA uses its own fast k-mer counter based on a [Bloom filter](https://en.wikipedia.org/wiki/Bloom_filter) data structure. This is the fastest CPU-based option but it is limited by the available RAM. If BELLA goes **out-of-memory during the k-mer counting stage**, you should use BELLA version on the **master branch** and use Gerbil k-mer counter. **Gerbil k-mer counter only works for Linux-based machine**.
+* **Default**: BELLA uses its own fast k-mer counter based on a [Bloom filter](https://en.wikipedia.org/wiki/Bloom_filter) data structure. This is the fastest CPU-based option but it is limited by the available RAM. If BELLA goes **out-of-memory during the k-mer counting stage**, you should use BELLA version on the **master branch** and use Gerbil k-mer counter. **Gerbil k-mer counter only works on Linux-based machines**.
 * **Jellyfish**: BELLA uses [Jellyfish](http://www.cbcb.umd.edu/software/jellyfish/) k-mer counter. It is necessary to install Jellyfish, add **-DJELLYFISH** when compiling BELLA, and give Jellyfish output file to BELLA as input parameter. Differently from Gerbil, the k-mer counting does not happen within BELLA.
 
 ### Memory Usage
