@@ -152,47 +152,47 @@ void JellyFishCount(char *kmer_file, dictionary_t & countsreliable_jelly, int lo
 }
 
 void GerbilDeNovoCount(std::string& tempDir, std::string& fileName, dictionary_t& countsreliable_denovo, int& lower, int& upper, 
-                 int& coverage, size_t upperlimit, BELLApars& b_pars)
+				 int& coverage, size_t upperlimit, BELLApars& b_pars)
 {
 	gerbil::Application application(b_pars.kmerSize, fileName, tempDir, 1, "outputTRY", b_pars.skipEstimate);
-        application.process();
+		application.process();
 
 	if(!b_pars.skipEstimate) // Estimare error rate from the reads
-  {
-		b_parameters.errorRate = application.getErate();
+	{
+		b_pars.errorRate = application.getErate();
 	}	
-  
+
 	lower = computeLower(coverage, b_pars.errorRate, b_pars.kmerSize);
-  upper = computeUpper(coverage, b_pars.errorRate, b_pars.kmerSize);	
-	
+	upper = computeUpper(coverage, b_pars.errorRate, b_pars.kmerSize);	
+
 	vector<pair<string,unsigned int>> *listKmer;
 	listKmer = application.getListKmer();
 
 	// Reliable kmer filter on countsdenovo
-  int kmer_id_denovo = 0;
- 
+	int kmer_id_denovo = 0;
+
 	int listLength = (*listKmer).size();
-  for(int i = 0; i<listLength; i++) 
-  {
-    if(get<1>((*listKmer)[i]) >= lower && get<1>((*listKmer)[i]) <= upper)
-    {
-      Kmer mykmer(get<0>((*listKmer)[i]).c_str());
-      countsreliable_denovo.insert(mykmer, kmer_id_denovo);
-      ++kmer_id_denovo;
-    }
-  }
-  delete listKmer;	
-  
-  // Print some information about the table
-  if(countsreliable_denovo.size() == 0)
-  {
-    cout << "BELLA terminated: 0 entries within reliable range (reduce k-mer length)\n" << endl;
-    exit(0);
-  }
-  else
-  {
-    cout << "Entries within reliable range: " << countsreliable_denovo.size() << endl;
-  }
+	for(int i = 0; i<listLength; i++) 
+	{
+		if(get<1>((*listKmer)[i]) >= lower && get<1>((*listKmer)[i]) <= upper)
+		{
+			Kmer mykmer(get<0>((*listKmer)[i]).c_str(), get<0>((*listKmer)[i]).length());
+			countsreliable_denovo.insert(mykmer, kmer_id_denovo);
+			++kmer_id_denovo;
+		}
+	}
+	delete listKmer;	
+	
+	// Print some information about the table
+	if(countsreliable_denovo.size() == 0)
+	{
+		cout << "BELLA terminated: 0 entries within reliable range (reduce k-mer length)\n" << endl;
+		exit(0);
+	}
+	else
+	{
+		cout << "Entries within reliable range: " << countsreliable_denovo.size() << endl;
+	}
 }
 
 /**
@@ -201,10 +201,11 @@ void GerbilDeNovoCount(std::string& tempDir, std::string& fileName, dictionary_t
  * @param countsreliable_denovo
  * @param lower
  * @param upper
- * @param b_parameters.kmerSize
+ * @param b_pars.kmerSize
  * @param upperlimit
  */
-void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_denovo, int & lower, int & upper, int depth, double & erate, size_t upperlimit /* memory limit */, BELLApars & b_parameters)
+void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_denovo, int& lower, int& upper,
+	int coverage, size_t upperlimit, BELLApars & b_pars)
 {
 	vector < vector<Kmer> > allkmers(MAXTHREADS);
 	vector < vector<double> > allquals(MAXTHREADS);
@@ -238,15 +239,15 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
 					int len = seqs[i].length();
 					double rerror = 0.0;
 
-					for(int j = 0; j<= len - b_parameters.kmerSize; j++)  
+					for(int j = 0; j<= len - b_pars.kmerSize; j++)  
 					{
-						std::string kmerstrfromfastq = seqs[i].substr(j, b_parameters.kmerSize);
+						std::string kmerstrfromfastq = seqs[i].substr(j, b_pars.kmerSize);
 						Kmer mykmer(kmerstrfromfastq.c_str(), kmerstrfromfastq.length());
 						Kmer lexsmall = mykmer.rep();
 						allkmers[MYTHREAD].push_back(lexsmall);
 						hlls[MYTHREAD].add((const char*) lexsmall.getBytes(), lexsmall.getNumBytes());
 
-					if(b_parameters.skipEstimate == false)
+					if(b_pars.skipEstimate == false)
 					{
 							// accuracy
 							int bqual = (int)quals[i][j] - ASCIIBASE;
@@ -255,10 +256,10 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
 					}
 
 					}
-			if(b_parameters.skipEstimate == false)
+			if(b_pars.skipEstimate == false)
 			{
 						// remaining k qual position accuracy
-						for(int j = len - b_parameters.kmerSize + 1; j < len; j++)
+						for(int j = len - b_pars.kmerSize + 1; j < len; j++)
 						{
 							int bqual = (int)quals[i][j] - ASCIIBASE;
 							double berror = pow(10,-(double)bqual/10);
@@ -278,16 +279,16 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
 	}
 
 	// Error estimation
-	if(b_parameters.skipEstimate == false)
+	if(b_pars.skipEstimate == false)
 	{
-		erate = 0.0; // reset to 0 here, otherwise it cointains default or user-defined values
-		#pragma omp for reduction(+:erate)
+		b_pars.errorRate = 0.0; // reset to 0 here, otherwise it cointains default or user-defined values
+		#pragma omp for reduction(+:b_pars.errorRate)
 		for (int i = 0; i < MAXTHREADS; i++) 
 			{
 				double temp = std::accumulate(allquals[i].begin(),allquals[i].end(), 0.0);
-				erate += temp/(double)allquals[i].size();
+				b_pars.errorRate += temp/(double)allquals[i].size();
 			}
-		erate = erate / (double)MAXTHREADS;
+		b_pars.errorRate = b_pars.errorRate / (double)MAXTHREADS;
 	}
 
 	// HLL reduction (serial for now) to avoid double iteration
@@ -340,8 +341,8 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
 	cout << "2nd kmerCounting pass took:	" << omp_get_wtime() - firstpass << "s\n" << endl;
 	//cout << "countsdenovo.size() " << countsdenovo.size() << endl;
 	// Reliable bounds computation using estimated error rate from phred quality score
-	lower = computeLower(depth, erate, b_parameters.kmerSize);
-	upper = computeUpper(depth, erate, b_parameters.kmerSize);
+	lower = computeLower(coverage, b_pars.errorRate, b_pars.kmerSize);
+	upper = computeUpper(coverage, b_pars.errorRate, b_pars.kmerSize);
 
 	// Reliable k-mer filter on countsdenovo
 	int kmer_id_denovo = 0;
