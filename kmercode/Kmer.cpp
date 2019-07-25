@@ -122,7 +122,7 @@ Kmer::Kmer(const Kmer& o) {
 
 
 // use:  km = Kmer(s, len);
-// pre:  s[0],...,s[len] are all equal to 'A','C','G' or 'T' and len < MAX_KMER_SIZE
+// pre:  s[0],...,s[len] are all equal to 'A','C','G' or 'T' and len < MAX_KMER_SIZEK
 // post: the DNA string in km is now the same as s
 Kmer::Kmer(const char *s, unsigned int len) {
 	set_kmer(s, len);

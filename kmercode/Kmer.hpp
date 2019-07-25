@@ -24,8 +24,8 @@
  *  - Provide hash of kmers
  *  - Get last and next kmer, e.g. ACGT -> CGTT or ACGT -> AACGT
  *  */
-#define N_LONGS (MAX_KMER_SIZE/32)
-#define N_BYTES (MAX_KMER_SIZE/4)
+#define N_LONGS (MAX_KMER_SIZEK/32)
+#define N_BYTES (MAX_KMER_SIZEK/4)
 
 class Kmer {
  public:
@@ -99,7 +99,7 @@ class Kmer {
 	}
 
 
-	static const unsigned int MAX_K = MAX_KMER_SIZE;
+	static const unsigned int MAX_K = MAX_KMER_SIZEK;
 	static unsigned int k;
 
  private:
