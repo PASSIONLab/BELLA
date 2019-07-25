@@ -249,11 +249,11 @@ int main (int argc, char *argv[]) {
 	}
 	if(b_parameters.errorRate == 0.00 && b_parameters.skipEstimate == true)
 	{
-		cout << "BELLA execution terminated.\n
-		The user should either:\n
-		* -e = suggest an error rate\n
-		* -q = confirm that the data has quality values and we can estimate the error rate from the data set\n
-		* -u = confirm that we can use a default error rate (0.15)\n" << endl;
+		cout << "BELLA execution terminated." 	<< endl;
+		cout << " The user should either:" 		<< endl;
+		cout << " * -e = suggest an error rate"	<< endl;
+		cout << " * -q = confirm that the data has quality values and we can estimate the error rate from the data set" << endl;
+		cout << " * -u = confirm that we can use a default error rate (0.15)\n" << endl;
 		return 0;
 	}
 #endif

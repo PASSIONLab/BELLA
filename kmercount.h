@@ -157,7 +157,7 @@ void GerbilDeNovoCount(std::string& tempDir, std::string& fileName, dictionary_t
 	gerbil::Application application(b_pars.kmerSize, fileName, tempDir, 1, "outputTRY", b_pars.skipEstimate);
         application.process();
 
-	if(!b_parameters.skipEstimate) // Estimare error rate from the reads
+	if(!b_pars.skipEstimate) // Estimare error rate from the reads
   {
 		b_parameters.errorRate = application.getErate();
 	}	
