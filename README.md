@@ -129,12 +129,13 @@ If **-p** option is used, BELLA outputs alignments in [PAF format](https://githu
 
 The repository contains also the code to get the recall/precision of BELLA and other long-read aligners (Minimap, Minimap2, DALIGNER, MHAP and BLASR).
 
-* **Ground truth generation for real data set**: SAMparser.py allows to transform the BWA-MEM/Minimap2 .sam output file in a simpler format usable as input to the evaluation code when using real data set. 
+* **Ground truth generation for real data set**: SAMparser.py allows to transform the Minimap2 .sam output file in a simpler format usable as input to the evaluation code when using real data set. 
 
 ```
+minimap2 -ax map-pb  ref.fa pacbio-reads.fq > aln.sam   # for PacBio subreads
 samtools view -h -Sq 10 -F 4 aln.sam > mapped_q10.sam	# remove reads with quality values smaller than 10
 samtools view -h mapped_q10.sam | grep -v -e 'XA:Z:' -e 'SA:Z:' | samtools view -S -h > unique_mapped_q10.sam	# remove reads mapped to multiple locations
-python3 SAMparser.py <bwamem/minimap2-output>	# output input file for the evaluation code
+python3 SAMparser.py <bwamem/minimap2-output>
 ```
 
 * **Ground truth generation for synthetic data set**: mafconvert.py allows to transform the .MAF file from PBSIM (Pacbio read simulator) in a simpler format usable as input to the evaluation code when using synthetic data set.
@@ -201,4 +202,4 @@ NOTICE. This Software was developed under funding from the U.S. Department of En
 
 ## Acknowledgments
 
-Funding provided in part by DOE ASCR through the Exascale Computing Project, and computing provided by NERSC. Thanks to Rob Egan and Steven Hofmeyr for valuable discussions.
+Funding provided in part by DOE ASCR through the Exascale Computing Project, and computing provided by NERSC. Thanks to Rob Egan and Steven Hofmeyr for valuable discussions. Thanks to Politecnico di Milano for key collaborations.
