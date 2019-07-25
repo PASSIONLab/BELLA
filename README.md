@@ -5,7 +5,7 @@ To achieve fast overlapping without sketching, BELLA uses sparse matrix-matrix m
 
 ## Content
 
-*	[Getting Started](#getting-started)
+*	[Getting Started on Linux](#getting-started-on-linux)
 	*	[Dependencies](#dependencies)
 	*	[Compile](#compile)
 	*	[Run](#run)
@@ -18,13 +18,13 @@ To achieve fast overlapping without sketching, BELLA uses sparse matrix-matrix m
 *	[I get 0 outputs, what is likely going wrong?](#i-get-0-outputs-what-is-likely-going-wrong)
 *	[Citation](#citation)
 
-## Getting Started
+## Getting Started on Linux
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
+These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. This version of BELLA **only works on Linux-based machines**. To run BELLA on macOS-based machines, please switch to **mac branch**.
 
 ### Dependencies
 
-* **COMPILER:** the software **requires gcc-6** with OpenMP and Gerbil to be compiled.
+* **COMPILER:** the software **requires gcc-6** with OpenMP to be compiled.
 * **BOOST/1.67.0** to use Gerbil kmerCounting.
 You can install BOOST/1.67.0 using [conda](https://anaconda.org/anaconda/boost):
 ```
@@ -44,6 +44,13 @@ Clone the repository, its submodule, and enter it:
 ```
 git clone --recurse-submodules https://github.com/giuliaguidi/bella
 cd bella
+```
+OR:
+```
+git clone https://github.com/giuliaguidi/bella
+cd bella
+git submodule init
+git submodule update
 ```
 Build using makefile:
 
