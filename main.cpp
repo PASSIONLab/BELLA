@@ -264,7 +264,6 @@ int main (int argc, char *argv[]) {
 	// Declarations 
 	//
 	vector<filedata> allfiles     = GetFiles(all_inputs_fofn);
-	std::string all_inputs_gerbil = std::string(all_inputs_fofn);
 	int lower, upper; // reliable range lower and upper bound
 	double ratioPhi;
 	Kmer::set_k(b_parameters.kmerSize);
@@ -325,8 +324,9 @@ if(b_parameters.useGerbil)
 {
 	// Reliable range computation within denovo counting
 	cout << "\nRunning with up to " << MAXTHREADS << " threads" << endl;
+	std:::string tempDirName = "tempDir";
 	all = omp_get_wtime();
-	GerbilDeNovoCount("tempDir", all_inputs_gerbil, countsreliable, lower, upper, coverage, upperlimit, b_parameters);
+	GerbilDeNovoCount(tempDirName, all_inputs_fofn, countsreliable, lower, upper, coverage, upperlimit, b_parameters);
 }
 else
 { 
