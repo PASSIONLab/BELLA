@@ -324,7 +324,7 @@ if(b_parameters.useGerbil)
 {
 	// Reliable range computation within denovo counting
 	cout << "\nRunning with up to " << MAXTHREADS << " threads" << endl;
-	std:::string tempDirName = "tempDir";
+	std::string tempDirName = "tempDir";
 	all = omp_get_wtime();
 	GerbilDeNovoCount(tempDirName, all_inputs_fofn, countsreliable, lower, upper, coverage, upperlimit, b_parameters);
 }
