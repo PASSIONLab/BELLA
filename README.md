@@ -5,7 +5,7 @@ To achieve fast overlapping without sketching, BELLA uses sparse matrix-matrix m
 
 ## Content
 
-*	[Getting Started](#getting-started)
+*	[Getting Started on macOS](#getting-started-macos)
 	*	[Dependencies](#dependencies)
 	*	[Compile](#compile)
 	*	[Run](#run)
@@ -18,7 +18,7 @@ To achieve fast overlapping without sketching, BELLA uses sparse matrix-matrix m
 *	[I get 0 outputs, what is likely going wrong?](#i-get-0-outputs-what-is-likely-going-wrong)
 *	[Citation](#citation)
 
-## Getting Started
+## Getting Started macOS
 
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
 
