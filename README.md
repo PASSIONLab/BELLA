@@ -59,7 +59,7 @@ ln -s makefile-nersc Makefile && make bella
 
 To run with default setting:
 ```
-./bella -i <text-file-listing-all-input-fastq-files> -o <out-filename> -d <covverage>
+./bella -i <text-file-listing-all-input-fastq-files> -o <out-filename> -d <coverage>
 ```
 BELLA requires a text file containing the path to the input fastq file(s) as the argument for the -i option.
 Example: [input-example.txt](https://github.com/giuliaguidi/bella/files/2620924/input-example.txt)
