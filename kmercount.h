@@ -266,7 +266,24 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
 #endif
 
     dictionary_t countsdenovo;
-    
+
+	vector<Kmer> allkmers_temp;
+
+	for(int i = 0; i < MAXTHREADS; i++) {
+		for(auto v:allkmers[i])
+		{
+			allkmers_temp.push_back(v);
+		}
+	}
+
+	std::sort(allkmers_temp.begin(), allkmers_temp.end());
+
+	for(auto v:allkmers_temp) {
+		bool inBloom = (bool) bloom_check_add(bm, v.getBytes(), v.getNumBytes(),1);
+		if(inBloom) countsdenovo.insert(v, 0);
+	}
+ 
+/* 
 #pragma omp parallel
     {
       for(auto v:allkmers[MYTHREAD]) {
@@ -275,6 +292,7 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
           // If we are using HOPC, then allkmers[] already contains the HOPC representations from the fill stage
       }
     }
+*/
 
     double firstpass = omp_get_wtime();
     cout << "First pass of k-mer counting took: " << firstpass - load2kmers << "s" << endl;
