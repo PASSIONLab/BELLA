@@ -154,8 +154,6 @@ python mafconvert.py axt <maf-file> > <ground-truth.txt>
 To run the evaluation program:
 ```
 cd bench
-```
-```
 make result
 ```
 ```
