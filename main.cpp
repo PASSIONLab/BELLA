@@ -474,7 +474,6 @@ else
 	spmatPtr_ getvaluetype(make_shared<spmatType_>());
 	HashSpGEMM(spmat, transpmat, 
 		// n-th k-mer positions on read i and on read j
-		// AB: not sure if these id1 and id2 are captured correctly, honestly
 		[&b_parameters, &reads] (const int& begpH, const int& begpV, const int& id1, const int& id2)
 		{
 			spmatPtr_ value(make_shared<spmatType_>());
