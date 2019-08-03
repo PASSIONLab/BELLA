@@ -154,8 +154,6 @@ python mafconvert.py axt <maf-file> > <ground-truth.txt>
 To run the evaluation program:
 ```
 cd bench
-```
-```
 make result
 ```
 ```
@@ -179,7 +177,7 @@ You can run the evaluation code located in /bench folder as:
 
 ## I get 0 outputs, what is likely going wrong?
 
-Error rate estimation went wrong.
+Error rate estimation might have gone wrong. If the error estimated is greater than 1, the adaptive alignment threshold would be so high that no alignments would pass the threshold. Please check if your fastq file has proper quality values. If not, please define an error rate using command line options.
 
 ## Citation
 
