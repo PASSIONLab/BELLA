@@ -154,7 +154,7 @@ void JellyFishCount(char *kmer_file, dictionary_t & countsreliable_jelly, int lo
 void GerbilDeNovoCount(std::string& tempDir, std::string& fileName, dictionary_t& countsreliable_denovo, int& lower, int& upper, 
 				 int& coverage, size_t upperlimit, BELLApars& b_pars)
 {
-	gerbil::Application application(b_pars.kmerSize, fileName, tempDir, 1, "outputTRY", b_pars.skipEstimate);
+	gerbil::Application application(coverage,b_pars.kmerSize, fileName, tempDir, 1, "outputTRY", b_pars.skipEstimate);
 		application.process();
 
 	if(!b_pars.skipEstimate) // Estimare error rate from the reads
@@ -164,7 +164,7 @@ void GerbilDeNovoCount(std::string& tempDir, std::string& fileName, dictionary_t
 
 	lower = computeLower(coverage, b_pars.errorRate, b_pars.kmerSize);
 	upper = computeUpper(coverage, b_pars.errorRate, b_pars.kmerSize);	
-
+	cout<<"finish count"<<'\n';
 	vector<pair<string,unsigned int>> *listKmer;
 	listKmer = application.getListKmer();
 
@@ -174,12 +174,12 @@ void GerbilDeNovoCount(std::string& tempDir, std::string& fileName, dictionary_t
 	int listLength = (*listKmer).size();
 	for(int i = 0; i<listLength; i++) 
 	{
-		if(get<1>((*listKmer)[i]) >= lower && get<1>((*listKmer)[i]) <= upper)
-		{
+		//if(get<1>((*listKmer)[i]) >= lower && get<1>((*listKmer)[i]) <= upper)
+		//{
 			Kmer mykmer(get<0>((*listKmer)[i]).c_str(), get<0>((*listKmer)[i]).length());
 			countsreliable_denovo.insert(mykmer, kmer_id_denovo);
 			++kmer_id_denovo;
-		}
+		//}
 	}
 	delete listKmer;	
 	
