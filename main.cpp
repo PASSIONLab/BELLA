@@ -69,7 +69,7 @@ int main (int argc, char *argv[]) {
 	// Follow an option with a colon to indicate that it requires an argument.
 
 	optList = NULL;
-	optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:a:ze:x:c:m:r:pb:s:q:gu:");
+	optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:a:ze:x:c:m:r:pb:s:q:gu:y");
 
 	char	*kmer_file 			= NULL;	// Reliable k-mer file from Jellyfish
 	char	*all_inputs_fofn 	= NULL;	// List of fastqs (i)
@@ -173,8 +173,12 @@ int main (int argc, char *argv[]) {
 				b_parameters.errorRate = 0.15;	// Default value
 				break;
 			}
-			 case 'g': { // use Gerbil as kmerCounter
+			case 'g': { // use Gerbil as kmerCounter
 				b_parameters.useGerbil = true;
+				break;
+			}
+			case 'y': { // use Gerbil as kmerCounter
+				b_parameters.enableGPU = true;
 				break;
 			}
 			case 'a': {
@@ -213,19 +217,20 @@ int main (int argc, char *argv[]) {
 				cout << " -o : Output filename	(required)" 	<< endl;
 				cout << " -d : Dataset coverage	(required)" 	<< endl; // TO DO: add coverage estimation
 				cout << " -k : KmerSize [17]" 					<< endl;
-				cout << " -a : User-defined alignment threshold [false, 0]" 		<< endl;
+				cout << " -a : User-defined alignment threshold [FALSE, 0]" 		<< endl;
 				cout << " -x : SeqAn xDrop [7]" 									<< endl;
 				cout << " -e : Error rate [0.15]" 				<< endl;
-				cout << " -q : Estimare error rate from the dataset [false]" 	<< endl;
-				cout << " -u : Use default error rate setting [false]"			<< endl;
-				cout << " -g : Use Gerbil as kmerCounter [false]" 				<< endl;
+				cout << " -q : Estimare error rate from the dataset [FALSE]" 	<< endl;
+				cout << " -u : Use default error rate setting [FALSE]"			<< endl;
+				cout << " -g : Use Gerbil as kmerCounter [FALSE]" 				<< endl;
+				cout << " -y : Enable GPU [FALSE]" 				<< endl;
 				cout << " -m : Total RAM of the system in MB [auto estimated if possible or 8,000 if not]" << endl;
-				cout << " -z : Do not run pairwise alignment [false]" 				<< endl;
+				cout << " -z : Do not run pairwise alignment [FALSE]" 				<< endl;
 				cout << " -c : Deviation from the mean alignment score [0.10]" 		<< endl;
 				cout << " -r : KmerRift: bases separating two k-mers [kmerSize]"	<< endl;
 				cout << " -s : Common k-mers threshold to compute alignment [1]"	<< endl;
 				cout << " -b : Bin size binning algorithm [500]" 	<< endl;
-				cout << " -p : Output in PAF format [false]\n" 		<< endl;
+				cout << " -p : Output in PAF format [FALSE]\n" 		<< endl;
 
 				FreeOptList(thisOpt); // Done with this list, free it
 				return 0;
@@ -288,6 +293,8 @@ int main (int argc, char *argv[]) {
 	std::cout << std::setprecision(2);
 	std::cout << "outputFile:	"		<< out_file							<< std::endl;
 	std::cout << "inputCoverage:	"	<< coverage							<< std::endl;
+	std::cout << "useGerbil:	"		<< b_parameters.useGerbil			<< std::endl;
+	std::cout << "enableGPU:	"		<< b_parameters.enableGPU			<< std::endl;
 	std::cout << "kmerSize:	"			<< b_parameters.kmerSize			<< std::endl;
 	std::cout << "kmerRift:	"			<< b_parameters.kmerRift			<< std::endl;
 	std::cout << "minOverlap:	"		<< b_parameters.minOverlap			<< std::endl;

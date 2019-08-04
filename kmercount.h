@@ -145,7 +145,7 @@ void JellyFishCount(char *kmer_file, dictionary_t & countsreliable_jelly, int lo
 		}
 	lt.unlock(); // unlock the table
 	// Print some information about the table
-	cout << "Entries within reliable range Jellyfish: " << countsreliable_jelly.size() << std::endl;    
+	cout << "Entries within reliable range Jellyfish:	" << countsreliable_jelly.size() << std::endl;    
 	//cout << "Bucket count Jellyfish: " << countsjelly.bucket_count() << std::endl;
 	//cout << "Load factor Jellyfish: " << countsjelly.load_factor() << std::endl;
 	countsjelly.clear(); // free 
@@ -154,17 +154,14 @@ void JellyFishCount(char *kmer_file, dictionary_t & countsreliable_jelly, int lo
 void GerbilDeNovoCount(std::string& tempDir, std::string& fileName, dictionary_t& countsreliable_denovo, int& lower, int& upper, 
 				 int& coverage, size_t upperlimit, BELLApars& b_pars)
 {
-	gerbil::Application application(coverage,b_pars.kmerSize, fileName, tempDir, 1, "outputTRY", b_pars.skipEstimate);
+	gerbil::Application application(b_pars.enableGPU, coverage, b_pars.kmerSize, fileName, tempDir, 1, "outputTRY", b_pars.skipEstimate);
 		application.process();
 
 	if(!b_pars.skipEstimate) // Estimare error rate from the reads
 	{
 		b_pars.errorRate = application.getErate();
-	}	
+	}
 
-	lower = computeLower(coverage, b_pars.errorRate, b_pars.kmerSize);
-	upper = computeUpper(coverage, b_pars.errorRate, b_pars.kmerSize);	
-	cout<<"finish count"<<'\n';
 	vector<pair<string,unsigned int>> *listKmer;
 	listKmer = application.getListKmer();
 
@@ -173,15 +170,12 @@ void GerbilDeNovoCount(std::string& tempDir, std::string& fileName, dictionary_t
 
 	int listLength = (*listKmer).size();
 	for(int i = 0; i<listLength; i++) 
-	{
-		//if(get<1>((*listKmer)[i]) >= lower && get<1>((*listKmer)[i]) <= upper)
-		//{
-			Kmer mykmer(get<0>((*listKmer)[i]).c_str(), get<0>((*listKmer)[i]).length());
-			countsreliable_denovo.insert(mykmer, kmer_id_denovo);
-			++kmer_id_denovo;
-		//}
+	{	// Reliable count within Gerbil
+		Kmer mykmer(get<0>((*listKmer)[i]).c_str(), get<0>((*listKmer)[i]).length());
+		countsreliable_denovo.insert(mykmer, kmer_id_denovo);
+		++kmer_id_denovo;
 	}
-	delete listKmer;	
+	delete listKmer;
 	
 	// Print some information about the table
 	if(countsreliable_denovo.size() == 0)
@@ -191,7 +185,7 @@ void GerbilDeNovoCount(std::string& tempDir, std::string& fileName, dictionary_t
 	}
 	else
 	{
-		cout << "Entries within reliable range: " << countsreliable_denovo.size() << endl;
+		cout << "Entries within reliable range:	" << countsreliable_denovo.size() << endl;
 	}
 }
 
