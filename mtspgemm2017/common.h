@@ -43,7 +43,7 @@ struct BELLApars
 	double	totalMemory;		// in MB, default is ~ 8GB
 	double	errorRate;			// default error rate if estimation is disable (e)
 
-	BELLApars(): kmerSize(17), kmerRift(kmerSize), minOverlap(1000), minSurvivedKmers(1), maxOverhang(1500), maxJump(1500), binSize(500), defaultThr(0),
+	BELLApars(): kmerSize(17), kmerRift(kmerSize), minOverlap(1000), minSurvivedKmers(-1), maxOverhang(1500), maxJump(1500), binSize(500), defaultThr(0),
 					xDrop(7), skipEstimate(false), skipAlignment(false), adapThr(true), outputPaf(false), userDefMem(false), useGerbil(false), enableGPU(false), maxDivergence(0.25),
 						deltaChernoff(0.10), totalMemory(8000.0), errorRate(0.15) {};
 };
@@ -110,6 +110,16 @@ struct spmatType_ {
 
 		ids.resize(1);				// GG: we don't care about other support, we want only the majority voted one
 		return support[ids[0]];		// number of kmer in the most voted bin
+	}
+
+	//	GG: overlap len in the most voted bin
+	int overlaplength() {
+		ids = vector<int>(support.size());					// number of support
+		std::iota(ids.begin(), ids.end(), 0);				// assign an id
+		std::sort(ids.begin(), ids.end(), SortBy(support));	// sort support by supporting k-mers
+
+		ids.resize(1);				// GG: we don't care about other support, we want only the majority voted one
+		return overlap[ids[0]];		// number of kmer in the most voted bin
 	}
 
 	//	GG: choose does also sorting and return the position of the first k-mer in each bin

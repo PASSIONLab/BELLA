@@ -29,6 +29,7 @@
 #include "libcuckoo/cuckoohash_map.hh"
 #include "kmercount.h"
 #include "chain.h"
+#include "markov.h"
 
 #include "kmercode/hash_funcs.h"
 #include "kmercode/Kmer.hpp"
@@ -228,7 +229,7 @@ int main (int argc, char *argv[]) {
 				cout << " -z : Do not run pairwise alignment [FALSE]" 				<< endl;
 				cout << " -c : Deviation from the mean alignment score [0.10]" 		<< endl;
 				cout << " -r : KmerRift: bases separating two k-mers [kmerSize]"	<< endl;
-				cout << " -s : Common k-mers threshold to compute alignment [1]"	<< endl;
+				cout << " -s : Common k-mers threshold to compute alignment [auto estimated if possible]"	<< endl;
 				cout << " -b : Bin size binning algorithm [500]" 	<< endl;
 				cout << " -p : Output in PAF format [FALSE]\n" 		<< endl;
 
@@ -271,7 +272,7 @@ int main (int argc, char *argv[]) {
 	vector<filedata> allfiles     = GetFiles(all_inputs_fofn);
 	std::string all_inputs_gerbil = std::string(all_inputs_fofn); 
 	int lower, upper; // reliable range lower and upper bound
-	double ratioPhi;
+	double ratiophi;
 	Kmer::set_k(b_parameters.kmerSize);
 	size_t upperlimit = 10000000; // in bytes
 	Kmers kmervect;
@@ -291,22 +292,22 @@ int main (int argc, char *argv[]) {
 #endif
 	std::cout << std::fixed;
 	std::cout << std::setprecision(2);
-	std::cout << "outputFile:	"		<< out_file							<< std::endl;
-	std::cout << "inputCoverage:	"	<< coverage							<< std::endl;
-	std::cout << "useGerbil:	"		<< b_parameters.useGerbil			<< std::endl;
-	std::cout << "enableGPU:	"		<< b_parameters.enableGPU			<< std::endl;
-	std::cout << "kmerSize:	"			<< b_parameters.kmerSize			<< std::endl;
-	std::cout << "kmerRift:	"			<< b_parameters.kmerRift			<< std::endl;
-	std::cout << "minOverlap:	"		<< b_parameters.minOverlap			<< std::endl;
+	std::cout << "outputFile:	 "		<< out_file							<< std::endl;
+	std::cout << "inputCoverage:	 "	<< coverage							<< std::endl;
+	std::cout << "useGerbil:	 "		<< b_parameters.useGerbil			<< std::endl;
+	std::cout << "enableGPU:	 "		<< b_parameters.enableGPU			<< std::endl;
+	std::cout << "kmerSize:	 "			<< b_parameters.kmerSize			<< std::endl;
+	std::cout << "kmerRift:	 "			<< b_parameters.kmerRift			<< std::endl;
+	std::cout << "minOverlap:	 "		<< b_parameters.minOverlap			<< std::endl;
 	std::cout << "minNumKmers:	"		<< b_parameters.minSurvivedKmers	<< std::endl;
-	std::cout << "maxOverhang:	"		<< b_parameters.maxOverhang			<< std::endl;
-	std::cout << "maxJump:	"			<< b_parameters.maxJump				<< std::endl;
-	std::cout << "maxDivergence:	"	<< b_parameters.maxDivergence		<< std::endl;
-	std::cout << "outputPaf:	"		<< b_parameters.outputPaf			<< std::endl;
-	std::cout << "binSize:	"			<< b_parameters.binSize				<< std::endl;
-	std::cout << "deltaChernoff:	"	<< b_parameters.deltaChernoff		<< std::endl;
-	std::cout << "runAlignment:	"		<< !b_parameters.skipAlignment		<< std::endl;
-	std::cout << "seqAn xDrop:	"		<< b_parameters.xDrop				<< std::endl;
+	std::cout << "maxOverhang:	 "		<< b_parameters.maxOverhang			<< std::endl;
+	std::cout << "maxJump:	 "			<< b_parameters.maxJump				<< std::endl;
+	std::cout << "maxDivergence:	 "	<< b_parameters.maxDivergence		<< std::endl;
+	std::cout << "outputPaf:	 "		<< b_parameters.outputPaf			<< std::endl;
+	std::cout << "binSize:	 "			<< b_parameters.binSize				<< std::endl;
+	std::cout << "deltaChernoff:	 "	<< b_parameters.deltaChernoff		<< std::endl;
+	std::cout << "runAlignment:	 "		<< !b_parameters.skipAlignment		<< std::endl;
+	std::cout << "seqAn xDrop:	 "		<< b_parameters.xDrop				<< std::endl;
 #endif
 
 	//
@@ -349,8 +350,8 @@ else
 	std::cout << "kmerFrequencyUpperBound:	"	<< upper					<< std::endl;
 if(b_parameters.adapThr)
 {
-	ratioPhi = adaptiveSlope(b_parameters.errorRate);
-	std::cout << "adaptiveThreshold constant:	"	<< ratioPhi * (1-b_parameters.deltaChernoff)	<< "\n" << std::endl;
+	ratiophi = adaptiveSlope(b_parameters.errorRate);
+	std::cout << "adaptiveThreshold constant:	"	<< ratiophi * (1-b_parameters.deltaChernoff)	<< "\n" << std::endl;
 }
 else
 	std::cout << "userDefinedThreshold:	"	<< b_parameters.defaultThr	<< "\n" << std::endl;
@@ -475,6 +476,8 @@ else
 	std::cout << "Sparse matrix construction took:	" << omp_get_wtime()-matcreat << "s\n" << std::endl;
 #endif
 
+	int steps = markovstep(1-b_parameters.errorRate, b_parameters.kmerSize);
+
 	//
 	// Overlap detection (sparse matrix multiplication) and seed-and-extend alignment
 	//
@@ -502,8 +505,8 @@ else
 			chainop(m1, m2, b_parameters, readname1, readname2);
 			return m1;
 		},
-		reads, getvaluetype, b_parameters.xDrop, out_file, b_parameters, ratioPhi); 
+		reads, getvaluetype, out_file, b_parameters, ratiophi, steps);
 
 	std::cout << "Total running time:	" << omp_get_wtime()-all << "s\n" << std::endl;
 	return 0;
-} 
+}

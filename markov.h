@@ -20,7 +20,7 @@ typedef struct std::vector<std::vector<float>> matrix;
 //
 
 //	adding the entries in the top row, we get the expected number of steps
-int getresult(const matrix& inverse, const int& dim)
+int getresult(matrix& inverse, const int& dim)
 {
 	const int row = 0;
 	float sum = 0.0;
@@ -49,9 +49,9 @@ void cofactor(matrix& N, matrix& tmp, const int& p, const int& q, const int& dim
 }
 
 //	recursive function for finding determinant of matrix
-int determinant(const matrix& N, const int& dim) 
+int determinant(matrix& N, const int& dim) 
 {
-	float determinant = 0;
+	float det = 0;
 
 	//	base case: matrix contains single element
 	if(dim == 1) 
@@ -68,7 +68,7 @@ int determinant(const matrix& N, const int& dim)
 	{
 		//	getting cofactor of N[0][f]
 		cofactor(N, tmp, 0, i, dim); 
-		determinant += sign * N[0][i] * determinant(tmp, dim - 1);
+		det += sign * N[0][i] * determinant(tmp, dim - 1);
 		//	terms are to be added with alternate sign
 		sign = -sign;
 	}
@@ -77,7 +77,7 @@ int determinant(const matrix& N, const int& dim)
 }
 
 //	function to get adjoint of N[dim][dim] in adj[dim][dim]
-void adjoint(int A[N][N],int adj[N][N])
+void adjoint(matrix& N, matrix& adj, const int& dim)
 {
 	if(dim == 1)
 	{
@@ -85,7 +85,7 @@ void adjoint(int A[N][N],int adj[N][N])
 		return;
 	}
 
-	int sign = 1,;
+	int sign = 1;
 	//	store cofactors
 	matrix tmp;
 	tmp = std::vector<std::vector<float>>(dim, std::vector<float>(dim, 0.0));
@@ -102,7 +102,7 @@ void adjoint(int A[N][N],int adj[N][N])
 }
 
 //	function to calculate and store inverse, returns false if matrix is singular
-bool inverse(const matrix& N, matrix& inverse, const int& dim)
+bool inverse(matrix& N, matrix& inverse, const int& dim)
 {
 	//	find determinant of N
 	float det = determinant(N, dim);
@@ -115,7 +115,7 @@ bool inverse(const matrix& N, matrix& inverse, const int& dim)
 	matrix adj;
 	adj = std::vector<std::vector<float>>(dim, std::vector<float>(dim, 0.0));
 
-	adjoint(N, adj);
+	adjoint(N, adj, dim);
 
 	//	find inverse using formula "inverse(N) = adj(N)/det(N)"
 	for(int i = 0; i < dim; i++)
@@ -126,7 +126,7 @@ bool inverse(const matrix& N, matrix& inverse, const int& dim)
 }
 
 //	GG: this assume square matrix
-matrix substract(const matrix& a, const matrix& b, const int& dim)
+matrix substract(matrix& a, matrix& b, const int& dim)
 {
 	matrix res;
 
@@ -137,8 +137,7 @@ matrix substract(const matrix& a, const matrix& b, const int& dim)
 	return res;
 }
 
-void generaten(const matrix& Q, const matrix& I, matrix& N, const int& dim)
-{
+void generaten(matrix& Q, matrix& I, matrix& N, const int& dim) {
 	N = substract(I, Q, dim);
 }
 
@@ -161,6 +160,7 @@ void generateq(const matrix& P, matrix& Q, const int& dim)
 int markovstep(const float& probability, const int& kmersize)
 {
 	const int dim  = kmersize + 1;
+	int res = -1;
 
 	//	GG: transition matrix
 	matrix P, Q, I, N, inversemat;
@@ -168,8 +168,8 @@ int markovstep(const float& probability, const int& kmersize)
 
 	for(int i = 0; i < kmersize; i++)
 	{
-		P[i][0]   = (1 - std::power(probability, 2));
-		P[i][i+1] = std::power(probability, 2);
+		P[i][0]   = (1 - std::pow(probability, 2));
+		P[i][i+1] = std::pow(probability, 2);
 	}
 	P[kmersize][kmersize] = 1.0;
 
@@ -181,7 +181,7 @@ int markovstep(const float& probability, const int& kmersize)
 	generaten(Q, I, N, kmersize);
 
 	if(inverse(N, inversemat, kmersize))
-		int res = getresult(inversemat, kmersize);
+		res = getresult(inversemat, kmersize);
 
 	return res;	//	expected overlap length to get a correct kmer
 }
