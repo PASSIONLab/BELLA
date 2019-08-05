@@ -484,57 +484,39 @@ void PostAlignDecision(const seqAnResult& maxExtScore, const readType_& read1, c
 	int normLen     = max(overlapLenV, overlapLenH);
 	int minLen      = min(overlapLenV, overlapLenH);
 
-//////////////////////////////////////////////////////////////////
-//						FILTER OUT OVERLAPS						//
-//////////////////////////////////////////////////////////////////
-
 	//	GG: too short
 	if(minLen < b_pars.minOverlap)
 		return;
 
-	//	GG: filter overlaps that way to divergent in length
-	//	GG: this shouldn't happen to us
-	float ovpDiv = 0.5;
-	float lengthDiff = std::abs(overlapLenV - overlapLenH);
-	if(lengthDiff > ovpDiv * minLen)
-		return;
+//	//	GG: filter overlaps that way to divergent in length
+//	//	GG: this shouldn't happen to us
+//	float ovpDiv = 0.5;
+//	float lengthDiff = std::abs(overlapLenV - overlapLenH);
+//	if(lengthDiff > ovpDiv * minLen)
+//		return;
+//
+//	//	GG: check maxOverhang (from MK)
+//	if(std::min(begpV, begpH) > b_pars.maxOverhang)
+//		return;
+//	if (std::min(read1len - endpH, read2len - endpV) > b_pars.maxOverhang)
+//		return;
+//
+//	//	GG: check strand skipping paccio pattern (from MK)
+//	if(maxExtScore.strand == "c")
+//	{
+//		int intersect = std::min(endpV, endpH) - 
+//									std::max(begpV, begpH);
+//		if(intersect < -b_pars.maxJump)	//	GG: double check sign
+//			return;	// GG: this suggest a chimeric read but we should be more careful here
+//	}
 
-	//	GG: check maxOverhang (from MK)
-	if(std::min(begpV, begpH) > b_pars.maxOverhang)
-		return;
-	if (std::min(read1len - endpH, read2len - endpV) > b_pars.maxOverhang)
-		return;
-
-	//	GG: check strand skipping paccio pattern (from MK)
-	if(maxExtScore.strand == "c")
-	{
-		int intersect = std::min(endpV, endpH) - 
-									std::max(begpV, begpH);
-		if(intersect < -b_pars.maxJump)	//	GG: double check sign
-			return;	// GG: this suggest a chimeric read but we should be more careful here
-	}
-
-	//	GG: we want a separate function to recount smaller kmer and compute the sequence divergence
-	//	GG: return chainLen = numLmers * size with size < kmerSize
-	//	GG: this needs to be a parameter
-	//	int size     = 15;
-	int chainLen        = matches * b_pars.kmerSize;
-	//	int chainLen = getChainLen(seq1, seq2, begpH, endpH, begpV, endpV, size, maxExtScore.strand);
-	float matchRate     = (float)chainLen / (float)normLen;
-		  matchRate     = std::min(matchRate, 1.0f);
+	int chainLen    = matches * b_pars.kmerSize;
+	float matchRate = (float)chainLen / (float)normLen;
+		  matchRate = std::min(matchRate, 1.0f);
 	float seqDivergence = std::log(1 / matchRate) / b_pars.kmerSize;
-	//	float seqDivergence = std::log(1 / matchRate) / size;
 
-	if(seqDivergence > b_pars.maxDivergence)
-		return;
-
-//////////////////////////////////////////////////////////////////
-
-	//	GG: debug
-	//#pragma omp critical
-	//	{
-	//		std::cout << seqDivergence << '\t' << matchRate << '\t' << normLen << '\t' << chainLen << std::endl;
-	//	}
+//	if(seqDivergence > b_pars.maxDivergence)
+//		return;
 
 	if(b_pars.adapThr)
 	{
@@ -551,7 +533,7 @@ void PostAlignDecision(const seqAnResult& maxExtScore, const readType_& read1, c
 
 	if(passed)
 	{
-		if(!b_pars.outputPaf)	// BELLA output format
+		if(!b_pars.outputPaf)		// BELLA output format
 		{
 			myBatch << read2.nametag << '\t' << read1.nametag << '\t' << count << '\t' << maxExtScore.score << '\t' << normLen << '\t' << maxExtScore.strand << '\t' << 
 				begpV << '\t' << endpV << '\t' << read2len << '\t' << begpH << '\t' << endpH << '\t' << read1len << endl;
@@ -634,8 +616,16 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 				seqAnResult maxExtScore;
 				bool passed = false;
 
-				int matches = val->chain();				//	GG: number of matching kmer into the majority voted bin
-				if (matches < b_pars.minSurvivedKmers)	//	GG: b_pars.minSurvivedKmers should be function of Markov chain
+				//	GG: number of matching kmer into the majority voted bin
+				int matches = val->chain();
+				int overlap = val->overlaplength();
+
+				//	GG: expected number of survived kmer in a given overlap region
+				if(b_pars.minSurvivedKmers == - 1)
+					b_pars.minSurvivedKmers = std::round((float)overlap/(float)steps);
+
+				//	GG: b_pars.minSurvivedKmers should be function of Markov chain
+				if (matches < b_pars.minSurvivedKmers)
 					continue;
 
 				pair<int, int> kmer = val->choose();
