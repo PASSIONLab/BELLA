@@ -154,13 +154,10 @@ void JellyFishCount(char *kmer_file, dictionary_t & countsreliable_jelly, int lo
 void GerbilDeNovoCount(std::string& tempDir, std::string& fileName, dictionary_t& countsreliable_denovo, int& lower, int& upper, 
 				 int& coverage, size_t upperlimit, BELLApars& b_pars)
 {
-	gerbil::Application application(b_pars.enableGPU, coverage, b_pars.kmerSize, fileName, tempDir, 1, "outputTRY", b_pars.skipEstimate);
+	gerbil::Application application(b_pars.errorRate,b_pars.enableGPU, coverage, b_pars.kmerSize, fileName, tempDir, 1, "outputTRY", b_pars.skipEstimate);
 		application.process();
 
-	if(!b_pars.skipEstimate) // Estimare error rate from the reads
-	{
-		b_pars.errorRate = application.getErate();
-	}
+
 
 	vector<pair<string,unsigned int>> *listKmer;
 	listKmer = application.getListKmer();
