@@ -111,6 +111,16 @@ struct spmatType_ {
 		return support[ids[0]];		// number of kmer in the most voted bin
 	}
 
+	//	GG: overlap len in the most voted bin
+	int overlaplength() {
+		ids = vector<int>(support.size());					// number of support
+		std::iota(ids.begin(), ids.end(), 0);				// assign an id
+		std::sort(ids.begin(), ids.end(), SortBy(support));	// sort support by supporting k-mers
+
+		ids.resize(1);				// GG: we don't care about other support, we want only the majority voted one
+		return overlap[ids[0]];		// number of kmer in the most voted bin
+	}
+
 	//	GG: choose does also sorting and return the position of the first k-mer in each bin
 	pair<int, int> choose() {
 		ids = vector<int>(support.size());					// number of support
