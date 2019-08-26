@@ -26,77 +26,72 @@
 #include <omp.h>
 #include "bound.hpp"
 
-/**
- * @brief factorial
- * @param n
- * @return
- */
-long double factorial(double n)
+//	GG: parallel factorial
+long double factorial(long double number)
 {
-    if(n > 1)
-        return n * factorial(n - 1);
-    else
-        return 1;
+	long double fac = 1;
+#pragma omp parallel for reduction(*:fac)
+	for(int n = 2; n <= (int)number; ++n)
+		fac *= n;
+	return fac;
 }
 
-/**
- * @brief rbounds does upper bound selection,
- * the lower bound is fixed and equal to 2
- * @param d is the coverage
- * @param e is the error rate
- * @param k is the k-mer length
- * @return upper bound
- */
+//	GG: depth, error rate, and k-mer length
 int computeUpper(int d, double e, int k)
 {
-    long double a,b,c;
-    double probability = 1;
-    double cumsum = 0, prev;
-    int m = d;
+	long double a, b, c;
+	long double dfact = factorial(d);
+	long double bbase = (1-e);
+	long double cbase = (1-pow(bbase, k));
+	long double probability = 1;
+	long double sum = 0, prev;
+	int m = d;
 
-    while(cumsum < MIN_PROB)
-    {
-        a = factorial(d)/(factorial(m)*factorial(d-m)); // it's fine 
-        b = pow(1-e,(m*k));
-        c = pow(1-pow(1-e,k),(d-m));
-        
-        probability = a*b*c;
-        cumsum = cumsum + probability;
+	while(sum < MINPROB)
+	{
+		a = dfact / (factorial(m) * factorial(d-m));
+		b = pow(bbase, (m*k));
+		c = pow(cbase, (d-m));
 
-        if(cumsum == prev && cumsum < MIN_PROB)
-            break;
-        --m;
-        prev = cumsum;
-    }
-    return (m+1);
+		probability = a * b * c;
+		sum = sum + probability;
+
+		if(sum == prev && sum < MINPROB)
+			break;
+		--m;
+		prev = sum;
+	}
+	return (m+1);
 }
 
+//	GG: depth, error rate, and k-mer length
 int computeLower(int d, double e, int k)
 {
-    long double a,b,c;
-    double probability = 1;
-    double cumsum = 0, prev;
-    int m = 2;
+	long double a, b, c;
+	long double dfact = factorial(d);
+	long double bbase = (1-e);
+	long double cbase = (1-pow(bbase, k));
+	long double probability = 1;
+	long double sum = 0, prev;
+	int mymin = 2;
+	int m = mymin;
 
-    while(cumsum < MIN_PROB)
-    {
-        a = factorial(d)/(factorial(m)*factorial(d-m)); // it's fine 
-        b = pow(1-e,(m*k));
-        c = pow(1-pow(1-e,k),(d-m));
-        
-        probability = a*b*c;
-        cumsum = cumsum + probability;
+	while(sum < MINPROB)
+	{
+		a = dfact / (factorial(m) * factorial(d-m));
+		b = pow(bbase, (m*k));
+		c = pow(cbase, (d-m));
 
-        if(cumsum == prev && cumsum < MIN_PROB)
-            break;
-        ++m;
-        prev = cumsum;
-    }
+		probability = a * b * c;
+		sum = sum + probability;
 
-    if (m-1 < 2)
-        return 2;
-    else 
-        return (m-1);
+		if(sum == prev && sum < MINPROB)
+			break;
+		++m;
+		prev = sum;
+	}
+
+	return std::max(m-1, mymin);
 }
 
 

@@ -1,7 +1,7 @@
 #ifndef BELLA_KMERCODE_BOUND_H_
 #define BELLA_KMERCODE_BOUND_H_
 
-#define MIN_PROB 0.002 // 0.2% cumulative sum
+#define MINPROB 0.002 // 0.2% cumulative sum
 
 /**
  * @brief bincoef computes the binomial coefficient
