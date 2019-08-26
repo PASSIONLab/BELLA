@@ -121,8 +121,8 @@ int main (int argc, char *argv[]) {
 				}
 				char* line1 = strdup(thisOpt->argument);
 				char* line2 = strdup(".out");
-				size_t len1 = strlen(line1);
-				size_t len2 = strlen(line2);
+				unsigned int len1 = strlen(line1);
+				unsigned int len2 = strlen(line2);
 
 				out_file = (char*)malloc(len1 + len2 + 1);
 				if (!out_file) abort();
@@ -267,19 +267,19 @@ int main (int argc, char *argv[]) {
 	//
 	// Declarations 
 	//
-	vector<filedata> allfiles     = GetFiles(all_inputs_fofn);
+	vector<filedata> allfiles = GetFiles(all_inputs_fofn);
 	int lower, upper; // reliable range lower and upper bound
 	double ratioPhi;
 	Kmer::set_k(b_parameters.kmerSize);
-	size_t upperlimit = 10000000; // in bytes
+	unsigned int upperlimit = 10000000; // in bytes
 	Kmers kmervect;
 	vector<string> seqs;
 	vector<string> quals;
 	vector<string> nametags;
 	readVector_ reads;
 	Kmers kmersfromreads;
-	vector<tuple<size_t,size_t,size_t>> occurrences;
-	vector<tuple<size_t,size_t,size_t>> transtuples;
+	vector<tuple<unsigned int, unsigned int, unsigned short int>> occurrences;	// 32 bit, 32 bit, 16 bit (read, kmer, position)
+	vector<tuple<unsigned int, unsigned int, unsigned short int>> transtuples;	// 32 bit, 32 bit, 16 bit (kmer, read, position)
 	// 
 	// File and setting used
 	//
@@ -310,7 +310,7 @@ int main (int argc, char *argv[]) {
 	// Kmer file parsing, error estimation, reliable bounds computation, and k-mer dictionary creation
 	//
 
-	dictionary_t countsreliable;
+	dictionary_t_32bit countsreliable;
 
 #ifdef JELLYFISH
 	// Reliable bounds computation for Jellyfish using default error rate
@@ -347,7 +347,7 @@ else
 	//
 
 	double parsefastq = omp_get_wtime();
-	size_t read_id = 0; // read_id needs to be global (not just per file)
+	unsigned int read_id = 0; // read_id needs to be global (not just per file)
 
 	vector < vector<tuple<int,int,int>> > alloccurrences(MAXTHREADS);
 	vector < vector<tuple<int,int,int>> > alltranstuples(MAXTHREADS);
@@ -359,11 +359,11 @@ else
 		ParallelFASTQ *pfq = new ParallelFASTQ();
 		pfq->open(itr->filename, false, itr->filesize);
 
-		size_t fillstatus = 1;
+		unsigned int fillstatus = 1;
 		while(fillstatus)
 		{ 
 			fillstatus = pfq->fill_block(nametags, seqs, quals, upperlimit);
-			size_t nreads = seqs.size();
+			unsigned int nreads = seqs.size();
 
 			#pragma omp parallel for
 			for(int i=0; i<nreads; i++) 
@@ -386,12 +386,12 @@ else
 					// remember to use only ::rep() when building kmerdict as well
 					Kmer lexsmall = mykmer.rep();
 
-					int idx; // kmer_id
+					unsigned int idx; // kmer_id
 					auto found = countsreliable.find(lexsmall,idx);
 					if(found)
 					{
-						alloccurrences[MYTHREAD].emplace_back(std::make_tuple(read_id+i,idx,j)); // vector<tuple<read_id,kmer_id,kmerpos>>
-						alltranstuples[MYTHREAD].emplace_back(std::make_tuple(idx,read_id+i,j)); // transtuples.push_back(col_id,row_id,kmerpos)
+						alloccurrences[MYTHREAD].emplace_back(std::make_tuple(read_id+i, idx, j)); // vector<tuple<read_id,kmer_id,kmerpos>>
+						alltranstuples[MYTHREAD].emplace_back(std::make_tuple(idx, read_id+i, j)); // transtuples.push_back(col_id,row_id,kmerpos)
 					}
 				}
 			} // for(int i=0; i<nreads; i++)
@@ -401,8 +401,8 @@ else
 		delete pfq;
 	} // for all files
 
-	size_t readcount = 0;
-	size_t tuplecount = 0;
+	unsigned int readcount = 0;
+	unsigned int tuplecount = 0;
 	for(int t=0; t<MAXTHREADS; ++t)
 	{
 		readcount += allreads[t].size();
@@ -412,8 +412,9 @@ else
 	occurrences.resize(tuplecount);
 	transtuples.resize(tuplecount);
 
-	size_t readssofar = 0;
-	size_t tuplesofar = 0;
+	unsigned int readssofar = 0;
+	unsigned int tuplesofar = 0;
+
 	for(int t=0; t<MAXTHREADS; ++t)
 	{
 		copy(allreads[t].begin(), allreads[t].end(), reads.begin()+readssofar);
@@ -424,9 +425,9 @@ else
 		tuplesofar += alloccurrences[t].size();
 	}
 
-	std::sort(reads.begin(), reads.end());   // bool operator in global.h: sort by readid
-	std::vector<string>().swap(seqs);        // free memory of seqs  
-	std::vector<string>().swap(quals);       // free memory of quals
+	std::sort(reads.begin(), reads.end());	// bool operator in global.h: sort by readid
+	std::vector<string>().swap(seqs);		// free memory of seqs  
+	std::vector<string>().swap(quals);		// free memory of quals
 
 #ifdef PRINT
 	std::cout << "Fastq parsing took:	"		<< omp_get_wtime()	-	parsefastq << "s" << std::endl;
@@ -439,22 +440,22 @@ else
 
 	double matcreat = omp_get_wtime();
 
-	size_t nkmer = countsreliable.size();
-	CSC<size_t, size_t> spmat(occurrences, read_id, nkmer, 
-							[] (size_t& p1, size_t& p2) 
+	unsigned int nkmer = countsreliable.size();
+	CSC<unsigned int, unsigned short int> spmat(occurrences, read_id, nkmer, 
+							[] (unsigned short int& p1, unsigned short int& p2) 
 							{
 								return p1;
 							});
 	// remove memory of transtuples
-	std::vector<tuple<size_t,size_t,size_t>>().swap(occurrences);
+	std::vector<tuple<unsigned int, unsigned int, unsigned short int>>().swap(occurrences);
 
-	CSC<size_t, size_t> transpmat(transtuples, nkmer, read_id, 
-							[] (size_t& p1, size_t& p2) 
+	CSC<unsigned int, unsigned short int> transpmat(transtuples, nkmer, read_id, 
+							[] (unsigned short int& p1, unsigned short int& p2) 
 							{
 								return p1;
 							});
 	// remove memory of transtuples
-	std::vector<tuple<size_t, size_t, size_t>>().swap(transtuples);
+	std::vector<tuple<unsigned int, unsigned int, unsigned short int>>().swap(transtuples);
 
 #ifdef PRINT
 	std::cout << "Sparse matrix construction took:	" << omp_get_wtime()-matcreat << "s\n" << std::endl;
@@ -467,7 +468,7 @@ else
 	HashSpGEMM(spmat, transpmat, 
 		// n-th k-mer positions on read i and on read j
 		// AB: not sure if these id1 and id2 are captured correctly, honestly
-		[&b_parameters, &reads] (const int& begpH, const int& begpV, const int& id1, const int& id2)
+		[&b_parameters, &reads] (const unsigned short int& begpH, const unsigned short int& begpV, const unsigned int& id1, const unsigned int& id2)
 		{
 			spmatPtr_ value(make_shared<spmatType_>());
 
@@ -478,7 +479,7 @@ else
 			multiop(value, read1, read2, begpH, begpV, b_parameters.kmerSize);
 			return value;
 		},
-		[&b_parameters, &reads] (spmatPtr_& m1, spmatPtr_& m2, const int& id1, const int& id2)
+		[&b_parameters, &reads] (spmatPtr_& m1, spmatPtr_& m2, const unsigned int& id1, const unsigned int& id2)
 		{
 			// GG: after testing correctness, these variables can be removed
 			std::string& readname1 = reads[id1].nametag;

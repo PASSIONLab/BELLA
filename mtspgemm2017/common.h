@@ -22,22 +22,22 @@ extern "C" {
 
 struct BELLApars
 {
-	int		kmerSize;			// KmerSize
-	int		kmerRift;			// minDistance between Kmer
-	int		minOverlap;			// minOverlap length to detect (used to select the number number of shared kmer)
-	int		minSurvivedKmers;	// GG: to be mathematically determine via Markov chain with minOverlap and error rate
-	int		maxOverhang;		// maxOverhang
-	int		maxJump;			// maxJump to detect chimeric sequences
-	int		binSize;			// bin size chaining algorithm (b)
-	int		defaultThr;			// default alignment score threshold (a), only matters when adapThr=false, GG: to be deprecated
-	int		xDrop;				// seqAn xDrop value (7)
+	unsigned short int		kmerSize;			// KmerSize
+	unsigned short int		kmerRift;			// minDistance between Kmer
+	unsigned short int		minOverlap;			// minOverlap length to detect (used to select the number number of shared kmer)
+	unsigned short int		minSurvivedKmers;	// GG: to be mathematically determine via Markov chain with minOverlap and error rate
+	unsigned short int		maxOverhang;		// maxOverhang
+	unsigned short int		maxJump;			// maxJump to detect chimeric sequences
+	unsigned short int		binSize;			// bin size chaining algorithm (b)
+	unsigned short int		defaultThr;			// default alignment score threshold (a), only matters when adapThr=false, GG: to be deprecated
+	unsigned short int		xDrop;				// seqAn xDrop value (7)
 	bool	skipEstimate;		// Do not estimate error but use user-defined error (e)
 	bool	skipAlignment;		// Do not align (z)
 	bool	adapThr;			// Apply adaptive alignment threshold (v)
 	bool	outputPaf;			// output in paf format (p)
 	bool	userDefMem;
 	bool	useGerbil;
-	float	maxDivergence;		// maxDivergence to output a pair
+	double	maxDivergence;		// maxDivergence to output a pair
 	double	deltaChernoff;		// delta computed via Chernoff bound (c)
 	double	totalMemory;		// in MB, default is ~ 8GB
 	double	errorRate;			// default error rate if estimation is disable (e)
@@ -74,37 +74,37 @@ struct readType_ {
 typedef vector<readType_> readVector_;
 
 // EK: sort function for sorting a vector of indices by the values in a vector of int
-struct SortBy:std::binary_function<int, int, bool>
+struct SortBy:std::binary_function<unsigned short int, unsigned short int, bool>
 {
-	SortBy(const std::vector<int>& par) : vec(par) {}
-	bool operator()(int idx1, int idx2) const { return vec[idx1] > vec[idx2]; }
-	const std::vector<int>& vec;
+	SortBy(const std::vector<unsigned short int>& par) : vec(par) {}
+	bool operator()(unsigned short int idx1, unsigned short int idx2) const { return vec[idx1] > vec[idx2]; }
+	const std::vector<unsigned short int>& vec;
 };
 
 struct spmatType_ {
 
-	int count = 0;						// number of shared k-mers
-	vector<vector<pair<int, int>>> pos;	// vector of k-mer positions <read-i, read-j> (if !K, use at most 2 kmers, otherwise all) per bin
-	vector<int> support;				// number of k-mers supporting a given overlap
-	vector<int> overlap; 				// overlap values
-	vector<int> ids;					// indices corresponded to sorting of support (GG:?)
+	unsigned short int count = 0;		// number of shared k-mers
+	vector<vector<pair<unsigned short int, unsigned short int>>> pos;	// vector of k-mer positions <read-i, read-j> (if !K, use at most 2 kmers, otherwise all) per bin
+	vector<unsigned short int> support;	// number of k-mers supporting a given overlap
+	vector<unsigned short int> overlap;	// overlap values
+	vector<unsigned short int> ids;		// indices corresponded to sorting of support
 
 	//	GG: sort according to support number
 	void sort() {
-		ids = vector<int>(support.size());					// number of support
+		ids = vector<unsigned short int>(support.size());					// number of support
 		std::iota(ids.begin(), ids.end(), 0);				// assign an id
 		std::sort(ids.begin(), ids.end(), SortBy(support));	// sort support by supporting k-mers
 	}
 
 	//	GG: print overlap estimate and support number
 	void print() {
-		std::copy(overlap.begin(), overlap.end(), std::ostream_iterator<int>(std::cout, "\t")); std::cout << std::endl;
-		std::copy(support.begin(), support.end(), std::ostream_iterator<int>(std::cout, "\t")); std::cout << std::endl;
+		std::copy(overlap.begin(), overlap.end(), std::ostream_iterator<unsigned short int>(std::cout, "\t")); std::cout << std::endl;
+		std::copy(support.begin(), support.end(), std::ostream_iterator<unsigned short int>(std::cout, "\t")); std::cout << std::endl;
 	}
 
 	//	GG: number of kmer supporting the most voted bin
 	int chain() {
-		ids = vector<int>(support.size());					// number of support
+		ids = vector<unsigned short int>(support.size());	// number of support
 		std::iota(ids.begin(), ids.end(), 0);				// assign an id
 		std::sort(ids.begin(), ids.end(), SortBy(support));	// sort support by supporting k-mers
 
@@ -114,7 +114,7 @@ struct spmatType_ {
 
 	//	GG: overlap len in the most voted bin
 	int overlaplength() {
-		ids = vector<int>(support.size());					// number of support
+		ids = vector<unsigned short int>(support.size());	// number of support
 		std::iota(ids.begin(), ids.end(), 0);				// assign an id
 		std::sort(ids.begin(), ids.end(), SortBy(support));	// sort support by supporting k-mers
 
@@ -123,8 +123,8 @@ struct spmatType_ {
 	}
 
 	//	GG: choose does also sorting and return the position of the first k-mer in each bin
-	pair<int, int> choose() {
-		ids = vector<int>(support.size());					// number of support
+	pair<unsigned short int, unsigned short int> choose() {
+		ids = vector<unsigned short int>(support.size());	// number of support
 		std::iota(ids.begin(), ids.end(), 0);				// assign an id
 		std::sort(ids.begin(), ids.end(), SortBy(support));	// sort support by supporting k-mers
 
@@ -137,14 +137,13 @@ struct spmatType_ {
 };
 
 typedef shared_ptr<spmatType_> spmatPtr_; // pointer to spmatType_ datastruct
-
 typedef std::vector<Kmer> Kmers;
 
 struct alignmentInfo {
 
-	int64_t score;              // score 
-	uint32_t apos, bpos;        // (8) pos in the sections 
-	uint32_t alen, blen;        // (8) lengths of the segments 
+	int score;	//	score
+	unsigned short int apos, bpos;	// (8)	pos in the sections
+	unsigned short int alen, blen;	// (8)	lengths of the segments
 };
 
 #endif

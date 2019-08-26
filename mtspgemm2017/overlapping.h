@@ -120,9 +120,9 @@ T* prefixsum(T* in, int size, int nthreads)
 }
 /* fix according to PAF format */
 
-void toOriginalCoordinates(size_t& begpH, size_t& endpH, const int lenH)
+void toOriginalCoordinates(int& begpH, int& endpH, const int lenH)
 {
-	size_t tmp = begpH;
+	unsigned int tmp = begpH;
 	begpH = lenH-endpH;
 	endpH = lenH-tmp;
 }
@@ -153,7 +153,7 @@ IT* estimateFLOP(const CSC<IT,NT> & A, const CSC<IT,NT> & B, bool lowtriout)
 	#pragma omp parallel for
 		for(IT i=0; i < B.cols; ++i)
 		{
-			size_t nnzcolB = B.colptr[i+1] - B.colptr[i]; //nnz in the current column of B
+			unsigned int nnzcolB = B.colptr[i+1] - B.colptr[i]; //nnz in the current column of B
 		int myThread = omp_get_thread_num();
 		for (IT j = B.colptr[i]; j < B.colptr[i+1]; ++j)	// all nonzeros in that column of B
 		{
@@ -183,7 +183,7 @@ IT* estimateFLOP(const CSC<IT,NT> & A, const CSC<IT,NT> & B, bool lowtriout)
 
 // estimate space for result of SpGEMM with Hash
 template <typename IT, typename NT>
-IT* estimateNNZ_Hash(const CSC<IT,NT> & A, const CSC<IT,NT> & B, const size_t *flopC, bool lowtriout)
+IT* estimateNNZ_Hash(const CSC<IT,NT> & A, const CSC<IT,NT> & B, const unsigned int *flopC, bool lowtriout)
 {
 	if(A.isEmpty() || B.isEmpty())
 	{
@@ -207,22 +207,22 @@ IT* estimateNNZ_Hash(const CSC<IT,NT> & A, const CSC<IT,NT> & B, const size_t *f
 #pragma omp parallel for
 	for(IT i=0; i < B.cols; ++i)	// for each column of B
 	{
-		size_t nnzcolB = B.colptr[i+1] - B.colptr[i]; //nnz in the current column of B
+		unsigned int nnzcolB = B.colptr[i+1] - B.colptr[i]; //nnz in the current column of B
 		int myThread = omp_get_thread_num();
 			
 		// Hash
-		const size_t minHashTableSize = 16;
-		const size_t hashScale = 107;
+		const unsigned int minHashTableSize = 16;
+		const unsigned int hashScale = 107;
 
 		// Initialize hash tables
-		size_t ht_size = minHashTableSize;
+		unsigned int ht_size = minHashTableSize;
 		while(ht_size < flopC[i]) //ht_size is set as 2^n
 		{
 			ht_size <<= 1;
 		}
 		std::vector<IT> globalHashVec(ht_size);
 
-		for(size_t j=0; j < ht_size; ++j)
+		for(unsigned int j=0; j < ht_size; ++j)
 		{
 			globalHashVec[j] = -1;
 		}
@@ -274,7 +274,7 @@ void LocalSpGEMM(IT & start, IT & end, const CSC<IT,NT> & A, const CSC<IT,NT> & 
 	{
 		const IT minHashTableSize = 16;
 		const IT hashScale = 107;
-		size_t nnzcolC = colptrC[i+1] - colptrC[i];	//nnz in the current column of C (=Output)
+		unsigned int nnzcolC = colptrC[i+1] - colptrC[i];	//nnz in the current column of C (=Output)
 
 	IT ht_size = minHashTableSize;
 	while(ht_size < nnzcolC)	//ht_size is set as 2^n
@@ -359,7 +359,7 @@ double estimateMemory(const BELLApars & b_pars)
 	else
 	{
 #if defined (OSX) // OSX-based memory consumption implementation 
-	vm_size_t page_size;
+	vm_unsigned int page_size;
 	mach_port_t mach_port;
 	mach_msg_type_number_t count;
 	vm_statistics64_data_t vm_stats;
@@ -422,72 +422,72 @@ reversecomplement(const std::string& seq) {
 
 int getChainLen(const string& seqH, const string& seqV, const int begpH, const int endpH, 
 	const int begpV, const int endpV, const int size, const string& strand)
+{
+	//	GG: TODO modify Kmer to accept different kmerSizes
+	cuckoohash_map<Kmer, int> countsubkmers;
+	int matchingSubKmers = 0;
+	//	std::unordered_mapKmer, bool> countsubkmers;
+
+	for(int i = begpV; i < endpV - size + 1; i++)
 	{
-		//	GG: TODO modify Kmer to accept different kmerSizes
-		cuckoohash_map<Kmer, int> countsubkmers;
-		int matchingSubKmers = 0;
-		//	std::unordered_mapKmer, bool> countsubkmers;
-
-		for(int i = begpV; i < endpV - size + 1; i++)
-		{
-			std::string kmerstrfromstr = seqV.substr(i, size);
-			Kmer mykmer(kmerstrfromstr.c_str(), kmerstrfromstr.length());
-			Kmer lexsmall = mykmer.rep();
-			countsubkmers.insert(lexsmall, 1);
-		}
-
-		std::string seqHcpy = seqH;
-		if(strand == "c")
-		{
-			seqHcpy = reversecomplement(seqH);
-		}
-
-		for(int i = begpH; i < endpH - size + 1; i++)
-		{
-			std::string kmerstrfromstr = seqHcpy.substr(i, size);
-			Kmer mykmer(kmerstrfromstr.c_str(), kmerstrfromstr.length());
-			Kmer lexsmall = mykmer.rep();
-
-			int proxy;
-			auto found = countsubkmers.find(lexsmall, proxy);
-			if(found)
-				matchingSubKmers++;
-		}
-
-		int chainLen = matchingSubKmers * size;
-		return chainLen;
+		std::string kmerstrfromstr = seqV.substr(i, size);
+		Kmer mykmer(kmerstrfromstr.c_str(), kmerstrfromstr.length());
+		Kmer lexsmall = mykmer.rep();
+		countsubkmers.insert(lexsmall, 1);
 	}
+
+	std::string seqHcpy = seqH;
+	if(strand == "c")
+	{
+		seqHcpy = reversecomplement(seqH);
+	}
+
+	for(int i = begpH; i < endpH - size + 1; i++)
+	{
+		std::string kmerstrfromstr = seqHcpy.substr(i, size);
+		Kmer mykmer(kmerstrfromstr.c_str(), kmerstrfromstr.length());
+		Kmer lexsmall = mykmer.rep();
+
+		int proxy;
+		auto found = countsubkmers.find(lexsmall, proxy);
+		if(found)
+			matchingSubKmers++;
+	}
+
+	int chainLen = matchingSubKmers * size;
+	return chainLen;
+}
 
 void PostAlignDecision(const seqAnResult& maxExtScore, const readType_& read1, const readType_& read2, 
 					const BELLApars& b_pars, double ratioPhi, int count, stringstream& myBatch, size_t& outputted,
-					size_t& numBasesAlignedTrue, size_t& numBasesAlignedFalse, bool& passed, int& matches)
+					size_t& numBasesAlignedTrue, size_t& numBasesAlignedFalse, bool& passed, int const& matches)
 {
 	auto maxseed = maxExtScore.seed;	// returns a seqan:Seed object
 
 	// {begin/end}Position{V/H}: Returns the begin/end position of the seed in the query (vertical/horizonral direction)
 	// these four return seqan:Tposition objects
-	auto begpV = beginPositionV(maxseed);
-	auto endpV = endPositionV(maxseed);
-	auto begpH = beginPositionH(maxseed);
-	auto endpH = endPositionH(maxseed);
+	int begpV = beginPositionV(maxseed);
+	int endpV = endPositionV(maxseed);
+	int begpH = beginPositionH(maxseed);
+	int endpH = endPositionH(maxseed);
 
 	// get references for better naming
 	const string& seq1 = read1.seq;	// H
 	const string& seq2 = read2.seq;	// Vzw
 
-	int read1len = seq1.length();
-	int read2len = seq2.length();
+	unsigned short int read1len = seq1.length();
+	unsigned short int read2len = seq2.length();
 
 	//	GG: divergence estimation
-	int overlapLenV = endpV - begpV;
-	int overlapLenH = endpH - begpH;
+	unsigned short int overlapLenV = endpV - begpV;
+	unsigned short int overlapLenH = endpH - begpH;
 
-	int minLeft  = min(begpV, begpH);
-	int minRight = min(read2len - endpV, read1len - endpH);
-	int ov       = minLeft + minRight + (overlapLenV + overlapLenH) / 2;
+	unsigned short int minLeft  = min(begpV, begpH);
+	unsigned short int minRight = min(read2len - endpV, read1len - endpH);
+	unsigned short int ov       = minLeft + minRight + (overlapLenV + overlapLenH) / 2;
 
-	int normLen     = max(overlapLenV, overlapLenH);
-	int minLen      = min(overlapLenV, overlapLenH);
+	unsigned short int normLen  = max(overlapLenV, overlapLenH);
+	unsigned short int minLen   = min(overlapLenV, overlapLenH);
 
 	if(b_pars.adapThr)
 	{
@@ -512,7 +512,7 @@ void PostAlignDecision(const seqAnResult& maxExtScore, const readType_& read1, c
 		else
 		{
 			std::string pafstrand;	// maxExtScore not modifiable
-			int mapq = 255;			// mapping quality (0-255; 255 for missing)
+			unsigned short int mapq = 255;			// mapping quality (0-255; 255 for missing)
 
 			if(maxExtScore.strand == "n") pafstrand = "+";
 			else pafstrand = "-";
@@ -543,7 +543,7 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 	size_t totaloutputt = 0;
 	size_t totsuccbases = 0;
 	size_t totfailbases = 0;
-	
+
 	int numThreads = 1;
 #pragma omp parallel
 	{
@@ -567,31 +567,30 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 
 		for (IT i = colptrC[j]; i < colptrC[j+1]; ++i)  // all nonzeros in that column of A^T A
 		{
-			size_t rid = rowids[i-offset];	// row id
-			size_t cid = j;					// column id
+			unsigned int rid = rowids[i-offset];	// row id
+			unsigned int cid = j;					// column id
 
 			const string& seq1 = reads[rid].seq;	// get reference for readibility
 			const string& seq2 = reads[cid].seq;	// get reference for readibility
-				
-			int seq1len = seq1.length();
-			int seq2len = seq2.length();
+
+			unsigned short int seq1len = seq1.length();
+			unsigned short int seq2len = seq2.length();
 
 			spmatPtr_ val = values[i-offset];
 
 			if(!b_pars.skipAlignment) // fix -z to not print 
 			{
-#ifdef TIMESTEP
 				numAlignmentsThread++;
 				readLengthsThread = readLengthsThread + seq1len + seq2len;
-#endif
+
 				seqAnResult maxExtScore;
 				bool passed = false;
 
 				//	GG: number of matching kmer into the majority voted bin
-				int matches = val->chain();
-				int overlap = val->overlaplength();
-				int steps   = 1105; // For k = 17 and e = 15.6%
-				int minkmer = std::floor((float)overlap/(float)steps);
+				unsigned short int matches = val->chain();
+			//	unsigned short int overlap = val->overlaplength();
+			//	unsigned short int steps   = 1105;
+				unsigned short int minkmer = 1; 	//std::floor((float)overlap/(float)steps);
 
 				//	GG: b_pars.minSurvivedKmers should be function of Markov chain
 				if (matches < minkmer)
@@ -605,9 +604,7 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 				PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], 
 					outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed, matches);
 
-#ifdef TIMESTEP
-			numBasesAlignedThread += endPositionV(maxExtScore.seed)-beginPositionV(maxExtScore.seed);
-#endif
+				numBasesAlignedThread += endPositionV(maxExtScore.seed)-beginPositionV(maxExtScore.seed);
 			}
 			else // if skipAlignment == false do alignment, else save just some info on the pair to file
 			{
@@ -632,8 +629,8 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 
 	double outputting = omp_get_wtime();
 
-	int64_t * bytes = new int64_t[numThreads];
-	for(int i=0; i< numThreads; ++i)
+	int64_t* bytes = new int64_t[numThreads];
+	for(int i = 0; i < numThreads; ++i)
 	{
 		vss[i].seekg(0, ios::end);
 		bytes[i] = vss[i].tellg();
@@ -659,7 +656,7 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 			fprintf(stderr, "File %s failed to open at thread %d\n", filename, ithread);
 		}
 		int64_t bytesuntil = std::accumulate(bytes, bytes+ithread, static_cast<int64_t>(0));
-		fseek (ffinal , bytesuntil , SEEK_SET );
+		fseek (ffinal, bytesuntil, SEEK_SET);
 		std::string text = vss[ithread].str();
 		fwrite(text.c_str(),1, bytes[ithread] ,ffinal);
 		fflush(ffinal);
@@ -774,8 +771,8 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
 			double aligntime = elapsed-get<6>(alignstats); // substracting outputting time
 			std::cout << "\nColumns ["				<< colStart[b]	<< " - "			<< colStart[b+1] << "]" << std::endl;
 			std::cout << "alignmentTime:	"		<< aligntime	<< "s"				<< std::endl;
-			std::cout << "alignmentRate:	"		<< (int)(static_cast<double>(get<1>(alignstats)) / aligntime) 				<< " bases/s" << std::endl;
-			std::cout << "averageReadLength:	"	<< (int)(static_cast<double>(get<2>(alignstats)) / (2* get<0>(alignstats)))	<< std::endl;
+			std::cout << "alignmentRate:	"		<< (int)(static_cast<double>(get<1>(alignstats)) / aligntime) 					<< " bases/s" << std::endl;
+			std::cout << "averageReadLength:	"	<< (int)(static_cast<double>(get<2>(alignstats)) / (2*get<0>(alignstats)))	<< std::endl;
 			std::cout << "numPairs aligned:	"		<< get<0>(alignstats)	<< std::endl;
 			cout << "averageLength of successful alignment:	"	<< (int)(static_cast<double>(get<4>(alignstats)) / get<3>(alignstats))							<< " bps" << endl;
 			cout << "averageLength of failed alignment:	"		<< (int)(static_cast<double>(get<5>(alignstats)) / (get<0>(alignstats) - get<3>(alignstats)))	<< " bps" << endl;
