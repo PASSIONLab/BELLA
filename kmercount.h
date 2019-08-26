@@ -296,8 +296,8 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
 	cout << "2nd kmerCounting pass took:	" << omp_get_wtime() - firstpass << "s\n" << endl;
 	//cout << "countsdenovo.size() " << countsdenovo.size() << endl;
 	// Reliable bounds computation using estimated error rate from phred quality score
-	lower = computeLower(coverage, b_pars.errorRate, b_pars.kmerSize);
-	upper = computeUpper(coverage, b_pars.errorRate, b_pars.kmerSize);
+	lower = computeLower(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
+	upper = computeUpper(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
 
 	// Reliable k-mer filter on countsdenovo
 	int kmer_id_denovo = 0;

@@ -489,12 +489,6 @@ void PostAlignDecision(const seqAnResult& maxExtScore, const readType_& read1, c
 	int normLen     = max(overlapLenV, overlapLenH);
 	int minLen      = min(overlapLenV, overlapLenH);
 
-	//	GG: debug
-	//#pragma omp critical
-	//	{
-	//		std::cout << seqDivergence << '\t' << matchRate << '\t' << normLen << '\t' << chainLen << std::endl;
-	//	}
-
 	if(b_pars.adapThr)
 	{
 		float mythreshold = (1 - b_pars.deltaChernoff) * (ratioPhi * (float)ov);

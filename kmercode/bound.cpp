@@ -37,26 +37,26 @@ long double factorial(long double number)
 }
 
 //	GG: depth, error rate, and k-mer length
-int computeUpper(int d, double e, int k)
+int computeUpper(int myCoverage, double errorRate, int kmerSize, double minProbability)
 {
 	long double a, b, c;
-	long double dfact = factorial(d);
-	long double bbase = (1-e);
-	long double cbase = (1-pow(bbase, k));
+	long double dfact = factorial(myCoverage);
+	long double bbase = (1-errorRate);
+	long double cbase = (1-pow(bbase, kmerSize));
 	long double probability = 1;
 	long double sum = 0, prev;
-	int m = d;
+	int m = myCoverage;
 
-	while(sum < MINPROB)
+	while(sum < minProbability)
 	{
-		a = dfact / (factorial(m) * factorial(d-m));
-		b = pow(bbase, (m*k));
-		c = pow(cbase, (d-m));
+		a = dfact / (factorial(m) * factorial(myCoverage - m));
+		b = pow(bbase, (m * kmerSize));
+		c = pow(cbase, (myCoverage - m));
 
 		probability = a * b * c;
 		sum = sum + probability;
 
-		if(sum == prev && sum < MINPROB)
+		if(sum == prev && sum < minProbability)
 			break;
 		--m;
 		prev = sum;
@@ -65,27 +65,27 @@ int computeUpper(int d, double e, int k)
 }
 
 //	GG: depth, error rate, and k-mer length
-int computeLower(int d, double e, int k)
+int computeLower(int myCoverage, double errorRate, int kmerSize, double minProbability)
 {
 	long double a, b, c;
-	long double dfact = factorial(d);
-	long double bbase = (1-e);
-	long double cbase = (1-pow(bbase, k));
+	long double dfact = factorial(myCoverage);
+	long double bbase = (1-errorRate);
+	long double cbase = (1-pow(bbase, kmerSize));
 	long double probability = 1;
 	long double sum = 0, prev;
 	int mymin = 2;
 	int m = mymin;
 
-	while(sum < MINPROB)
+	while(sum < minProbability)
 	{
-		a = dfact / (factorial(m) * factorial(d-m));
-		b = pow(bbase, (m*k));
-		c = pow(cbase, (d-m));
+		a = dfact / (factorial(m) * factorial(myCoverage - m));
+		b = pow(bbase, (m * kmerSize));
+		c = pow(cbase, (myCoverage - m));
 
 		probability = a * b * c;
 		sum = sum + probability;
 
-		if(sum == prev && sum < MINPROB)
+		if(sum == prev && sum < minProbability)
 			break;
 		++m;
 		prev = sum;

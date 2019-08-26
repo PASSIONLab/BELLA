@@ -1,24 +1,8 @@
 #ifndef BELLA_KMERCODE_BOUND_H_
 #define BELLA_KMERCODE_BOUND_H_
 
-#define MINPROB 0.002 // 0.2% cumulative sum
-
-/**
- * @brief bincoef computes the binomial coefficient
- * @param n
- * @param k
- * @return
- */
-int bincoef(int n, int k);
-
-/**
- * @brief rbounds selects the reliable upper bound
- * @param depth
- * @param erate
- * @param klen
- * @return
- */
-int computeUpper(int depth, double erate, int klen);
-int computeLower(int depth, double erate, int klen);
+//	GG:	select upper and lower reliable bounds
+int computeUpper(int myCoverage, double errorRate, int kmerSize, double minProbability);
+int computeLower(int myCoverage, double errorRate, int kmerSize, double minProbability);
 
 #endif

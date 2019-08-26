@@ -69,7 +69,7 @@ int main (int argc, char *argv[]) {
 	// Follow an option with a colon to indicate that it requires an argument.
 
 	optList = NULL;
-	optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:a:ze:x:c:m:r:pb:s:q:gu:");
+	optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:a:ze:x:c:m:r:pb:s:q:gu:y:");
 
 	char	*kmer_file 			= NULL;	// Reliable k-mer file from Jellyfish
 	char	*all_inputs_fofn 	= NULL;	// List of fastqs (i)
@@ -159,6 +159,10 @@ int main (int argc, char *argv[]) {
 				b_parameters.minSurvivedKmers = atoi(thisOpt->argument);
 				break;
 			}
+			case 'y': {
+				b_parameters.minProbability = stod(thisOpt->argument);
+				break;
+			}
 			case 'e': { // User suggests erro rate
 				b_parameters.skipEstimate = true;
 				b_parameters.errorRate = strtod(thisOpt->argument, NULL);
@@ -225,6 +229,7 @@ int main (int argc, char *argv[]) {
 				cout << " -s : Common k-mers threshold to compute alignment [1]"	<< endl;
 				cout << " -b : Bin size binning algorithm [500]" 	<< endl;
 				cout << " -p : Output in PAF format [false]\n" 		<< endl;
+				cout << " -y : Probability threshold for reliable range [0.002]\n" 		<< endl;
 
 				FreeOptList(thisOpt); // Done with this list, free it
 				return 0;
@@ -283,21 +288,22 @@ int main (int argc, char *argv[]) {
 	cout << "kmerFile: "				<< kmer_file						<< std::endl;
 #endif
 	std::cout << std::fixed;
-	std::cout << std::setprecision(2);
+	std::cout << std::setprecision(3);
 	std::cout << "outputFile:	"		<< out_file							<< std::endl;
 	std::cout << "inputCoverage:	"	<< coverage							<< std::endl;
 	std::cout << "kmerSize:	"			<< b_parameters.kmerSize			<< std::endl;
 	std::cout << "kmerRift:	"			<< b_parameters.kmerRift			<< std::endl;
 	std::cout << "minOverlap:	"		<< b_parameters.minOverlap			<< std::endl;
 	std::cout << "minNumKmers:	"		<< b_parameters.minSurvivedKmers	<< std::endl;
-	std::cout << "maxOverhang:	"		<< b_parameters.maxOverhang			<< std::endl;
-	std::cout << "maxJump:	"			<< b_parameters.maxJump				<< std::endl;
-	std::cout << "maxDivergence:	"	<< b_parameters.maxDivergence		<< std::endl;
+//	std::cout << "maxOverhang:	"		<< b_parameters.maxOverhang			<< std::endl;
+//	std::cout << "maxJump:	"			<< b_parameters.maxJump				<< std::endl;
+//	std::cout << "maxDivergence:	"	<< b_parameters.maxDivergence		<< std::endl;
 	std::cout << "outputPaf:	"		<< b_parameters.outputPaf			<< std::endl;
 	std::cout << "binSize:	"			<< b_parameters.binSize				<< std::endl;
 	std::cout << "deltaChernoff:	"	<< b_parameters.deltaChernoff		<< std::endl;
 	std::cout << "runAlignment:	"		<< !b_parameters.skipAlignment		<< std::endl;
 	std::cout << "seqAn xDrop:	"		<< b_parameters.xDrop				<< std::endl;
+	std::cout << "minProbability:	"	<< b_parameters.minProbability		<< std::endl;
 #endif
 
 	//
@@ -309,8 +315,8 @@ int main (int argc, char *argv[]) {
 #ifdef JELLYFISH
 	// Reliable bounds computation for Jellyfish using default error rate
 	double all = omp_get_wtime();
-	lower = computeLower(coverage, b_parameters.errorRate, b_parameters.kmerSize);
-	upper = computeUpper(coverage, b_parameters.errorRate, b_parameters.kmerSize);
+	lower = computeLower(coverage, b_parameters.errorRate, b_parameters.kmerSize, b_parameters.minProbability);
+	upper = computeUpper(coverage, b_parameters.errorRate, b_parameters.kmerSize, b_parameters.minProbability);
 
 	std::cout << "errorRate:	"				<< b_parameters.errorRate	<< std::endl;
 	std::cout << "kmerFrequencyLowerBound:	"	<< lower					<< std::endl;
