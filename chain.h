@@ -45,8 +45,8 @@ checkstrand(const std::string& read1, const std::string& read2, const int begpH,
 
 //	GG: check strand and compute overlap length
 int
-overlapop(const std::string& read1, const std::string& read2, int begpH, 
-	int begpV, const int kmerSize) {
+overlapop(const std::string& read1, const std::string& read2, unsigned short int begpH, 
+	unsigned short int begpV, const unsigned short int kmerSize) {
 
 	int read1len = read1.length();
 	int read2len = read2.length();
@@ -60,8 +60,8 @@ overlapop(const std::string& read1, const std::string& read2, int begpH,
 	}
 
 	// GG: computing overlap length
-	int endpH = begpH + kmerSize;
-	int endpV = begpV + kmerSize;
+	unsigned short int endpH = begpH + kmerSize;
+	unsigned short int endpV = begpV + kmerSize;
 
 	int margin1 = std::min(begpH, begpV);
 	int margin2 = std::min(read1len - endpH, read2len - endpV);
@@ -73,10 +73,10 @@ overlapop(const std::string& read1, const std::string& read2, int begpH,
 //	GG: multiply operation
 void
 multiop(spmatPtr_& value, const std::string& read1, const std::string& read2, 
-	int begpH, int begpV, const int kmerSize) {
+	unsigned short int begpH, unsigned short int begpV, const int kmerSize) {
 
 	value->count = 1;
-	vector<pair<int, int>> vec{std::make_pair(begpH, begpV)};	// GG: to facilitate bin division
+	vector<pair<unsigned short int, unsigned short int>> vec{std::make_pair(begpH, begpV)};	// GG: to facilitate bin division
 	value->pos.push_back(vec);
 	value->support.push_back(1);	// initial k-mer has support 1
 
@@ -103,8 +103,8 @@ chainop(spmatPtr_& m1, spmatPtr_& m2, BELLApars& b_pars,
 {
 	// number of common k-mer
 	m1->count = m1->count + m2->count;
-	vector<int> tobeinserted;
-	vector<vector<pair<int,int>>> kmertobeinserted(m1->pos.size());
+	vector<unsigned short int> tobeinserted;
+	vector<vector<pair<unsigned short int, unsigned short int>>> kmertobeinserted(m1->pos.size());
 
 	for(int i = 0; i < m2->pos.size(); ++i)	
 	{

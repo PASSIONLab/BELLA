@@ -34,8 +34,6 @@
 
 #include "libcuckoo/cuckoohash_map.hh"
 #include "libbloom/bloom64.h"
-#include "gerbil/include/gerbil/Application.h"
-
 
 #include "kmercode/hash_funcs.h"
 #include "kmercode/Kmer.hpp"
@@ -53,7 +51,9 @@ using namespace std;
 #define PRINT
 #endif
 
-typedef cuckoohash_map<Kmer, int> dictionary_t; // <k-mer && reverse-complement, #kmers>
+//	GG: when couting k-mers the values can be 16bit (k-mer occurrence) instead of 32 (k-mer ids in the final dictionary)
+typedef cuckoohash_map<Kmer, unsigned int>       dictionary_t_32bit;	// <k-mer && reverse-complement, #kmers>
+typedef cuckoohash_map<Kmer, unsigned short int> dictionary_t_16bit;	// <k-mer && reverse-complement, kmer_id>
 
 struct filedata {
 
@@ -101,7 +101,7 @@ vector<filedata>  GetFiles(char *filename) {
  * @param lower
  * @param upper
  */
-void JellyFishCount(char *kmer_file, dictionary_t & countsreliable_jelly, int lower, int upper) 
+void JellyFishCount(char *kmer_file, dictionary_t_32bit& countsreliable_jelly, int lower, int upper) 
 {
 	ifstream filein(kmer_file);
 	string line;
@@ -113,7 +113,7 @@ void JellyFishCount(char *kmer_file, dictionary_t & countsreliable_jelly, int lo
 	// Jellyfish file contains all the k-mers from fastq(s)
 	// It is not filtered beforehand
 	// A k-mer and its reverse complement are counted separately
-	dictionary_t countsjelly;
+	dictionary_t_16bit countsjelly;
 	if(filein.is_open()) 
 	{ 
 			while(getline(filein, line)) {
@@ -125,7 +125,7 @@ void JellyFishCount(char *kmer_file, dictionary_t & countsreliable_jelly, int lo
 				getline(filein, kmerstr);   
 				//kmerfromstr.set_kmer(kmerstr.c_str());
 
-				auto updatecountjelly = [&elem](int &num) { num+=elem; };
+				auto updatecountjelly = [&elem](unsigned short int &num) {num += elem;};
 				// If the number is already in the table, it will increment its count by the occurrence of the new element. 
 				// Otherwise it will insert a new entry in the table with the corresponding k-mer occurrence.
 				countsjelly.upsert(kmerfromstr.rep(), updatecountjelly, elem);      
@@ -157,8 +157,6 @@ void GerbilDeNovoCount(std::string& tempDir, std::string& fileName, dictionary_t
 	gerbil::Application application(b_pars.errorRate,b_pars.enableGPU, coverage, b_pars.kmerSize, fileName, tempDir, 1, "outputTRY", b_pars.skipEstimate);
 		application.process();
 
-
-
 	vector<pair<string,unsigned int>> *listKmer;
 	listKmer = application.getListKmer();
 
@@ -185,7 +183,6 @@ void GerbilDeNovoCount(std::string& tempDir, std::string& fileName, dictionary_t
 		cout << "Entries within reliable range:	" << countsreliable_denovo.size() << endl;
 	}
 }
-
 /**
  * @brief DeNovoCount
  * @param allfiles
@@ -195,10 +192,10 @@ void GerbilDeNovoCount(std::string& tempDir, std::string& fileName, dictionary_t
  * @param b_pars.kmerSize
  * @param upperlimit
  */
-void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_denovo, int& lower, int& upper,
+void DeNovoCount(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable_denovo, int& lower, int& upper,
 	int coverage, size_t upperlimit, BELLApars & b_pars)
 {
-	vector < vector<Kmer> > allkmers(MAXTHREADS);
+	vector < vector<Kmer> >   allkmers(MAXTHREADS);
 	vector < vector<double> > allquals(MAXTHREADS);
 	vector < HyperLogLog > hlls(MAXTHREADS, HyperLogLog(12));   // std::vector fill constructor
 
@@ -304,10 +301,10 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
 	cout << "Optimal numHashFunctions:	"	<< bm->hashes 	<< std::endl;
 #endif
 
-	dictionary_t countsdenovo;
+	dictionary_t_16bit countsdenovo;
 
 #pragma omp parallel
-	{       
+	{
 		for(auto v:allkmers[MYTHREAD])
 		{
 			bool inBloom = (bool) bloom_check_add(bm, v.getBytes(), v.getNumBytes(),1);
@@ -321,28 +318,28 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t & countsreliable_deno
 	free(bm); // release bloom filter memory
 
 	// in this pass, only use entries that already are in the hash table
-	auto updatecount = [](int &num) { ++num; };
+	auto updatecount = [](unsigned short int &num) { ++num; };
 #pragma omp parallel
-	{       
+	{
 		for(auto v:allkmers[MYTHREAD])
 		{
 			// does nothing if the entry doesn't exist in the table
-			countsdenovo.update_fn(v,updatecount);
+			countsdenovo.update_fn(v, updatecount);
 		}
 	}
 	cout << "2nd kmerCounting pass took:	" << omp_get_wtime() - firstpass << "s\n" << endl;
 	//cout << "countsdenovo.size() " << countsdenovo.size() << endl;
 	// Reliable bounds computation using estimated error rate from phred quality score
-	lower = computeLower(coverage, b_pars.errorRate, b_pars.kmerSize);
-	upper = computeUpper(coverage, b_pars.errorRate, b_pars.kmerSize);
+	lower = computeLower(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
+	upper = computeUpper(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
 
 	// Reliable k-mer filter on countsdenovo
-	int kmer_id_denovo = 0;
+	unsigned int kmer_id_denovo = 0;
 	auto lt = countsdenovo.lock_table(); // our counting
 	for (const auto &it : lt) 
 		if (it.second >= lower && it.second <= upper)
 		{
-			countsreliable_denovo.insert(it.first,kmer_id_denovo);
+			countsreliable_denovo.insert(it.first, kmer_id_denovo);
 			++kmer_id_denovo;
 		}
 	lt.unlock(); // unlock the table

@@ -70,7 +70,7 @@ int main (int argc, char *argv[]) {
 	// Follow an option with a colon to indicate that it requires an argument.
 
 	optList = NULL;
-	optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:a:ze:x:c:m:r:pb:s:q:gu:y");
+	optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:a:ze:x:c:m:r:pb:s:q:gu:yw:");
 
 	char	*kmer_file 			= NULL;	// Reliable k-mer file from Jellyfish
 	char	*all_inputs_fofn 	= NULL;	// List of fastqs (i)
@@ -122,8 +122,8 @@ int main (int argc, char *argv[]) {
 				}
 				char* line1 = strdup(thisOpt->argument);
 				char* line2 = strdup(".out");
-				size_t len1 = strlen(line1);
-				size_t len2 = strlen(line2);
+				unsigned int len1 = strlen(line1);
+				unsigned int len2 = strlen(line2);
 
 				out_file = (char*)malloc(len1 + len2 + 1);
 				if (!out_file) abort();
@@ -158,6 +158,10 @@ int main (int argc, char *argv[]) {
 			}
 			case 's': {
 				b_parameters.minSurvivedKmers = atoi(thisOpt->argument);
+				break;
+			}
+			case 'w': {
+				b_parameters.minProbability = stod(thisOpt->argument);
 				break;
 			}
 			case 'e': { // User suggests erro rate
@@ -232,6 +236,7 @@ int main (int argc, char *argv[]) {
 				cout << " -s : Common k-mers threshold to compute alignment [auto estimated if possible]"	<< endl;
 				cout << " -b : Bin size binning algorithm [500]" 	<< endl;
 				cout << " -p : Output in PAF format [FALSE]\n" 		<< endl;
+				cout << " -w : Probability threshold for reliable range [0.002]\n" 		<< endl;
 
 				FreeOptList(thisOpt); // Done with this list, free it
 				return 0;
@@ -269,20 +274,19 @@ int main (int argc, char *argv[]) {
 	//
 	// Declarations 
 	//
-	vector<filedata> allfiles     = GetFiles(all_inputs_fofn);
-	std::string all_inputs_gerbil = std::string(all_inputs_fofn); 
+	vector<filedata> allfiles = GetFiles(all_inputs_fofn);
 	int lower, upper; // reliable range lower and upper bound
 	double ratiophi;
 	Kmer::set_k(b_parameters.kmerSize);
-	size_t upperlimit = 10000000; // in bytes
+	unsigned int upperlimit = 10000000; // in bytes
 	Kmers kmervect;
 	vector<string> seqs;
 	vector<string> quals;
 	vector<string> nametags;
 	readVector_ reads;
 	Kmers kmersfromreads;
-	vector<tuple<size_t,size_t,size_t>> occurrences;
-	vector<tuple<size_t,size_t,size_t>> transtuples;
+	vector<tuple<unsigned int, unsigned int, unsigned short int>> occurrences;	// 32 bit, 32 bit, 16 bit (read, kmer, position)
+	vector<tuple<unsigned int, unsigned int, unsigned short int>> transtuples;	// 32 bit, 32 bit, 16 bit (kmer, read, position)
 	// 
 	// File and setting used
 	//
@@ -291,36 +295,37 @@ int main (int argc, char *argv[]) {
 	cout << "kmerFile: "				<< kmer_file						<< std::endl;
 #endif
 	std::cout << std::fixed;
-	std::cout << std::setprecision(2);
-	std::cout << "outputFile:	 "		<< out_file							<< std::endl;
-	std::cout << "inputCoverage:	 "	<< coverage							<< std::endl;
+	std::cout << std::setprecision(3);
+	std::cout << "outputFile:	"		<< out_file							<< std::endl;
+	std::cout << "inputCoverage:	"	<< coverage							<< std::endl;
+	std::cout << "kmerSize:	"			<< b_parameters.kmerSize			<< std::endl;
+	std::cout << "kmerRift:	"			<< b_parameters.kmerRift			<< std::endl;
+	std::cout << "minOverlap:	"		<< b_parameters.minOverlap			<< std::endl;
+	std::cout << "minNumKmers:	"		<< b_parameters.minSurvivedKmers	<< std::endl;
+//	std::cout << "maxOverhang:	"		<< b_parameters.maxOverhang			<< std::endl;
+//	std::cout << "maxJump:	"			<< b_parameters.maxJump				<< std::endl;
+//	std::cout << "maxDivergence:	"	<< b_parameters.maxDivergence		<< std::endl;
 	std::cout << "useGerbil:	 "		<< b_parameters.useGerbil			<< std::endl;
 	std::cout << "enableGPU:	 "		<< b_parameters.enableGPU			<< std::endl;
-	std::cout << "kmerSize:	 "			<< b_parameters.kmerSize			<< std::endl;
-	std::cout << "kmerRift:	 "			<< b_parameters.kmerRift			<< std::endl;
-	std::cout << "minOverlap:	 "		<< b_parameters.minOverlap			<< std::endl;
-	std::cout << "minNumKmers:	"		<< b_parameters.minSurvivedKmers	<< std::endl;
-	std::cout << "maxOverhang:	 "		<< b_parameters.maxOverhang			<< std::endl;
-	std::cout << "maxJump:	 "			<< b_parameters.maxJump				<< std::endl;
-	std::cout << "maxDivergence:	 "	<< b_parameters.maxDivergence		<< std::endl;
-	std::cout << "outputPaf:	 "		<< b_parameters.outputPaf			<< std::endl;
-	std::cout << "binSize:	 "			<< b_parameters.binSize				<< std::endl;
-	std::cout << "deltaChernoff:	 "	<< b_parameters.deltaChernoff		<< std::endl;
-	std::cout << "runAlignment:	 "		<< !b_parameters.skipAlignment		<< std::endl;
-	std::cout << "seqAn xDrop:	 "		<< b_parameters.xDrop				<< std::endl;
+	std::cout << "outputPaf:	"		<< b_parameters.outputPaf			<< std::endl;
+	std::cout << "binSize:	"			<< b_parameters.binSize				<< std::endl;
+	std::cout << "deltaChernoff:	"	<< b_parameters.deltaChernoff		<< std::endl;
+	std::cout << "runAlignment:	"		<< !b_parameters.skipAlignment		<< std::endl;
+	std::cout << "seqAn xDrop:	"		<< b_parameters.xDrop				<< std::endl;
+	std::cout << "minProbability:	"	<< b_parameters.minProbability		<< std::endl;
 #endif
 
 	//
 	// Kmer file parsing, error estimation, reliable bounds computation, and k-mer dictionary creation
 	//
 
-	dictionary_t countsreliable;
+	dictionary_t_32bit countsreliable;
 
 #ifdef JELLYFISH
 	// Reliable bounds computation for Jellyfish using default error rate
 	double all = omp_get_wtime();
-	lower = computeLower(coverage, b_parameters.errorRate, b_parameters.kmerSize);
-	upper = computeUpper(coverage, b_parameters.errorRate, b_parameters.kmerSize);
+	lower = computeLower(coverage, b_parameters.errorRate, b_parameters.kmerSize, b_parameters.minProbability);
+	upper = computeUpper(coverage, b_parameters.errorRate, b_parameters.kmerSize, b_parameters.minProbability);
 
 	std::cout << "errorRate:	"				<< b_parameters.errorRate	<< std::endl;
 	std::cout << "kmerFrequencyLowerBound:	"	<< lower					<< std::endl;
@@ -328,22 +333,10 @@ int main (int argc, char *argv[]) {
 
 	JellyFishCount(kmer_file, countsreliable, lower, upper);
 #else
-	double all;
-if(b_parameters.useGerbil)
-{
-	// Reliable range computation within denovo counting
-	cout << "\nRunning with up to " << MAXTHREADS << " threads" << endl;
-	std::string tempDirName = "tempDir";
-	all = omp_get_wtime();
-	GerbilDeNovoCount(tempDirName, all_inputs_gerbil, countsreliable, lower, upper, coverage, upperlimit, b_parameters);
-}
-else
-{ 
 	// Reliable range computation within denovo counting
 	std::cout << "numThreads:	"				<< MAXTHREADS	<< "\n"		<< std::endl;
-	all = omp_get_wtime();
+	double all = omp_get_wtime();
 	DeNovoCount(allfiles, countsreliable, lower, upper, coverage, upperlimit, b_parameters);
-}
 #ifdef PRINT
 	std::cout << "errorRate:	"				<< b_parameters.errorRate	<< std::endl;
 	std::cout << "kmerFrequencyLowerBound:	"	<< lower					<< std::endl;
@@ -363,11 +356,11 @@ else
 	//
 
 	double parsefastq = omp_get_wtime();
-	size_t read_id = 0; // read_id needs to be global (not just per file)
+	unsigned int read_id = 0; // read_id needs to be global (not just per file)
 
-	vector < vector<tuple<int,int,int>> > alloccurrences(MAXTHREADS);
-	vector < vector<tuple<int,int,int>> > alltranstuples(MAXTHREADS);
-	vector < readVector_ > allreads(MAXTHREADS);
+	vector<vector<tuple<unsigned int, unsigned int, unsigned short int>>> alloccurrences(MAXTHREADS);
+	vector<vector<tuple<unsigned int, unsigned int, unsigned short int>>> alltranstuples(MAXTHREADS);
+	vector<readVector_> allreads(MAXTHREADS);
 
 	for(auto itr=allfiles.begin(); itr!=allfiles.end(); itr++)
 	{
@@ -375,11 +368,11 @@ else
 		ParallelFASTQ *pfq = new ParallelFASTQ();
 		pfq->open(itr->filename, false, itr->filesize);
 
-		size_t fillstatus = 1;
+		unsigned int fillstatus = 1;
 		while(fillstatus)
 		{ 
 			fillstatus = pfq->fill_block(nametags, seqs, quals, upperlimit);
-			size_t nreads = seqs.size();
+			unsigned int nreads = seqs.size();
 
 			#pragma omp parallel for
 			for(int i=0; i<nreads; i++) 
@@ -402,12 +395,12 @@ else
 					// remember to use only ::rep() when building kmerdict as well
 					Kmer lexsmall = mykmer.rep();
 
-					int idx; // kmer_id
+					unsigned int idx; // kmer_id
 					auto found = countsreliable.find(lexsmall,idx);
 					if(found)
 					{
-						alloccurrences[MYTHREAD].emplace_back(std::make_tuple(read_id+i,idx,j)); // vector<tuple<read_id,kmer_id,kmerpos>>
-						alltranstuples[MYTHREAD].emplace_back(std::make_tuple(idx,read_id+i,j)); // transtuples.push_back(col_id,row_id,kmerpos)
+						alloccurrences[MYTHREAD].emplace_back(std::make_tuple(read_id+i, idx, j)); // vector<tuple<read_id,kmer_id,kmerpos>>
+						alltranstuples[MYTHREAD].emplace_back(std::make_tuple(idx, read_id+i, j)); // transtuples.push_back(col_id,row_id,kmerpos)
 					}
 				}
 			} // for(int i=0; i<nreads; i++)
@@ -417,8 +410,8 @@ else
 		delete pfq;
 	} // for all files
 
-	size_t readcount = 0;
-	size_t tuplecount = 0;
+	unsigned int readcount = 0;
+	unsigned int tuplecount = 0;
 	for(int t=0; t<MAXTHREADS; ++t)
 	{
 		readcount += allreads[t].size();
@@ -428,8 +421,9 @@ else
 	occurrences.resize(tuplecount);
 	transtuples.resize(tuplecount);
 
-	size_t readssofar = 0;
-	size_t tuplesofar = 0;
+	unsigned int readssofar = 0;
+	unsigned int tuplesofar = 0;
+
 	for(int t=0; t<MAXTHREADS; ++t)
 	{
 		copy(allreads[t].begin(), allreads[t].end(), reads.begin()+readssofar);
@@ -440,9 +434,9 @@ else
 		tuplesofar += alloccurrences[t].size();
 	}
 
-	std::sort(reads.begin(), reads.end());   // bool operator in global.h: sort by readid
-	std::vector<string>().swap(seqs);        // free memory of seqs  
-	std::vector<string>().swap(quals);       // free memory of quals
+	std::sort(reads.begin(), reads.end());	// bool operator in global.h: sort by readid
+	std::vector<string>().swap(seqs);		// free memory of seqs  
+	std::vector<string>().swap(quals);		// free memory of quals
 
 #ifdef PRINT
 	std::cout << "Fastq parsing took:	"		<< omp_get_wtime()	-	parsefastq << "s" << std::endl;
@@ -455,22 +449,22 @@ else
 
 	double matcreat = omp_get_wtime();
 
-	size_t nkmer = countsreliable.size();
-	CSC<size_t, size_t> spmat(occurrences, read_id, nkmer, 
-							[] (size_t& p1, size_t& p2) 
+	unsigned int nkmer = countsreliable.size();
+	CSC<unsigned int, unsigned short int> spmat(occurrences, read_id, nkmer, 
+							[] (unsigned short int& p1, unsigned short int& p2) 
 							{
 								return p1;
 							});
 	// remove memory of transtuples
-	std::vector<tuple<size_t,size_t,size_t>>().swap(occurrences);
+	std::vector<tuple<unsigned int, unsigned int, unsigned short int>>().swap(occurrences);
 
-	CSC<size_t, size_t> transpmat(transtuples, nkmer, read_id, 
-							[] (size_t& p1, size_t& p2) 
+	CSC<unsigned int, unsigned short int> transpmat(transtuples, nkmer, read_id, 
+							[] (unsigned short int& p1, unsigned short int& p2) 
 							{
 								return p1;
 							});
 	// remove memory of transtuples
-	std::vector<tuple<size_t, size_t, size_t>>().swap(transtuples);
+	std::vector<tuple<unsigned int, unsigned int, unsigned short int>>().swap(transtuples);
 
 #ifdef PRINT
 	std::cout << "Sparse matrix construction took:	" << omp_get_wtime()-matcreat << "s\n" << std::endl;
@@ -484,7 +478,7 @@ else
 	spmatPtr_ getvaluetype(make_shared<spmatType_>());
 	HashSpGEMM(spmat, transpmat, 
 		// n-th k-mer positions on read i and on read j
-		[&b_parameters, &reads] (const int& begpH, const int& begpV, const int& id1, const int& id2)
+		[&b_parameters, &reads] (const unsigned short int& begpH, const unsigned short int& begpV, const unsigned int& id1, const unsigned int& id2)
 		{
 			spmatPtr_ value(make_shared<spmatType_>());
 
@@ -495,7 +489,7 @@ else
 			multiop(value, read1, read2, begpH, begpV, b_parameters.kmerSize);
 			return value;
 		},
-		[&b_parameters, &reads] (spmatPtr_& m1, spmatPtr_& m2, const int& id1, const int& id2)
+		[&b_parameters, &reads] (spmatPtr_& m1, spmatPtr_& m2, const unsigned int& id1, const unsigned int& id2)
 		{
 			// GG: after testing correctness, these variables can be removed
 			std::string& readname1 = reads[id1].nametag;
