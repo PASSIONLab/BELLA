@@ -194,8 +194,8 @@ To cite our work or to know more about our methods, please refer to:
 
 ## Contributors
 
-* [**Daniel Rokhsar**](https://mcb.berkeley.edu/labs/rokhsar/)
-* [**Katherine Yelick**](https://people.eecs.berkeley.edu/~yelick/)
+* [**Dan Rokhsar**](https://mcb.berkeley.edu/labs/rokhsar/)
+* [**Kathy Yelick**](https://people.eecs.berkeley.edu/~yelick/)
 * [**Qi Zhou**](https://it.linkedin.com/in/qizhou1512)
 
 ## Copyright Notice
