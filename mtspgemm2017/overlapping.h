@@ -504,7 +504,7 @@ void PostAlignDecision(const seqAnResult& maxExtScore, const readType_& read1, c
 
 	if(passed)
 	{
-		if(!b_pars.outputPaf)	// BELLA output format
+		if(!b_pars.outputPaf)		// BELLA output format
 		{
 			myBatch << read2.nametag << '\t' << read1.nametag << '\t' << count << '\t' << maxExtScore.score << '\t' << ov << '\t' << maxExtScore.strand << '\t' << 
 				begpV << '\t' << endpV << '\t' << read2len << '\t' << begpH << '\t' << endpH << '\t' << read1len << endl;
@@ -535,7 +535,7 @@ void PostAlignDecision(const seqAnResult& maxExtScore, const readType_& read1, c
 
 template <typename IT, typename FT>
 auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowids, FT * values, const readVector_ & reads, 
-		int xdrop, char* filename, const BELLApars & b_pars, double ratioPhi)
+		char* filename, const BELLApars & b_pars, const double& ratiophi, const int& steps)
 {
 	size_t alignedpairs = 0;
 	size_t alignedbases = 0;
@@ -553,7 +553,7 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 	vector<stringstream> vss(numThreads); // any chance of false sharing here? depends on how stringstream is implemented. optimize later if needed...
 
 #pragma omp parallel for schedule(dynamic)
-	for(IT j = start; j<end; ++j) // for (end-start) columns of A^T A (one block)
+	for(IT j = start; j < end; ++j)	// for (end-start) columns of A^T A (one block)
 	{
 		size_t numAlignmentsThread		= 0;
 		size_t numBasesAlignedThread	= 0;
@@ -563,7 +563,7 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 
 		size_t outputted = 0;
 
-		int ithread = omp_get_thread_num();	
+		int ithread = omp_get_thread_num();
 
 		for (IT i = colptrC[j]; i < colptrC[j+1]; ++i)  // all nonzeros in that column of A^T A
 		{
@@ -588,8 +588,8 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 
 				//	GG: number of matching kmer into the majority voted bin
 				unsigned short int matches = val->chain();
-			//	unsigned short int overlap = val->overlaplength();
-			//	unsigned short int steps   = 1105;
+				//	unsigned short int overlap = val->overlaplength();
+				//	unsigned short int steps   = 1105;
 				unsigned short int minkmer = 1; 	//std::floor((float)overlap/(float)steps);
 
 				//	GG: b_pars.minSurvivedKmers should be function of Markov chain
@@ -600,8 +600,8 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 				int i = kmer.first, j = kmer.second;
 
 				//	GG: nucleotide alignment
-				maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, xdrop, b_pars.kmerSize);
-				PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], 
+				maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, b_pars.xDrop, b_pars.kmerSize);
+				PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratiophi, val->count, vss[ithread], 
 					outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed, matches);
 
 				numBasesAlignedThread += endPositionV(maxExtScore.seed)-beginPositionV(maxExtScore.seed);
@@ -673,8 +673,8 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
   * Sparse multithreaded GEMM.
  **/
 template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation>
-void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, const readVector_ & reads, 
-	FT & getvaluetype, int xdrop, char* filename, const BELLApars & b_pars, double ratioPhi)
+void HashSpGEMM(const CSC<IT,NT>& A, const CSC<IT,NT>& B, MultiplyOperation multop, AddOperation addop, const readVector_& reads, 
+	FT& getvaluetype, char* filename, const BELLApars& b_pars, const double& ratiophi, const int& steps)
 {
 	double free_memory = estimateMemory(b_pars);
 
@@ -762,7 +762,7 @@ void HashSpGEMM(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation mu
 		delete [] ValuesofC;
 
 		tuple<size_t, size_t, size_t, size_t, size_t, size_t, double> alignstats; // (alignedpairs, alignedbases, totalreadlen, outputted, alignedtrue, alignedfalse, timeoutputt)
-		alignstats = RunPairWiseAlignments(colStart[b], colStart[b+1], begnz, colptrC, rowids, values, reads, xdrop, filename, b_pars, ratioPhi);
+		alignstats = RunPairWiseAlignments(colStart[b], colStart[b+1], begnz, colptrC, rowids, values, reads, filename, b_pars, ratiophi, steps);
 
 #ifdef TIMESTEP
 		if(!b_pars.skipAlignment)

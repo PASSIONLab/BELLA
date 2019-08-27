@@ -5,7 +5,7 @@ To achieve fast overlapping without sketching, BELLA uses sparse matrix-matrix m
 
 ## Content
 
-*	[Getting Started on macOS](#getting-started-macos)
+*	[Getting Started on Linux](#getting-started-on-linux)
 	*	[Dependencies](#dependencies)
 	*	[Compile](#compile)
 	*	[Run](#run)
@@ -18,13 +18,20 @@ To achieve fast overlapping without sketching, BELLA uses sparse matrix-matrix m
 *	[I get 0 outputs, what is likely going wrong?](#i-get-0-outputs-what-is-likely-going-wrong)
 *	[Citation](#citation)
 
-## Getting Started on macOS
+## Getting Started on Linux
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
+These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. This version of BELLA **only works on Linux-based machines**. To run BELLA on macOS-based machines, please switch to **mac branch**.
 
 ### Dependencies
 
-* **COMPILER:** the software **requires gcc-6 or higher** with OpenMP to be compiled.
+* **COMPILER:** the software **requires gcc-6** with OpenMP to be compiled.
+* **BOOST/1.67.0** to use Gerbil kmerCounting.
+You can install BOOST/1.67.0 using [conda](https://anaconda.org/anaconda/boost):
+```
+conda install -c anaconda boost
+```
+* [**CUDA**](https://docs.nvidia.com/cuda/) to compile and use GPU-accelerated Gerbil. You **do not** need CUDA to use CPU-based Gerbil.
+
 * **Python3** and **simplesam** are required to generare the ground truth data. You can install simplesam via [pip](https://pip.pypa.io/en/stable/installing/): 
 ```
 pip install simplesam
@@ -37,6 +44,13 @@ Clone the repository, its submodule, and enter it:
 ```
 git clone https://github.com/giuliaguidi/bella
 cd bella
+```
+OR:
+```
+git clone https://github.com/giuliaguidi/bella
+cd bella
+git submodule init
+git submodule update
 ```
 Build using makefile:
 
@@ -65,18 +79,21 @@ Optional flag description:
 -o : Output filename	(required)
 -d : Dataset coverage	(required)
 -k : KmerSize [17]
--a : User-defined alignment threshold [false, 0]
+-a : User-defined alignment threshold [FALSE, 0]
 -x : SeqAn xDrop [7]
 -e : Error rate [0.15]
--q : Estimare error rate from the dataset [false]
--u : Use default error rate setting [false]
+-q : Estimare error rate from the dataset [FALSE]
+-u : Use default error rate setting [FALSE]
+-g : Use Gerbil as kmerCounter [FALSE]
+-y : Enable GPU [FALSE]
 -m : Total RAM of the system in MB [auto estimated if possible or 8,000 if not]
--z : Do not run pairwise alignment [false]
+-z : Do not run pairwise alignment [FALSE]
 -c : Deviation from the mean alignment score [0.10]
 -r : KmerRift: bases separating two k-mers [kmerSize]
--s : Common k-mers threshold to compute alignment [1]
+-s : Common k-mers threshold to compute alignment [auto estimated if possible]
 -b : Bin size binning algorithm [500]
--p : Output in PAF format [false]
+-p : Output in PAF format [FALSE]
+-w : Probability threshold for reliable range [0.002]
 ```
 ### Error Rate
 
@@ -138,8 +155,6 @@ python mafconvert.py axt <maf-file> > <ground-truth.txt>
 To run the evaluation program:
 ```
 cd bench
-```
-```
 make result
 ```
 ```
@@ -163,7 +178,7 @@ You can run the evaluation code located in /bench folder as:
 
 ## I get 0 outputs, what is likely going wrong?
 
-Error rate estimation went wrong.
+Error rate estimation might have gone wrong. If the error estimated is greater than 1, the adaptive alignment threshold would be so high that no alignments would pass the threshold. Please check if your fastq file has proper quality values. If not, please define an error rate using command line options.
 
 ## Citation
 
@@ -181,6 +196,7 @@ To cite our work or to know more about our methods, please refer to:
 
 * [**Daniel Rokhsar**](https://mcb.berkeley.edu/labs/rokhsar/)
 * [**Katherine Yelick**](https://people.eecs.berkeley.edu/~yelick/)
+* [**Qi Zhou**]
 
 ## Copyright Notice
  

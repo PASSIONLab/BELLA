@@ -29,6 +29,7 @@
 #include "libcuckoo/cuckoohash_map.hh"
 #include "kmercount.h"
 #include "chain.h"
+#include "markov.h"
 
 #include "kmercode/hash_funcs.h"
 #include "kmercode/Kmer.hpp"
@@ -69,7 +70,7 @@ int main (int argc, char *argv[]) {
 	// Follow an option with a colon to indicate that it requires an argument.
 
 	optList = NULL;
-	optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:a:ze:x:c:m:r:pb:s:q:gu:y:");
+	optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:a:ze:x:c:m:r:pb:s:q:gu:yw:");
 
 	char	*kmer_file 			= NULL;	// Reliable k-mer file from Jellyfish
 	char	*all_inputs_fofn 	= NULL;	// List of fastqs (i)
@@ -159,7 +160,7 @@ int main (int argc, char *argv[]) {
 				b_parameters.minSurvivedKmers = atoi(thisOpt->argument);
 				break;
 			}
-			case 'y': {
+			case 'w': {
 				b_parameters.minProbability = stod(thisOpt->argument);
 				break;
 			}
@@ -177,8 +178,12 @@ int main (int argc, char *argv[]) {
 				b_parameters.errorRate = 0.15;	// Default value
 				break;
 			}
-			 case 'g': { // use Gerbil as kmerCounter
+			case 'g': { // use Gerbil as kmerCounter
 				b_parameters.useGerbil = true;
+				break;
+			}
+			case 'y': { // use Gerbil as kmerCounter
+				b_parameters.enableGPU = true;
 				break;
 			}
 			case 'a': {
@@ -217,19 +222,21 @@ int main (int argc, char *argv[]) {
 				cout << " -o : Output filename	(required)" 	<< endl;
 				cout << " -d : Dataset coverage	(required)" 	<< endl; // TO DO: add coverage estimation
 				cout << " -k : KmerSize [17]" 					<< endl;
-				cout << " -a : User-defined alignment threshold [false, 0]" 		<< endl;
+				cout << " -a : User-defined alignment threshold [FALSE, 0]" 		<< endl;
 				cout << " -x : SeqAn xDrop [7]" 									<< endl;
 				cout << " -e : Error rate [0.15]" 				<< endl;
-				cout << " -q : Estimare error rate from the dataset [false]" 	<< endl;
-				cout << " -u : Use default error rate setting [false]"			<< endl;
+				cout << " -q : Estimare error rate from the dataset [FALSE]" 	<< endl;
+				cout << " -u : Use default error rate setting [FALSE]"			<< endl;
+				cout << " -g : Use Gerbil as kmerCounter [FALSE]" 				<< endl;
+				cout << " -y : Enable GPU [FALSE]" 				<< endl;
 				cout << " -m : Total RAM of the system in MB [auto estimated if possible or 8,000 if not]" << endl;
-				cout << " -z : Do not run pairwise alignment [false]" 				<< endl;
+				cout << " -z : Do not run pairwise alignment [FALSE]" 				<< endl;
 				cout << " -c : Deviation from the mean alignment score [0.10]" 		<< endl;
 				cout << " -r : KmerRift: bases separating two k-mers [kmerSize]"	<< endl;
-				cout << " -s : Common k-mers threshold to compute alignment [1]"	<< endl;
+				cout << " -s : Common k-mers threshold to compute alignment [auto estimated if possible]"	<< endl;
 				cout << " -b : Bin size binning algorithm [500]" 	<< endl;
-				cout << " -p : Output in PAF format [false]\n" 		<< endl;
-				cout << " -y : Probability threshold for reliable range [0.002]\n" 		<< endl;
+				cout << " -p : Output in PAF format [FALSE]\n" 		<< endl;
+				cout << " -w : Probability threshold for reliable range [0.002]\n" 		<< endl;
 
 				FreeOptList(thisOpt); // Done with this list, free it
 				return 0;
@@ -269,7 +276,7 @@ int main (int argc, char *argv[]) {
 	//
 	vector<filedata> allfiles = GetFiles(all_inputs_fofn);
 	int lower, upper; // reliable range lower and upper bound
-	double ratioPhi;
+	double ratiophi;
 	Kmer::set_k(b_parameters.kmerSize);
 	unsigned int upperlimit = 10000000; // in bytes
 	Kmers kmervect;
@@ -298,6 +305,8 @@ int main (int argc, char *argv[]) {
 //	std::cout << "maxOverhang:	"		<< b_parameters.maxOverhang			<< std::endl;
 //	std::cout << "maxJump:	"			<< b_parameters.maxJump				<< std::endl;
 //	std::cout << "maxDivergence:	"	<< b_parameters.maxDivergence		<< std::endl;
+	std::cout << "useGerbil:	 "		<< b_parameters.useGerbil			<< std::endl;
+	std::cout << "enableGPU:	 "		<< b_parameters.enableGPU			<< std::endl;
 	std::cout << "outputPaf:	"		<< b_parameters.outputPaf			<< std::endl;
 	std::cout << "binSize:	"			<< b_parameters.binSize				<< std::endl;
 	std::cout << "deltaChernoff:	"	<< b_parameters.deltaChernoff		<< std::endl;
@@ -334,8 +343,8 @@ int main (int argc, char *argv[]) {
 	std::cout << "kmerFrequencyUpperBound:	"	<< upper					<< std::endl;
 if(b_parameters.adapThr)
 {
-	ratioPhi = adaptiveSlope(b_parameters.errorRate);
-	std::cout << "adaptiveThreshold constant:	"	<< ratioPhi * (1-b_parameters.deltaChernoff)	<< "\n" << std::endl;
+	ratiophi = adaptiveSlope(b_parameters.errorRate);
+	std::cout << "adaptiveThreshold constant:	"	<< ratiophi * (1-b_parameters.deltaChernoff)	<< "\n" << std::endl;
 }
 else
 	std::cout << "userDefinedThreshold:	"	<< b_parameters.defaultThr	<< "\n" << std::endl;
@@ -349,9 +358,9 @@ else
 	double parsefastq = omp_get_wtime();
 	unsigned int read_id = 0; // read_id needs to be global (not just per file)
 
-	vector < vector<tuple<int,int,int>> > alloccurrences(MAXTHREADS);
-	vector < vector<tuple<int,int,int>> > alltranstuples(MAXTHREADS);
-	vector < readVector_ > allreads(MAXTHREADS);
+	vector<vector<tuple<unsigned int, unsigned int, unsigned short int>>> alloccurrences(MAXTHREADS);
+	vector<vector<tuple<unsigned int, unsigned int, unsigned short int>>> alltranstuples(MAXTHREADS);
+	vector<readVector_> allreads(MAXTHREADS);
 
 	for(auto itr=allfiles.begin(); itr!=allfiles.end(); itr++)
 	{
@@ -461,13 +470,14 @@ else
 	std::cout << "Sparse matrix construction took:	" << omp_get_wtime()-matcreat << "s\n" << std::endl;
 #endif
 
+	int steps = markovstep(1-b_parameters.errorRate, b_parameters.kmerSize);
+
 	//
 	// Overlap detection (sparse matrix multiplication) and seed-and-extend alignment
 	//
 	spmatPtr_ getvaluetype(make_shared<spmatType_>());
 	HashSpGEMM(spmat, transpmat, 
 		// n-th k-mer positions on read i and on read j
-		// AB: not sure if these id1 and id2 are captured correctly, honestly
 		[&b_parameters, &reads] (const unsigned short int& begpH, const unsigned short int& begpV, const unsigned int& id1, const unsigned int& id2)
 		{
 			spmatPtr_ value(make_shared<spmatType_>());
@@ -489,8 +499,8 @@ else
 			chainop(m1, m2, b_parameters, readname1, readname2);
 			return m1;
 		},
-		reads, getvaluetype, b_parameters.xDrop, out_file, b_parameters, ratioPhi); 
+		reads, getvaluetype, out_file, b_parameters, ratiophi, steps);
 
 	std::cout << "Total running time:	" << omp_get_wtime()-all << "s\n" << std::endl;
 	return 0;
-} 
+}

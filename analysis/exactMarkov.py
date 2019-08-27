@@ -44,7 +44,7 @@ def func(overlap, p, k):
 	print("\nOverlap length to see a correct 17-mer with an error rate of", (1-p), "is", int(num))
 	return np.linalg.matrix_power(transixMat, overlap)[0, k]
 
-print(func(overlap=2000, p=0.844, k=17))
+print(func(overlap=2000, p=0.85, k=17))
 print()
 #
 # Plot probability function

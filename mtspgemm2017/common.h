@@ -37,15 +37,16 @@ struct BELLApars
 	bool	outputPaf;			// output in paf format (p)
 	bool	userDefMem;
 	bool	useGerbil;
-	double	maxDivergence;		// maxDivergence to output a pair
+	bool	enableGPU;
+	float	maxDivergence;		// maxDivergence to output a pair
 	double	deltaChernoff;		// delta computed via Chernoff bound (c)
 	double	totalMemory;		// in MB, default is ~ 8GB
 	double	errorRate;			// default error rate if estimation is disable (e)
 	double	minProbability;		// reliable range probability threshold (y)
 
-	BELLApars(): kmerSize(17), kmerRift(kmerSize), minOverlap(1000), minSurvivedKmers(1), maxOverhang(1500), maxJump(1500), binSize(500), defaultThr(0),
-					xDrop(7), skipEstimate(false), skipAlignment(false), adapThr(true), outputPaf(false), userDefMem(false), useGerbil(false), maxDivergence(0.25),
-						deltaChernoff(0.10), totalMemory(8000.0), errorRate(0.15), minProbability(0.002) {};
+	BELLApars(): kmerSize(17), kmerRift(kmerSize), minOverlap(1000), minSurvivedKmers(-1), maxOverhang(1500), maxJump(1500), binSize(500), defaultThr(0),
+					xDrop(7), skipEstimate(false), skipAlignment(false), adapThr(true), outputPaf(false), userDefMem(false), useGerbil(false), enableGPU(false), maxDivergence(0.25),
+						deltaChernoff(0.10), totalMemory(8000.0), errorRate(0.15) {};
 };
 
 template <typename T>
