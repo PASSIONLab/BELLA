@@ -196,7 +196,7 @@ To cite our work or to know more about our methods, please refer to:
 
 * [**Daniel Rokhsar**](https://mcb.berkeley.edu/labs/rokhsar/)
 * [**Katherine Yelick**](https://people.eecs.berkeley.edu/~yelick/)
-* [**Qi Zhou**]
+* [**Qi Zhou**](https://it.linkedin.com/in/qizhou1512)
 
 ## Copyright Notice
  
