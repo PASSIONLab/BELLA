@@ -275,6 +275,7 @@ int main (int argc, char *argv[]) {
 	// Declarations 
 	//
 	vector<filedata> allfiles = GetFiles(all_inputs_fofn);
+	std::string all_inputs_gerbil = std::string(all_inputs_fofn); 
 	int lower, upper; // reliable range lower and upper bound
 	double ratiophi;
 	Kmer::set_k(b_parameters.kmerSize);
@@ -355,8 +356,8 @@ int main (int argc, char *argv[]) {
 		std::cout << "kmerFrequencyUpperBound:	"	<< upper					<< std::endl;
 	if(b_parameters.adapThr)
 	{
-		ratioPhi = adaptiveSlope(b_parameters.errorRate);
-		std::cout << "adaptiveThreshold constant:	"	<< ratioPhi * (1-b_parameters.deltaChernoff)	<< "\n" << std::endl;
+		ratiophi = adaptiveSlope(b_parameters.errorRate);
+		std::cout << "adaptiveThreshold constant:	"	<< ratiophi * (1-b_parameters.deltaChernoff)	<< "\n" << std::endl;
 	}
 	else
 		std::cout << "userDefinedThreshold:	"	<< b_parameters.defaultThr	<< "\n" << std::endl;
