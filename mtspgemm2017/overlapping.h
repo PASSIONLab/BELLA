@@ -63,7 +63,7 @@ typedef SeedSet<TSeed> TSeedSet;
 struct sysinfo info;
 #endif
 
-double safety_net = 1.2;
+double safety_net = 1.5;
 
 /*
  Multithreaded prefix sum
@@ -183,7 +183,7 @@ IT* estimateFLOP(const CSC<IT,NT> & A, const CSC<IT,NT> & B, bool lowtriout)
 
 // estimate space for result of SpGEMM with Hash
 template <typename IT, typename NT>
-IT* estimateNNZ_Hash(const CSC<IT,NT> & A, const CSC<IT,NT> & B, const size_t *flopC, bool lowtriout)
+IT* estimateNNZ_Hash(const CSC<IT,NT>& A, const CSC<IT,NT>& B, const IT* flopC, bool lowtriout)
 {
 	if(A.isEmpty() || B.isEmpty())
 	{
@@ -211,8 +211,8 @@ IT* estimateNNZ_Hash(const CSC<IT,NT> & A, const CSC<IT,NT> & B, const size_t *f
 		int myThread = omp_get_thread_num();
 			
 		// Hash
-		const size_t minHashTableSize = 16;
-		const size_t hashScale = 107;
+		const unsigned int minHashTableSize = 16;
+		const unsigned int hashScale = 107;
 
 		// Initialize hash tables
 		size_t ht_size = minHashTableSize;
@@ -274,7 +274,7 @@ void LocalSpGEMM(IT & start, IT & end, const CSC<IT,NT> & A, const CSC<IT,NT> & 
 	{
 		const IT minHashTableSize = 16;
 		const IT hashScale = 107;
-		unsigned int nnzcolC = colptrC[i+1] - colptrC[i];	//nnz in the current column of C (=Output)
+		size_t nnzcolC = colptrC[i+1] - colptrC[i];	//nnz in the current column of C (=Output)
 
 	IT ht_size = minHashTableSize;
 	while(ht_size < nnzcolC)	//ht_size is set as 2^n
@@ -359,7 +359,7 @@ double estimateMemory(const BELLApars & b_pars)
 	else
 	{
 #if defined (OSX) // OSX-based memory consumption implementation 
-	vm_size_t page_size;
+	vm_unsigned int page_size;
 	mach_port_t mach_port;
 	mach_msg_type_number_t count;
 	vm_statistics64_data_t vm_stats;
@@ -692,7 +692,7 @@ void HashSpGEMM(const CSC<IT,NT>& A, const CSC<IT,NT>& B, MultiplyOperation mult
 	IT* flopptr = prefixsum<IT>(flopC, B.cols, numThreads);
 	IT flops = flopptr[B.cols];
 
-#ifdef PRINT    
+#ifdef PRINT
 	cout << "FLOPS is\t" << flops << endl;
 #endif
 
