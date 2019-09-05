@@ -535,7 +535,7 @@ void PostAlignDecision(const seqAnResult& maxExtScore, const readType_& read1, c
 
 template <typename IT, typename FT>
 auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowids, FT * values, const readVector_ & reads, 
-		char* filename, const BELLApars & b_pars, const double& ratiophi, const int& steps)
+		char* filename, const BELLApars & b_pars, const double& ratiophi)
 {
 	size_t alignedpairs = 0;
 	size_t alignedbases = 0;
@@ -674,7 +674,7 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
  **/
 template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation>
 void HashSpGEMM(const CSC<IT,NT>& A, const CSC<IT,NT>& B, MultiplyOperation multop, AddOperation addop, const readVector_& reads, 
-	FT& getvaluetype, char* filename, const BELLApars& b_pars, const double& ratiophi, const int& steps)
+	FT& getvaluetype, char* filename, const BELLApars& b_pars, const double& ratiophi)
 {
 	double free_memory = estimateMemory(b_pars);
 
@@ -762,7 +762,7 @@ void HashSpGEMM(const CSC<IT,NT>& A, const CSC<IT,NT>& B, MultiplyOperation mult
 		delete [] ValuesofC;
 
 		tuple<size_t, size_t, size_t, size_t, size_t, size_t, double> alignstats; // (alignedpairs, alignedbases, totalreadlen, outputted, alignedtrue, alignedfalse, timeoutputt)
-		alignstats = RunPairWiseAlignments(colStart[b], colStart[b+1], begnz, colptrC, rowids, values, reads, filename, b_pars, ratiophi, steps);
+		alignstats = RunPairWiseAlignments(colStart[b], colStart[b+1], begnz, colptrC, rowids, values, reads, filename, b_pars, ratiophi);
 
 #ifdef TIMESTEP
 		if(!b_pars.skipAlignment)

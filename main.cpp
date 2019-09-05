@@ -470,8 +470,6 @@ else
 	std::cout << "Sparse matrix construction took:	" << omp_get_wtime()-matcreat << "s\n" << std::endl;
 #endif
 
-	int steps = markovstep(1-b_parameters.errorRate, b_parameters.kmerSize);
-
 	//
 	// Overlap detection (sparse matrix multiplication) and seed-and-extend alignment
 	//
@@ -499,7 +497,7 @@ else
 			chainop(m1, m2, b_parameters, readname1, readname2);
 			return m1;
 		},
-		reads, getvaluetype, out_file, b_parameters, ratiophi, steps);
+		reads, getvaluetype, out_file, b_parameters, ratiophi);
 
 	std::cout << "Total running time:	" << omp_get_wtime()-all << "s\n" << std::endl;
 	return 0;
