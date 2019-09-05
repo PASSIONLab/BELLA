@@ -153,7 +153,7 @@ IT* estimateFLOP(const CSC<IT,NT> & A, const CSC<IT,NT> & B, bool lowtriout)
 	#pragma omp parallel for
 		for(IT i=0; i < B.cols; ++i)
 		{
-			unsigned int nnzcolB = B.colptr[i+1] - B.colptr[i]; //nnz in the current column of B
+			size_t nnzcolB = B.colptr[i+1] - B.colptr[i]; //nnz in the current column of B
 		int myThread = omp_get_thread_num();
 		for (IT j = B.colptr[i]; j < B.colptr[i+1]; ++j)	// all nonzeros in that column of B
 		{
@@ -183,7 +183,7 @@ IT* estimateFLOP(const CSC<IT,NT> & A, const CSC<IT,NT> & B, bool lowtriout)
 
 // estimate space for result of SpGEMM with Hash
 template <typename IT, typename NT>
-IT* estimateNNZ_Hash(const CSC<IT,NT> & A, const CSC<IT,NT> & B, const unsigned int *flopC, bool lowtriout)
+IT* estimateNNZ_Hash(const CSC<IT,NT> & A, const CSC<IT,NT> & B, const size_t *flopC, bool lowtriout)
 {
 	if(A.isEmpty() || B.isEmpty())
 	{
@@ -207,22 +207,22 @@ IT* estimateNNZ_Hash(const CSC<IT,NT> & A, const CSC<IT,NT> & B, const unsigned 
 #pragma omp parallel for
 	for(IT i=0; i < B.cols; ++i)	// for each column of B
 	{
-		unsigned int nnzcolB = B.colptr[i+1] - B.colptr[i]; //nnz in the current column of B
+		size_t nnzcolB = B.colptr[i+1] - B.colptr[i]; //nnz in the current column of B
 		int myThread = omp_get_thread_num();
 			
 		// Hash
-		const unsigned int minHashTableSize = 16;
-		const unsigned int hashScale = 107;
+		const size_t minHashTableSize = 16;
+		const size_t hashScale = 107;
 
 		// Initialize hash tables
-		unsigned int ht_size = minHashTableSize;
+		size_t ht_size = minHashTableSize;
 		while(ht_size < flopC[i]) //ht_size is set as 2^n
 		{
 			ht_size <<= 1;
 		}
 		std::vector<IT> globalHashVec(ht_size);
 
-		for(unsigned int j=0; j < ht_size; ++j)
+		for(size_t j=0; j < ht_size; ++j)
 		{
 			globalHashVec[j] = -1;
 		}
@@ -359,7 +359,7 @@ double estimateMemory(const BELLApars & b_pars)
 	else
 	{
 #if defined (OSX) // OSX-based memory consumption implementation 
-	vm_unsigned int page_size;
+	vm_size_t page_size;
 	mach_port_t mach_port;
 	mach_msg_type_number_t count;
 	vm_statistics64_data_t vm_stats;
