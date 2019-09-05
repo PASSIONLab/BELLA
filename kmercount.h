@@ -34,6 +34,7 @@
 
 #include "libcuckoo/cuckoohash_map.hh"
 #include "libbloom/bloom64.h"
+#include "gerbil/include/gerbil/Application.h"
 
 #include "kmercode/hash_funcs.h"
 #include "kmercode/Kmer.hpp"
@@ -151,10 +152,10 @@ void JellyFishCount(char *kmer_file, dictionary_t_32bit& countsreliable_jelly, i
 	countsjelly.clear(); // free 
 }
 
-void GerbilDeNovoCount(std::string& tempDir, std::string& fileName, dictionary_t& countsreliable_denovo, int& lower, int& upper, 
+void GerbilDeNovoCount(std::string& tempDir, std::string& fileName, dictionary_t_32bit& countsreliable_denovo, int& lower, int& upper, 
 				 int& coverage, size_t upperlimit, BELLApars& b_pars)
 {
-	gerbil::Application application(b_pars.errorRate,b_pars.enableGPU, coverage, b_pars.kmerSize, fileName, tempDir, 1, "outputTRY", b_pars.skipEstimate);
+	gerbil::Application application(b_pars.minProbability, b_pars.errorRate,b_pars.enableGPU, coverage, b_pars.kmerSize, fileName, tempDir, 1, "outputTRY", b_pars.skipEstimate);
 		application.process();
 
 	vector<pair<string,unsigned int>> *listKmer;

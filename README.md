@@ -194,9 +194,9 @@ To cite our work or to know more about our methods, please refer to:
 
 ## Contributors
 
-* [**Daniel Rokhsar**](https://mcb.berkeley.edu/labs/rokhsar/)
-* [**Katherine Yelick**](https://people.eecs.berkeley.edu/~yelick/)
-* [**Qi Zhou**]
+* [**Dan Rokhsar**](https://mcb.berkeley.edu/labs/rokhsar/)
+* [**Kathy Yelick**](https://people.eecs.berkeley.edu/~yelick/)
+* [**Qi Zhou**](https://it.linkedin.com/in/qizhou1512)
 
 ## Copyright Notice
  
@@ -208,4 +208,4 @@ NOTICE. This Software was developed under funding from the U.S. Department of En
 
 ## Acknowledgments
 
-Funding provided in part by DOE ASCR through the Exascale Computing Project, and computing provided by NERSC. Thanks to Rob Egan and Steven Hofmeyr for valuable discussions. Thanks to Politecnico di Milano for key collaborations.
+Funding provided in part by DOE ASCR through the [Exascale Computing Project](https://www.exascaleproject.org/), and computing provided by [NERSC](https://www.nersc.gov/). Thanks to Rob Egan and [Steven Hofmeyr](https://crd.lbl.gov/departments/computer-science/CLaSS/members/class-staff/steven-hofmeyr/) for valuable discussions. Thanks to [Politecnico di Milano](https://www.polimi.it/en/) for key collaborations.
