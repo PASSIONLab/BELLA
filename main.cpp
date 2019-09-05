@@ -342,6 +342,9 @@ int main (int argc, char *argv[]) {
 		std::string tempDirName = "tempDir";
 		all = omp_get_wtime();
 		GerbilDeNovoCount(tempDirName, all_inputs_gerbil, countsreliable, lower, upper, coverage, upperlimit, b_parameters);
+	//	std::cout << "errorRate:	"				<< b_parameters.errorRate	<< std::endl;	//	GG: printed in Gerbil
+	//	std::cout << "kmerFrequencyLowerBound:	"	<< lower					<< std::endl;
+	//	std::cout << "kmerFrequencyUpperBound:	"	<< upper					<< std::endl;
 	}
 	else
 	{ 
@@ -349,11 +352,10 @@ int main (int argc, char *argv[]) {
 		std::cout << "numThreads:	"				<< MAXTHREADS	<< "\n"		<< std::endl;
 		all = omp_get_wtime();
 		DeNovoCount(allfiles, countsreliable, lower, upper, coverage, upperlimit, b_parameters);
-	}
-	#ifdef PRINT
 		std::cout << "errorRate:	"				<< b_parameters.errorRate	<< std::endl;
 		std::cout << "kmerFrequencyLowerBound:	"	<< lower					<< std::endl;
 		std::cout << "kmerFrequencyUpperBound:	"	<< upper					<< std::endl;
+	}
 	if(b_parameters.adapThr)
 	{
 		ratiophi = adaptiveSlope(b_parameters.errorRate);
@@ -361,7 +363,6 @@ int main (int argc, char *argv[]) {
 	}
 	else
 		std::cout << "userDefinedThreshold:	"	<< b_parameters.defaultThr	<< "\n" << std::endl;
-#endif	// PRINT
 #endif	// DENOVO COUNTING
 
 	//
