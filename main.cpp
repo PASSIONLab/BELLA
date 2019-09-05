@@ -333,23 +333,35 @@ int main (int argc, char *argv[]) {
 
 	JellyFishCount(kmer_file, countsreliable, lower, upper);
 #else
-	// Reliable range computation within denovo counting
-	std::cout << "numThreads:	"				<< MAXTHREADS	<< "\n"		<< std::endl;
-	double all = omp_get_wtime();
-	DeNovoCount(allfiles, countsreliable, lower, upper, coverage, upperlimit, b_parameters);
-#ifdef PRINT
-	std::cout << "errorRate:	"				<< b_parameters.errorRate	<< std::endl;
-	std::cout << "kmerFrequencyLowerBound:	"	<< lower					<< std::endl;
-	std::cout << "kmerFrequencyUpperBound:	"	<< upper					<< std::endl;
-if(b_parameters.adapThr)
-{
-	ratiophi = adaptiveSlope(b_parameters.errorRate);
-	std::cout << "adaptiveThreshold constant:	"	<< ratiophi * (1-b_parameters.deltaChernoff)	<< "\n" << std::endl;
-}
-else
-	std::cout << "userDefinedThreshold:	"	<< b_parameters.defaultThr	<< "\n" << std::endl;
-#endif // PRINT
-#endif // DENOVO COUNTING
+	double all;
+	if(b_parameters.useGerbil)
+	{
+		// Reliable range computation within denovo counting
+		std::cout << "numThreads:	"				<< MAXTHREADS	<< "\n"		<< std::endl;
+		std::string tempDirName = "tempDir";
+		all = omp_get_wtime();
+		GerbilDeNovoCount(tempDirName, all_inputs_gerbil, countsreliable, lower, upper, coverage, upperlimit, b_parameters);
+	}
+	else
+	{ 
+		// Reliable range computation within denovo counting
+		std::cout << "numThreads:	"				<< MAXTHREADS	<< "\n"		<< std::endl;
+		all = omp_get_wtime();
+		DeNovoCount(allfiles, countsreliable, lower, upper, coverage, upperlimit, b_parameters);
+	}
+	#ifdef PRINT
+		std::cout << "errorRate:	"				<< b_parameters.errorRate	<< std::endl;
+		std::cout << "kmerFrequencyLowerBound:	"	<< lower					<< std::endl;
+		std::cout << "kmerFrequencyUpperBound:	"	<< upper					<< std::endl;
+	if(b_parameters.adapThr)
+	{
+		ratioPhi = adaptiveSlope(b_parameters.errorRate);
+		std::cout << "adaptiveThreshold constant:	"	<< ratioPhi * (1-b_parameters.deltaChernoff)	<< "\n" << std::endl;
+	}
+	else
+		std::cout << "userDefinedThreshold:	"	<< b_parameters.defaultThr	<< "\n" << std::endl;
+#endif	// PRINT
+#endif	// DENOVO COUNTING
 
 	//
 	// Fastq(s) parsing
