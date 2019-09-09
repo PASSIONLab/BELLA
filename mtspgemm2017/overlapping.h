@@ -689,8 +689,10 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
     //int counter_acc = 0;
 //#pragma omp parallel for
     for(IT j = start; j<end; ++j){//accumulate the sequences
+//	#pragma omp parallel for
         for (IT i = colptrC[j]; i < colptrC[j+1]; ++i){
 	        spmatPtr_ val = values[i-offset];
+		//#pragma omp parallel for
 		for(auto it = val->pos.begin(); it != val->pos.end(); ++it){
 		
 	        	size_t rid = rowids[i-offset];  // row id
