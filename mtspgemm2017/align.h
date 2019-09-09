@@ -81,10 +81,10 @@ seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rle
     TSeed seed(i, j, i+kmer_len, j+kmer_len);
     seedH = infix(seqH, beginPositionH(seed), endPositionH(seed));
     seedV = infix(seqV, beginPositionV(seed), endPositionV(seed));
-    cout<<seedH<<endl;
+
     /* we are reversing the "row", "col" is always on the forward strand */
     Dna5StringReverseComplement twin(seedH);
-    cout<<twin<<endl;
+
     if(twin == seedV)
     {
         strand = 'c';

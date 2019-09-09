@@ -60,6 +60,7 @@ Optional flag description:
 -K : all (non-overlapping and separated by <kmerRift> bases) k-mers as alignment seeds [false]
 -f : k-mer list from Jellyfish (required if #DEFINE JELLYFISH enabled)
 -p : output in PAF format [false]
+-g : number of gpus available [default 1, this works only when compiled as bella_gpu]
 ```
 **NOTE**: to use [Jellyfish](http://www.cbcb.umd.edu/software/jellyfish/) k-mer counting is necessary to enable **#DEFINE JELLYFISH.**
 
@@ -148,4 +149,4 @@ NOTICE. This Software was developed under funding from the U.S. Department of En
 
 ## Acknowledgments
 
-Funding provided in part by DOE ASCR through the Exascale Computing Project, and computing provided by NERSC. Thanks to Rob Egan and Steven Hofmeyr for valuable discussions.
+Funding provided in part by DOE ASCR through the [Exascale Computing Project](https://www.exascaleproject.org/), and computing provided by [NERSC](https://www.nersc.gov/). Thanks to Rob Egan and Steven Hofmeyr for valuable discussions. Thanks to [Politecnico di Milano](https://www.polimi.it/en/) for key collaborations.

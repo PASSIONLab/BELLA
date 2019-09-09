@@ -58,7 +58,6 @@ struct loganResult {
     SeedL seed;
 };
 
-
 struct readType_ {
 	std::string nametag;
 	std::string seq; 
