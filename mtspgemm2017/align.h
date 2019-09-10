@@ -34,7 +34,7 @@ double adaptiveSlope(double error)
 	double p_mat = pow(1-error,2);  // match
 	double p_mis = 1-p_mat;         // mismatch/gap
 	double alpha = 1;               // match penalty
-	double beta = 1;                // mismatch/gap penalty
+	double beta  = 1;                // mismatch/gap penalty
 
 	return alpha*p_mat - beta*p_mis;
 }

@@ -917,121 +917,73 @@ auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * ro
 
 	vector<string> seq1s;
 	vector<string> seq2s;
-	vector<SeedL> seeds;
+	vector<SeedL>  seeds;
 	vector<loganResult> maxExtScoreL;
 
-	for(IT j = start; j<end; ++j)	//	acculate sequences for GPU
+	size_t outputted = 0;
+
+	//#pragma omp parallel for schedule(dynamic)
+	for(IT j = start; j < end; ++j)			//	acculate sequences for GPU batch alignment
 	{
 		for (IT i = colptrC[j]; i < colptrC[j+1]; ++i)
 		{
+			unsigned int rid = rowids[i-offset];	// row id
+			unsigned int cid = j;					// column id
+
+			const string& seq1 = reads[rid].seq;	// get reference for readibility
+			const string& seq2 = reads[cid].seq;	// get reference for readibility
+
+			unsigned short int seq1len = seq1.length();
+			unsigned short int seq2len = seq2.length();
+
 			spmatPtr_ val = values[i-offset];
-			//#pragma omp parallel for
-			for(auto it = val->pos.begin(); it != val->pos.end(); ++it)
+
+			if(!b_pars.skipAlignment) // fix -z to not print 
 			{
+				loganResult localRes;
 
-				size_t rid = rowids[i-offset];  // row id
-				size_t cid = j;                 // column id
-				string seq1 = reads[rid].seq;    // get reference for readibility
-				string seq2 = reads[cid].seq;    // get reference for readibility
-				int indi = it->first, indj = it->second;
+				//	GG: number of matching kmer into the majority voted bin
+				unsigned short int matches = val->chain();
+				unsigned short int minkmer = 1;
 
-				int rlen = seq1.length();
-				string strand = "n";
-				SeedL seed(indi, indj, indi+b_pars.kmerSize, indj+b_pars.kmerSize);
-				string seedH = seq1.substr(getBeginPositionH(seed), b_pars.kmerSize);
-				string seedV = seq2.substr(getBeginPositionV(seed), b_pars.kmerSize);
-				std::reverse(std::begin(seedH),std::end(seedH));
-				std::transform(std::begin(seedH),std::end(seedH),std::begin(seedH), complement);
+				//	GG: b_pars.minSurvivedKmers should be function of Markov chain
+				if (matches < minkmer)
+					continue;
 
+				pair<int, int> kmer = val->choose();
+				int i = kmer.first, j = kmer.second;
+
+				std::string strand = "n";
+				SeedL seed(i, j, i + b_pars.kmerSize, j + b_pars.kmerSize);
+
+				std::string& seedH = seq1.substr(getBeginPositionH(seed), b_pars.kmerSize);
+				std::string& seedV = seq2.substr(getBeginPositionV(seed), b_pars.kmerSize);
+
+				std::reverse(std::begin(seedH), std::end(seedH));
+				std::transform(std::begin(seedH), std::end(seedH), std::begin(seedH), complement);
+
+				std::string cpyseq1(seq1);
 				if(seedH == seedV)
 				{
-					strand = "c";
-					seq1 = reads[rid].seq;
-					std::reverse(std::begin(seq1),std::end(seq1));
-					std::transform(std::begin(seq1),std::end(seq1),std::begin(seq1), complement);
+					strand  = "c";
 
-					setBeginPositionH(seed, rlen-indi-b_pars.kmerSize);
-					setBeginPositionV(seed, indj);
-					setEndPositionH(seed, rlen-indi);
-					setEndPositionV(seed, indj+b_pars.kmerSize);
+					std::reverse(std::begin(cpyseq1), std::end(cpyseq1));
+					std::transform(std::begin(cpyseq1), std::end(cpyseq1), std::begin(cpyseq1), complement);
+
+					setBeginPositionH(seed, rlen - i - b_pars.kmerSize);
+					setBeginPositionV(seed, j);
+
+					setEndPositionH(seed, rlen - i);
+					setEndPositionV(seed, j + b_pars.kmerSize);
 				}
+
 				loganResult localRes;
 				localRes.strand = strand;
 
 				seeds.push_back(seed);
-				seq1s.push_back(seq1);
 				seq2s.push_back(seq2);
+				seq1s.push_back(cpyseq1);
 				maxExtScoreL.push_back(localRes);
-			}
-		}
-	}
-	std::cout << "GPU Alignment Started" << std::endl;
-	alignLogan(seq1s, seq2s, seeds, b_pars, maxExtScoreL);
-	std::cout << "GPU Alignment Completed" << std::endl;
-
-	int index = 0;
-	//	GG:	is this correct
-	//#pragma omp parallel for
-	for(IT j = start; j<end; ++j) // for (end-start) columns of A^T A (one block)
-	{
-		size_t numAlignmentsThread = 0;
-		size_t numBasesAlignedThread = 0;
-		size_t readLengthsThread = 0;
-		size_t numBasesAlignedTrue = 0;
-		size_t numBasesAlignedFalse = 0;
-
-		size_t outputted = 0;
-
-		int ithread = omp_get_thread_num();	
-
-		for (IT i = colptrC[j]; i < colptrC[j+1]; ++i)  // all nonzeros in that column of A^T A
-		{
-			size_t rid = rowids[i-offset];  // row id
-			size_t cid = j;                 // column id
-			const string& seq1 = reads[rid].seq;	// get reference for readibility
-			const string& seq2 = reads[cid].seq;	// get reference for readibility
-
-			int seq1len = seq1.length();
-			int seq2len = seq2.length();
-
-			spmatPtr_ val = values[i-offset];
-			//cout<<val->count<<endl;
-			if(!b_pars.skipAlignment) // fix -z to not print 
-				//	GG: need to fix this for the chaining version
-			{
-#ifdef TIMESTEP
-				numAlignmentsThread++;
-				readLengthsThread = readLengthsThread + seq1len + seq2len;
-#endif
-				loganResult maxExtScore = maxExtScoreL[index];
-				//index++;
-				bool passed = false;
-				if(val->count == 1)
-				{
-					auto it = val->pos.begin();
-					//int i = it->first, j = it->second;
-					loganResult maxExtScore = maxExtScoreL[index];
-					//maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, b_pars.xDrop, b_pars.kmerSize);
-					PostAlignDecisionGPU(maxExtScore, reads[rid], reads[cid], b_pars, ratiophi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
-					index++;
-				}
-				else
-				{
-					for(auto it = val->pos.begin(); it != val->pos.end(); ++it) // if !b_pars.allKmer this should be at most two cycle
-					{
-						//int i = it->first, j = it->second;
-						loganResult maxExtScore = maxExtScoreL[index];
-						//cout<<"IN"<<endl;
-						//maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, b_pars.xDrop, b_pars.kmerSize);
-						if(!passed)	//	GG: why?
-							PostAlignDecisionGPU(maxExtScore, reads[rid], reads[cid], b_pars, ratiophi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
-						index++;
-					}
-				}
-#ifdef TIMESTEP
-				numBasesAlignedThread += getEndPositionV(maxExtScore.seed)-getBeginPositionV(maxExtScore.seed);
-				//numBasesAlignedThread += endPositionV(maxExtScore.seed)-beginPositionV(maxExtScore.seed);
-#endif
 			}
 			else // if skipAlignment == false do alignment, else save just some info on the pair to file
 			{
@@ -1039,18 +991,66 @@ auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * ro
 						seq2len << '\t' << seq1len << endl;
 				++outputted;
 			}
-		} // all nonzeros in that column of A^T A
+		}
+	}
 
-#ifdef TIMESTEP	
-		#pragma omp critical
+	if(!b_pars.skipAlignment) // fix -z to not print 
+	{
+		std::cout << "GPU Alignment Started" << std::endl;
+		alignLogan(seq1s, seq2s, seeds, b_pars, maxExtScoreL);
+		std::cout << "GPU Alignment Completed" << std::endl;
+
+		unsigned int idx = 0;
+		//#pragma omp parallel for 	//	GG:	we might do parallel here double check
+		for(IT j = start; j < end; ++j) // for (end-start) columns of A^T A (one block)
 		{
+			size_t numAlignmentsThread   = 0;
+			size_t numBasesAlignedThread = 0;
+			size_t readLengthsThread     = 0;
+			size_t numBasesAlignedTrue   = 0;
+			size_t numBasesAlignedFalse  = 0;
+
+		//	size_t outputted = 0;	//	moved up
+			int ithread = omp_get_thread_num();
+
+			for (IT i = colptrC[j]; i < colptrC[j+1]; ++i)  // all nonzeros in that column of A^T A
+			{
+				unsigned int rid = rowids[i-offset];	// row id
+				unsigned int cid = j;					// column id
+
+				const string& seq1 = reads[rid].seq;	// get reference for readibility
+				const string& seq2 = reads[cid].seq;	// get reference for readibility
+
+				unsigned short int seq1len = seq1.length();
+				unsigned short int seq2len = seq2.length();
+
+				spmatPtr_ val = values[i-offset];
+
+#ifdef TIMESTEP
+				numAlignmentsThread++;
+				readLengthsThread = readLengthsThread + seq1len + seq2len;
+#endif
+				bool passed = false;
+				loganResult maxExtScore = maxExtScoreL[idx];
+
+				PostAlignDecisionGPU(maxExtScore, reads[rid], reads[cid], b_pars, ratiophi, val->count, 
+					vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
+				idx++;
+#ifdef TIMESTEP
+				numBasesAlignedThread += getEndPositionV(maxExtScore.seed) - getBeginPositionV(maxExtScore.seed);
+#endif
+			}	// all nonzeros in that column of A^T A
+		}
+#ifdef TIMESTEP
+	//	#pragma omp critical
+	//	{
 			alignedpairs += numAlignmentsThread;
 			alignedbases += numBasesAlignedThread;
 			totalreadlen += readLengthsThread;
 			totaloutputt += outputted;
 			totsuccbases += numBasesAlignedTrue;
 			totfailbases += numBasesAlignedFalse;
-		}
+	//	}
 #endif
 	} // all columns from start...end (omp for loop)
 
