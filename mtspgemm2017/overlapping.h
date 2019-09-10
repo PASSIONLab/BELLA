@@ -662,7 +662,7 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 	}
 
 	vector<stringstream> vss(numThreads); // any chance of false sharing here? depends on how stringstream is implemented. optimize later if needed...
-  
+
 #pragma omp parallel for schedule(dynamic)
 	for(IT j = start; j < end; ++j)	// for (end-start) columns of A^T A (one block)
 	{
@@ -699,9 +699,7 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 
 				//	GG: number of matching kmer into the majority voted bin
 				unsigned short int matches = val->chain();
-				//	unsigned short int overlap = val->overlaplength();
-				//	unsigned short int steps   = 1105;
-				unsigned short int minkmer = 1; 	//std::floor((float)overlap/(float)steps);
+				unsigned short int minkmer = 1;
 
 				//	GG: b_pars.minSurvivedKmers should be function of Markov chain
 				if (matches < minkmer)
@@ -778,7 +776,6 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 
 	return make_tuple(alignedpairs, alignedbases, totalreadlen, totaloutputt, totsuccbases, totfailbases, timeoutputt);
 }
-
 
 /**
   * Sparse multithreaded GEMM.
@@ -1169,8 +1166,8 @@ void HashSpGEMM_GPU(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperatio
 		LocalSpGEMM(colStart[b], colStart[b+1], A, B, multop, addop, RowIdsofC, ValuesofC, colptrC, true);
 
 #ifdef TIMESTEP
-		double ov2 = omp_get_wtime();
-		cout << "\nColumns [" << colStart[b] << " - " << colStart[b+1] << "] overlap time: " << ov2-ovl << "s" << endl;
+		double alnlen2 = omp_get_wtime();
+		cout << "\nColumns [" << colStart[b] << " - " << colStart[b+1] << "] overlap time:	" << alnlen2-alnlenl << "s" << endl;
 #endif
 
 		IT endnz = colptrC[colStart[b+1]];
@@ -1196,13 +1193,15 @@ void HashSpGEMM_GPU(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperatio
 #ifdef TIMESTEP
 		if(!b_pars.skipAlignment)
 		{
-			double elapsed = omp_get_wtime()-ov2;
+			double elapsed = omp_get_wtime()-alnlen2;
 			double aligntime = elapsed-get<6>(alignstats); // substracting outputting time
-			cout << "\nColumns [" << colStart[b] << " - " << colStart[b+1] << "] alignment time: " << aligntime << "s | alignment rate: " << static_cast<double>(get<1>(alignstats))/aligntime;
-			cout << " bases/s | average read length: " <<static_cast<double>(get<2>(alignstats))/(2* get<0>(alignstats));
-			cout << " | read pairs aligned this stage: " << get<0>(alignstats) << endl;
-			cout << "Average length of successful alignment " << static_cast<double>(get<4>(alignstats)) / get<3>(alignstats) << " bps" << endl;
-			cout << "Average length of failed alignment " << static_cast<double>(get<5>(alignstats)) / (get<0>(alignstats) - get<3>(alignstats)) << " bps" << endl;		
+			std::cout << "\nColumns ["				<< colStart[b]	<< " - "			<< colStart[b+1] << "]" << std::endl;
+			std::cout << "alignmentTime:	"		<< aligntime	<< "s"				<< std::endl;
+			std::cout << "alignmentRate:	"		<< (int)(static_cast<double>(get<1>(alignstats)) / aligntime) 					<< " bases/s" << std::endl;
+			std::cout << "averageReadLength:	"	<< (int)(static_cast<double>(get<2>(alignstats)) / (2*get<0>(alignstats)))	<< std::endl;
+			std::cout << "numPairs aligned:	"		<< get<0>(alignstats)	<< std::endl;
+			cout << "averageLength of successful alignment:	"	<< (int)(static_cast<double>(get<4>(alignstats)) / get<3>(alignstats))							<< " bps" << endl;
+			cout << "averageLength of failed alignment:	"		<< (int)(static_cast<double>(get<5>(alignstats)) / (get<0>(alignstats) - get<3>(alignstats)))	<< " bps" << endl;
 	   }
 #endif
 		cout << "\nOutputted " << get<3>(alignstats) << " lines in " << get<6>(alignstats) << "s" << endl;
