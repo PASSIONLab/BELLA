@@ -57,7 +57,6 @@ double deltaChernoff = 0.1;
 using namespace std;
 
 int main (int argc, char *argv[]) {
-
 	//
 	// Program name and purpose
 	//
@@ -70,7 +69,7 @@ int main (int argc, char *argv[]) {
 	// Follow an option with a colon to indicate that it requires an argument.
 
 	optList = NULL;
-	optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:a:ze:x:c:m:r:pb:s:q:gu:yw:");
+	optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:a:ze:x:c:m:r:pb:s:q:gu:yw:l:");
 
 	char	*kmer_file 			= NULL;	// Reliable k-mer file from Jellyfish
 	char	*all_inputs_fofn 	= NULL;	// List of fastqs (i)
@@ -92,12 +91,12 @@ int main (int argc, char *argv[]) {
 		switch (thisOpt->option) {
 			case 'f': {
 #ifdef JELLYFISH
-				if(thisOpt->argument == NULL)
-				{
-					cout << "BELLA execution terminated: -f requires an argument" << endl;
-					cout << "Run with -h to print out the command line options\n" << endl;
-					return 0;
-				}
+                if(thisOpt->argument == NULL)
+                {
+                    cout << "BELLA execution terminated: -f requires an argument" << endl;
+                    cout << "Run with -h to print out the command line options\n" << endl;
+                    return 0;
+                }
 #endif
 				kmer_file = strdup(thisOpt->argument);
 				break;
@@ -199,6 +198,10 @@ int main (int argc, char *argv[]) {
 				b_parameters.binSize = atoi(thisOpt->argument);
 				break;
 			}
+      case 'l': {
+				b_parameters.numGPU = atoi(thisOpt->argument);
+				break;
+			}
 			case 'm': {
 				b_parameters.totalMemory = stod(thisOpt->argument);
 				b_parameters.userDefMem = true;
@@ -237,6 +240,7 @@ int main (int argc, char *argv[]) {
 				cout << " -b : Bin size binning algorithm [500]" 	<< endl;
 				cout << " -p : Output in PAF format [FALSE]\n" 		<< endl;
 				cout << " -w : Probability threshold for reliable range [0.002]\n" 		<< endl;
+        cout << " -l : GPUs available [1, only works when BELLA is compiled for GPU]\n" 		<< endl;
 
 				FreeOptList(thisOpt); // Done with this list, free it
 				return 0;
@@ -308,6 +312,7 @@ int main (int argc, char *argv[]) {
 //	std::cout << "maxDivergence:	"	<< b_parameters.maxDivergence		<< std::endl;
 	std::cout << "useGerbil:	 "		<< b_parameters.useGerbil			<< std::endl;
 	std::cout << "enableGPU:	 "		<< b_parameters.enableGPU			<< std::endl;
+  std::cout << "numberGPU:	 "		<< b_parameters.numGPU			<< std::endl;
 	std::cout << "outputPaf:	"		<< b_parameters.outputPaf			<< std::endl;
 	std::cout << "binSize:	"			<< b_parameters.binSize				<< std::endl;
 	std::cout << "deltaChernoff:	"	<< b_parameters.deltaChernoff		<< std::endl;
@@ -316,10 +321,9 @@ int main (int argc, char *argv[]) {
 	std::cout << "minProbability:	"	<< b_parameters.minProbability		<< std::endl;
 #endif
 
-	//
-	// Kmer file parsing, error estimation, reliable bounds computation, and k-mer dictionary creation
-	//
-
+    //
+    // Kmer file parsing, error estimation, reliable bounds computation, and k-mer dictionary creation
+    //
 	dictionary_t_32bit countsreliable;
 
 #ifdef JELLYFISH
@@ -365,9 +369,9 @@ int main (int argc, char *argv[]) {
 		std::cout << "userDefinedThreshold:	"	<< b_parameters.defaultThr	<< "\n" << std::endl;
 #endif	// DENOVO COUNTING
 
-	//
-	// Fastq(s) parsing
-	//
+    //
+    // Fastq(s) parsing
+    //
 
 	double parsefastq = omp_get_wtime();
 	unsigned int read_id = 0; // read_id needs to be global (not just per file)
@@ -457,12 +461,11 @@ int main (int argc, char *argv[]) {
 	std::cout << "Total number of reads:	"	<< read_id	<< "\n" << std::endl;
 #endif
 
-	//
-	// Sparse matrices construction
-	//
+    //
+    // Sparse matrices construction
+    //
 
-	double matcreat = omp_get_wtime();
-
+  double matcreat = omp_get_wtime();
 	unsigned int nkmer = countsreliable.size();
 	CSC<unsigned int, unsigned short int> spmat(occurrences, read_id, nkmer, 
 							[] (unsigned short int& p1, unsigned short int& p2) 

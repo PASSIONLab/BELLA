@@ -24,6 +24,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+#define BATCH_SIZE 30000
+
 using namespace seqan;
 using namespace std;
 
@@ -107,6 +109,59 @@ seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rle
 	longestExtensionScore.seed = seed;
 	longestExtensionScore.strand = strand;
 	return longestExtensionScore;
+}
+
+void alignLogan( vector<string> &target,
+                vector<string> &query,
+                vector<SeedL> &seeds,
+                int xdrop, 
+                int kmer_len,
+                vector<loganResult> &longestExtensionScore,
+		int ngpus){
+
+    ScoringSchemeL sscheme(1, -1, -1, -1);
+    int n_al = seeds.size();
+    //int* res = (int*)malloc(BATCH_SIZE*sizeof(int));
+    vector<ScoringSchemeL> scoring;
+    scoring.push_back(sscheme);
+    int n_al_loc=BATCH_SIZE*ngpus; 
+    cout<<"NUM ALIGNMENTS: "<<n_al<<endl; 
+    //divide the alignment in batches of 100K alignments
+    for(int i=0; i < n_al; i+=BATCH_SIZE*ngpus){ 
+	//cout<<"BATCH "<<i/BATCH_SIZE<<endl;
+	if(n_al<i+BATCH_SIZE*ngpus)
+		n_al_loc = n_al%(BATCH_SIZE*ngpus);
+	//else
+	//	n_al_loc = n_al%BATCH_SIZE;	
+
+	int* res = (int*)malloc(n_al_loc*sizeof(int));	
+	
+		
+	vector<string>::const_iterator first_t = target.begin() + i;
+	vector<string>::const_iterator last_t = target.begin() + i + n_al_loc;
+	vector<string> target_b(first_t, last_t);    
+	
+	vector<string>::const_iterator first_q = query.begin() + i;
+        vector<string>::const_iterator last_q = query.begin() + i + n_al_loc;
+        vector<string> query_b(first_q, last_q);
+	
+	vector<SeedL>::const_iterator first_s = seeds.begin() + i;
+        vector<SeedL>::const_iterator last_s = seeds.begin() + i + n_al_loc;
+        vector<SeedL> seeds_b(first_s, last_s);
+	
+	//cout<<"OK"<<endl;	
+	
+	extendSeedL(seeds_b, EXTEND_BOTHL, target_b, query_b, scoring, xdrop, kmer_len, res, n_al_loc, ngpus);
+
+    //cout<<query[0]<<endl;
+    	for(int j=0; j<n_al_loc; j++){
+		longestExtensionScore[j+i].score = res[j];
+		//cout<<longestExtensionScore[i].score<<endl;
+        	longestExtensionScore[j+i].seed = seeds_b[j];
+    	}
+	free(res);
+    }
+    
 }
 
 #endif

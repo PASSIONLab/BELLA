@@ -94,6 +94,7 @@ Optional flag description:
 -b : Bin size binning algorithm [500]
 -p : Output in PAF format [FALSE]
 -w : Probability threshold for reliable range [0.002]
+-l : Number of GPUs Available [1, this only works when compiled as with GPU option -y]
 ```
 ### Error Rate
 

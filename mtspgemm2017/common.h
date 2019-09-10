@@ -61,6 +61,12 @@ struct seqAnResult {
 	TSeed seed;
 };
 
+struct loganResult {
+    int score;
+    std::string strand;
+    SeedL seed;
+};
+
 struct readType_ {
 	std::string nametag;
 	std::string seq; 
