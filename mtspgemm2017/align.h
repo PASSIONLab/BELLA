@@ -31,28 +31,28 @@ using namespace std;
 
 double adaptiveSlope(double error)
 {
-    double p_mat = pow(1-error,2);  // match
-    double p_mis = 1-p_mat;         // mismatch/gap
-    double alpha = 1;               // match penalty
-    double beta = 1;                // mismatch/gap penalty
+	double p_mat = pow(1-error,2);  // match
+	double p_mis = 1-p_mat;         // mismatch/gap
+	double alpha = 1;               // match penalty
+	double beta = 1;                // mismatch/gap penalty
 
-    return alpha*p_mat - beta*p_mis;
+	return alpha*p_mat - beta*p_mis;
 }
 
 bool toEnd(int colStart, int colEnd, int colLen, int rowStart, int rowEnd, int rowLen, int relaxMargin)
 {
-    int minLeft = min(colStart, rowStart);
-    int minRight = min(colLen-colEnd, rowLen-rowEnd);
+	int minLeft = min(colStart, rowStart);
+	int minRight = min(colLen-colEnd, rowLen-rowEnd);
 
-     if(minLeft-relaxMargin <= 0)
-        minLeft = 0;
-     if(minRight-relaxMargin <= 0)
-        minRight = 0;
+	 if(minLeft-relaxMargin <= 0)
+		minLeft = 0;
+	 if(minRight-relaxMargin <= 0)
+		minRight = 0;
 
-     if((minLeft == 0 || minRight == 0))
-        return true;
-    else
-        return false;
+	 if((minLeft == 0 || minRight == 0))
+		return true;
+	else
+		return false;
 }
 
 /**
@@ -67,48 +67,48 @@ bool toEnd(int colStart, int colEnd, int colLen, int rowStart, int rowEnd, int r
  */
 seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rlen, int i, int j, int xdrop, int kmer_len) {
 
-    Score<int, Simple> scoringScheme(1,-1,-1);
+	Score<int, Simple> scoringScheme(1,-1,-1);
 
-    Dna5String seqH(row); 
-    Dna5String seqV(col); 
-    Dna5String seedH;
-    Dna5String seedV;
-    string strand;
-    int longestExtensionTemp;
-    seqAnResult longestExtensionScore;
+	Dna5String seqH(row); 
+	Dna5String seqV(col); 
+	Dna5String seedH;
+	Dna5String seedV;
+	string strand;
+	int longestExtensionTemp;
+	seqAnResult longestExtensionScore;
 
 
-    TSeed seed(i, j, i+kmer_len, j+kmer_len);
-    seedH = infix(seqH, beginPositionH(seed), endPositionH(seed));
-    seedV = infix(seqV, beginPositionV(seed), endPositionV(seed));
+	TSeed seed(i, j, i+kmer_len, j+kmer_len);
+	seedH = infix(seqH, beginPositionH(seed), endPositionH(seed));
+	seedV = infix(seqV, beginPositionV(seed), endPositionV(seed));
 
-    /* we are reversing the "row", "col" is always on the forward strand */
-    Dna5StringReverseComplement twin(seedH);
+	/* we are reversing the "row", "col" is always on the forward strand */
+	Dna5StringReverseComplement twin(seedH);
 
-    if(twin == seedV)
-    {
-        strand = 'c';
-        Dna5StringReverseComplement twinRead(seqH);
-        i = rlen-i-kmer_len;
-        
-        setBeginPositionH(seed, i);
-        setBeginPositionV(seed, j);
-        setEndPositionH(seed, i+kmer_len);
-        setEndPositionV(seed, j+kmer_len);
+	if(twin == seedV)
+	{
+		strand = 'c';
+		Dna5StringReverseComplement twinRead(seqH);
+		i = rlen-i-kmer_len;
 
-        /* Perform match extension */
-        longestExtensionTemp = extendSeed(seed, twinRead, seqV, EXTEND_BOTH, scoringScheme, xdrop, kmer_len, GappedXDrop());
+		setBeginPositionH(seed, i);
+		setBeginPositionV(seed, j);
+		setEndPositionH(seed, i+kmer_len);
+		setEndPositionV(seed, j+kmer_len);
 
-    } else
-    {
-        strand = 'n';
-        longestExtensionTemp = extendSeed(seed, seqH, seqV, EXTEND_BOTH, scoringScheme, xdrop, kmer_len, GappedXDrop());
-    } 
+		/* Perform match extension */
+		longestExtensionTemp = extendSeed(seed, twinRead, seqV, EXTEND_BOTH, scoringScheme, xdrop, kmer_len, GappedXDrop());
 
-    longestExtensionScore.score = longestExtensionTemp;
-    longestExtensionScore.seed = seed;
-    longestExtensionScore.strand = strand;
-    return longestExtensionScore;
+	} else
+	{
+		strand = 'n';
+		longestExtensionTemp = extendSeed(seed, seqH, seqV, EXTEND_BOTH, scoringScheme, xdrop, kmer_len, GappedXDrop());
+	} 
+
+	longestExtensionScore.score = longestExtensionTemp;
+	longestExtensionScore.seed = seed;
+	longestExtensionScore.strand = strand;
+	return longestExtensionScore;
 }
 
 void alignLogan( vector<string> &target,

@@ -2,3 +2,7 @@
 *.project
 *.cproject
 *.o
+*.out
+*.fastq
+selfSampleData.tar.gz
+bench

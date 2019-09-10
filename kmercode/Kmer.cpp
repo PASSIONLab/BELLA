@@ -18,12 +18,11 @@ using namespace std;
 // pre:  buf_size >= 8 and buffer has space for buf_size elements
 // post: buffer[0,...,7] is the binary representation of a
 void int2bin(uint32_t a, char *buffer, int buf_size) {
-  //buffer += (buf_size - 1);
-
-  for (int i = 7; i >= 0; i--) {
-      *buffer++ = (a & 1) + '0';
-      a >>= 1;
-  }
+	//buffer += (buf_size - 1);
+	for (int i = 7; i >= 0; i--) {
+			*buffer++ = (a & 1) + '0';
+			a >>= 1;
+	}
 }
 */
 
@@ -97,256 +96,264 @@ static const uint64_t twin_table[256] = {
 	0x0f, 0x4f, 0x8f, 0xcf, 0x1f, 0x5f, 0x9f, 0xdf,
 	0x2f, 0x6f, 0xaf, 0xef, 0x3f, 0x7f, 0xbf, 0xff
 };
-
 */
 // use:  km = Kmer();
-// pre:  
-// post: the DNA string in km is AA....AAA (k times A) 
+// pre:
+// post: the DNA string in km is AA....AAA (k times A)
 Kmer::Kmer() {
-  for (size_t i = 0; i < N_LONGS; i++) {
-    longs[i] = 0;
-  }
+	length = k;
+	for (size_t i = 0; i < N_LONGS; i++) {
+		longs[i] = 0;
+	}
+	rev = false;
 }
 
 
 // use:  _km = Kmer(km);
 // pre:  s[0],...,s[k] are all equal to 'A','C','G' or 'T'
-// post: the DNA string in _km and is the same as in km 
+// post: the DNA string in _km and is the same as in km
 Kmer::Kmer(const Kmer& o) {
-  for (size_t i = 0; i < N_LONGS; i++) {
-    longs[i] = o.longs[i];
-  }
+	length = o.length;
+	for (size_t i = 0; i < N_LONGS; i++) {
+		longs[i] = o.longs[i];
+	}
+	rev = o.rev;
 }
 
 
-// use:  km = Kmer(s);
-// pre:  s[0],...,s[k] are all equal to 'A','C','G' or 'T'
+// use:  km = Kmer(s, len);
+// pre:  s[0],...,s[len] are all equal to 'A','C','G' or 'T' and len < MAX_KMER_SIZEK
 // post: the DNA string in km is now the same as s
-Kmer::Kmer(const char *s) {
-  set_kmer(s);
+Kmer::Kmer(const char *s, unsigned int len) {
+	set_kmer(s, len);
 }
 
 
 // use:  _km = km;
-// pre:  
-// post: the DNA string in _km and is the same as in km 
+// pre:
+// post: the DNA string in _km and is the same as in km
 Kmer& Kmer::operator=(const Kmer& o) {
-  if (this != &o) {
-    for (size_t i = 0; i < N_LONGS; i++) {
-      longs[i] = o.longs[i];
-    }
-  }
-  return *this;
+	length = o.length;
+	if (this != &o) {
+		for (size_t i = 0; i < N_LONGS; i++) {
+			longs[i] = o.longs[i];
+		}
+	}
+	rev = o.rev;
+	return *this;
 }
 
 
 // use:  km = Kmer();
-// pre:  
+// pre:
 // post: The last bit in the bit array which stores the DNA string has been set to 1
 //       which indicates that the km is invalid
 void Kmer::set_deleted() {
-  memset(bytes.data(),0xff,N_BYTES);
+	memset(bytes.data(),0xff,N_BYTES);
 }
 
 
 // use:  b = (km1 < km2);
-// pre:  
+// pre:
 // post: b is true <==> the DNA strings in km1 is alphabetically smaller than
-//                      the DNA string in km2 
+//                      the DNA string in km2
 bool Kmer::operator<(const Kmer& o) const {
 
-  bool r = false;
-  for (size_t i = 0; i < N_LONGS; ++i) {
-    if (longs[i] < o.longs[i])
-      return true;
-    if (longs[i] > o.longs[i])
-      return false;
-  }
-  return false;
+	bool r = false;
+	for (size_t i = 0; i < N_LONGS; ++i) {
+		if (longs[i] < o.longs[i])
+			return true;
+		if (longs[i] > o.longs[i])
+			return false;
+	}
+	return false;
 
-  /*
-  assert(k_bytes>0);
-  for (size_t i = 0; i < k_bytes-1; ++i) {
-    if (base_swap[bytes[i]] > base_swap[o.bytes[i]]) {
-      return false;
-    } else if (base_swap[bytes[i]] < base_swap[o.bytes[i]]) {
-      return true;
-    }
-  }
-
-  if (base_swap[bytes[k_bytes-1] & k_modmask] >= base_swap[o.bytes[k_bytes-1] & k_modmask]) {
-    return false;
-  }
-  return true;
-  */
+	/*
+	assert(k_bytes>0);
+	for (size_t i = 0; i < k_bytes-1; ++i) {
+		if (base_swap[bytes[i]] > base_swap[o.bytes[i]]) {
+			return false;
+		} else if (base_swap[bytes[i]] < base_swap[o.bytes[i]]) {
+			return true;
+		}
+	}
+	if (base_swap[bytes[k_bytes-1] & k_modmask] >= base_swap[o.bytes[k_bytes-1] & k_modmask]) {
+		return false;
+	}
+	return true;
+	*/
 }
 
 
 // use:  b = (km1 == km2);
-// pre:  
+// pre:
 // post: b is true <==> the DNA strings in km1 and km2 are equal
 bool Kmer::operator==(const Kmer& o) const {
-  for (size_t i = 0; i < N_LONGS; i++) {
-    if (longs[i] != o.longs[i]) {
-      return false;
-    }
-  }
-  return true;
+	if(length != o.length) return false;
+	for (size_t i = 0; i < N_LONGS; i++) {
+		if (longs[i] != o.longs[i]) {
+			return false;
+		}
+	}
+	return true;
 }
 
 
 // use:  km.set_kmer(s);
 // pre:  s[0],...,s[k-1] are all 'A','C','G' or 'T'
-// post: The DNA string in km is now equal to s 
-void Kmer::set_kmer(const char *s)  {
-  size_t i,j,l;
-  memset(bytes.data(),0,N_BYTES);
-    
-  for (i = 0; i < k; ++i) {
-    j = i % 32;
-    l = i/32;
-    assert(*s != '\0');
-    
-    size_t x = ((*s) & 4) >> 1;
-    longs[l] |= ((x + ((x ^ (*s & 2)) >>1)) << (2*(31-j)));
-    /*
-    switch(*s) {
-      case 'A': break;
-      case 'C': longs[l] |= (0x01 << (2*j)); break;
-      case 'G': longs[l] |= (0x02 << (2*j)); break;
-      case 'T': longs[l] |= (0x03 << (2*j)); break;
-      }*/
-    
-    s++; 
-  }
+// post: The DNA string in km is now equal to s
+void Kmer::set_kmer(const char *s, unsigned int len)  {
+	size_t i,j,l;
+	memset(bytes.data(),0,N_BYTES);
+
+	length = len;
+	for (i = 0; i < length; ++i) {
+		j = i % 32;
+		l = i/32;
+		assert(*s != '\0');
+
+		size_t x = ((*s) & 4) >> 1;
+		longs[l] |= ((x + ((x ^ (*s & 2)) >>1)) << (2*(31-j)));
+		/*
+		switch(*s) {
+			case 'A': break;
+			case 'C': longs[l] |= (0x01 << (2*j)); break;
+			case 'G': longs[l] |= (0x02 << (2*j)); break;
+			case 'T': longs[l] |= (0x03 << (2*j)); break;
+			}*/
+
+		s++;
+	}
+	rev = false;
 }
 
 // This returns a vector of kmers from a long sequence
 // This does not check for Ns or choose the lesser representation
 std::vector<Kmer> Kmer::getKmers(std::string seq) {
-   for (auto & c: seq) c = toupper(c); // ensure uppercase
-   if (seq.size() < k) return std::vector<Kmer>();
+	 for (auto & c: seq) c = toupper(c); // ensure uppercase
+	 if (seq.size() < k) return std::vector<Kmer>();
 
-   int bufsize = std::max((int) N_LONGS, (int) (seq.size()+31)/32) + 2;
-   int numLongs = (k+31)/32;
-   assert(numLongs <= N_LONGS);
-   int lastLong = numLongs - 1;
-   assert(lastLong >= 0 && lastLong < N_LONGS);
+	 int bufsize = std::max((int) N_LONGS, (int) (seq.size()+31)/32) + 2;
+	 int numLongs = (k+31)/32;
+	 assert(numLongs <= N_LONGS);
+	 int lastLong = numLongs - 1;
+	 assert(lastLong >= 0 && lastLong < N_LONGS);
 
-   std::vector<Kmer> kmers(seq.size() - k + 1, Kmer());
-   uint64_t buf[ bufsize ];
-   uint8_t *bufPtr = (uint8_t*) buf;
-   memset(buf, 0, bufsize*8);
-   const char *s = seq.c_str();
-   // calculate binary along entire sequence
-   for (int i = 0; i < seq.size(); ++i) {
-     int j = i % 32;
-     int l = i/32;
-     assert(*s != '\0');
-    
-     size_t x = ((*s) & 4) >> 1;
-     buf[l] |= ((x + ((x ^ (*s & 2)) >>1)) << (2*(31-j)));
-     s++;
-   }
-   // fix to big endian
-   for (int l = 0; l < bufsize; l++) {
-     buf[l] = H2BE(buf[l]);
-   }
-   const uint64_t mask = ((int64_t) 0x3);
-   uint64_t endmask = 0;
-   if (k%32) {
-       endmask = (((uint64_t) 2) << (2*(31-(k%32)) + 1)) - 1;
-       // k == 0 :                0x0000000000000000
-       // k == 1 : 2 << 61  - 1 : 0x3FFFFFFFFFFFFFFF
-       // k == 31: 2 << 1   - 1 : 0x0000000000000003
-   }
-   endmask = ~endmask;
-   // make 4 passes for each phase of 2 bits per base
-   for (int shift = 0; shift < 4; shift++) {
-     if (shift > 0) {
-       // shift all bits by 2 in the buffer of longs
-       for(int l = 0; l < bufsize - 1; l++) {
-         buf[l] = (~mask & (BE2H(buf[l])<<2)) | (mask & (BE2H(buf[l+1]) >> 62));
-         buf[l] = H2BE(buf[l]);
-       }
-     }
-     // enumerate the kmers in the phase
-     for(int i = shift; i < kmers.size(); i+=4) {
-         int byteOffset = i/4;
-         assert(byteOffset+numLongs*8 <= bufsize*8);
-         for(int l = 0; l < numLongs; l++) {
-             kmers[i].longs[l] = BE2H( *( (uint64_t *) (bufPtr + byteOffset + l*8) ) );
-         }
-         // set remaining bits to 0
-         kmers[i].longs[lastLong] &= endmask;
-         for(int l = numLongs; l < N_LONGS; l++) {
-             kmers[i].longs[l] = 0;
-         }
+	 std::vector<Kmer> kmers(seq.size() - k + 1, Kmer());
+	 uint64_t buf[ bufsize ];
+	 uint8_t *bufPtr = (uint8_t*) buf;
+	 memset(buf, 0, bufsize*8);
+	 const char *s = seq.c_str();
+	 // calculate binary along entire sequence
+	 for (int i = 0; i < seq.size(); ++i) {
+		 int j = i % 32;
+		 int l = i/32;
+		 assert(*s != '\0');
+
+		 size_t x = ((*s) & 4) >> 1;
+		 buf[l] |= ((x + ((x ^ (*s & 2)) >>1)) << (2*(31-j)));
+		 s++;
+	 }
+	 // fix to big endian
+	 for (int l = 0; l < bufsize; l++) {
+		 buf[l] = H2BE(buf[l]);
+	 }
+	 const uint64_t mask = ((int64_t) 0x3);
+	 uint64_t endmask = 0;
+	 if (k%32) {
+			 endmask = (((uint64_t) 2) << (2*(31-(k%32)) + 1)) - 1;
+			 // k == 0 :                0x0000000000000000
+			 // k == 1 : 2 << 61  - 1 : 0x3FFFFFFFFFFFFFFF
+			 // k == 31: 2 << 1   - 1 : 0x0000000000000003
+	 }
+	 endmask = ~endmask;
+	 // make 4 passes for each phase of 2 bits per base
+	 for (int shift = 0; shift < 4; shift++) {
+		 if (shift > 0) {
+			 // shift all bits by 2 in the buffer of longs
+			 for(int l = 0; l < bufsize - 1; l++) {
+				 buf[l] = (~mask & (BE2H(buf[l])<<2)) | (mask & (BE2H(buf[l+1]) >> 62));
+				 buf[l] = H2BE(buf[l]);
+			 }
+		 }
+		 // enumerate the kmers in the phase
+		 for(int i = shift; i < kmers.size(); i+=4) {
+				 int byteOffset = i/4;
+				 assert(byteOffset+numLongs*8 <= bufsize*8);
+				 for(int l = 0; l < numLongs; l++) {
+						 kmers[i].longs[l] = BE2H( *( (uint64_t *) (bufPtr + byteOffset + l*8) ) );
+				 }
+				 // set remaining bits to 0
+				 kmers[i].longs[lastLong] &= endmask;
+				 for(int l = numLongs; l < N_LONGS; l++) {
+						 kmers[i].longs[l] = 0;
+				 }
 #ifdef DEBUG
-         Kmer test(seq.c_str() + i);
-         if(kmers[i] != test) { fprintf(stderr, "Invalid kmer kmer %d %s %s from %s\n", i, kmers[i].toString().c_str(), test.toString().c_str(), seq.c_str()); }
+				 Kmer test(seq.c_str() + i);
+				 if(kmers[i] != test) { fprintf(stderr, "Invalid kmer kmer %d %s %s from %s\n", i, kmers[i].toString().c_str(), test.toString().c_str(), seq.c_str()); }
 #endif
-     }
-   }
-   return kmers; 
+		 }
+	 }
+	 return kmers;
 }
 
 
 // use:  i = km.hash();
-// pre:   
-// post: i is the hash value of km 
+// pre:
+// post: i is the hash value of km
 uint64_t Kmer::hash() const {
-  assert(k_bytes>0);
-  return MurmurHash3_x64_64((const void*)bytes.data(),N_BYTES);
+	assert(k_bytes>0);
+	return MurmurHash3_x64_64((const void*)bytes.data(),N_BYTES);
 }
 
 
 
 
 // use:  rep = km.rep();
-// pre:   
+// pre:
 // post: rep is km.twin() if the DNA string in km.twin() is alphabetically smaller than
 //       the DNA string in km, else rep is km
 Kmer Kmer::rep() const {
-  Kmer tw = twin();
-  return (tw < *this) ? tw : *this;
+	Kmer tw = twin();
+	return (tw < *this) ? tw : *this;
 }
 
 // use:  tw = km.twin();
-// pre:   
+// pre:
 // post: tw is the twin kmer with respect to km,
 //       i.e. if the DNA string in km is 'GTCA'
 //          then the DNA string in tw is 'TGAC'
 Kmer Kmer::twin() const {
-  Kmer km(*this);
+	Kmer km(*this);
 
-  size_t nlongs = (k+31)/32;
-  
-  for (size_t i = 0; i < nlongs; i++) {
-    uint64_t v = longs[i];
-    km.longs[nlongs-1-i] =  
-      (twin_table[v & 0xFF] << 56) | 
-      (twin_table[(v>>8) & 0xFF] << 48) | 
-      (twin_table[(v>>16) & 0xFF] << 40) | 
-      (twin_table[(v>>24) & 0xFF] << 32) |
-      (twin_table[(v>>32) & 0xFF] << 24) | 
-      (twin_table[(v>>40) & 0xFF] << 16) | 
-      (twin_table[(v>>48) & 0xFF] << 8)  |
-      (twin_table[(v>>56)]);
-  }
+	size_t nlongs = (length+31)/32;
 
-  size_t shift = (k%32) ? 2*(32-(k%32)) : 0 ;
-  //  uint64_t shiftmask = (k%32) ? (((1ULL << (2 * (k%32)))-1)<< shift) : ~0x0ULL;
-  uint64_t shiftmask = (k%32) ? (((1ULL<< shift)-1) << (64-shift)) : 0ULL;
+	for (size_t i = 0; i < nlongs; i++) {
+		uint64_t v = longs[i];
+		km.longs[nlongs-1-i] =
+			(twin_table[v & 0xFF] << 56) |
+			(twin_table[(v>>8) & 0xFF] << 48) |
+			(twin_table[(v>>16) & 0xFF] << 40) |
+			(twin_table[(v>>24) & 0xFF] << 32) |
+			(twin_table[(v>>32) & 0xFF] << 24) |
+			(twin_table[(v>>40) & 0xFF] << 16) |
+			(twin_table[(v>>48) & 0xFF] << 8)  |
+			(twin_table[(v>>56)]);
+	}
 
-  
-  km.longs[0] = km.longs[0] << shift;
-  for (size_t i = 1; i < nlongs; i++) {
-    km.longs[i-1] |= (km.longs[i] & shiftmask) >> (64-shift);
-    km.longs[i] = km.longs[i] << shift;    
-  }
-  
-  return km;
+	size_t shift = (length%32) ? 2*(32-(length%32)) : 0 ;
+	//  uint64_t shiftmask = (k%32) ? (((1ULL << (2 * (k%32)))-1)<< shift) : ~0x0ULL;
+	uint64_t shiftmask = (length%32) ? (((1ULL<< shift)-1) << (64-shift)) : 0ULL;
+
+
+	km.longs[0] = km.longs[0] << shift;
+	for (size_t i = 1; i < nlongs; i++) {
+		km.longs[i-1] |= (km.longs[i] & shiftmask) >> (64-shift);
+		km.longs[i] = km.longs[i] << shift;
+	}
+
+	km.rev = true;
+	return km;
 }
 
 
@@ -354,130 +361,143 @@ Kmer Kmer::twin() const {
 // pre:  0 <= index < 8
 // post: gives the forward kmer with the (index % 4) character in 'A','C','G' or 'T' if index < 4
 //       else the backward kmer with the (index % 4) character in 'A','C','G' or 'T'
-Kmer Kmer::getLink(const size_t index) const {
-  assert(index >= 0 && index < 8);
-  char c;
-
-  switch (index % 4) {
-    case 0: c = 'A'; break;
-    case 1: c = 'C'; break;
-    case 2: c = 'G'; break;
-    case 3: c = 'T'; break;
-  }
-  
-  return (index < 4) ? forwardBase(c) : backwardBase(c);
-}
+// Kmer Kmer::getLink(const size_t index) const {
+//   assert(index >= 0 && index < 8);
+//   char c;
+//
+//   switch (index % 4) {
+//     case 0: c = 'A'; break;
+//     case 1: c = 'C'; break;
+//     case 2: c = 'G'; break;
+//     case 3: c = 'T'; break;
+//   }
+//
+//   return (index < 4) ? forwardBase(c) : backwardBase(c);
+// }
 
 
 // use:  fw = km.forwardBase(c)
-// pre:  
+// pre:
 // post: fw is the forward kmer from km with last character c,
 //       i.e. if the DNA string in km is 'ACGT' and c equals 'T' then
 //       the DNA string in fw is 'CGTT'
-Kmer Kmer::forwardBase(const char b) const {
-  Kmer km(*this);
-
-  km.longs[0] = km.longs[0] << 2;
-  size_t nlongs = (k+31)/32;
-  for (size_t i = 1; i < nlongs; i++) {
-    km.longs[i-1] |= (km.longs[i] & (3ULL<<62)) >> 62;
-    km.longs[i]  = km.longs[i] << 2;
-  }
-  uint64_t x = (b & 4) >>1;
-  km.longs[nlongs-1] |= (x + ((x ^ (b & 2)) >>1 )) << (2*(31-((k-1)%32)));
-
-  return km;
-/********
-  km.shiftBackward(2);
-  assert(k_bytes>0);
-  km.bytes[k_bytes-1] &= Kmer::k_modmask;
-
-  switch(b) {
-    case 'A': km.bytes[k_bytes-1] |= 0x00 << s; break;
-    case 'C': km.bytes[k_bytes-1] |= 0x01 << s; break;
-    case 'G': km.bytes[k_bytes-1] |= 0x02 << s; break;
-    case 'T': km.bytes[k_bytes-1] |= 0x03 << s; break;
-  }
-
-  return km;
-*/
-}
-
-
-bool Kmer::equalUpToLastBase(const Kmer & rhs)
-{
-	Kmer Ashifted = rhs.backwardBase('A');
-	Kmer Bshifted = backwardBase('A');
-	return (Ashifted == Bshifted);
-}
+// Kmer Kmer::forwardBase(const char b) const {
+//   Kmer km(*this);
+//
+//   km.longs[0] = km.longs[0] << 2;
+//   size_t nlongs = (length+31)/32;
+//   for (size_t i = 1; i < nlongs; i++) {
+//     km.longs[i-1] |= (km.longs[i] & (3ULL<<62)) >> 62;
+//     km.longs[i]  = km.longs[i] << 2;
+//   }
+//   uint64_t x = (b & 4) >>1;
+//   km.longs[nlongs-1] |= (x + ((x ^ (b & 2)) >>1 )) << (2*(31-((length-1)%32)));
+//
+//   return km;
+// /********
+//   km.shiftBackward(2);
+//   assert(k_bytes>0);
+//   km.bytes[k_bytes-1] &= Kmer::k_modmask;
+//
+//   switch(b) {
+//     case 'A': km.bytes[k_bytes-1] |= 0x00 << s; break;
+//     case 'C': km.bytes[k_bytes-1] |= 0x01 << s; break;
+//     case 'G': km.bytes[k_bytes-1] |= 0x02 << s; break;
+//     case 'T': km.bytes[k_bytes-1] |= 0x03 << s; break;
+//   }
+//
+//   return km;
+// */
+// }
 
 
-	
+// bool Kmer::equalUpToLastBase(const Kmer & rhs)
+// {
+//  Kmer Ashifted = rhs.backwardBase('A');
+//  Kmer Bshifted = backwardBase('A');
+//  return (Ashifted == Bshifted);
+// }
+
+
+
 
 // use:  bw = km.backwardBase(c)
-// pre:  
+// pre:
 // post: bw is the backward kmer from km with first character c,
 //       i.e. if the DNA string in km is 'ACGT' and c equals 'T' then
 //       the DNA string in bw is 'TACG'
-Kmer Kmer::backwardBase(const char b) const {
-  Kmer km(*this);
-  
-  size_t nlongs = (k+31)/32;
-  km.longs[nlongs-1] = km.longs[nlongs-1] >>2;
-  km.longs[nlongs-1] &= (k%32) ? (((1ULL << (2*(k%32)))-1) << 2*(32-(k%32))) : ~0ULL;
+// Kmer Kmer::backwardBase(const char b) const {
+//   Kmer km(*this);
+//
+//   size_t nlongs = (length+31)/32;
+//   km.longs[nlongs-1] = km.longs[nlongs-1] >>2;
+//   km.longs[nlongs-1] &= (length%32) ? (((1ULL << (2*(length%32)))-1) << 2*(32-(length%32))) : ~0ULL;
+//
+//   for (size_t i = 1; i < nlongs; i++) {
+//     km.longs[nlongs-i] |= (km.longs[nlongs-i-1] & 3ULL) << 62;
+//     km.longs[nlongs-i-1] = km.longs[nlongs-i-1] >>2;
+//   }
+//   uint64_t x = (b & 4) >> 1;
+//   km.longs[0] |= (x + ((x ^ (b & 2)) >> 1)) << 62;
+//
+//   return km;
+//
+//   /*
+//   km.shiftForward(2);
+//   assert(k_bytes>0);
+//   km.bytes[k_bytes-1] &= Kmer::k_modmask;
+//
+//   if (k%4 == 0 and k_bytes < N_BYTES) {
+//     km.bytes[k_bytes] = 0x00;
+//   }
+//
+//   switch(b) {
+//     case 'A': km.bytes[0] |= 0x00; break;
+//     case 'C': km.bytes[0] |= 0x01; break;
+//     case 'G': km.bytes[0] |= 0x02; break;
+//     case 'T': km.bytes[0] |= 0x03; break;
+//   }
+//
+//   return km;
+//   */
+// }
 
-  for (size_t i = 1; i < nlongs; i++) {
-    km.longs[nlongs-i] |= (km.longs[nlongs-i-1] & 3ULL) << 62;
-    km.longs[nlongs-i-1] = km.longs[nlongs-i-1] >>2;
-  }
-  uint64_t x = (b & 4) >> 1;
-  km.longs[0] |= (x + ((x ^ (b & 2)) >> 1)) << 62;
+// use: hopc = km.hopc()
+// pre:
+// post: hopc is km.rep() with repeats removed and the last base repeated to reach length of k
+//      i.e. if the sequence is ATTTGCC, then hopc will be ATGC
+Kmer Kmer::hopc() const {
+	// TODO: make it efficient
+	Kmer km(*this);
+	if(length == 0) return km;
+	std::string hopc = toHOPC(km.toString());
 
-  return km;
-
-  /*
-  km.shiftForward(2);
-  assert(k_bytes>0);
-  km.bytes[k_bytes-1] &= Kmer::k_modmask;
-
-  if (k%4 == 0 and k_bytes < N_BYTES) {
-    km.bytes[k_bytes] = 0x00;
-  }
-
-  switch(b) {
-    case 'A': km.bytes[0] |= 0x00; break;
-    case 'C': km.bytes[0] |= 0x01; break;
-    case 'G': km.bytes[0] |= 0x02; break;
-    case 'T': km.bytes[0] |= 0x03; break;
-  }
-
-  return km;
-  */
+	Kmer newKmer(hopc.c_str(), hopc.length());
+	newKmer = newKmer.rep();
+	return newKmer;
 }
 
-
 // use:  km.printBinary();
-// pre:   
-// post: The bits in the binary representation of the 
+// pre:
+// post: The bits in the binary representation of the
 //       DNA string for km has been printed to stdout
 std::string Kmer::getBinary() const {
-  
-  size_t nlongs = N_LONGS;
-  std::string r;
-  r.reserve(64*nlongs);
-  for (size_t i = 0; i < nlongs; i++) {
-    r.append(std::bitset<64>(longs[i]).to_string<char,std::char_traits<char>,std::allocator<char> >());
-  }
-  return r;
-  /*
-  assert(k_bytes>0);
-  for (size_t i = 0; i < Kmer::k_bytes; i++) {
-    int2bin(bytes[i],buff,8);
-    printf("%s",buff);
-  }
-  
-  printf("\n");
-  */
+
+	size_t nlongs = N_LONGS;
+	std::string r;
+	r.reserve(64*nlongs);
+	for (size_t i = 0; i < nlongs; i++) {
+		r.append(std::bitset<64>(longs[i]).to_string<char,std::char_traits<char>,std::allocator<char> >());
+	}
+	return r;
+	/*
+	assert(k_bytes>0);
+	for (size_t i = 0; i < Kmer::k_bytes; i++) {
+		int2bin(bytes[i],buff,8);
+		printf("%s",buff);
+	}
+	printf("\n");
+	*/
 }
 
 
@@ -485,27 +505,27 @@ std::string Kmer::getBinary() const {
 // pre:  s has space for k+1 elements
 // post: s[0,...,k-1] is the DNA string for the Kmer km and s[k] = '\0'
 void Kmer::toString(char * s) const {
-  size_t i,j,l;
-  
-  for (i = 0; i < k; i++) {
-    j = i % 32;
-    l = i / 32;
+	size_t i,j,l;
 
-    switch(((longs[l]) >> (2*(31-j)) )& 0x03 ) {
-      case 0x00: *s = 'A'; ++s; break;
-      case 0x01: *s = 'C'; ++s; break;
-      case 0x02: *s = 'G'; ++s; break;
-      case 0x03: *s = 'T'; ++s; break;  
-    }
-  }
+	for (i = 0; i < length; i++) { // TODO: use length
+		j = i % 32;
+		l = i / 32;
 
-  *s = '\0';
+		switch(((longs[l]) >> (2*(31-j)) )& 0x03 ) {
+			case 0x00: *s = 'A'; ++s; break;
+			case 0x01: *s = 'C'; ++s; break;
+			case 0x02: *s = 'G'; ++s; break;
+			case 0x03: *s = 'T'; ++s; break;
+		}
+	}
+
+	*s = '\0';
 }
 
 std::string Kmer::toString() const {
-  char buf[MAX_K];
-  toString(buf);
-  return std::string(buf);
+	char buf[MAX_K];
+	toString(buf);
+	return std::string(buf);
 }
 
 
@@ -516,45 +536,40 @@ std::string Kmer::toString() const {
 //       if i=2 then ACGT becomes XACG and X is A,C,G or T
 /*
 void Kmer::shiftForward(int shift) {
-  
-  size_t shiftmask = 
-
-
-  if (shift>0) {
-    if (shift < 8 ) {
-      assert(k_bytes>0);
-      for (size_t i = Kmer::k_bytes-1; i > 0; i--) {
-        bytes[i] <<= shift;
-        bytes[i] |= (uint8_t) (bytes[i-1] >> (8-shift));
-      }
-
-      bytes[0] <<= shift;
-    } else {
-      assert(0); // we should never need this!
-    }
-  }
+	size_t shiftmask =
+	if (shift>0) {
+		if (shift < 8 ) {
+			assert(k_bytes>0);
+			for (size_t i = Kmer::k_bytes-1; i > 0; i--) {
+				bytes[i] <<= shift;
+				bytes[i] |= (uint8_t) (bytes[i-1] >> (8-shift));
+			}
+			bytes[0] <<= shift;
+		} else {
+			assert(0); // we should never need this!
+		}
+	}
 }
 */
 
 // use:  km.shiftBackward(i);
-// pre:  i = 2,4,6 
+// pre:  i = 2,4,6
 // post: The DNA string in km has been shifted i/2 positions backward i.e.
 //       if i=2 then ACGT becomes CGTX and X is A,C,G or T
 /*
 void Kmer::shiftBackward(int shift) {
-  if (shift > 0) {
-    if (shift < 8) {
-      assert(k_bytes>0);
-      for (size_t i = 0; i < Kmer::k_bytes-1; i++) {
-        bytes[i] >>= shift;
-        bytes[i] |= (uint8_t) ( bytes[i+1] << (8-shift));
-      }
-      
-      bytes[Kmer::k_bytes-1] >>= shift;
-    } else {
-      assert(0); // bad
-    }
-  }
+	if (shift > 0) {
+		if (shift < 8) {
+			assert(k_bytes>0);
+			for (size_t i = 0; i < Kmer::k_bytes-1; i++) {
+				bytes[i] >>= shift;
+				bytes[i] |= (uint8_t) ( bytes[i+1] << (8-shift));
+			}
+			bytes[Kmer::k_bytes-1] >>= shift;
+		} else {
+			assert(0); // bad
+		}
+	}
 }
 */
 
@@ -563,15 +578,15 @@ void Kmer::shiftBackward(int shift) {
 // pre:  this method has not been called before and 0 < k < MAX_K
 // post: The Kmer size has been set to k
 void Kmer::set_k(unsigned int _k) {
-  assert(_k < MAX_K);
-  assert(_k > 0);
-  if(_k == k) {
-    return; // ok to call more than once
-  }
-  assert(k_bytes == 0); // we can only call this once
-  k = _k;
-  k_bytes = (_k+3)/4;
-  k_modmask = (1 << (2*((k%4)?k%4:4)) )-1;
+	assert(_k < MAX_K);
+	assert(_k > 0);
+	if(_k == k) {
+		return; // ok to call more than once
+	}
+	assert(k_bytes == 0); // we can only call this once
+	k = _k;
+	k_bytes = (_k+3)/4;
+	k_modmask = (1 << (2*((k%4)?k%4:4)) )-1;
 }
 
 

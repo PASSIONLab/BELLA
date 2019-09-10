@@ -2,16 +2,32 @@ RMATPATH = mtspgemm2017/GTgraph/R-MAT
 SPRNPATH = mtspgemm2017/GTgraph/sprng2.0-lite
 SEQANPATH = seqan
 include mtspgemm2017/GTgraph/Makefile.var
-INCLUDE = -I$(SPRNPATH)/include -IloganGPU #-I$(CURDIR)/libgaba
+INCLUDE = -I$(SPRNPATH)/include -I${BOOST_ROOT}/include -IloganGPU #-I$(CURDIR)/libgaba
 SEQINCLUDE = -I$(SEQANPATH)
 MLKINCLUDE = -I/opt/intel/composer_xe_2015.0.039/mkl/include
 LIBPATH = -L/opt/intel/composer_xe_2015.0.039/mkl/lib 
+
 COMPILER = g++
 COMPILER_GPU = nvcc
 CUDAFLAGS = -arch=sm_70 -O3 -maxrregcount=32 -std=c++14 -Xcompiler -fopenmp
 CC = gcc
-CFLAGS = -I. -O3 -W -Wall -Wextra -pedantic -ansi -c
-#SEQFLAGS = -DSEQAN_ARCH_SSE4=1 -DSEQAN_ARCH_AVX2=1 -DSEQAN_BGZF_NUM_THREADS=1
+CFLAGS =-std=c++11 -fpermissive -w -O3 -I. -c #-I. -std=c++14 -O3 -W -Wall -Wextra -pedantic -ansi -c -fpermissive
+
+ifdef __NVCC__
+	NVCC_LIB := -L${CUDA_ROOT}/lib64 -lcudart
+	CUDACC := ${CUDA_ROOT}/bin/nvcc
+	NVCC_FLAGS := -DGPU -O3
+endif
+
+CPP_SRC := $(wildcard gerbil/src/gerbil/*.cpp)
+CPP_OBJ := $(patsubst %.cpp,%.o,$(CPP_SRC))
+CPP_OBJ := $(filter-out gerbil/src/gerbil/toFasta.o,$(CPP_OBJ))
+
+ifdef __NVCC__
+	INC_INT := -Igerbil/include/gerbil -Igerbil/include/cuda_ds -Igerbil/include/cuda_ds/CountingHashTable
+	CUDA_SRC := $(wildcard gerbil/src/cuda_ds/*.cu)
+	CUDA_OBJ := $(patsubst %.cu,%.o,$(CUDA_SRC))
+endif
 
 sprng:	
 	(cd $(SPRNPATH); $(MAKE); cd ../..)
@@ -19,7 +35,8 @@ sprng:
 rmat:	sprng
 	(cd $(RMATPATH); $(MAKE); cd ../..)
 
-LIBS = -L$(CURDIR)/libbloom/build -lbloom #-L$(CURDIR)/libgaba -lgaba
+LIBS = -L$(CURDIR)/libbloom/build -lbloom -L${BOOST_LIB} -lboost_system -lboost_filesystem -lboost_regex -lpthread -lbz2 -lz
+   #-L$(CURDIR)/libgaba -lgaba
 
 Buffer.o: kmercode/Buffer.c
 	$(CC) -O3 -fopenmp -c -o Buffer.o kmercode/Buffer.c
@@ -46,12 +63,20 @@ Kmer.o:	kmercode/Kmer.cpp
 	$(COMPILER) -fopenmp -std=c++11 -O3 -c -o Kmer.o kmercode/Kmer.cpp
 
 # flags defined in mtspgemm2017/GTgraph/Makefile.var
-bella: main.cpp hash_funcs.o fq_reader.o Buffer.o Kmer.o bound.o optlist.o rmat bloomlib 
+bella: main.cpp hash_funcs.o fq_reader.o Buffer.o Kmer.o bound.o optlist.o rmat bloomlib $(CUDA_OBJ) $(CPP_OBJ)
 	#gabalib
-	$(COMPILER) -std=c++14 -O3 $(INCLUDE) -march=native -fopenmp -fpermissive $(SEQINCLUDE) -o bella hash_funcs.o Kmer.o Buffer.o fq_reader.o bound.o optlist.o main.cpp ${LIBS}
+	$(COMPILER) -std=c++14 -w -O3 $(INCLUDE) -march=native -fopenmp -fpermissive $(SEQINCLUDE) -o bella hash_funcs.o Kmer.o Buffer.o fq_reader.o bound.o optlist.o main.cpp ${LIBS} $(CPP_OBJ) $(CUDA_OBJ) $(NVCC_LIB)
 
+ifdef __NVCC__
+%.o: %.cu
+	$(CUDACC) $(NVCC_FLAGS) -c $< -o $@
+endif
+
+%.o: %.cpp
+	$(COMPILER) $(CFLAGS) -c $< -o $@ $(INCLUDE)
+  
 # GPU build
-bella_gpu: main.cu hash_funcs.o fq_reader.o Buffer.o Kmer.o bound.o optlist.o rmat bloomlib
+bella-gpu: main.cu hash_funcs.o fq_reader.o Buffer.o Kmer.o bound.o optlist.o rmat bloomlib
 	#gabalib
 	$(COMPILER_GPU) $(CUDAFLAGS) $(INCLUDE) $(SEQINCLUDE) -o bella hash_funcs.o Kmer.o Buffer.o fq_reader.o bound.o optlist.o main.cu ${LIBS}
 

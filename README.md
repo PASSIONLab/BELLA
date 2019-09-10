@@ -3,36 +3,66 @@
 BELLA is a computationally efficient and highly accurate long-read to long-read aligner and overlapper. BELLA uses a k-mer seed-based approach to detect overlaps between noisy, long-read data. BELLA provides a novel algorithm for pruning k-mers that are unlikely to be useful in overlap detection and whose presence would only incur unnecessary computational costs. This reliable k-mers detection algorithm explicitly maximizes the probability of retaining k-mers that belong to unique regions of the genome.
 To achieve fast overlapping without sketching, BELLA uses sparse matrix-matrix multiplication and utilizes high-performance software and libraries developed for this sparse matrix subroutine. BELLA’s overlap detection has been coupled with a state-of-the-art [seed-and-extend banded-alignment](https://github.com/seqan/seqan) method. BELLA’s alignment step implements a new method to separate true alignments from false positives depending on the alignment score.
 
-## Getting Started
+## Content
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
+*	[Getting Started on Linux](#getting-started-on-linux)
+	*	[Dependencies](#dependencies)
+	*	[Compile](#compile)
+	*	[Run](#run)
+	*	[Error Rate](#error-rate)
+	*	[K-mer Counting](#k-mer-counting)
+	*	[Memory Usage](#memory-usage)
+*	[Output Format](#output-format)
+*	[Performance Evaluation](#performance-evaluation)
+*	[Demo](#demo)
+*	[I get 0 outputs, what is likely going wrong?](#i-get-0-outputs-what-is-likely-going-wrong)
+*	[Citation](#citation)
 
-### Prerequisites
+## Getting Started on Linux
 
-**COMPILER:** the software **requires gcc-6 or higher** with OpenMP to be compiled.  
-To run the evaluation test python3 and simplesam package are required. It can be installed via pip: 
+These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. This version of BELLA **only works on Linux-based machines**. To run BELLA on macOS-based machines, please switch to **mac branch**.
+
+### Dependencies
+
+* **COMPILER:** the software **requires gcc-6** with OpenMP to be compiled.
+* **BOOST/1.67.0** to use Gerbil kmerCounting.
+You can install BOOST/1.67.0 using [conda](https://anaconda.org/anaconda/boost):
+```
+conda install -c anaconda boost
+```
+* [**CUDA**](https://docs.nvidia.com/cuda/) to compile and use GPU-accelerated Gerbil. You **do not** need CUDA to use CPU-based Gerbil.
+
+* **Python3** and **simplesam** are required to generare the ground truth data. You can install simplesam via [pip](https://pip.pypa.io/en/stable/installing/): 
 ```
 pip install simplesam
 ```
 
-### Installing
+### Compile
 
-Clone the repository and enter it:
+Clone the repository, its submodule, and enter it:
 
 ```
+git clone https://github.com/giuliaguidi/bella
 cd bella
+```
+OR:
+```
+git clone https://github.com/giuliaguidi/bella
+cd bella
+git submodule init
+git submodule update
 ```
 Build using makefile:
 
 ```
-ln -s makefile-nersc Makefile && make bella
+ln -s makefile-mac Makefile && make bella
 ```
 
-## Running BELLA
+### Run
 
 To run with default setting:
 ```
-./bella -i <text-file-listing-all-input-fastq-files> -o <out-filename> -d <depth>
+./bella -i <text-file-listing-all-input-fastq-files> -o <out-filename> -d <coverage>
 ```
 BELLA requires a text file containing the path to the input fastq file(s) as the argument for the -i option.
 Example: [input-example.txt](https://github.com/giuliaguidi/bella/files/2620924/input-example.txt)
@@ -44,27 +74,51 @@ To show the usage:
 
 Optional flag description: 
 ```
--i : list of fastq(s) (required)
--o : output filename (required)
--d : depth (required)
--k : k-mer length [17]
--a : fixed alignment threshold [50]
--x : alignment x-drop factor [7]
--e : error rate [auto estimated from fastq]
--m : total RAM of the system in MB [auto estimated if possible or 8,000 if not]
--z : skip the pairwise alignment [false]
--w : relaxMargin parameter for alignment on edges [300]
--c : alignment score deviation from the mean [0.1]
--n : filter out alignment on edge [false]
--r : kmerRift: bases separating two k-mers used as seeds for a read [1,000]
--K : all (non-overlapping and separated by <kmerRift> bases) k-mers as alignment seeds [false]
--f : k-mer list from Jellyfish (required if #DEFINE JELLYFISH enabled)
--p : output in PAF format [false]
--g : number of gpus available [default 1, this works only when compiled as bella_gpu]
+-f : List from Jellyfish (required if Jellyfish kmerCounting is used)
+-i : List of fastq(s)	(required)
+-o : Output filename	(required)
+-d : Dataset coverage	(required)
+-k : KmerSize [17]
+-a : User-defined alignment threshold [FALSE, 0]
+-x : SeqAn xDrop [7]
+-e : Error rate [0.15]
+-q : Estimare error rate from the dataset [FALSE]
+-u : Use default error rate setting [FALSE]
+-g : Use Gerbil as kmerCounter [FALSE]
+-y : Enable GPU [FALSE]
+-m : Total RAM of the system in MB [auto estimated if possible or 8,000 if not]
+-z : Do not run pairwise alignment [FALSE]
+-c : Deviation from the mean alignment score [0.10]
+-r : KmerRift: bases separating two k-mers [kmerSize]
+-s : Common k-mers threshold to compute alignment [auto estimated if possible]
+-b : Bin size binning algorithm [500]
+-p : Output in PAF format [FALSE]
+-w : Probability threshold for reliable range [0.002]
+-l : Number of GPUs Available [1, this only works when compiled as with GPU option -y]
 ```
-**NOTE**: to use [Jellyfish](http://www.cbcb.umd.edu/software/jellyfish/) k-mer counting is necessary to enable **#DEFINE JELLYFISH.**
+### Error Rate
 
-The parallelism depends on the available number of threads and on the available RAM [Default: 8000MB]. Use -DLINUX for Linux or -DOSX for macOS at compile time to estimate available RAM from your machine.
+The error rate is an important parameter in BELLA as it is used to choose which k-mers contribute to the overlap detection.
+
+The user should either:
+
+* **-e** = suggest an error rate
+* **-q** = confirm that the data has quality values and we can estimate the error rate from the data set
+* **-u** = confirm that we can use a default error rate (0.15)
+
+### K-mer Counting
+
+BELLA can run with three different k-mer counting options:
+
+* **Default**: BELLA uses its own fast k-mer counter based on a [Bloom filter](https://en.wikipedia.org/wiki/Bloom_filter) data structure. This is the fastest CPU-based option but it is limited by the available RAM. If BELLA goes **out-of-memory during the k-mer counting stage**, you should use BELLA version on the **master branch** and use Gerbil k-mer counter. **Gerbil k-mer counter only works on Linux-based machines**.
+* **Jellyfish**: BELLA uses [Jellyfish](http://www.cbcb.umd.edu/software/jellyfish/) k-mer counter. It is necessary to install Jellyfish, add **-DJELLYFISH** when compiling BELLA, and give Jellyfish output file to BELLA as input parameter. Differently from Gerbil, the k-mer counting does not happen within BELLA.
+
+### Memory Usage
+
+The parallelism during the overlap detection phase depends on the available number of threads and on the available RAM [Default: 8000MB].
+
+Use **-DOSX** at compile time to estimate available RAM from your machine. 
+If your machine has more RAM than the default one, using **-DOSX** would **make the ovelap detection phase faster**. 
 
 ## Output Format
 
@@ -84,13 +138,16 @@ If **-p** option is used, BELLA outputs alignments in [PAF format](https://githu
 
 The repository contains also the code to get the recall/precision of BELLA and other long-read aligners (Minimap, Minimap2, DALIGNER, MHAP and BLASR).
 
-**Ground truth generation for real data set**: SAMparser.py allows to transform the BWA-MEM/Minimap2 .sam output file in a simpler format usable as input to the evaluation code when using real data set. 
+* **Ground truth generation for real data set**: SAMparser.py allows to transform the Minimap2 .sam output file in a simpler format usable as input to the evaluation code when using real data set. 
 
 ```
+minimap2 -ax map-pb  ref.fa pacbio-reads.fq > aln.sam   # for PacBio subreads
+samtools view -h -Sq 10 -F 4 aln.sam > mapped_q10.sam	# remove reads with quality values smaller than 10
+samtools view -h mapped_q10.sam | grep -v -e 'XA:Z:' -e 'SA:Z:' | samtools view -S -h > unique_mapped_q10.sam	# remove reads mapped to multiple locations
 python3 SAMparser.py <bwamem/minimap2-output>
 ```
 
-**Ground truth generation for synthetic data set**: mafconvert.py allows to transform the .MAF file from PBSIM (Pacbio read simulator) in a simpler format usable as input to the evaluation code when using synthetic data set.
+* **Ground truth generation for synthetic data set**: mafconvert.py allows to transform the .MAF file from PBSIM (Pacbio read simulator) in a simpler format usable as input to the evaluation code when using synthetic data set.
 
 ```
 python mafconvert.py axt <maf-file> > <ground-truth.txt>
@@ -99,8 +156,6 @@ python mafconvert.py axt <maf-file> > <ground-truth.txt>
 To run the evaluation program:
 ```
 cd bench
-```
-```
 make result
 ```
 ```
@@ -122,6 +177,10 @@ You can run the evaluation code located in /bench folder as:
 
 ```./result -G ecsample_singlemapped_q10.txt -B <bella-output>```
 
+## I get 0 outputs, what is likely going wrong?
+
+Error rate estimation might have gone wrong. If the error estimated is greater than 1, the adaptive alignment threshold would be so high that no alignments would pass the threshold. Please check if your fastq file has proper quality values. If not, please define an error rate using command line options.
+
 ## Citation
 
 To cite our work or to know more about our methods, please refer to:
@@ -136,8 +195,9 @@ To cite our work or to know more about our methods, please refer to:
 
 ## Contributors
 
-* [**Daniel Rokhsar**](https://mcb.berkeley.edu/labs/rokhsar/)
-* [**Katherine Yelick**](https://people.eecs.berkeley.edu/~yelick/)
+* [**Dan Rokhsar**](https://mcb.berkeley.edu/labs/rokhsar/)
+* [**Kathy Yelick**](https://people.eecs.berkeley.edu/~yelick/)
+* [**Qi Zhou**](https://it.linkedin.com/in/qizhou1512)
 
 ## Copyright Notice
  
@@ -149,4 +209,4 @@ NOTICE. This Software was developed under funding from the U.S. Department of En
 
 ## Acknowledgments
 
-Funding provided in part by DOE ASCR through the [Exascale Computing Project](https://www.exascaleproject.org/), and computing provided by [NERSC](https://www.nersc.gov/). Thanks to Rob Egan and Steven Hofmeyr for valuable discussions. Thanks to [Politecnico di Milano](https://www.polimi.it/en/) for key collaborations.
+Funding provided in part by DOE ASCR through the [Exascale Computing Project](https://www.exascaleproject.org/), and computing provided by [NERSC](https://www.nersc.gov/). Thanks to Rob Egan and [Steven Hofmeyr](https://crd.lbl.gov/departments/computer-science/CLaSS/members/class-staff/steven-hofmeyr/) for valuable discussions. Thanks to [Politecnico di Milano](https://www.polimi.it/en/) for key collaborations.
