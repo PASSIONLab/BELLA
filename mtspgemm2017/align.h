@@ -62,10 +62,10 @@ bool toEnd(int colStart, int colEnd, int colLen, int rowStart, int rowEnd, int r
  * @param rlen is the length of the row sequence
  * @param i is the starting position of the k-mer on the first read
  * @param j is the starting position of the k-mer on the second read
- * @param xdrop
+ * @param xDrop
  * @return alignment score and extended seed
  */
-seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rlen, int i, int j, int xdrop, int kmer_len) {
+seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rlen, int i, int j, int xDrop, int kmerSize) {
 
 	Score<int, Simple> scoringScheme(1,-1,-1);
 
@@ -78,7 +78,7 @@ seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rle
 	seqAnResult longestExtensionScore;
 
 
-	TSeed seed(i, j, i+kmer_len, j+kmer_len);
+	TSeed seed(i, j, i+b_pars.kmerSize, j + kmerSize);
 	seedH = infix(seqH, beginPositionH(seed), endPositionH(seed));
 	seedV = infix(seqV, beginPositionV(seed), endPositionV(seed));
 
@@ -89,20 +89,20 @@ seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rle
 	{
 		strand = 'c';
 		Dna5StringReverseComplement twinRead(seqH);
-		i = rlen-i-kmer_len;
+		i = rlen-i-b_pars.kmerSize;
 
 		setBeginPositionH(seed, i);
 		setBeginPositionV(seed, j);
-		setEndPositionH(seed, i+kmer_len);
-		setEndPositionV(seed, j+kmer_len);
+		setEndPositionH(seed, i + kmerSize);
+		setEndPositionV(seed, j + kmerSize);
 
 		/* Perform match extension */
-		longestExtensionTemp = extendSeed(seed, twinRead, seqV, EXTEND_BOTH, scoringScheme, xdrop, kmer_len, GappedXDrop());
+		longestExtensionTemp = extendSeed(seed, twinRead, seqV, EXTEND_BOTH, scoringScheme, xDrop, kmerSize, GappedXDrop());
 
 	} else
 	{
 		strand = 'n';
-		longestExtensionTemp = extendSeed(seed, seqH, seqV, EXTEND_BOTH, scoringScheme, xdrop, kmer_len, GappedXDrop());
+		longestExtensionTemp = extendSeed(seed, seqH, seqV, EXTEND_BOTH, scoringScheme, xDrop,  kmerSize, GappedXDrop());
 	} 
 
 	longestExtensionScore.score = longestExtensionTemp;
@@ -110,58 +110,53 @@ seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rle
 	longestExtensionScore.strand = strand;
 	return longestExtensionScore;
 }
+//	GG: GPU alignment call
+void alignLogan(vector<string> &target,
+				vector<string> &query,
+				vector<SeedL> &seeds,
+				BELLApars& b_pars, 
+				vector<loganResult> &longestExtensionScore)
+{
 
-void alignLogan( vector<string> &target,
-                vector<string> &query,
-                vector<SeedL> &seeds,
-                int xdrop, 
-                int kmer_len,
-                vector<loganResult> &longestExtensionScore,
-		int ngpus){
+	ScoringSchemeL sscheme(1,-1,-1,-1);
+	std::vector<ScoringSchemeL> scoring;
+	scoring.push_back(sscheme);
 
-    ScoringSchemeL sscheme(1, -1, -1, -1);
-    int n_al = seeds.size();
-    //int* res = (int*)malloc(BATCH_SIZE*sizeof(int));
-    vector<ScoringSchemeL> scoring;
-    scoring.push_back(sscheme);
-    int n_al_loc=BATCH_SIZE*ngpus; 
-    cout<<"NUM ALIGNMENTS: "<<n_al<<endl; 
-    //divide the alignment in batches of 100K alignments
-    for(int i=0; i < n_al; i+=BATCH_SIZE*ngpus){ 
-	//cout<<"BATCH "<<i/BATCH_SIZE<<endl;
-	if(n_al<i+BATCH_SIZE*ngpus)
-		n_al_loc = n_al%(BATCH_SIZE*ngpus);
-	//else
-	//	n_al_loc = n_al%BATCH_SIZE;	
+	int numAlignments = seeds.size();
+	//int* res = (int*)malloc(BATCH_SIZE*sizeof(int));
+	int numAlignmentsLocal = BATCH_SIZE * b_pars.numGPU; 
+	std::cout << "numAlignments: " << numAlignments << std::endl;
 
-	int* res = (int*)malloc(n_al_loc*sizeof(int));	
-	
-		
-	vector<string>::const_iterator first_t = target.begin() + i;
-	vector<string>::const_iterator last_t = target.begin() + i + n_al_loc;
-	vector<string> target_b(first_t, last_t);    
-	
-	vector<string>::const_iterator first_q = query.begin() + i;
-        vector<string>::const_iterator last_q = query.begin() + i + n_al_loc;
-        vector<string> query_b(first_q, last_q);
-	
-	vector<SeedL>::const_iterator first_s = seeds.begin() + i;
-        vector<SeedL>::const_iterator last_s = seeds.begin() + i + n_al_loc;
-        vector<SeedL> seeds_b(first_s, last_s);
-	
-	//cout<<"OK"<<endl;	
-	
-	extendSeedL(seeds_b, EXTEND_BOTHL, target_b, query_b, scoring, xdrop, kmer_len, res, n_al_loc, ngpus);
+	//	Divide the alignment in batches of 100K alignments
+	for(int i = 0; i < numAlignments; i += BATCH_SIZE * b_pars.numGPU)
+	{
+		if(numAlignments < (i + BATCH_SIZE * b_pars.numGPU))
+			numAlignmentsLocal = numAlignments % (BATCH_SIZE * b_pars.numGPU);
 
-    //cout<<query[0]<<endl;
-    	for(int j=0; j<n_al_loc; j++){
-		longestExtensionScore[j+i].score = res[j];
-		//cout<<longestExtensionScore[i].score<<endl;
-        	longestExtensionScore[j+i].seed = seeds_b[j];
-    	}
-	free(res);
-    }
-    
+		int* res = (int*)malloc(numAlignmentsLocal * sizeof(int));	
+
+		std::vector<string>::const_iterator first_t = target.begin() + i;
+		std::vector<string>::const_iterator last_t  = target.begin() + i + numAlignmentsLocal;
+		std::vector<string> target_b(first_t, last_t);
+
+		std::vector<string>::const_iterator first_q = query.begin() + i;
+		std::vector<string>::const_iterator last_q  = query.begin() + i + numAlignmentsLocal;
+		std::vector<string> query_b(first_q, last_q);
+
+		std::vector<SeedL>::const_iterator first_s = seeds.begin() + i;
+		std::vector<SeedL>::const_iterator last_s  = seeds.begin() + i + numAlignmentsLocal;
+		std::vector<SeedL> seeds_b(first_s, last_s);
+
+		extendSeedL(seeds_b, EXTEND_BOTHL, target_b, query_b, scoring, b_pars.xDrop, b_pars.kmerSize, res, numAlignmentsLocal, b_pars.numGPU);
+
+		for(int j=0; j<numAlignmentsLocal; j++)
+		{
+			longestExtensionScore[j+i].score = res[j];
+			longestExtensionScore[j+i].seed = seeds_b[j];
+		}
+
+		free(res);
+	}
 }
 
 #endif

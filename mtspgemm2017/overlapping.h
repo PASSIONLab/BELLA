@@ -439,7 +439,7 @@ reversecomplement(const std::string& seq) {
 
 
 void PostAlignDecisionGPU(const loganResult & maxExtScore, const readType_ & read1, const readType_ & read2, 
-					const BELLApars & b_pars, double ratioPhi, int count, stringstream & myBatch, size_t & outputted,
+					const BELLApars & b_pars, double ratiophi, int count, stringstream & myBatch, size_t & outputted,
 					size_t & numBasesAlignedTrue, size_t & numBasesAlignedFalse, bool & passed)
 {
 	SeedL maxseed = maxExtScore.seed;	// returns a seqan:Seed object
@@ -466,7 +466,7 @@ void PostAlignDecisionGPU(const loganResult & maxExtScore, const readType_ & rea
 
 	if(b_pars.adapThr)
 	{
-		double newThr = (1-b_pars.deltaChernoff)*(ratioPhi*(double)ov);
+		double newThr = (1-b_pars.deltaChernoff)*(ratiophi*(double)ov);
 
 		if((double)maxExtScore.score > newThr)
 		{
@@ -570,7 +570,7 @@ int getChainLen(const string& seqH, const string& seqV, const int begpH, const i
 }
 
 void PostAlignDecision(const seqAnResult& maxExtScore, const readType_& read1, const readType_& read2, 
-					const BELLApars& b_pars, double ratioPhi, int count, stringstream& myBatch, size_t& outputted,
+					const BELLApars& b_pars, double ratiophi, int count, stringstream& myBatch, size_t& outputted,
 					size_t& numBasesAlignedTrue, size_t& numBasesAlignedFalse, bool& passed, int const& matches)
 {
 	auto maxseed = maxExtScore.seed;	// returns a seqan:Seed object
@@ -602,7 +602,7 @@ void PostAlignDecision(const seqAnResult& maxExtScore, const readType_& read1, c
 
 	if(b_pars.adapThr)
 	{
-		float mythreshold = (1 - b_pars.deltaChernoff) * (ratioPhi * (float)ov);
+		float mythreshold = (1 - b_pars.deltaChernoff) * (ratiophi * (float)ov);
 		if((float)maxExtScore.score > mythreshold)
 		{
 			passed = true;
@@ -897,8 +897,8 @@ void HashSpGEMM(const CSC<IT,NT>& A, const CSC<IT,NT>& B, MultiplyOperation mult
 }
 
 template <typename IT, typename FT>
-auto RunPairWiseAlignments_GPU(IT start, IT end, IT offset, IT * colptrC, IT * rowids, FT * values, const readVector_ & reads, 
-								int kmer_len, int xdrop, char* filename, const BELLApars & b_pars, double ratioPhi, int ngpus)
+auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * rowids, FT * values, const readVector_& reads, 
+	char* filename, const BELLApars & b_pars, double ratiophi)
 {
 	size_t alignedpairs = 0;
 	size_t alignedbases = 0;
@@ -937,9 +937,9 @@ auto RunPairWiseAlignments_GPU(IT start, IT end, IT offset, IT * colptrC, IT * r
 
 				int rlen = seq1.length();
 				string strand = "n";
-				SeedL seed(indi, indj, indi+kmer_len, indj+kmer_len);
-				string seedH = seq1.substr(getBeginPositionH(seed), kmer_len);
-				string seedV = seq2.substr(getBeginPositionV(seed), kmer_len);
+				SeedL seed(indi, indj, indi+b_pars.kmerSize, indj+b_pars.kmerSize);
+				string seedH = seq1.substr(getBeginPositionH(seed), b_pars.kmerSize);
+				string seedV = seq2.substr(getBeginPositionV(seed), b_pars.kmerSize);
 				std::reverse(std::begin(seedH),std::end(seedH));
 				std::transform(std::begin(seedH),std::end(seedH),std::begin(seedH), complement);
 
@@ -950,10 +950,10 @@ auto RunPairWiseAlignments_GPU(IT start, IT end, IT offset, IT * colptrC, IT * r
 					std::reverse(std::begin(seq1),std::end(seq1));
 					std::transform(std::begin(seq1),std::end(seq1),std::begin(seq1), complement);
 
-					setBeginPositionH(seed, rlen-indi-kmer_len);
+					setBeginPositionH(seed, rlen-indi-b_pars.kmerSize);
 					setBeginPositionV(seed, indj);
 					setEndPositionH(seed, rlen-indi);
-					setEndPositionV(seed, indj+kmer_len);
+					setEndPositionV(seed, indj+b_pars.kmerSize);
 				}
 				loganResult localRes;
 				localRes.strand = strand;
@@ -966,7 +966,7 @@ auto RunPairWiseAlignments_GPU(IT start, IT end, IT offset, IT * colptrC, IT * r
 		}
 	}
 	std::cout << "GPU Alignment Started" << std::endl;
-	alignLogan(seq1s, seq2s, seeds, xdrop, kmer_len, maxExtScoreL, ngpus);
+	alignLogan(seq1s, seq2s, seeds, b_pars, maxExtScoreL);
 	std::cout << "GPU Alignment Completed" << std::endl;
 
 	int index = 0;
@@ -1011,8 +1011,8 @@ auto RunPairWiseAlignments_GPU(IT start, IT end, IT offset, IT * colptrC, IT * r
 					auto it = val->pos.begin();
 					//int i = it->first, j = it->second;
 					loganResult maxExtScore = maxExtScoreL[index];
-					//maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, xdrop, kmer_len);
-					PostAlignDecisionGPU(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
+					//maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, b_pars.xDrop, b_pars.kmerSize);
+					PostAlignDecisionGPU(maxExtScore, reads[rid], reads[cid], b_pars, ratiophi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
 					index++;
 				}
 				else
@@ -1022,9 +1022,9 @@ auto RunPairWiseAlignments_GPU(IT start, IT end, IT offset, IT * colptrC, IT * r
 						//int i = it->first, j = it->second;
 						loganResult maxExtScore = maxExtScoreL[index];
 						//cout<<"IN"<<endl;
-						//maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, xdrop, kmer_len);
+						//maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, b_pars.xDrop, b_pars.kmerSize);
 						if(!passed)	//	GG: why?
-							PostAlignDecisionGPU(maxExtScore, reads[rid], reads[cid], b_pars, ratioPhi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
+							PostAlignDecisionGPU(maxExtScore, reads[rid], reads[cid], b_pars, ratiophi, val->count, vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
 						index++;
 					}
 				}
@@ -1099,7 +1099,7 @@ auto RunPairWiseAlignments_GPU(IT start, IT end, IT offset, IT * colptrC, IT * r
  **/
 template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation>
 void HashSpGEMM_GPU(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, const readVector_ & reads, 
-	FT & getvaluetype, int kmer_len, int xdrop, char* filename, const BELLApars & b_pars, double ratioPhi, int ngpus)
+	FT & getvaluetype, int b_pars.kmerSize, int b_pars.xDrop, char* filename, const BELLApars & b_pars, double ratiophi, int b_pars.numGPU)
 {
 	double free_memory = estimateMemory(b_pars);
 
@@ -1188,7 +1188,7 @@ void HashSpGEMM_GPU(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperatio
 		delete [] ValuesofC;
 
 		tuple<size_t, size_t, size_t, size_t, size_t, size_t, double> alignstats; // (alignedpairs, alignedbases, totalreadlen, outputted, alignedtrue, alignedfalse, timeoutputt)
-		alignstats = RunPairWiseAlignments_GPU(colStart[b], colStart[b+1], begnz, colptrC, rowids, values, reads, kmer_len, xdrop, filename, b_pars, ratioPhi, ngpus);
+		alignstats = RunPairWiseAlignmentsGPU(colStart[b], colStart[b+1], begnz, colptrC, rowids, values, reads, b_pars, filename, ratiophi);
 
 #ifdef TIMESTEP
 		if(!b_pars.skipAlignment)
@@ -1202,7 +1202,7 @@ void HashSpGEMM_GPU(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperatio
 			std::cout << "numPairs aligned:	"		<< get<0>(alignstats)	<< std::endl;
 			cout << "averageLength of successful alignment:	"	<< (int)(static_cast<double>(get<4>(alignstats)) / get<3>(alignstats))							<< " bps" << endl;
 			cout << "averageLength of failed alignment:	"		<< (int)(static_cast<double>(get<5>(alignstats)) / (get<0>(alignstats) - get<3>(alignstats)))	<< " bps" << endl;
-	   }
+		}
 #endif
 		cout << "\nOutputted " << get<3>(alignstats) << " lines in " << get<6>(alignstats) << "s" << endl;
 		delete [] rowids;
