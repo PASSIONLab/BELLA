@@ -501,7 +501,7 @@ void PostAlignDecisionGPU(const loganResult & maxExtScore, const readType_ & rea
 			myBatch << read2.nametag << '\t' << read1.nametag << '\t' << count << '\t' << maxExtScore.score << '\t' << ov << '\t' << maxExtScore.strand << '\t' << 
 				begpV << '\t' << endpV << '\t' << read2len << '\t' << begpH << '\t' << endpH << '\t' << read1len << endl;
 		}
-		else    // PAF format is the output format used by minimap/minimap2: https://github.com/lh3/miniasm/blob/master/PAF.md
+		else	// PAF format is the output format used by minimap/minimap2: https://github.com/lh3/miniasm/blob/master/PAF.md
 		{
 			/* field adjustment to match the PAF format */
 			toPAF(begpV, endpV, read2len, begpH, endpH, read1len, maxExtScore.strand);
@@ -523,8 +523,8 @@ void PostAlignDecisionGPU(const loganResult & maxExtScore, const readType_ & rea
 				read1.nametag << '\t' << read1len << '\t' << begpH << '\t' << endpH << '\t' << maxExtScore.score << '\t' << ov << '\t' << mapq << endl;
 		}
 		++outputted;
-		numBasesAlignedTrue += (endpV-begpV);	
-	}		
+		numBasesAlignedTrue += (endpV-begpV);
+	}
 	else
 	{
 		numBasesAlignedFalse += (endpV-begpV);
@@ -922,8 +922,8 @@ auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * ro
 
 	size_t outputted = 0;
 
-	//#pragma omp parallel for schedule(dynamic)
-	for(IT j = start; j < end; ++j)			//	acculate sequences for GPU batch alignment
+	//#pragma omp parallel for schedule(dynamic)	//	keep the order for the post evaluation code
+	for(IT j = start; j < end; ++j)					//	acculate sequences for GPU batch alignment
 	{
 		for (IT i = colptrC[j]; i < colptrC[j+1]; ++i)
 		{
@@ -1001,7 +1001,7 @@ auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * ro
 		std::cout << "GPU Alignment Completed" << std::endl;
 
 		unsigned int idx = 0;
-		//#pragma omp parallel for 	//	GG:	we might do parallel here double check
+		//	no parallelism to keep same order of pairs in alignment
 		for(IT j = start; j < end; ++j) // for (end-start) columns of A^T A (one block)
 		{
 			size_t numAlignmentsThread   = 0;
@@ -1010,16 +1010,16 @@ auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * ro
 			size_t numBasesAlignedTrue   = 0;
 			size_t numBasesAlignedFalse  = 0;
 
-		//	size_t outputted = 0;	//	moved up
+			//	size_t outputted = 0;	//	moved up
 			int ithread = omp_get_thread_num();
 
-			for (IT i = colptrC[j]; i < colptrC[j+1]; ++i)  // all nonzeros in that column of A^T A
+			for (IT i = colptrC[j]; i < colptrC[j+1]; ++i)	// all nonzeros in that column of A^T A
 			{
-				unsigned int rid = rowids[i-offset];	// row id
-				unsigned int cid = j;					// column id
+				unsigned int rid = rowids[i-offset];		// row id
+				unsigned int cid = j;						// column id
 
-				const string& seq1 = reads[rid].seq;	// get reference for readibility
-				const string& seq2 = reads[cid].seq;	// get reference for readibility
+				const string& seq1 = reads[rid].seq;		// get reference for readibility
+				const string& seq2 = reads[cid].seq;		// get reference for readibility
 
 				unsigned short int seq1len = seq1.length();
 				unsigned short int seq2len = seq2.length();
@@ -1052,7 +1052,7 @@ auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * ro
 			totfailbases += numBasesAlignedFalse;
 	//	}
 #endif
-	} // all columns from start...end (omp for loop)
+	}	// all columns from start...end (omp for loop)
 
 	double outputting = omp_get_wtime();
 
