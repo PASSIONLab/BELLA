@@ -34,7 +34,6 @@
 
 #include "libcuckoo/cuckoohash_map.hh"
 #include "libbloom/bloom64.h"
-// #include "gerbil/include/gerbil/Application.h"
 
 #include "kmercode/hash_funcs.h"
 #include "kmercode/Kmer.hpp"
@@ -95,95 +94,6 @@ vector<filedata>  GetFiles(char *filename) {
 	return filesview;
 }
 
-/**
- * @brief JellyFishCount
- * @param kmer_file
- * @param countsreliable_jelly
- * @param lower
- * @param upper
- */
-void JellyFishCount(char *kmer_file, dictionary_t_32bit& countsreliable_jelly, int lower, int upper) 
-{
-	ifstream filein(kmer_file);
-	string line;
-	int elem;
-	string kmerstr;    
-	Kmer kmerfromstr;
-	
-	// double kdict = omp_get_wtime();
-	// Jellyfish file contains all the k-mers from fastq(s)
-	// It is not filtered beforehand
-	// A k-mer and its reverse complement are counted separately
-	dictionary_t_16bit countsjelly;
-	if(filein.is_open()) 
-	{ 
-			while(getline(filein, line)) {
-				if(line.length() == 0)
-					break;
-
-				string substring = line.substr(1);
-				elem = stoi(substring);
-				getline(filein, kmerstr);   
-				//kmerfromstr.set_kmer(kmerstr.c_str());
-
-				auto updatecountjelly = [&elem](unsigned short int &num) {num += elem;};
-				// If the number is already in the table, it will increment its count by the occurrence of the new element. 
-				// Otherwise it will insert a new entry in the table with the corresponding k-mer occurrence.
-				countsjelly.upsert(kmerfromstr.rep(), updatecountjelly, elem);      
-			}
-	} else std::cout << "Unable to open the input file\n";
-	filein.close();
-	//cout << "jellyfish file parsing took: " << omp_get_wtime()-kdict << "s" << endl;
-
-	// Reliable k-mer filter on countsjelly
-	int kmer_id = 0;
-	auto lt = countsjelly.lock_table(); // our counting
-	for (const auto &it : lt) 
-		if (it.second >= lower && it.second <= upper)
-		{
-			countsreliable_jelly.insert(it.first,kmer_id);
-			++kmer_id;
-		}
-	lt.unlock(); // unlock the table
-	// Print some information about the table
-	cout << "Entries within reliable range Jellyfish:	" << countsreliable_jelly.size() << std::endl;    
-	//cout << "Bucket count Jellyfish: " << countsjelly.bucket_count() << std::endl;
-	//cout << "Load factor Jellyfish: " << countsjelly.load_factor() << std::endl;
-	countsjelly.clear(); // free 
-}
-
-// void GerbilDeNovoCount(std::string& tempDir, std::string& fileName, dictionary_t_32bit& countsreliable_denovo, int& lower, int& upper, 
-// 				 int& coverage, size_t upperlimit, BELLApars& b_pars)
-// {
-// 	gerbil::Application application(b_pars.minProbability, b_pars.errorRate,b_pars.enableGPU, coverage, b_pars.kmerSize, fileName, tempDir, 1, "outputTRY", b_pars.skipEstimate);
-// 		application.process();
-
-// 	vector<pair<string,unsigned int>> *listKmer;
-// 	listKmer = application.getListKmer();
-
-// 	// Reliable kmer filter on countsdenovo
-// 	int kmer_id_denovo = 0;
-
-// 	int listLength = (*listKmer).size();
-// 	for(int i = 0; i<listLength; i++) 
-// 	{	// Reliable count within Gerbil
-// 		Kmer mykmer(get<0>((*listKmer)[i]).c_str(), get<0>((*listKmer)[i]).length());
-// 		countsreliable_denovo.insert(mykmer, kmer_id_denovo);
-// 		++kmer_id_denovo;
-// 	}
-// 	delete listKmer;
-	
-// 	// Print some information about the table
-// 	if(countsreliable_denovo.size() == 0)
-// 	{
-// 		cout << "BELLA terminated: 0 entries within reliable range (reduce k-mer length)\n" << endl;
-// 		exit(0);
-// 	}
-// 	else
-// 	{
-// 		cout << "Entries within reliable range:	" << countsreliable_denovo.size() << endl;
-// 	}
-// }
 /**
  * @brief DeNovoCount
  * @param allfiles

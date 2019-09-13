@@ -50,11 +50,7 @@
 
 #define LSIZE 16000
 #define ITERS 10
-#define PRINT
-//#define JELLYFISH
-
-double deltaChernoff = 0.1;            
-
+  
 using namespace std;
 
 int main (int argc, char *argv[]) {
@@ -70,9 +66,8 @@ int main (int argc, char *argv[]) {
 	// Follow an option with a colon to indicate that it requires an argument.
 
 	optList = NULL;
-	optList = GetOptList(argc, argv, (char*)"f:i:o:d:hk:a:ze:x:c:m:r:pb:s:q:gu:yw:l:");
+	optList = GetOptList(argc, argv, (char*)"i:o:d:hk:a:ze:x:c:m:r:pb:s:q:gu:yw:l:");
 
-	char	*kmer_file 			= NULL;	// Reliable k-mer file from Jellyfish
 	char	*all_inputs_fofn 	= NULL;	// List of fastqs (i)
 	char	*out_file 			= NULL;	// output filename (o)
 	int		coverage 			= 0;	// Coverage required (d)
@@ -90,18 +85,6 @@ int main (int argc, char *argv[]) {
 		thisOpt = optList;
 		optList = optList->next;
 		switch (thisOpt->option) {
-			case 'f': {
-#ifdef JELLYFISH
-                if(thisOpt->argument == NULL)
-                {
-                    cout << "BELLA execution terminated: -f requires an argument" << endl;
-                    cout << "Run with -h to print out the command line options\n" << endl;
-                    return 0;
-                }
-#endif
-				kmer_file = strdup(thisOpt->argument);
-				break;
-			}
 			case 'i': {
 				if(thisOpt->argument == NULL)
 				{
@@ -199,7 +182,7 @@ int main (int argc, char *argv[]) {
 				b_parameters.binSize = atoi(thisOpt->argument);
 				break;
 			}
-      case 'l': {
+            case 'l': {
 				b_parameters.numGPU = atoi(thisOpt->argument);
 				break;
 			}
@@ -221,7 +204,6 @@ int main (int argc, char *argv[]) {
 			}
 			case 'h': {
 				cout << "Usage:\n" << endl;
-				cout << " -f : List from Jellyfish (required if Jellyfish kmerCounting is used)" 	<< endl; // Reliable k-mers are selected by BELLA
 				cout << " -i : List of fastq(s)	(required)" 	<< endl;
 				cout << " -o : Output filename	(required)" 	<< endl;
 				cout << " -d : Dataset coverage	(required)" 	<< endl; // TO DO: add coverage estimation
@@ -249,20 +231,13 @@ int main (int argc, char *argv[]) {
 		}
 	}
 
-#ifdef JELLYFISH
-	if(kmer_file == NULL || all_inputs_fofn == NULL || out_file == NULL || coverage == 0)
-	{
-		cout << "BELLA execution terminated: missing arguments" << endl;
-		cout << "Run with -h to print out the command line options\n" << endl;
-		return 0;
-	}
-#else
 	if(all_inputs_fofn == NULL || out_file == NULL || coverage == 0)
 	{
 		cout << "BELLA execution terminated: missing arguments" << endl;
 		cout << "Run with -h to print out the command line options\n" << endl;
 		return 0;
-	}
+    }
+    
 	if(b_parameters.errorRate == 0.00 && b_parameters.skipEstimate == true)
 	{
 		cout << "BELLA execution terminated." 	<< endl;
@@ -272,13 +247,14 @@ int main (int argc, char *argv[]) {
 		cout << " * -u = confirm that we can use a default error rate (0.15)\n" << endl;
 		return 0;
 	}
-#endif
 
 	free(optList);
-	free(thisOpt);
+    free(thisOpt);
+    
 	//
 	// Declarations 
-	//
+    //
+    
 	vector<filedata> allfiles = GetFiles(all_inputs_fofn);
 	std::string all_inputs_gerbil = std::string(all_inputs_fofn); 
 	int lower, upper; // reliable range lower and upper bound
@@ -292,14 +268,13 @@ int main (int argc, char *argv[]) {
 	readVector_ reads;
 	Kmers kmersfromreads;
 	vector<tuple<unsigned int, unsigned int, unsigned short int>> occurrences;	// 32 bit, 32 bit, 16 bit (read, kmer, position)
-	vector<tuple<unsigned int, unsigned int, unsigned short int>> transtuples;	// 32 bit, 32 bit, 16 bit (kmer, read, position)
+    vector<tuple<unsigned int, unsigned int, unsigned short int>> transtuples;	// 32 bit, 32 bit, 16 bit (kmer, read, position)
+    
 	// 
 	// File and setting used
-	//
+    //
+    
 #ifdef PRINT
-#ifdef JELLYFISH
-	cout << "kmerFile: "				<< kmer_file						<< std::endl;
-#endif
 	std::cout << std::fixed;
 	std::cout << std::setprecision(3);
 	std::cout << "outputFile:	"		<< out_file							<< std::endl;
@@ -308,9 +283,6 @@ int main (int argc, char *argv[]) {
 	std::cout << "kmerRift:	"			<< b_parameters.kmerRift			<< std::endl;
 	std::cout << "minOverlap:	"		<< b_parameters.minOverlap			<< std::endl;
 	std::cout << "minNumKmers:	"		<< b_parameters.minSurvivedKmers	<< std::endl;
-//	std::cout << "maxOverhang:	"		<< b_parameters.maxOverhang			<< std::endl;
-//	std::cout << "maxJump:	"			<< b_parameters.maxJump				<< std::endl;
-//	std::cout << "maxDivergence:	"	<< b_parameters.maxDivergence		<< std::endl;
 	std::cout << "useGerbil:	 "		<< b_parameters.useGerbil			<< std::endl;
 	std::cout << "enableGPU:	 "		<< b_parameters.enableGPU			<< std::endl;
     std::cout << "numberGPU:	 "		<< b_parameters.numGPU			    << std::endl;
@@ -325,50 +297,33 @@ int main (int argc, char *argv[]) {
     //
     // Kmer file parsing, error estimation, reliable bounds computation, and k-mer dictionary creation
     //
+
 	dictionary_t_32bit countsreliable;
+    double all;
 
-#ifdef JELLYFISH
-	// Reliable bounds computation for Jellyfish using default error rate
-	double all = omp_get_wtime();
-	lower = computeLower(coverage, b_parameters.errorRate, b_parameters.kmerSize, b_parameters.minProbability);
-	upper = computeUpper(coverage, b_parameters.errorRate, b_parameters.kmerSize, b_parameters.minProbability);
+    // Reliable range computation within denovo counting
+    int numThreads = 1;
+    #pragma omp parallel
+    {
+        numThreads = omp_get_num_threads();
+    }
+    printLog(numThreads);
 
+	all = omp_get_wtime();
+	DeNovoCount(allfiles, countsreliable, lower, upper, coverage, upperlimit, b_parameters);
 	std::cout << "errorRate:	"				<< b_parameters.errorRate	<< std::endl;
 	std::cout << "kmerFrequencyLowerBound:	"	<< lower					<< std::endl;
 	std::cout << "kmerFrequencyUpperBound:	"	<< upper					<< std::endl;
 
-	JellyFishCount(kmer_file, countsreliable, lower, upper);
-#else
-	double all;
-	if(b_parameters.useGerbil)
-	{
-		// // Reliable range computation within denovo counting
-		// std::cout << "numThreads:	"				<< MAXTHREADS	<< "\n"		<< std::endl;
-		// std::string tempDirName = "tempDir";
-		// all = omp_get_wtime();
-		// GerbilDeNovoCount(tempDirName, all_inputs_gerbil, countsreliable, lower, upper, coverage, upperlimit, b_parameters);
-	//	std::cout << "errorRate:	"				<< b_parameters.errorRate	<< std::endl;	//	GG: printed in Gerbil
-	//	std::cout << "kmerFrequencyLowerBound:	"	<< lower					<< std::endl;
-	//	std::cout << "kmerFrequencyUpperBound:	"	<< upper					<< std::endl;
-	}
-	else
-	{ 
-		// Reliable range computation within denovo counting
-		std::cout << "numThreads:	"				<< MAXTHREADS	<< "\n"		<< std::endl;
-		all = omp_get_wtime();
-		DeNovoCount(allfiles, countsreliable, lower, upper, coverage, upperlimit, b_parameters);
-		std::cout << "errorRate:	"				<< b_parameters.errorRate	<< std::endl;
-		std::cout << "kmerFrequencyLowerBound:	"	<< lower					<< std::endl;
-		std::cout << "kmerFrequencyUpperBound:	"	<< upper					<< std::endl;
-	}
 	if(b_parameters.adapThr)
 	{
 		ratiophi = adaptiveSlope(b_parameters.errorRate);
 		std::cout << "adaptiveThreshold constant:	"	<< ratiophi * (1-b_parameters.deltaChernoff)	<< "\n" << std::endl;
 	}
-	else
-		std::cout << "userDefinedThreshold:	"	<< b_parameters.defaultThr	<< "\n" << std::endl;
-#endif	// DENOVO COUNTING
+    else
+    {
+        std::cout << "userDefinedThreshold:	"	<< b_parameters.defaultThr	<< "\n" << std::endl;
+    }
 
     //
     // Fastq(s) parsing
@@ -383,7 +338,6 @@ int main (int argc, char *argv[]) {
 
 	for(auto itr=allfiles.begin(); itr!=allfiles.end(); itr++)
 	{
-
 		ParallelFASTQ *pfq = new ParallelFASTQ();
 		pfq->open(itr->filename, false, itr->filesize);
 
@@ -466,7 +420,7 @@ int main (int argc, char *argv[]) {
     // Sparse matrices construction
     //
 
-  double matcreat = omp_get_wtime();
+    double matcreat = omp_get_wtime();
 	unsigned int nkmer = countsreliable.size();
 	CSC<unsigned int, unsigned short int> spmat(occurrences, read_id, nkmer, 
 							[] (unsigned short int& p1, unsigned short int& p2) 

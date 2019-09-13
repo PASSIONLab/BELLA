@@ -7,6 +7,10 @@
 #include <seqan/modifier.h>
 #include <seqan/seeds.h>
 
+#ifndef PRINT
+#define PRINT
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -19,6 +23,12 @@ extern "C" {
 #endif
 
 #include "../libcuckoo/cuckoohash_map.hh"
+
+#ifdef  PRINT
+	#define printLog(var) do { std::cerr << "INFO:	" << __FILE__ << "(" << __LINE__ << ")	" << #var << " = " << (var) << std::endl; } while(0)
+#else
+	#define printLog(var)
+#endif
 
 struct BELLApars
 {

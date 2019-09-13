@@ -135,50 +135,50 @@ IT* estimateFLOP(const CSC<IT,NT> & A, const CSC<IT,NT> & B, bool lowtriout)
 	if(A.isEmpty() || B.isEmpty())
 	{
 		return NULL;
-		}
-		
-	int numThreads = 1;
-	#pragma omp parallel
-		{
-			numThreads = omp_get_num_threads();
 	}
+		
+	// int numThreads = 1;
+	// #pragma omp parallel
+	// {
+	// 		numThreads = omp_get_num_threads();
+	// }
 	
 	IT* colflopC = new IT[B.cols]; // nnz in every  column of C
 		
 	#pragma omp parallel for
 	for(IT i=0; i< B.cols; ++i)
-		{
+	{
 			colflopC[i] = 0;
-		}
+	}
 
 	#pragma omp parallel for
 		for(IT i=0; i < B.cols; ++i)
 		{
-			size_t nnzcolB = B.colptr[i+1] - B.colptr[i]; //nnz in the current column of B
-		int myThread = omp_get_thread_num();
-		for (IT j = B.colptr[i]; j < B.colptr[i+1]; ++j)	// all nonzeros in that column of B
-		{
-			IT col2fetch = B.rowids[j];	// find the row index of that nonzero in B, which is the column to fetch in A
-			IT nnzcolA = 0;
+			// size_t nnzcolB = B.colptr[i+1] - B.colptr[i]; // nnz in the current column of B
+			int myThread = omp_get_thread_num();
+			for (IT j = B.colptr[i]; j < B.colptr[i+1]; ++j)	// all nonzeros in that column of B
+			{
+				IT col2fetch = B.rowids[j];	// find the row index of that nonzero in B, which is the column to fetch in A
+				IT nnzcolA = 0;
 
-			if(lowtriout)
-			{
-				for(IT k = A.colptr[col2fetch]; k < A.colptr[col2fetch+1]; ++k) // all nonzeros in this column of A
+				if(lowtriout)
 				{
-					// i is the column_id of the output and A.rowids[k] is the row_id of the output
-					if(i < A.rowids[k])
+					for(IT k = A.colptr[col2fetch]; k < A.colptr[col2fetch+1]; ++k) // all nonzeros in this column of A
 					{
-						++nnzcolA;
+						// i is the column_id of the output and A.rowids[k] is the row_id of the output
+						if(i < A.rowids[k])
+						{
+							++nnzcolA;
+						}
 					}
+				}	
+				else
+				{
+					nnzcolA =  A.colptr[col2fetch+1]- A.colptr[col2fetch]; // nonzero count of that column of A
 				}
+				colflopC[i] += nnzcolA;
 			}
-			else
-			{
-				nnzcolA =  A.colptr[col2fetch+1]- A.colptr[col2fetch]; // nonzero count of that column of A
-			}
-			colflopC[i] += nnzcolA;
 		}
-	}
 		return colflopC;
 }
 
@@ -191,11 +191,11 @@ IT* estimateNNZ_Hash(const CSC<IT,NT>& A, const CSC<IT,NT>& B, const IT* flopC, 
 		return NULL;
 	}
 			
-	int numThreads = 1;
-#pragma omp parallel
-	{
-		numThreads = omp_get_num_threads();
-	}
+// 	int numThreads = 1;
+// #pragma omp parallel
+// 	{
+// 		numThreads = omp_get_num_threads();
+// 	}
 
 	IT* colnnzC = new IT[B.cols]; // nnz in every  column of C
 	
@@ -208,7 +208,7 @@ IT* estimateNNZ_Hash(const CSC<IT,NT>& A, const CSC<IT,NT>& B, const IT* flopC, 
 #pragma omp parallel for
 	for(IT i=0; i < B.cols; ++i)	// for each column of B
 	{
-		size_t nnzcolB = B.colptr[i+1] - B.colptr[i]; //nnz in the current column of B
+		// size_t nnzcolB = B.colptr[i+1] - B.colptr[i]; //nnz in the current column of B
 		int myThread = omp_get_thread_num();
 			
 		// Hash
@@ -228,38 +228,37 @@ IT* estimateNNZ_Hash(const CSC<IT,NT>& A, const CSC<IT,NT>& B, const IT* flopC, 
 			globalHashVec[j] = -1;
 		}
 			
-	for (IT j = B.colptr[i]; j < B.colptr[i+1]; ++j)	// all nonzeros in that column of B
-	{
-		IT col2fetch = B.rowids[j];	// find the row index of that nonzero in B, which is the column to fetch in A
-		for(IT k = A.colptr[col2fetch]; k < A.colptr[col2fetch+1]; ++k)	// all nonzeros in this column of A
+		for (IT j = B.colptr[i]; j < B.colptr[i+1]; ++j)	// all nonzeros in that column of B
 		{
-			IT key = A.rowids[k];
-
-			if(lowtriout && i >= key)	// i is the column_id of the output and key is the row_id of the output
-				continue;
-
-			IT hash = (key*hashScale) & (ht_size-1);
-			while (1) //hash probing
+			IT col2fetch = B.rowids[j];	// find the row index of that nonzero in B, which is the column to fetch in A
+			for(IT k = A.colptr[col2fetch]; k < A.colptr[col2fetch+1]; ++k)	// all nonzeros in this column of A
 			{
-				if (globalHashVec[hash] == key) //key is found in hash table
+				IT key = A.rowids[k];
+
+				if(lowtriout && i >= key)	// i is the column_id of the output and key is the row_id of the output
+					continue;
+
+				IT hash = (key*hashScale) & (ht_size-1);
+				while (1) //hash probing
 				{
-					break;
-				}
-				else if (globalHashVec[hash] == -1) //key is not registered yet
-				{
-					globalHashVec[hash] = key;
-					colnnzC[i] ++;
-					break;
-				}
-				else //key is not found
-				{
-					hash = (hash+1) & (ht_size-1);	// don't exit the while loop yet
+					if (globalHashVec[hash] == key) //key is found in hash table
+					{
+						break;
+					}
+					else if (globalHashVec[hash] == -1) //key is not registered yet
+					{
+						globalHashVec[hash] = key;
+						colnnzC[i] ++;
+						break;
+					}
+					else //key is not found
+					{
+						hash = (hash+1) & (ht_size-1);	// don't exit the while loop yet
+					}
 				}
 			}
 		}
 	}
-	}
-	
 	return colnnzC;
 }
 

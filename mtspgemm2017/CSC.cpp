@@ -358,7 +358,7 @@ CSC<IT,NT>::CSC(vector<tuple<IT,IT,NT>> & tuple, IT m, IT n, AddOperation addop)
 	{
 		colptr[cols] = CumulativeSum (work, cols);		// cumulative sum of work 
 		copy(work, work+cols, colptr);
-		IT last;
+	
 		for (IT k = 0 ; k < nnz; ++k)
 		{
 			tosort[work[get<1>(tuple[k])]++] = make_pair(get<0>(tuple[k]), get<2>(tuple[k]));
