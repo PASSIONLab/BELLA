@@ -111,11 +111,8 @@ seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rle
 	return longestExtensionScore;
 }
 //	GG: GPU alignment call
-void alignLogan(vector<string> &target,
-				vector<string> &query,
-				vector<SeedL> &seeds,
-				BELLApars& b_pars, 
-				vector<loganResult> &longestExtensionScore)
+void alignLogan(vector<string>&	target, vector<string>&	query, vector<SeedL>& seeds, 
+	const BELLApars& b_pars, vector<loganResult>& longestExtensionScore)
 {
 
 	ScoringSchemeL sscheme(1,-1,-1,-1);
