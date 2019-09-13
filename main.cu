@@ -494,7 +494,8 @@ int main (int argc, char *argv[]) {
 	spmatPtr_ getvaluetype(make_shared<spmatType_>());
 	HashSpGEMMGPU(spmat, transpmat, 
 		// n-th k-mer positions on read i and on read j
-		[&b_parameters, &reads] (const unsigned short int& begpH, const unsigned short int& begpV, const unsigned int& id1, const unsigned int& id2)
+        [&b_parameters, &reads] (const unsigned short int& begpH, const unsigned short int& begpV, 
+            const unsigned int& id1, const unsigned int& id2)
 		{
 			spmatPtr_ value(make_shared<spmatType_>());
 
@@ -505,7 +506,8 @@ int main (int argc, char *argv[]) {
 			multiop(value, read1, read2, begpH, begpV, b_parameters.kmerSize);
 			return value;
 		},
-		[&b_parameters, &reads] (spmatPtr_& m1, spmatPtr_& m2, const unsigned int& id1, const unsigned int& id2)
+        [&b_parameters, &reads] (spmatPtr_& m1, spmatPtr_& m2, const unsigned int& id1, 
+            const unsigned int& id2)
 		{
 			// GG: after testing correctness, these variables can be removed
 			std::string& readname1 = reads[id1].nametag;
@@ -515,7 +517,7 @@ int main (int argc, char *argv[]) {
 			chainop(m1, m2, b_parameters, readname1, readname2);
 			return m1;
 		},
-		reads, getvaluetype, out_file, b_parameters, ratiophi);
+        reads, getvaluetype, out_file, b_parameters, ratiophi);
 
 	std::cout << "Total running time:	" << omp_get_wtime()-all << "s\n" << std::endl;
 	return 0;
