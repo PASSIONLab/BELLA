@@ -442,83 +442,66 @@ void PostAlignDecisionGPU(const loganResult & maxExtScore, const readType_ & rea
 					const BELLApars & b_pars, double ratiophi, int count, stringstream & myBatch, size_t & outputted,
 					size_t & numBasesAlignedTrue, size_t & numBasesAlignedFalse, bool & passed)
 {
-	SeedL maxseed = maxExtScore.seed;	// returns a seqan:Seed object
-
+	// returns a Logan::Seed object
+	SeedL maxseed = maxExtScore.seed;
+	
 	// {begin/end}Position{V/H}: Returns the begin/end position of the seed in the query (vertical/horizonral direction)
 	// these four return seqan:Tposition objects
-	size_t begpV = getBeginPositionV(maxseed);
-	size_t endpV = getEndPositionV(maxseed);	
-	size_t begpH = getBeginPositionH(maxseed);
-	size_t endpH = getEndPositionH(maxseed);
+	int begpV  	 = getBeginPositionV(maxseed);
+	int endpV 	 = getEndPositionV(maxseed);	
+	int begpH 	 = getBeginPositionH(maxseed);
+	int endpH 	 = getEndPositionH(maxseed);
 
 	// get references for better naming
-	const string& seq1 = read1.seq;
-	const string& seq2 = read2.seq;
-			
-	int read1len = seq1.length();
-	int read2len = seq2.length();
+	const string& seq1 = read1.seq;	// H
+	const string& seq2 = read2.seq;	// Vzw
 
-	int diffCol = endpV - begpV;
-	int diffRow = endpH - begpH;
-	int minLeft = min(begpV, begpH);
-	int minRight = min(read2len - endpV, read1len - endpH);
-	int ov = minLeft+minRight+(diffCol+diffRow)/2;
+	unsigned short int read1len = seq1.length();
+	unsigned short int read2len = seq2.length();
+
+	//	GG: divergence estimation
+	unsigned short int overlapLenV = endpV - begpV;
+	unsigned short int overlapLenH = endpH - begpH;
+
+	unsigned short int minLeft  = min(begpV, begpH);
+	unsigned short int minRight = min(read2len - endpV, read1len - endpH);
+	unsigned short int ov       = minLeft + minRight + (overlapLenV + overlapLenH) / 2;
+
+	unsigned short int normLen  = max(overlapLenV, overlapLenH);
+	unsigned short int minLen   = min(overlapLenV, overlapLenH);
 
 	if(b_pars.adapThr)
 	{
-		double newThr = (1-b_pars.deltaChernoff)*(ratiophi*(double)ov);
-
-		if((double)maxExtScore.score > newThr)
-		{
-			if(b_pars.alignEnd)
-			{
-				if(toEnd(begpV, endpV, read2len, begpH, endpH, read1len, b_pars.relaxMargin))
-					passed = true;
-			}
-			else 
-			{
-				passed = true;
-			}
-		}
-	}
-	else if(maxExtScore.score > b_pars.defaultThr)
-	{
-		if(b_pars.alignEnd)
-		{
-			if(toEnd(begpV, endpV, read2len, begpH, endpH, read1len, b_pars.relaxMargin))
-				passed = true;
-		}
-		else 
+		float mythreshold = (1 - b_pars.deltaChernoff) * (ratiophi * (float)ov);
+		if((float)maxExtScore.score > mythreshold)
 		{
 			passed = true;
 		}
 	}
+	else if(maxExtScore.score > b_pars.defaultThr)
+	{
+		passed = true;
+	}
 
 	if(passed)
 	{
-		if(!b_pars.outputPaf)  // BELLA output format
+		if(!b_pars.outputPaf)		// BELLA output format
 		{
 			myBatch << read2.nametag << '\t' << read1.nametag << '\t' << count << '\t' << maxExtScore.score << '\t' << ov << '\t' << maxExtScore.strand << '\t' << 
 				begpV << '\t' << endpV << '\t' << read2len << '\t' << begpH << '\t' << endpH << '\t' << read1len << endl;
 		}
-		else	// PAF format is the output format used by minimap/minimap2: https://github.com/lh3/miniasm/blob/master/PAF.md
+		else
 		{
-			/* field adjustment to match the PAF format */
-			toPAF(begpV, endpV, read2len, begpH, endpH, read1len, maxExtScore.strand);
-			/* re-compute overlap estimation with extended alignment to the edges */
-			diffCol = endpV - begpV;
-			diffRow = endpH - begpH;
-			minLeft = min(begpV, begpH);
-			minRight = min(read2len - endpV, read1len - endpH);
-			ov = minLeft+minRight+(diffCol+diffRow)/2;
+			std::string pafstrand;	// maxExtScore not modifiable
+			unsigned short int mapq = 255;			// mapping quality (0-255; 255 for missing)
 
-			string pafstrand;       // maxExtScore not modifiable   
-			int mapq = 255;         // mapping quality (0-255; 255 for missing)         
-			if(maxExtScore.strand == "n") pafstrand = "+";  
+			if(maxExtScore.strand == "n") pafstrand = "+";
 			else pafstrand = "-";
 
-			// If PAF is generated from an alignment, column 10 equals the number of sequence matches, 
-			// and column 11 equals the total number of sequence matches, mismatches, insertions and deletions in the alignment     
+			if(pafstrand == "-")
+				toOriginalCoordinates(begpH, endpH, read1len);
+
+			// PAF format is the output format used by minimap/minimap2: https://github.com/lh3/miniasm/blob/master/PAF.md
 			myBatch << read2.nametag << '\t' << read2len << '\t' << begpV << '\t' << endpV << '\t' << pafstrand << '\t' << 
 				read1.nametag << '\t' << read1len << '\t' << begpH << '\t' << endpH << '\t' << maxExtScore.score << '\t' << ov << '\t' << mapq << endl;
 		}
