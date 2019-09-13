@@ -81,22 +81,6 @@ double safety_net = 1.5;
 	in = [2, 1, 3, 5]
 	out = [0, 2, 3, 6, 11]
  */
-char complement (char n)
-{   
-	switch(n)
-	{   
-	case 'A':
-		return 'T';
-	case 'T':
-		return 'A';
-	case 'G':
-		return 'C';
-	case 'C':
-		return 'G';
-	}   
-	assert(false);
-	return ' ';
-}
 
 template <typename T>
 T* prefixsum(T* in, int size, int nthreads)
@@ -943,21 +927,20 @@ auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * ro
 				std::string& seedH = seq1.substr(getBeginPositionH(seed), b_pars.kmerSize);
 				std::string& seedV = seq2.substr(getBeginPositionV(seed), b_pars.kmerSize);
 
-				std::reverse(std::begin(seedH), std::end(seedH));
-				std::transform(std::begin(seedH), std::end(seedH), std::begin(seedH), complement);
-
+				std::string seedHcpy = reversecomplement(seedH);
 				std::string cpyseq1(seq1);
-				if(seedH == seedV)
+
+				if(seedHcpy == seedV)
 				{
 					strand  = "c";
 
 					std::reverse(std::begin(cpyseq1), std::end(cpyseq1));
-					std::transform(std::begin(cpyseq1), std::end(cpyseq1), std::begin(cpyseq1), complement);
+					std::transform(std::begin(cpyseq1), std::end(cpyseq1), std::begin(cpyseq1), complementbase);
 
-					setBeginPositionH(seed, rlen - i - b_pars.kmerSize);
+					setBeginPositionH(seed, seq1len - i - b_pars.kmerSize);
 					setBeginPositionV(seed, j);
 
-					setEndPositionH(seed, rlen - i);
+					setEndPositionH(seed, seq1len - i);
 					setEndPositionV(seed, j + b_pars.kmerSize);
 				}
 
