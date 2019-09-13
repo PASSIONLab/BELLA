@@ -925,8 +925,8 @@ auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * ro
 				std::string strand = "n";
 				SeedL seed(i, j, i + b_pars.kmerSize, j + b_pars.kmerSize);
 
-				std::string& seedH = seq1.substr(getBeginPositionH(seed), b_pars.kmerSize);
-				std::string& seedV = seq2.substr(getBeginPositionV(seed), b_pars.kmerSize);
+				std::string seedH = seq1.substr(getBeginPositionH(seed), b_pars.kmerSize);
+				std::string seedV = seq2.substr(getBeginPositionV(seed), b_pars.kmerSize);
 
 				std::string seedHcpy = reversecomplement(seedH);
 				std::string cpyseq1(seq1);
