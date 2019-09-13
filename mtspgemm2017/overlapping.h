@@ -864,199 +864,199 @@ void HashSpGEMM(const CSC<IT,NT>& A, const CSC<IT,NT>& B, MultiplyOperation mult
 }
 // (unsigned int, unsigned int, unsigned int, unsigned int *, unsigned int *, spmatPtr_ *,  
 // 		const readVector_, const BELLApars, char *, double)
-template <typename IT, typename FT>
-auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * rowids, FT * values, const readVector_& reads, 
-	const BELLApars& b_pars, char* filename, double ratiophi)
-{
-	size_t alignedpairs = 0;
-	size_t alignedbases = 0;
-	size_t totalreadlen = 0;
-	size_t totaloutputt = 0;
-	size_t totsuccbases = 0;
-	size_t totfailbases = 0;
+// template <typename IT, typename FT>
+// auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * rowids, FT * values, const readVector_& reads, 
+// 	const BELLApars& b_pars, char* filename, double ratiophi)
+// {
+// 	size_t alignedpairs = 0;
+// 	size_t alignedbases = 0;
+// 	size_t totalreadlen = 0;
+// 	size_t totaloutputt = 0;
+// 	size_t totsuccbases = 0;
+// 	size_t totfailbases = 0;
 	
-	int numThreads = 1;
-#pragma omp parallel
-	{
-		numThreads = omp_get_num_threads();
-	}
+// 	int numThreads = 1;
+// #pragma omp parallel
+// 	{
+// 		numThreads = omp_get_num_threads();
+// 	}
 
-	vector<stringstream> vss(numThreads); // any chance of false sharing here? depends on how stringstream is implemented. optimize later if needed...
+// 	vector<stringstream> vss(numThreads); // any chance of false sharing here? depends on how stringstream is implemented. optimize later if needed...
 
-	vector<string> seq1s;
-	vector<string> seq2s;
-	vector<SeedL>  seeds;
-	vector<loganResult> maxExtScoreL;
+// 	vector<string> seq1s;
+// 	vector<string> seq2s;
+// 	vector<SeedL>  seeds;
+// 	vector<loganResult> maxExtScoreL;
 
-	size_t outputted = 0;
+// 	size_t outputted = 0;
 
-	//#pragma omp parallel for schedule(dynamic)	//	keep the order for the post evaluation code
-	for(IT j = start; j < end; ++j)					//	acculate sequences for GPU batch alignment
-	{
-		for (IT i = colptrC[j]; i < colptrC[j+1]; ++i)
-		{
-			int ithread = omp_get_thread_num();		// GG: this is useless hence remove and rewrite outputting task accordingly
-			unsigned int rid = rowids[i-offset];	// row id
-			unsigned int cid = j;					// column id
+// 	//#pragma omp parallel for schedule(dynamic)	//	keep the order for the post evaluation code
+// 	for(IT j = start; j < end; ++j)					//	acculate sequences for GPU batch alignment
+// 	{
+// 		for (IT i = colptrC[j]; i < colptrC[j+1]; ++i)
+// 		{
+// 			int ithread = omp_get_thread_num();		// GG: this is useless hence remove and rewrite outputting task accordingly
+// 			unsigned int rid = rowids[i-offset];	// row id
+// 			unsigned int cid = j;					// column id
 
-			const string& seq1 = reads[rid].seq;	// get reference for readibility
-			const string& seq2 = reads[cid].seq;	// get reference for readibility
+// 			const string& seq1 = reads[rid].seq;	// get reference for readibility
+// 			const string& seq2 = reads[cid].seq;	// get reference for readibility
 
-			unsigned short int seq1len = seq1.length();
-			unsigned short int seq2len = seq2.length();
+// 			unsigned short int seq1len = seq1.length();
+// 			unsigned short int seq2len = seq2.length();
 
-			spmatPtr_ val = values[i-offset];
+// 			spmatPtr_ val = values[i-offset];
 
-			if(!b_pars.skipAlignment) // fix -z to not print 
-			{
-				loganResult localRes;
+// 			if(!b_pars.skipAlignment) // fix -z to not print 
+// 			{
+// 				loganResult localRes;
 
-				//	GG: number of matching kmer into the majority voted bin
-				unsigned short int matches = val->chain();
-				unsigned short int minkmer = 1;
+// 				//	GG: number of matching kmer into the majority voted bin
+// 				unsigned short int matches = val->chain();
+// 				unsigned short int minkmer = 1;
 
-				//	GG: b_pars.minSurvivedKmers should be function of Markov chain
-				if (matches < minkmer)
-					continue;
+// 				//	GG: b_pars.minSurvivedKmers should be function of Markov chain
+// 				if (matches < minkmer)
+// 					continue;
 
-				pair<int, int> kmer = val->choose();
-				int i = kmer.first, j = kmer.second;
+// 				pair<int, int> kmer = val->choose();
+// 				int i = kmer.first, j = kmer.second;
 
-				std::string strand = "n";
-				SeedL seed(i, j, i + b_pars.kmerSize, j + b_pars.kmerSize);
+// 				std::string strand = "n";
+// 				SeedL seed(i, j, i + b_pars.kmerSize, j + b_pars.kmerSize);
 
-				std::string seedH = seq1.substr(getBeginPositionH(seed), b_pars.kmerSize);
-				std::string seedV = seq2.substr(getBeginPositionV(seed), b_pars.kmerSize);
+// 				std::string seedH = seq1.substr(getBeginPositionH(seed), b_pars.kmerSize);
+// 				std::string seedV = seq2.substr(getBeginPositionV(seed), b_pars.kmerSize);
 
-				std::string seedHcpy = reversecomplement(seedH);
-				std::string cpyseq1(seq1);
+// 				std::string seedHcpy = reversecomplement(seedH);
+// 				std::string cpyseq1(seq1);
 
-				if(seedHcpy == seedV)
-				{
-					strand  = "c";
+// 				if(seedHcpy == seedV)
+// 				{
+// 					strand  = "c";
 
-					std::reverse(std::begin(cpyseq1), std::end(cpyseq1));
-					std::transform(std::begin(cpyseq1), std::end(cpyseq1), std::begin(cpyseq1), complementbase);
+// 					std::reverse(std::begin(cpyseq1), std::end(cpyseq1));
+// 					std::transform(std::begin(cpyseq1), std::end(cpyseq1), std::begin(cpyseq1), complementbase);
 
-					setBeginPositionH(seed, seq1len - i - b_pars.kmerSize);
-					setBeginPositionV(seed, j);
+// 					setBeginPositionH(seed, seq1len - i - b_pars.kmerSize);
+// 					setBeginPositionV(seed, j);
 
-					setEndPositionH(seed, seq1len - i);
-					setEndPositionV(seed, j + b_pars.kmerSize);
-				}
+// 					setEndPositionH(seed, seq1len - i);
+// 					setEndPositionV(seed, j + b_pars.kmerSize);
+// 				}
 
-				localRes.strand = strand;
+// 				localRes.strand = strand;
 
-				seeds.push_back(seed);
-				seq2s.push_back(seq2);
-				seq1s.push_back(cpyseq1);
-				maxExtScoreL.push_back(localRes);
-			}
-			else // if skipAlignment == false do alignment, else save just some info on the pair to file
-			{
-				vss[ithread] << reads[cid].nametag << '\t' << reads[rid].nametag << '\t' << val->count << '\t' << 
-						seq2len << '\t' << seq1len << endl;
-				++outputted;
-			}
-		}
-	}
+// 				seeds.push_back(seed);
+// 				seq2s.push_back(seq2);
+// 				seq1s.push_back(cpyseq1);
+// 				maxExtScoreL.push_back(localRes);
+// 			}
+// 			else // if skipAlignment == false do alignment, else save just some info on the pair to file
+// 			{
+// 				vss[ithread] << reads[cid].nametag << '\t' << reads[rid].nametag << '\t' << val->count << '\t' << 
+// 						seq2len << '\t' << seq1len << endl;
+// 				++outputted;
+// 			}
+// 		}
+// 	}
 
-	if(!b_pars.skipAlignment) // fix -z to not print 
-	{
-		std::cout << "GPU Alignment Started" << std::endl;
-		alignLogan(seq1s, seq2s, seeds, b_pars, maxExtScoreL);
-		std::cout << "GPU Alignment Completed" << std::endl;
+// 	if(!b_pars.skipAlignment) // fix -z to not print 
+// 	{
+// 		std::cout << "GPU Alignment Started" << std::endl;
+// 		alignLogan(seq1s, seq2s, seeds, b_pars, maxExtScoreL);
+// 		std::cout << "GPU Alignment Completed" << std::endl;
 
-		unsigned int idx = 0;
-		//	no parallelism to keep same order of pairs in alignment
-		for(IT j = start; j < end; ++j) // for (end-start) columns of A^T A (one block)
-		{
-			size_t numAlignmentsThread   = 0;
-			size_t numBasesAlignedThread = 0;
-			size_t readLengthsThread     = 0;
-			size_t numBasesAlignedTrue   = 0;
-			size_t numBasesAlignedFalse  = 0;
+// 		unsigned int idx = 0;
+// 		//	no parallelism to keep same order of pairs in alignment
+// 		for(IT j = start; j < end; ++j) // for (end-start) columns of A^T A (one block)
+// 		{
+// 			size_t numAlignmentsThread   = 0;
+// 			size_t numBasesAlignedThread = 0;
+// 			size_t readLengthsThread     = 0;
+// 			size_t numBasesAlignedTrue   = 0;
+// 			size_t numBasesAlignedFalse  = 0;
 
-			//	size_t outputted = 0;	//	moved up
-			int ithread = omp_get_thread_num();
+// 			//	size_t outputted = 0;	//	moved up
+// 			int ithread = omp_get_thread_num();
 
-			for (IT i = colptrC[j]; i < colptrC[j+1]; ++i)	// all nonzeros in that column of A^T A
-			{
-				unsigned int rid = rowids[i-offset];		// row id
-				unsigned int cid = j;						// column id
+// 			for (IT i = colptrC[j]; i < colptrC[j+1]; ++i)	// all nonzeros in that column of A^T A
+// 			{
+// 				unsigned int rid = rowids[i-offset];		// row id
+// 				unsigned int cid = j;						// column id
 
-				const string& seq1 = reads[rid].seq;		// get reference for readibility
-				const string& seq2 = reads[cid].seq;		// get reference for readibility
+// 				const string& seq1 = reads[rid].seq;		// get reference for readibility
+// 				const string& seq2 = reads[cid].seq;		// get reference for readibility
 
-				unsigned short int seq1len = seq1.length();
-				unsigned short int seq2len = seq2.length();
+// 				unsigned short int seq1len = seq1.length();
+// 				unsigned short int seq2len = seq2.length();
 
-				spmatPtr_ val = values[i-offset];
+// 				spmatPtr_ val = values[i-offset];
 
-#ifdef TIMESTEP
-				numAlignmentsThread++;
-				readLengthsThread = readLengthsThread + seq1len + seq2len;
-#endif
-				bool passed = false;
-				loganResult maxExtScore = maxExtScoreL[idx];
+// #ifdef TIMESTEP
+// 				numAlignmentsThread++;
+// 				readLengthsThread = readLengthsThread + seq1len + seq2len;
+// #endif
+// 				bool passed = false;
+// 				loganResult maxExtScore = maxExtScoreL[idx];
 
-				PostAlignDecisionGPU(maxExtScore, reads[rid], reads[cid], b_pars, ratiophi, val->count, 
-					vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
-				idx++;
-#ifdef TIMESTEP
-				numBasesAlignedThread += getEndPositionV(maxExtScore.seed) - getBeginPositionV(maxExtScore.seed);
-#endif
-			}	// all nonzeros in that column of A^T A
-#ifdef TIMESTEP
-			alignedpairs += numAlignmentsThread;
-			alignedbases += numBasesAlignedThread;
-			totalreadlen += readLengthsThread;
-			totaloutputt += outputted;
-			totsuccbases += numBasesAlignedTrue;
-			totfailbases += numBasesAlignedFalse;
-#endif
-		}	// all columns from start...end (omp for loop)
-	}
+// 				PostAlignDecisionGPU(maxExtScore, reads[rid], reads[cid], b_pars, ratiophi, val->count, 
+// 					vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
+// 				idx++;
+// #ifdef TIMESTEP
+// 				numBasesAlignedThread += getEndPositionV(maxExtScore.seed) - getBeginPositionV(maxExtScore.seed);
+// #endif
+// 			}	// all nonzeros in that column of A^T A
+// #ifdef TIMESTEP
+// 			alignedpairs += numAlignmentsThread;
+// 			alignedbases += numBasesAlignedThread;
+// 			totalreadlen += readLengthsThread;
+// 			totaloutputt += outputted;
+// 			totsuccbases += numBasesAlignedTrue;
+// 			totfailbases += numBasesAlignedFalse;
+// #endif
+// 		}	// all columns from start...end (omp for loop)
+// 	}
 
-	double outputting = omp_get_wtime();
+// 	double outputting = omp_get_wtime();
 
-	int64_t * bytes = new int64_t[numThreads];
-	for(int i=0; i < numThreads; ++i)
-	{
-		vss[i].seekg(0, ios::end);
-		bytes[i] = vss[i].tellg();
-		vss[i].seekg(0, ios::beg);
-	}
-	int64_t bytestotal = std::accumulate(bytes, bytes+numThreads, static_cast<int64_t>(0));
+// 	int64_t * bytes = new int64_t[numThreads];
+// 	for(int i=0; i < numThreads; ++i)
+// 	{
+// 		vss[i].seekg(0, ios::end);
+// 		bytes[i] = vss[i].tellg();
+// 		vss[i].seekg(0, ios::beg);
+// 	}
+// 	int64_t bytestotal = std::accumulate(bytes, bytes+numThreads, static_cast<int64_t>(0));
 
-	std::ofstream ofs(filename, std::ios::binary | std::ios::app);
-#ifdef PRINT
-	cout << "Creating or appending to output file with " << (double)bytestotal/(double)(1024 * 1024) << " MB" << endl;
-#endif
-	ofs.seekp(bytestotal - 1);
-	ofs.write("", 1); // this will likely create a sparse file so the actual disks won't spin yet
-	ofs.close();
+// 	std::ofstream ofs(filename, std::ios::binary | std::ios::app);
+// #ifdef PRINT
+// 	cout << "Creating or appending to output file with " << (double)bytestotal/(double)(1024 * 1024) << " MB" << endl;
+// #endif
+// 	ofs.seekp(bytestotal - 1);
+// 	ofs.write("", 1); // this will likely create a sparse file so the actual disks won't spin yet
+// 	ofs.close();
 
-	#pragma omp parallel
-	{
-		int ithread = omp_get_thread_num();	
+// 	#pragma omp parallel
+// 	{
+// 		int ithread = omp_get_thread_num();	
 
-		FILE *ffinal;
-		if ((ffinal = fopen(filename, "rb+")) == NULL)	// then everyone fills it
-		{
-			fprintf(stderr, "File %s failed to open at thread %d\n", filename, ithread);
-		}
-		int64_t bytesuntil = std::accumulate(bytes, bytes+ithread, static_cast<int64_t>(0));
-		fseek (ffinal , bytesuntil , SEEK_SET );
-		std::string text = vss[ithread].str();
-		fwrite(text.c_str(),1, bytes[ithread] ,ffinal);
-		fflush(ffinal);
-		fclose(ffinal);
-	}
-	delete [] bytes;
-	double timeoutputt = omp_get_wtime()-outputting;
-	return make_tuple(alignedpairs, alignedbases, totalreadlen, totaloutputt, totsuccbases, totfailbases, timeoutputt);
-}
+// 		FILE *ffinal;
+// 		if ((ffinal = fopen(filename, "rb+")) == NULL)	// then everyone fills it
+// 		{
+// 			fprintf(stderr, "File %s failed to open at thread %d\n", filename, ithread);
+// 		}
+// 		int64_t bytesuntil = std::accumulate(bytes, bytes+ithread, static_cast<int64_t>(0));
+// 		fseek (ffinal , bytesuntil , SEEK_SET );
+// 		std::string text = vss[ithread].str();
+// 		fwrite(text.c_str(),1, bytes[ithread] ,ffinal);
+// 		fflush(ffinal);
+// 		fclose(ffinal);
+// 	}
+// 	delete [] bytes;
+// 	double timeoutputt = omp_get_wtime()-outputting;
+// 	return make_tuple(alignedpairs, alignedbases, totalreadlen, totaloutputt, totsuccbases, totfailbases, timeoutputt);
+// }
 
 /**
   * Sparse multithreaded GEMM.
