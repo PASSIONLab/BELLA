@@ -1081,8 +1081,8 @@ auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * ro
   * Sparse multithreaded GEMM.
  **/
 template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation>
-void HashSpGEMM_GPU(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, const readVector_ & reads, 
-	FT & getvaluetype, int b_pars.kmerSize, int b_pars.xDrop, char* filename, const BELLApars & b_pars, double ratiophi, int b_pars.numGPU)
+void HashSpGEMMGPU(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, const readVector_ & reads, 
+	FT & getvaluetype, char* filename, const BELLApars & b_pars, double ratiophi)
 {
 	double free_memory = estimateMemory(b_pars);
 

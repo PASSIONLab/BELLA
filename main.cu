@@ -492,7 +492,7 @@ int main (int argc, char *argv[]) {
 	// Overlap detection (sparse matrix multiplication) and seed-and-extend alignment
 	//
 	spmatPtr_ getvaluetype(make_shared<spmatType_>());
-	HashSpGEMM(spmat, transpmat, 
+	HashSpGEMMGPU(spmat, transpmat, 
 		// n-th k-mer positions on read i and on read j
 		[&b_parameters, &reads] (const unsigned short int& begpH, const unsigned short int& begpV, const unsigned int& id1, const unsigned int& id2)
 		{
