@@ -895,6 +895,7 @@ auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * ro
 	{
 		for (IT i = colptrC[j]; i < colptrC[j+1]; ++i)
 		{
+			int ithread = omp_get_thread_num();		// GG: this is useless hence remove and rewrite outputting task accordingly
 			unsigned int rid = rowids[i-offset];	// row id
 			unsigned int cid = j;					// column id
 
@@ -944,7 +945,6 @@ auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * ro
 					setEndPositionV(seed, j + b_pars.kmerSize);
 				}
 
-				loganResult localRes;
 				localRes.strand = strand;
 
 				seeds.push_back(seed);
@@ -1007,24 +1007,21 @@ auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * ro
 				numBasesAlignedThread += getEndPositionV(maxExtScore.seed) - getBeginPositionV(maxExtScore.seed);
 #endif
 			}	// all nonzeros in that column of A^T A
-		}
 #ifdef TIMESTEP
-	//	#pragma omp critical
-	//	{
 			alignedpairs += numAlignmentsThread;
 			alignedbases += numBasesAlignedThread;
 			totalreadlen += readLengthsThread;
 			totaloutputt += outputted;
 			totsuccbases += numBasesAlignedTrue;
 			totfailbases += numBasesAlignedFalse;
-	//	}
 #endif
-	}	// all columns from start...end (omp for loop)
+		}	// all columns from start...end (omp for loop)
+	}
 
 	double outputting = omp_get_wtime();
 
 	int64_t * bytes = new int64_t[numThreads];
-	for(int i=0; i< numThreads; ++i)
+	for(int i=0; i < numThreads; ++i)
 	{
 		vss[i].seekg(0, ios::end);
 		bytes[i] = vss[i].tellg();
