@@ -313,7 +313,7 @@ int main (int argc, char *argv[]) {
 //	std::cout << "maxDivergence:	"	<< b_parameters.maxDivergence		<< std::endl;
 	std::cout << "useGerbil:	 "		<< b_parameters.useGerbil			<< std::endl;
 	std::cout << "enableGPU:	 "		<< b_parameters.enableGPU			<< std::endl;
-    std::cout << "numberGPU:	 "		<< b_parameters.numGPU			<< std::endl;
+    std::cout << "numberGPU:	 "		<< b_parameters.numGPU			    << std::endl;
 	std::cout << "outputPaf:	"		<< b_parameters.outputPaf			<< std::endl;
 	std::cout << "binSize:	"			<< b_parameters.binSize				<< std::endl;
 	std::cout << "deltaChernoff:	"	<< b_parameters.deltaChernoff		<< std::endl;
@@ -342,11 +342,11 @@ int main (int argc, char *argv[]) {
 	double all;
 	if(b_parameters.useGerbil)
 	{
-		// Reliable range computation within denovo counting
-		std::cout << "numThreads:	"				<< MAXTHREADS	<< "\n"		<< std::endl;
-		std::string tempDirName = "tempDir";
-		all = omp_get_wtime();
-		GerbilDeNovoCount(tempDirName, all_inputs_gerbil, countsreliable, lower, upper, coverage, upperlimit, b_parameters);
+		// // Reliable range computation within denovo counting
+		// std::cout << "numThreads:	"				<< MAXTHREADS	<< "\n"		<< std::endl;
+		// std::string tempDirName = "tempDir";
+		// all = omp_get_wtime();
+		// GerbilDeNovoCount(tempDirName, all_inputs_gerbil, countsreliable, lower, upper, coverage, upperlimit, b_parameters);
 	//	std::cout << "errorRate:	"				<< b_parameters.errorRate	<< std::endl;	//	GG: printed in Gerbil
 	//	std::cout << "kmerFrequencyLowerBound:	"	<< lower					<< std::endl;
 	//	std::cout << "kmerFrequencyUpperBound:	"	<< upper					<< std::endl;

@@ -34,7 +34,7 @@
 
 #include "libcuckoo/cuckoohash_map.hh"
 #include "libbloom/bloom64.h"
-#include "gerbil/include/gerbil/Application.h"
+// #include "gerbil/include/gerbil/Application.h"
 
 #include "kmercode/hash_funcs.h"
 #include "kmercode/Kmer.hpp"
@@ -152,38 +152,38 @@ void JellyFishCount(char *kmer_file, dictionary_t_32bit& countsreliable_jelly, i
 	countsjelly.clear(); // free 
 }
 
-void GerbilDeNovoCount(std::string& tempDir, std::string& fileName, dictionary_t_32bit& countsreliable_denovo, int& lower, int& upper, 
-				 int& coverage, size_t upperlimit, BELLApars& b_pars)
-{
-	gerbil::Application application(b_pars.minProbability, b_pars.errorRate,b_pars.enableGPU, coverage, b_pars.kmerSize, fileName, tempDir, 1, "outputTRY", b_pars.skipEstimate);
-		application.process();
+// void GerbilDeNovoCount(std::string& tempDir, std::string& fileName, dictionary_t_32bit& countsreliable_denovo, int& lower, int& upper, 
+// 				 int& coverage, size_t upperlimit, BELLApars& b_pars)
+// {
+// 	gerbil::Application application(b_pars.minProbability, b_pars.errorRate,b_pars.enableGPU, coverage, b_pars.kmerSize, fileName, tempDir, 1, "outputTRY", b_pars.skipEstimate);
+// 		application.process();
 
-	vector<pair<string,unsigned int>> *listKmer;
-	listKmer = application.getListKmer();
+// 	vector<pair<string,unsigned int>> *listKmer;
+// 	listKmer = application.getListKmer();
 
-	// Reliable kmer filter on countsdenovo
-	int kmer_id_denovo = 0;
+// 	// Reliable kmer filter on countsdenovo
+// 	int kmer_id_denovo = 0;
 
-	int listLength = (*listKmer).size();
-	for(int i = 0; i<listLength; i++) 
-	{	// Reliable count within Gerbil
-		Kmer mykmer(get<0>((*listKmer)[i]).c_str(), get<0>((*listKmer)[i]).length());
-		countsreliable_denovo.insert(mykmer, kmer_id_denovo);
-		++kmer_id_denovo;
-	}
-	delete listKmer;
+// 	int listLength = (*listKmer).size();
+// 	for(int i = 0; i<listLength; i++) 
+// 	{	// Reliable count within Gerbil
+// 		Kmer mykmer(get<0>((*listKmer)[i]).c_str(), get<0>((*listKmer)[i]).length());
+// 		countsreliable_denovo.insert(mykmer, kmer_id_denovo);
+// 		++kmer_id_denovo;
+// 	}
+// 	delete listKmer;
 	
-	// Print some information about the table
-	if(countsreliable_denovo.size() == 0)
-	{
-		cout << "BELLA terminated: 0 entries within reliable range (reduce k-mer length)\n" << endl;
-		exit(0);
-	}
-	else
-	{
-		cout << "Entries within reliable range:	" << countsreliable_denovo.size() << endl;
-	}
-}
+// 	// Print some information about the table
+// 	if(countsreliable_denovo.size() == 0)
+// 	{
+// 		cout << "BELLA terminated: 0 entries within reliable range (reduce k-mer length)\n" << endl;
+// 		exit(0);
+// 	}
+// 	else
+// 	{
+// 		cout << "Entries within reliable range:	" << countsreliable_denovo.size() << endl;
+// 	}
+// }
 /**
  * @brief DeNovoCount
  * @param allfiles
