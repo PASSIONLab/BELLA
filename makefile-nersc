@@ -9,7 +9,7 @@ LIBPATH = -L/opt/intel/composer_xe_2015.0.039/mkl/lib
 
 COMPILER = g++
 COMPILER_GPU = nvcc
-CUDAFLAGS = -arch=sm_70 -O3 -maxrregcount=32 -std=c++14 -Xcompiler -fopenmp -w -O3
+CUDAFLAGS = -arch=sm_70 -O3 -maxrregcount=32 -std=c++14 -Xcompiler -fopenmp -w 
 CC = gcc
 CFLAGS =-std=c++11 -fpermissive -w -O3 -I. -c #-I. -std=c++14 -O3 -W -Wall -Wextra -pedantic -ansi -c -fpermissive
 
