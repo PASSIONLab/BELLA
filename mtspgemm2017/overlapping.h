@@ -422,9 +422,9 @@ reversecomplement(const std::string& seq) {
 }
 
 
-void PostAlignDecisionGPU(const loganResult & maxExtScore, const readType_ & read1, const readType_ & read2, 
-					const BELLApars & b_pars, double ratiophi, int count, stringstream & myBatch, size_t & outputted,
-					size_t & numBasesAlignedTrue, size_t & numBasesAlignedFalse, bool & passed)
+void PostAlignDecisionGPU(const loganResult& maxExtScore, const readType_& read1, const readType_& read2, 
+					const BELLApars& b_pars, double ratiophi, int count, stringstream& myBatch, size_t& outputted,
+					size_t& numBasesAlignedTrue, size_t& numBasesAlignedFalse, bool& passed)
 {
 	// returns a Logan::Seed object
 	SeedL maxseed = maxExtScore.seed;
@@ -613,7 +613,7 @@ void PostAlignDecision(const seqAnResult& maxExtScore, const readType_& read1, c
 
 template <typename IT, typename FT>
 auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowids, FT * values, const readVector_ & reads, 
-		char* filename, const BELLApars & b_pars, const double& ratiophi)
+		char* filename, const BELLApars& b_pars, const double& ratiophi)
 {
 	size_t alignedpairs = 0;
 	size_t alignedbases = 0;
@@ -866,7 +866,7 @@ void HashSpGEMM(const CSC<IT,NT>& A, const CSC<IT,NT>& B, MultiplyOperation mult
 // 		const readVector_, const BELLApars, char *, double)
 template <typename IT, typename FT>
 auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * rowids, FT * values, const readVector_& reads, 
-	const BELLApars & b_pars, char* filename, double ratiophi)
+	const BELLApars& b_pars, char* filename, double ratiophi)
 {
 	size_t alignedpairs = 0;
 	size_t alignedbases = 0;

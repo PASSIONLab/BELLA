@@ -313,7 +313,7 @@ int main (int argc, char *argv[]) {
 //	std::cout << "maxDivergence:	"	<< b_parameters.maxDivergence		<< std::endl;
 	std::cout << "useGerbil:	 "		<< b_parameters.useGerbil			<< std::endl;
 	std::cout << "enableGPU:	 "		<< b_parameters.enableGPU			<< std::endl;
-  std::cout << "numberGPU:	 "		<< b_parameters.numGPU			<< std::endl;
+    std::cout << "numberGPU:	 "		<< b_parameters.numGPU			<< std::endl;
 	std::cout << "outputPaf:	"		<< b_parameters.outputPaf			<< std::endl;
 	std::cout << "binSize:	"			<< b_parameters.binSize				<< std::endl;
 	std::cout << "deltaChernoff:	"	<< b_parameters.deltaChernoff		<< std::endl;

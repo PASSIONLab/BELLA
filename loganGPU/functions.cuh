@@ -417,7 +417,7 @@ inline void extendSeedL(vector<SeedL> &seeds,
 			int const& kmer_length,
 			int *res,
 			int numAlignments,
-			int ngpus
+			int const& ngpus
 			)
 {
 
