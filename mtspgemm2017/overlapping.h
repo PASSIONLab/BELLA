@@ -1141,7 +1141,7 @@ void HashSpGEMMGPU(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation
 	for(int b = 0; b < stages; ++b) 
 	{
 #ifdef TIMESTEP
-		double ovl = omp_get_wtime();
+		double alnlenl = omp_get_wtime();
 #endif
 		vector<IT> * RowIdsofC = new vector<IT>[colStart[b+1]-colStart[b]];    // row ids for each column of C (bunch of cols)
 		vector<FT> * ValuesofC = new vector<FT>[colStart[b+1]-colStart[b]];    // values for each column of C (bunch of cols)
