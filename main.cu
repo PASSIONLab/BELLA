@@ -30,7 +30,7 @@
 #include "libcuckoo/cuckoohash_map.hh"
 #include "kmercount.h"
 #include "chain.h"
-#include "markov.h"
+//#include "markov.h"
 
 #include "kmercode/hash_funcs.h"
 #include "kmercode/Kmer.hpp"

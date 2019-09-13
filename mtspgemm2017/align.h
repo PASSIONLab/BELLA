@@ -78,7 +78,7 @@ seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rle
 	seqAnResult longestExtensionScore;
 
 
-	TSeed seed(i, j, i+b_pars.kmerSize, j + kmerSize);
+	TSeed seed(i, j, i + kmerSize, j + kmerSize);
 	seedH = infix(seqH, beginPositionH(seed), endPositionH(seed));
 	seedV = infix(seqV, beginPositionV(seed), endPositionV(seed));
 
@@ -89,7 +89,7 @@ seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rle
 	{
 		strand = 'c';
 		Dna5StringReverseComplement twinRead(seqH);
-		i = rlen-i-b_pars.kmerSize;
+		i = rlen - i - kmerSize;
 
 		setBeginPositionH(seed, i);
 		setBeginPositionV(seed, j);

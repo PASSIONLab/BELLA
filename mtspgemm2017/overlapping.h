@@ -444,7 +444,7 @@ void PostAlignDecisionGPU(const loganResult & maxExtScore, const readType_ & rea
 {
 	// returns a Logan::Seed object
 	SeedL maxseed = maxExtScore.seed;
-	
+
 	// {begin/end}Position{V/H}: Returns the begin/end position of the seed in the query (vertical/horizonral direction)
 	// these four return seqan:Tposition objects
 	int begpV  	 = getBeginPositionV(maxseed);
