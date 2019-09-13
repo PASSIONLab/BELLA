@@ -612,8 +612,8 @@ void PostAlignDecision(const seqAnResult& maxExtScore, const readType_& read1, c
 }
 
 template <typename IT, typename FT>
-auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowids, FT * values, const readVector_ & reads, 
-		char* filename, const BELLApars& b_pars, const double& ratiophi)
+auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowids, FT * values, const readVector_& reads, 
+	char* filename, const BELLApars& b_pars, const double& ratiophi)
 {
 	size_t alignedpairs = 0;
 	size_t alignedbases = 0;
@@ -664,18 +664,18 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 				seqAnResult maxExtScore;
 				bool passed = false;
 
-				//	GG: number of matching kmer into the majority voted bin
+					GG: number of matching kmer into the majority voted bin
 				unsigned short int matches = val->chain();
 				unsigned short int minkmer = 1;
 
-				//	GG: b_pars.minSurvivedKmers should be function of Markov chain
+					GG: b_pars.minSurvivedKmers should be function of Markov chain
 				if (matches < minkmer)
 					continue;
 
 				pair<int, int> kmer = val->choose();
 				int i = kmer.first, j = kmer.second;
 
-				//	GG: nucleotide alignment
+					GG: nucleotide alignment
 				maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, b_pars.xDrop, b_pars.kmerSize);
 				PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratiophi, val->count, vss[ithread], 
 					outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed, matches);
