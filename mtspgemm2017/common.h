@@ -31,6 +31,7 @@ struct BELLApars
 	unsigned short int		binSize;			// bin size chaining algorithm (b)
 	unsigned short int		defaultThr;			// default alignment score threshold (a), only matters when adapThr=false, GG: to be deprecated
 	unsigned short int		xDrop;				// seqAn xDrop value (7)
+	unsigned short int		numGPU;				// number GPUs available/to be used (l)
 	bool	skipEstimate;		// Do not estimate error but use user-defined error (e)
 	bool	skipAlignment;		// Do not align (z)
 	bool	adapThr;			// Apply adaptive alignment threshold (v)
@@ -45,7 +46,7 @@ struct BELLApars
 	double	minProbability;		// reliable range probability threshold (y)
 
 	BELLApars(): kmerSize(17), kmerRift(kmerSize), minOverlap(1000), minSurvivedKmers(1), maxOverhang(1500), maxJump(1500), binSize(500), defaultThr(0),
-					xDrop(7), skipEstimate(false), skipAlignment(false), adapThr(true), outputPaf(false), userDefMem(false), useGerbil(false), enableGPU(false), maxDivergence(0.25),
+					xDrop(7), numGPU(1), skipEstimate(false), skipAlignment(false), adapThr(true), outputPaf(false), userDefMem(false), useGerbil(false), enableGPU(false), maxDivergence(0.25),
 						deltaChernoff(0.10), totalMemory(8000.0), errorRate(0.15) {};
 };
 
