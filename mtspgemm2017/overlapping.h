@@ -878,10 +878,11 @@ void HashSpGEMM(const CSC<IT,NT>& A, const CSC<IT,NT>& B, MultiplyOperation mult
 	delete [] colptrC;
 	delete [] colStart;
 }
-
+// (unsigned int, unsigned int, unsigned int, unsigned int *, unsigned int *, spmatPtr_ *,  
+// 		const readVector_, const BELLApars, char *, double)
 template <typename IT, typename FT>
 auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * rowids, FT * values, const readVector_& reads, 
-	char* filename, const BELLApars & b_pars, double ratiophi)
+	const BELLApars & b_pars, char* filename, double ratiophi)
 {
 	size_t alignedpairs = 0;
 	size_t alignedbases = 0;
