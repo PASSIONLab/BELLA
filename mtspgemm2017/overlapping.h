@@ -453,7 +453,7 @@ void PostAlignDecisionGPU(const loganResult& maxExtScore, const readType_& read1
 	unsigned short int normLen  = max(overlapLenV, overlapLenH);
 	unsigned short int minLen   = min(overlapLenV, overlapLenH);
 
-	if(b_pars.adapThr)
+	if(b_pars.fixedThreshold != -1)
 	{
 		float mythreshold = (1 - b_pars.deltaChernoff) * (ratiophi * (float)ov);
 		if((float)maxExtScore.score > mythreshold)
@@ -461,7 +461,7 @@ void PostAlignDecisionGPU(const loganResult& maxExtScore, const readType_& read1
 			passed = true;
 		}
 	}
-	else if(maxExtScore.score > b_pars.defaultThr)
+	else if(maxExtScore.score >= b_pars.fixedThreshold)	// GG: this is only useful for debugging
 	{
 		passed = true;
 	}
@@ -566,7 +566,7 @@ void PostAlignDecision(const seqAnResult& maxExtScore, const readType_& read1, c
 	unsigned short int normLen  = max(overlapLenV, overlapLenH);
 	unsigned short int minLen   = min(overlapLenV, overlapLenH);
 
-	if(b_pars.adapThr)
+	if(b_pars.fixedThreshold != -1)
 	{
 		float mythreshold = (1 - b_pars.deltaChernoff) * (ratiophi * (float)ov);
 		if((float)maxExtScore.score > mythreshold)
@@ -574,7 +574,7 @@ void PostAlignDecision(const seqAnResult& maxExtScore, const readType_& read1, c
 			passed = true;
 		}
 	}
-	else if(maxExtScore.score > b_pars.defaultThr)
+	else if(maxExtScore.score >= b_pars.fixedThreshold)	// GG: this is only useful for debugging
 	{
 		passed = true;
 	}
