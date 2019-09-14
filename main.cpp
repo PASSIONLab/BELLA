@@ -156,8 +156,7 @@ int main (int argc, char *argv[]) {
 				break;
 			}
 			case 'a': {
-				b_parameters.defaultThr = atoi(thisOpt->argument);
-				b_parameters.adapThr = false;
+				b_parameters.fixedThreshold = atoi(thisOpt->argument);
 				break;
 			}
 			case 'x': {
@@ -263,9 +262,6 @@ int main (int argc, char *argv[]) {
 	std::cout << "outputFile:	"		<< out_file							<< std::endl;
 	std::cout << "inputCoverage:	"	<< coverage							<< std::endl;
 	std::cout << "kmerSize:	"			<< b_parameters.kmerSize			<< std::endl;
-	std::cout << "kmerRift:	"			<< b_parameters.kmerRift			<< std::endl;
-	std::cout << "minOverlap:	"		<< b_parameters.minOverlap			<< std::endl;
-	std::cout << "minNumKmers:	"		<< b_parameters.minSurvivedKmers	<< std::endl;
     std::cout << "numberGPU:	 "		<< b_parameters.numGPU			    << std::endl;
 	std::cout << "outputPaf:	"		<< b_parameters.outputPaf			<< std::endl;
 	std::cout << "binSize:	"			<< b_parameters.binSize				<< std::endl;
@@ -297,19 +293,19 @@ int main (int argc, char *argv[]) {
 
     int errorRate = b_parameters.errorRate;
     printLog(errorRate);
-    printLog(reliableULowerBound);
+    printLog(reliableLowerBound);
     printLog(reliableUpperBound);
 
-	if(b_parameters.adapThr)
+	if(b_parameters.fixedThreshold != -1)
 	{
-        ratiophi = adaptiveSlope(b_parameters.errorRate);
-        float adaptiveThresholdConstant = ratiophi * (1 - b_parameters.deltaChernoff);
-		printLog(adaptiveThresholdConstant);
+        float userDefinedThreshold = b_parameters.fixedThreshold;
+        printLog(userDefinedThreshold);
 	}
     else
     {
-        float userDefinedThreshold = b_parameters.defaultThr;
-        printLog(userDefinedThreshold);
+        ratiophi = adaptiveSlope(b_parameters.errorRate);
+        float adaptiveThresholdConstant = ratiophi * (1 - b_parameters.deltaChernoff);
+		printLog(adaptiveThresholdConstant);       
     }
 
     //
@@ -432,7 +428,7 @@ int main (int argc, char *argv[]) {
     //
     
 	spmatPtr_ getvaluetype(make_shared<spmatType_>());
-	HashSpGEMMGPU(spmat, transpmat, 
+	HashSpGEMM(spmat, transpmat, 
 		// n-th k-mer positions on read i and on read j
         [&b_parameters, &reads] (const unsigned short int& begpH, const unsigned short int& begpV, 
             const unsigned int& id1, const unsigned int& id2)

@@ -33,31 +33,23 @@ extern "C" {
 struct BELLApars
 {
 	unsigned short int		kmerSize;			// KmerSize
-	unsigned short int		kmerRift;			// minDistance between Kmer
-	unsigned short int		minOverlap;			// minOverlap length to detect (used to select the number number of shared kmer)
-	unsigned short int		minSurvivedKmers;	// GG: to be mathematically determine via Markov chain with minOverlap and error rate
-	unsigned short int		maxOverhang;		// maxOverhang
-	unsigned short int		maxJump;			// maxJump to detect chimeric sequences
-	unsigned short int		binSize;			// bin size chaining algorithm (b)
-	unsigned short int		defaultThr;			// default alignment score threshold (a), only matters when adapThr=false, GG: to be deprecated
-	unsigned short int		xDrop;				// seqAn xDrop value (7)
-	unsigned short int		numGPU;				// number GPUs available/to be used (l)
-	bool	skipEstimate;		// Do not estimate error but use user-defined error (e)
-	bool	skipAlignment;		// Do not align (z)
-	bool	adapThr;			// Apply adaptive alignment threshold (v)
-	bool	outputPaf;			// output in paf format (p)
-	bool	userDefMem;
-	bool	useGerbil;
-	bool	enableGPU;
-	float	maxDivergence;		// maxDivergence to output a pair
-	double	deltaChernoff;		// delta computed via Chernoff bound (c)
-	double	totalMemory;		// in MB, default is ~ 8GB
-	double	errorRate;			// default error rate if estimation is disable (e)
-	double	minProbability;		// reliable range probability threshold (y)
+	unsigned short int		binSize;			// Bin size chaining algorithm 			(w)
+	short int		        fixedThreshold;		// Default alignment score threshold 	(a)
+	unsigned short int		xDrop;				// SeqAn xDrop value 					(x)
+	unsigned short int		numGPU;				// Number GPUs available/to be used  	(g)
+	unsigned short int		numKmerBucket;		// Number of buckets to count k-mers 	(b)
+	bool	skipEstimate;		// Do not estimate error but use user-defined error 	(e)
+	bool	skipAlignment;		// Do not align 										(z)
+	bool	outputPaf;			// Output in paf format 								(p)
+	bool	userDefMem;			// RAM available 										(m)
+	double	deltaChernoff;		// delta computed via Chernoff bound 					(d)
+	double	totalMemory;		// In MB, default is ~ 8GB
+	double	errorRate;			// default error rate if estimation is disable 			(e)
+	double	minProbability;		// reliable range probability threshold 				(r)
 
-	BELLApars(): kmerSize(17), kmerRift(kmerSize), minOverlap(1000), minSurvivedKmers(1), maxOverhang(1500), maxJump(1500), binSize(500), defaultThr(0),
-					xDrop(7), numGPU(1), skipEstimate(false), skipAlignment(false), adapThr(true), outputPaf(false), userDefMem(false), useGerbil(false), enableGPU(false), maxDivergence(0.25),
-						deltaChernoff(0.10), totalMemory(8000.0), errorRate(0.15) {};
+	BELLApars(): kmerSize(17), binSize(500), fixedThreshold(-1), xDrop(7), numGPU(1), 
+					numKmerBucket(2), skipEstimate(false), skipAlignment(false), outputPaf(false), 
+						deltaChernoff(0.10), totalMemory(8000.0), errorRate(0.15), minProbability(0.002) {};
 };
 
 template <typename T>

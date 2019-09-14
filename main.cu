@@ -157,8 +157,7 @@ int main (int argc, char *argv[]) {
 				break;
 			}
 			case 'a': {
-				b_parameters.defaultThr = atoi(thisOpt->argument);
-				b_parameters.adapThr = false;
+				b_parameters.fixedThreshold = atoi(thisOpt->argument);
 				break;
 			}
 			case 'x': {
@@ -195,7 +194,7 @@ int main (int argc, char *argv[]) {
 				cout << " -o : Output filename	(required)" 	<< endl;
 				cout << " -c : Dataset coverage	(required)" 	<< endl;
 				cout << " -k : KmerSize [17]" 					<< endl;
-				cout << " -a : User-defined alignment threshold [FALSE, 0]" 		<< endl;
+				cout << " -a : User-defined alignment threshold [FALSE, -1]" 		<< endl;
 				cout << " -x : SeqAn xDrop [7]" 									<< endl;
 				cout << " -e : Error rate [0.15]" 				<< endl;
 				cout << " -q : Estimare error rate from the dataset [FALSE]" 	<< endl;
@@ -264,9 +263,6 @@ int main (int argc, char *argv[]) {
 	std::cout << "outputFile:	"		<< out_file							<< std::endl;
 	std::cout << "inputCoverage:	"	<< coverage							<< std::endl;
 	std::cout << "kmerSize:	"			<< b_parameters.kmerSize			<< std::endl;
-	std::cout << "kmerRift:	"			<< b_parameters.kmerRift			<< std::endl;
-	std::cout << "minOverlap:	"		<< b_parameters.minOverlap			<< std::endl;
-	std::cout << "minNumKmers:	"		<< b_parameters.minSurvivedKmers	<< std::endl;
     std::cout << "numberGPU:	 "		<< b_parameters.numGPU			    << std::endl;
 	std::cout << "outputPaf:	"		<< b_parameters.outputPaf			<< std::endl;
 	std::cout << "binSize:	"			<< b_parameters.binSize				<< std::endl;
@@ -298,19 +294,19 @@ int main (int argc, char *argv[]) {
 
     int errorRate = b_parameters.errorRate;
     printLog(errorRate);
-    printLog(reliableULowerBound);
+    printLog(reliableLowerBound);
     printLog(reliableUpperBound);
 
-	if(b_parameters.adapThr)
+	if(b_parameters.fixedThreshold != -1)
 	{
-        ratiophi = adaptiveSlope(b_parameters.errorRate);
-        float adaptiveThresholdConstant = ratiophi * (1 - b_parameters.deltaChernoff);
-		printLog(adaptiveThresholdConstant);
+        float userDefinedThreshold = b_parameters.fixedThreshold;
+        printLog(userDefinedThreshold);
 	}
     else
     {
-        float userDefinedThreshold = b_parameters.defaultThr;
-        printLog(userDefinedThreshold);
+        ratiophi = adaptiveSlope(b_parameters.errorRate);
+        float adaptiveThresholdConstant = ratiophi * (1 - b_parameters.deltaChernoff);
+		printLog(adaptiveThresholdConstant);       
     }
 
     //
