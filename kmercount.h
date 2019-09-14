@@ -111,7 +111,7 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable
 	vector < HyperLogLog > hlls(MAXTHREADS, HyperLogLog(12));   // std::vector fill constructor
 
 	double denovocount = omp_get_wtime();
-	double cardinality;
+	double CardinalityEstimate;
 	size_t totreads = 0;
 
 	for(auto itr=allfiles.begin(); itr!=allfiles.end(); itr++) 
@@ -196,21 +196,21 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable
 	{
 		std::transform(hlls[0].M.begin(), hlls[0].M.end(), hlls[i].M.begin(), hlls[0].M.begin(), [](uint8_t c1, uint8_t c2) -> uint8_t{ return std::max(c1, c2); });
 	}
-	cardinality = hlls[0].estimate();
+	CardinalityEstimate = hlls[0].estimate();
 
-	double load2kmers = omp_get_wtime(); 
-	// errorEstimation time included but negligible
-	cout << "kmerCounting I/O took:	" << load2kmers - denovocount << "s\n" << endl;
+	float kmerCountingTime = omp_get_wtime() - denovocount;
+	printLog(kmerCountingTime);
 
 	const double desired_probability_of_false_positive = 0.05;
 	struct bloom * bm = (struct bloom*) malloc(sizeof(struct bloom));
-	bloom_init64(bm, cardinality * 1.1, desired_probability_of_false_positive);
+	bloom_init64(bm, CardinalityEstimate * 1.1, desired_probability_of_false_positive);
 
-#ifdef PRINT
-	cout << "Cardinality estimate	" 	<< cardinality 	<< std::endl;
-	cout << "Table size is:	"			<< ((double)bm->bits)/8/1024/1024 << " MB" << endl;
-	cout << "Optimal numHashFunctions:	"	<< bm->hashes 	<< std::endl;
-#endif
+	float TableSize = ((double)bm->bits)/8/1024/1024;
+	int numHashFunctions = bm->hashes;
+
+	printLog(CardinalityEstimate);
+	printLog(TableSize);
+	printLog(numHashFunctions);
 
 	dictionary_t_16bit countsdenovo;
 
@@ -224,7 +224,8 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable
 	}
 
 	double firstpass = omp_get_wtime();
-	cout << "1st kmerCounting pass took:	" << firstpass - load2kmers << "s" << endl;
+	double FirstKmerPassTime = firstpass - load2kmers;
+	printLog(FirstKmerPassTime);
 
 	free(bm); // release bloom filter memory
 
@@ -238,8 +239,10 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable
 			countsdenovo.update_fn(v, updatecount);
 		}
 	}
-	cout << "2nd kmerCounting pass took:	" << omp_get_wtime() - firstpass << "s\n" << endl;
-	//cout << "countsdenovo.size() " << countsdenovo.size() << endl;
+
+	double SecondKmerPassTime = omp_get_wtime() - firstpass;
+	printLog(FirstKmerPassTime);
+
 	// Reliable bounds computation using estimated error rate from phred quality score
 	lower = computeLower(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
 	upper = computeUpper(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
@@ -258,16 +261,15 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable
 	// Print some information about the table
 	if (countsreliable_denovo.size() == 0)
 	{
-		cout << "BELLA terminated: 0 entries within reliable range (reduce k-mer length)\n" << endl;
-		exit(0);
+		std::cerr << "BELLA terminated: 0 entries within reliable range. You may want to reduce the k-mer lenght.\n" << endl;
+		exit(1);
 	} 
 	else 
 	{
-		cout << "numKmers within reliable range:	" << countsreliable_denovo.size() << endl;
+		int numReliableKmers = countsreliable_denovo.size();
+		printLog(numReliableKmers);
 	}
-	//cout << "Bucket count: " << countsdenovo.bucket_count() << std::endl;
-	//cout << "Load factor: " << countsdenovo.load_factor() << std::endl;
-	countsdenovo.clear(); // free
 
+	countsdenovo.clear(); // free
 }
 #endif
