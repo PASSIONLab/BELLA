@@ -118,7 +118,7 @@ chainop(spmatPtr_& m1, spmatPtr_& m2, BELLApars& b_pars,
 					for(auto kmer2:m2->pos[i])
 					{
 						//	GG: kmer need to be not overlapping and at least <kmerRift> distant from each other (kmerRift = kmerSize deafult)
-						if(distance(kmer1, kmer2) > b_pars.kmerRift)
+						if(distance(kmer1, kmer2) > b_pars.kmerSize)
 						{
 							kmertobeinserted[j].push_back(kmer2);
 						}
