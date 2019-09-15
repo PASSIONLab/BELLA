@@ -781,9 +781,12 @@ void HashSpGEMM(const CSC<IT,NT>& A, const CSC<IT,NT>& B, MultiplyOperation mult
 		LocalSpGEMM(colStart[b], colStart[b+1], A, B, multop, addop, RowIdsofC, ValuesofC, colptrC, true);
 
 		double alnlen2 = omp_get_wtime();
-		std::string OverlapTime ()
-		cout << "\nColumns [" << colStart[b] << " - " << colStart[b+1] << "] overlap time:	" << alnlen2-alnlenl << "s" << endl;
-
+		
+		std::string ColumnsRange = "[" + std::to_string(colStart[b]) + " - " + std::to_string(colStart[b+1]) + "]";
+		printLog(ColumnsRange);
+	
+		std::string OverlapTime = std::to_string(alnlen2-alnlenl) + " seconds";
+		printLog(OverlapTime);
 		IT endnz = colptrC[colStart[b+1]];
 		IT begnz = colptrC[colStart[b]];
 
