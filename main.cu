@@ -75,8 +75,9 @@ int main (int argc, char *argv[]) {
 
 	if(optList == NULL)
 	{
-        std::string ErrorMessage = "BELLA execution terminated: not enough parameters or invalid option.\n" 
-                                        + "Run with -h to print out the command line options.\n";
+        std::string str1("BELLA execution terminated: not enough parameters or invalid option.\n");
+        std::string str2("Run with -h to print out the command line options.\n");
+        std::string ErrorMessage = str1 + str2;
 		printLog(ErrorMessage);
 		return 0;
 	}
