@@ -15,6 +15,7 @@
 #include <sys/time.h>
 
 #include "fq_reader.h"
+#include "../mtspgemm2017/common.h"
 
 #ifndef MMAP_BLOCK_SIZE
 #define MMAP_BLOCK_SIZE getpagesize()
