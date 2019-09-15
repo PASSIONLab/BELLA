@@ -838,13 +838,14 @@ auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * ro
 	size_t totsuccbases = 0;
 	size_t totfailbases = 0;
 	
-	int numThreads = 1;
+//	int numThreads = 1;
 // #pragma omp parallel
 // 	{
 // 		numThreads = omp_get_num_threads();
 // 	}
 
-	vector<stringstream> vss(numThreads); // any chance of false sharing here? depends on how stringstream is implemented. optimize later if needed...
+//	vector<stringstream> vss(numThreads); // any chance of false sharing here? depends on how stringstream is implemented. optimize later if needed...
+	stringstream ss;
 
 	vector<string> seq1s;
 	vector<string> seq2s;
@@ -858,7 +859,7 @@ auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * ro
 	{
 		for (IT i = colptrC[j]; i < colptrC[j+1]; ++i)
 		{
-			int ithread = omp_get_thread_num();		// GG: this is useless hence remove and rewrite outputting task accordingly
+	//		int ithread = omp_get_thread_num();		// GG: this is useless hence remove and rewrite outputting task accordingly
 			unsigned int rid = rowids[i-offset];	// row id
 			unsigned int cid = j;					// column id
 
@@ -917,7 +918,9 @@ auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * ro
 			}
 			else // if skipAlignment == false do alignment, else save just some info on the pair to file
 			{
-				vss[ithread] << reads[cid].nametag << '\t' << reads[rid].nametag << '\t' << val->count << '\t' << 
+				// vss[ithread] << reads[cid].nametag << '\t' << reads[rid].nametag << '\t' << val->count << '\t' << 
+				// 		seq2len << '\t' << seq1len << endl;
+				ss << reads[cid].nametag << '\t' << reads[rid].nametag << '\t' << val->count << '\t' << 
 						seq2len << '\t' << seq1len << endl;
 				++outputted;
 			}
@@ -964,7 +967,7 @@ auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * ro
 				loganResult maxExtScore = maxExtScoreL[idx];
 
 				PostAlignDecisionGPU(maxExtScore, reads[rid], reads[cid], b_pars, ratiophi, val->count, 
-					vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
+					ss, outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
 				idx++;
 
 				numBasesAlignedThread += getEndPositionV(maxExtScore.seed) - getBeginPositionV(maxExtScore.seed);
@@ -981,40 +984,51 @@ auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * ro
 
 	double outputting = omp_get_wtime();
 
-	int64_t * bytes = new int64_t[numThreads];
-	for(int i=0; i < numThreads; ++i)
-	{
-		vss[i].seekg(0, ios::end);
-		bytes[i] = vss[i].tellg();
-		vss[i].seekg(0, ios::beg);
-	}
-	int64_t bytestotal = std::accumulate(bytes, bytes+numThreads, static_cast<int64_t>(0));
+	int64_t bytestotal;
+	ss.seekg(0, ios::end);
+	bytestotal = ss.tellg();
+	ss.seekg(0, ios::beg);
+
+	// = new int64_t[numThreads];
+	// for(int i=0; i < numThreads; ++i)
+	// {
+		// vss[i].seekg(0, ios::end);
+		// bytes[i] = vss[i].tellg();
+		// vss[i].seekg(0, ios::beg);
+	// }
+	// int64_t bytestotal = std::accumulate(bytes, bytes+numThreads, static_cast<int64_t>(0));
 
 	std::ofstream ofs(filename, std::ios::binary | std::ios::app);
 
-	cout << "Creating or appending to output file with " << (double)bytestotal/(double)(1024 * 1024) << " MB" << endl;
+	std::string str1 = "Creating or appending to output file with ";
+	std::string str2 = std::to_string((double)bytestotal/(double)(1024 * 1024));
+	std::string str3 = " MB";
+	std::string InfoMessage = str1 + str2 + str3;
+	printLog(InfoMessage);
 
 	ofs.seekp(bytestotal - 1);
 	ofs.write("", 1); // this will likely create a sparse file so the actual disks won't spin yet
 	ofs.close();
 
-	#pragma omp parallel
-	{
-		int ithread = omp_get_thread_num();	
+	// #pragma omp parallel
+	// {
+	int ithread = omp_get_thread_num();	
 
-		FILE *ffinal;
-		if ((ffinal = fopen(filename, "rb+")) == NULL)	// then everyone fills it
-		{
-			fprintf(stderr, "File %s failed to open at thread %d\n", filename, ithread);
-		}
-		int64_t bytesuntil = std::accumulate(bytes, bytes+ithread, static_cast<int64_t>(0));
-		fseek (ffinal , bytesuntil , SEEK_SET );
-		std::string text = vss[ithread].str();
-		fwrite(text.c_str(),1, bytes[ithread] ,ffinal);
-		fflush(ffinal);
-		fclose(ffinal);
+	FILE *ffinal;
+	if ((ffinal = fopen(filename, "rb+")) == NULL)	// then everyone fills it
+	{
+		fprintf(stderr, "File %s failed to open at thread %d\n", filename, ithread);
 	}
-	delete [] bytes;
+	// int64_t bytesuntil = std::accumulate(bytes, bytes+ithread, static_cast<int64_t>(0));
+	fseek (ffinal , bytestotal , SEEK_SET);
+	// std::string text = vss[ithread].str();
+	std::string text = ss.str();
+	fwrite(text.c_str(), 1, bytestotal, ffinal);
+	fflush(ffinal);
+	fclose(ffinal);
+	// }
+
+	// delete [] bytes;
 	double timeoutputt = omp_get_wtime()-outputting;
 	return make_tuple(alignedpairs, alignedbases, totalreadlen, totaloutputt, totsuccbases, totfailbases, timeoutputt);
 }
