@@ -93,13 +93,13 @@ vector<filedata>  GetFiles(char *filename) {
 		fdata.filesize = st.st_size;
 		
 		filesview.push_back(fdata);
-		std::string inputFile = filesview.back().filename;
+		std::string InputFile = filesview.back().filename;
 		std::string str1 = std::to_string((float)filesview.back().filesize / (1024*1024));
 		std::string str2 = " MB";
-		std::string inputSize = str1 + str2;
+		std::string InputSize = str1 + str2;
 
-		printLog(inputFile);
-		printLog(inputSize);
+		printLog(InputFile);
+		printLog(InputSize);
 		allfiles.getline(fdata.filename, MAX_FILE_PATH);
 		totalsize += fdata.filesize;
 		numfiles++;
@@ -219,7 +219,7 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable
 	CardinalityEstimate = hlls[0].estimate();
 
 	double load2kmers = omp_get_wtime(); 
-	double kmerCountingTime = load2kmers - denovocount;
+	std::string kmerCountingTime = std::to_string(load2kmers - denovocount) + " seconds";
 	printLog(kmerCountingTime);
 
 	const double desired_probability_of_false_positive = 0.05;
@@ -245,7 +245,7 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable
 	}
 
 	double firstpass = omp_get_wtime();
-	double FirstKmerPassTime = firstpass - load2kmers;
+	std::string FirstKmerPassTime = std::to_string(firstpass - load2kmers) + " seconds";
 	printLog(FirstKmerPassTime);
 
 	free(bm); // release bloom filter memory
@@ -261,7 +261,7 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable
 		}
 	}
 
-	double SecondKmerPassTime = omp_get_wtime() - firstpass;
+	std::string SecondKmerPassTime = std::to_string(omp_get_wtime() - firstpass) + " seconds";
 	printLog(SecondKmerPassTime);
 
 	// Reliable bounds computation using estimated error rate from phred quality score

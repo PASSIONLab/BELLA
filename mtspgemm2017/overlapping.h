@@ -781,7 +781,7 @@ void HashSpGEMM(const CSC<IT,NT>& A, const CSC<IT,NT>& B, MultiplyOperation mult
 		LocalSpGEMM(colStart[b], colStart[b+1], A, B, multop, addop, RowIdsofC, ValuesofC, colptrC, true);
 
 		double alnlen2 = omp_get_wtime();
-		
+
 		std::string ColumnsRange = "[" + std::to_string(colStart[b]) + " - " + std::to_string(colStart[b+1]) + "]";
 		printLog(ColumnsRange);
 	
@@ -1158,7 +1158,7 @@ void HashSpGEMMGPU(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation
 			printLog(AverageReadLength);
 
 			std::string PairsAligned = std::to_string(get<0>(alignstats));
-			printLog(AverageReadLength);
+			printLog(PairsAligned);
 
 			std::string AverageLengthSuccessfulAlignment = std::to_string((int)(static_cast<double>(get<4>(alignstats)) / get<3>(alignstats))) + " bps";
 			printLog(AverageLengthSuccessfulAlignment);

@@ -290,8 +290,8 @@ int main (int argc, char *argv[]) {
     std::string ReliableCutoffProbability = std::to_string(b_parameters.minProbability);
     printLog(ReliableCutoffProbability);
 
-    std::string KmerBuckets = std::to_string(b_parameters.numKmerBucket);
-    printLog(KmerBuckets);
+    std::string kmerBuckets = std::to_string(b_parameters.numKmerBucket);
+    printLog(kmerBuckets);
 #endif
 
     //
@@ -416,7 +416,7 @@ int main (int argc, char *argv[]) {
 	std::vector<string>().swap(seqs);		// free memory of seqs  
 	std::vector<string>().swap(quals);		// free memory of quals
 
-    float fastqParsingTime = omp_get_wtime() - parsefastq;
+    std::string fastqParsingTime = std::to_string(omp_get_wtime() - parsefastq) + " seconds";
     printLog(fastqParsingTime);
     printLog(numReads);
 
@@ -434,9 +434,10 @@ int main (int argc, char *argv[]) {
     // remove memory of transtuples
     std::vector<tuple<unsigned int, unsigned int, unsigned short int>>().swap(occurrences);
 
-    double SparseMatrixCreationTime = omp_get_wtime() - matcreat;
+    std::string SparseMatrixCreationTime = std::to_string(omp_get_wtime() - matcreat) + " seconds";
     printLog(SparseMatrixCreationTime);
 
+    matcreat = omp_get_wtime();
 	CSC<unsigned int, unsigned short int> transpmat(transtuples, nkmer, numReads, 
 							[] (unsigned short int& p1, unsigned short int& p2) 
 							{
@@ -445,7 +446,7 @@ int main (int argc, char *argv[]) {
     // remove memory of transtuples
     std::vector<tuple<unsigned int, unsigned int, unsigned short int>>().swap(transtuples);
 
-    double TransposeSparseMatrixCreationTime = omp_get_wtime() - SparseMatrixCreationTime;
+    std::string TransposeSparseMatrixCreationTime = std::to_string(omp_get_wtime() - matcreat) + " seconds";
     printLog(TransposeSparseMatrixCreationTime);
 	//
 	// Overlap detection (sparse matrix multiplication) and seed-and-extend alignment
@@ -478,9 +479,9 @@ int main (int argc, char *argv[]) {
 			return m1;
 		},
         reads, getvaluetype, OutputFile, b_parameters, ratiophi);
-    
-    float BELLATime = omp_get_wtime()-all;
-    printLog(BELLATime);
+
+    std::string TotalRuntime = std::to_string(omp_get_wtime()-all) + " seconds";   
+    printLog(TotalRuntime);
 
 	return 0;
 }
