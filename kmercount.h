@@ -131,13 +131,15 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable
 	{
 		#pragma omp parallel
 		{
-    		if(MYTHREAD == 0)
-    		{
-    		    const char* ReadingFASTQ = fname;
-    		    printLog(ReadingFASTQ);
-    		}
+
 			ParallelFASTQ *pfq = new ParallelFASTQ();
 			pfq->open(itr->filename, false, itr->filesize);
+
+			if(MYTHREAD == 0)
+    		{
+    		    const char* ReadingFASTQ = itr->filename;
+    		    printLog(ReadingFASTQ);
+    		}
 
 			vector<string> seqs;
 			vector<string> quals;
