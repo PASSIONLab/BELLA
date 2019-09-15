@@ -32,7 +32,7 @@
 #include <set> 
 
 #ifdef __NVCC__
-#include "loganGPU/logan.cuh"
+#include "../loganGPU/logan.cuh"
 #endif
 
 using namespace seqan;

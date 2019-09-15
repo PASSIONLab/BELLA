@@ -12,7 +12,7 @@
 #endif
 
 #ifdef __NVCC__
-#include "loganGPU/logan.cuh"
+#include "../loganGPU/logan.cuh"
 #endif
 
 #ifdef __cplusplus
