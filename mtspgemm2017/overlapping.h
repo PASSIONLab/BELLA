@@ -808,18 +808,32 @@ void HashSpGEMM(const CSC<IT,NT>& A, const CSC<IT,NT>& B, MultiplyOperation mult
 		alignstats = RunPairWiseAlignments(colStart[b], colStart[b+1], begnz, colptrC, rowids, values, reads, filename, b_pars, ratiophi);
 
 #ifdef TIMESTEP
-		if(!b_pars.skipAlignment)
+if(!b_pars.skipAlignment)
 		{
 			double elapsed = omp_get_wtime()-alnlen2;
 			double aligntime = elapsed-get<6>(alignstats); // substracting outputting time
-			std::cout << "\nColumns ["				<< colStart[b]	<< " - "			<< colStart[b+1] << "]" << std::endl;
-			std::cout << "alignmentTime:	"		<< aligntime	<< "s"				<< std::endl;
-			std::cout << "alignmentRate:	"		<< (int)(static_cast<double>(get<1>(alignstats)) / aligntime) 					<< " bases/s" << std::endl;
-			std::cout << "averageReadLength:	"	<< (int)(static_cast<double>(get<2>(alignstats)) / (2*get<0>(alignstats)))	<< std::endl;
-			std::cout << "numPairs aligned:	"		<< get<0>(alignstats)	<< std::endl;
-			cout << "averageLength of successful alignment:	"	<< (int)(static_cast<double>(get<4>(alignstats)) / get<3>(alignstats))							<< " bps" << endl;
-			cout << "averageLength of failed alignment:	"		<< (int)(static_cast<double>(get<5>(alignstats)) / (get<0>(alignstats) - get<3>(alignstats)))	<< " bps" << endl;
-	   }
+		
+			std::string ColumnsRange = "[" + std::to_string(colStart[b]) + " - " + std::to_string(colStart[b+1]) + "]";
+			printLog(ColumnsRange);
+		
+			std::string AlignmentTime = std::to_string(aligntime) + " seconds";
+			printLog(AlignmentTime);
+
+			std::string AlignmentRate = std::to_string((int)(static_cast<double>(get<1>(alignstats))/aligntime)) + " bases/second";
+			printLog(AlignmentRate);
+
+			std::string AverageReadLength = std::to_string((int)(static_cast<double>(get<2>(alignstats))/(2*get<0>(alignstats))));
+			printLog(AverageReadLength);
+
+			std::string PairsAligned = std::to_string(get<0>(alignstats));
+			printLog(PairsAligned);
+
+			std::string AverageLengthSuccessfulAlignment = std::to_string((int)(static_cast<double>(get<4>(alignstats)) / get<3>(alignstats))) + " bps";
+			printLog(AverageLengthSuccessfulAlignment);
+
+			std::string AverageLengthFailedAlignment = std::to_string((int)(static_cast<double>(get<5>(alignstats)) / (get<0>(alignstats) - get<3>(alignstats)))) + " bps";
+			printLog(AverageLengthFailedAlignment);
+		}
 #endif
 		cout << "\nOutputted " << get<3>(alignstats) << " lines in	" << get<6>(alignstats) << "s" << endl;
 		delete [] rowids;
@@ -934,11 +948,11 @@ auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * ro
 
 	if(!b_pars.skipAlignment) // fix -z to not print 
 	{
-		std::string GPUAlignment = "Started";
-		printLog(GPUAlignment);
+		std::string AlignmentGPU = "Started";
+		printLog(AlignmentGPU);
 		alignLogan(seq1s, seq2s, seeds, b_pars, maxExtScoreL);
-		GPUAlignment = "Completed";
-		printLog(GPUAlignment);
+		AlignmentGPU  = "Completed";
+		printLog(AlignmentGPU);
 
 		unsigned int idx = 0;
 		//	no parallelism to keep same order of pairs in alignment
@@ -1151,7 +1165,7 @@ void HashSpGEMMGPU(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation
 			std::string AlignmentTime = std::to_string(aligntime) + " seconds";
 			printLog(AlignmentTime);
 
-			std::string AlignmentRate = std::to_string((int)(static_cast<double>(get<1>(alignstats))/aligntime)) + " bases/seconds";
+			std::string AlignmentRate = std::to_string((int)(static_cast<double>(get<1>(alignstats))/aligntime)) + " bases/second";
 			printLog(AlignmentRate);
 
 			std::string AverageReadLength = std::to_string((int)(static_cast<double>(get<2>(alignstats))/(2*get<0>(alignstats))));
