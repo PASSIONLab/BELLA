@@ -16,8 +16,6 @@
 
 #include "fq_reader.h"
 
-#define printLog(var) do { std::cerr << "INFO:	" << __FILE__ << "(" << __LINE__ << ")	" << #var << " = " << (var) << std::endl; } while(0)
-
 #ifndef MMAP_BLOCK_SIZE
 #define MMAP_BLOCK_SIZE getpagesize()
 #endif
@@ -346,12 +344,12 @@ void open_fq(fq_reader_t fqr, const char *fname, int cached_io) {
     }
     fqr->fpos = fqr->start_read;
     assert(fqr->fpos == ftell(fqr->f));
-    if(MYTHREAD==0)
-    {
-        // fprintf(stdout, "Reading FASTQ file %s\n", fname);
-        const char* ReadingFASTQ = fname;
-        printLog(ReadingFASTQ);
-    }
+    // if(MYTHREAD==0)
+    // {
+    //     // fprintf(stdout, "Reading FASTQ file %s\n", fname);
+    //     const char* ReadingFASTQ = fname;
+    //     printLog(ReadingFASTQ);
+    // }
     	
 #ifndef __APPLE__
     if (fqr->f) {
