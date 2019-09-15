@@ -68,8 +68,8 @@ int main (int argc, char *argv[]) {
 	optList = GetOptList(argc, argv, (char*)"f:o:c:d:hk:a:ze:x:c:m:r:pb:s:q:g:u:w:");
 
 	char	*all_inputs_fofn 	= NULL;	// List of fastqs (i)
-	char	*out_file 			= NULL;	// output filename (o)
-	int		coverage 			= 0;	// Coverage required (d)
+	char	*OutputFile 			= NULL;	// output filename (o)
+	int		InputCoverage 			= 0;	// Coverage required (d)
 
 	BELLApars b_parameters;
 
@@ -109,18 +109,18 @@ int main (int argc, char *argv[]) {
 				unsigned int len1 = strlen(line1);
 				unsigned int len2 = strlen(line2);
 
-				out_file = (char*)malloc(len1 + len2 + 1);
-				if (!out_file) abort();
+				OutputFile = (char*)malloc(len1 + len2 + 1);
+				if (!OutputFile) abort();
 
-				memcpy(out_file, line1, len1);
-				memcpy(out_file + len1, line2, len2);
-				out_file[len1 + len2] = '\0';
+				memcpy(OutputFile, line1, len1);
+				memcpy(OutputFile + len1, line2, len2);
+				OutputFile[len1 + len2] = '\0';
 
 				delete line1;
                 delete line2;
                 
                 // Delete file to avoid errors in output
-                remove(out_file);
+                remove(OutputFile);
 
 				break;
 			}
@@ -131,7 +131,7 @@ int main (int argc, char *argv[]) {
 					cout << "Run with -h to print out the command line options\n" << endl;
 					return 0;
 				}
-				coverage = atoi(thisOpt->argument);  
+				InputCoverage = atoi(thisOpt->argument);  
 				break;
 			}
 			case 'z': b_parameters.skipAlignment = true; break;
@@ -197,7 +197,7 @@ int main (int argc, char *argv[]) {
 				cout << "Usage:\n" << endl;
 				cout << " -f : List of fastq(s)	(required)" 	<< endl;
 				cout << " -o : Output filename	(required)" 	<< endl;
-				cout << " -c : Dataset coverage	(required)" 	<< endl;
+				cout << " -c : Dataset InputCoverage	(required)" 	<< endl;
 				cout << " -k : KmerSize [17]" 					<< endl;
 				cout << " -a : User-defined alignment threshold [FALSE, -1]" 		<< endl;
 				cout << " -x : SeqAn xDrop [7]" 									<< endl;
@@ -219,7 +219,7 @@ int main (int argc, char *argv[]) {
 		}
 	}
 
-	if(all_inputs_fofn == NULL || out_file == NULL || coverage == 0)
+	if(all_inputs_fofn == NULL || OutputFile == NULL || InputCoverage == 0)
 	{
 		cout << "BELLA execution terminated: missing arguments" << endl;
 		cout << "Run with -h to print out the command line options\n" << endl;
@@ -263,19 +263,35 @@ int main (int argc, char *argv[]) {
     //
     
 #ifdef PRINT
-	std::cout << std::fixed;
-	std::cout << std::setprecision(3);
-	std::cout << "outputFile:   "		<< out_file							<< std::endl;
-	std::cout << "inputCoverage:    "	<< coverage							<< std::endl;
-	std::cout << "kmerSize: "			<< b_parameters.kmerSize			<< std::endl;
-    std::cout << "numberGPU:    "		<< b_parameters.numGPU			    << std::endl;
-	std::cout << "outputPaf:    "		<< b_parameters.outputPaf			<< std::endl;
-	std::cout << "binSize:  "			<< b_parameters.binSize				<< std::endl;
-	std::cout << "deltaChernoff:    "	<< b_parameters.deltaChernoff		<< std::endl;
-	std::cout << "runAlignment: "		<< !b_parameters.skipAlignment		<< std::endl;
-	std::cout << "seqAn xDrop:  "		<< b_parameters.xDrop				<< std::endl;
-    std::cout << "minProbability:   "	<< b_parameters.minProbability		<< std::endl;
-    std::cout << "numKmerBucket:    "    << b_parameters.numKmerBucket       << std::endl;
+    pringLog(OutputFile);
+    pringLog(InputCoverage);
+
+    std::string KmerSize = std::to_string(b_parameters.kmerSize);
+    pringLog(KmerSize);
+
+    std::string GPUs = std::to_string(b_parameters.numGPU);
+    pringLog(GPUs);
+
+    std::string OutputPAF = std::to_string(b_parameters.outputPaf);
+    pringLog(OutputPAF);
+
+    std::string BinSize = std::to_string(b_parameters.binSize);
+    pringLog(BinSize);
+    
+    std::string DeltaChernoff = std::to_string(b_parameters.deltaChernoff);
+    pringLog(DeltaChernoff);
+
+    std::string RunPairwiseAlignment = std::to_string(!b_parameters.skipAlignment);
+    pringLog(RunPairwiseAlignment);
+
+    std::string xDrop = std::to_string(b_parameters.xDrop);
+    pringLog(xDrop);
+
+    std::string ReliableCutoffProbability = std::to_string(b_parameters.minProbability);
+    pringLog(ReliableCutoffProbability);
+
+    std::string KmerBuckets = std::to_string(b_parameters.numKmerBucket);
+    pringLog(KmerBuckets);
 #endif
 
     //
@@ -295,7 +311,7 @@ int main (int argc, char *argv[]) {
     printLog(numThreads);
 
 	all = omp_get_wtime();
-    DeNovoCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound, coverage, reliableUpperBoundlimit, b_parameters);
+    DeNovoCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound, InputCoverage, reliableUpperBoundlimit, b_parameters);
 
     double errorRate = b_parameters.errorRate;
     printLog(errorRate);
@@ -459,7 +475,7 @@ int main (int argc, char *argv[]) {
 			chainop(m1, m2, b_parameters, readname1, readname2);
 			return m1;
 		},
-        reads, getvaluetype, out_file, b_parameters, ratiophi);
+        reads, getvaluetype, OutputFile, b_parameters, ratiophi);
     
     float BELLARuntime = omp_get_wtime()-all;
     printLog(BELLARuntime);

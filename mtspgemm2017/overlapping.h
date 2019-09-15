@@ -718,9 +718,10 @@ void HashSpGEMM(const CSC<IT,NT>& A, const CSC<IT,NT>& B, MultiplyOperation mult
 {
 	double free_memory = estimateMemory(b_pars);
 
-#ifdef PRINT
-	cout << "RAM is assumed to be:	" << free_memory / (1024 * 1024) << " MB" << endl;
-#endif
+	std::string str1 = std::to_string(free_memory / (1024 * 1024));
+	std::string str2 = " MB";
+	std::string AvailableRAM = str1 + str2;
+	printLog(AvailableRAM);
 
 	int numThreads = 1;
 #pragma omp parallel
@@ -929,9 +930,11 @@ auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * ro
 
 	if(!b_pars.skipAlignment) // fix -z to not print 
 	{
-		std::cout << "GPU Alignment Started" << std::endl;
+		std::string GPUAlignment = "Started";
+		printLog(GPUAlignment);
 		alignLogan(seq1s, seq2s, seeds, b_pars, maxExtScoreL);
-		std::cout << "GPU Alignment Completed" << std::endl;
+		GPUAlignment = "Completed";
+		printLog(GPUAlignment);
 
 		unsigned int idx = 0;
 		//	no parallelism to keep same order of pairs in alignment
@@ -959,10 +962,9 @@ auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * ro
 
 				spmatPtr_ val = values[i-offset];
 
-#ifdef TIMESTEP
 				numAlignmentsThread++;
 				readLengthsThread = readLengthsThread + seq1len + seq2len;
-#endif
+
 				bool passed = false;
 				loganResult maxExtScore = maxExtScoreL[idx];
 
@@ -1041,9 +1043,10 @@ void HashSpGEMMGPU(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation
 {
 	double free_memory = estimateMemory(b_pars);
 
-#ifdef PRINT
-	cout << "RAM is assumed to be:	" << free_memory / (1024 * 1024) << " MB" << endl;
-#endif
+	std::string str1 = std::to_string(free_memory / (1024 * 1024));
+	std::string str2 = " MB";
+	std::string AvailableRAM = str1 + str2;
+	printLog(AvailableRAM);
 
 	int numThreads = 1;
 #pragma omp parallel
@@ -1055,9 +1058,8 @@ void HashSpGEMMGPU(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation
 	IT* flopptr = prefixsum<IT>(flopC, B.cols, numThreads);
 	IT flops = flopptr[B.cols];
 
-#ifdef PRINT    
-	cout << "FLOPS is\t" << flops << endl;
-#endif
+	std::string FLOPs = std::to_string(flops);
+	printLog(FLOPs);
 
 	IT* colnnzC = estimateNNZ_Hash(A, B, flopC, true);
 	IT* colptrC = prefixsum<IT>(colnnzC, B.cols, numThreads);	// colptrC[i] = rolling sum of nonzeros in C[1...i]
@@ -1072,14 +1074,17 @@ void HashSpGEMMGPU(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation
 	int stages = std::ceil((double) required_memory/ free_memory); 	// form output in stages 
 	uint64_t nnzcperstage = free_memory / (safety_net * (sizeof(FT)+sizeof(IT)));
 
-#ifdef PRINT
-	std::cout << "nnz (output):	"			<< nnzc					<< std::endl;
-	std::cout << "Compression ratio:	"	<< compression_ratio	<< std::endl;
-	std::cout << "Free memory:	"		<< free_memory		<< std::endl;
-	std::cout << "Required memory:	"	<< required_memory	<< std::endl; 
-	std::cout << "SpGEMM stages:	"	<< stages			<< std::endl;
-	//	std::cout << "max nnz per stage:	"	<< nnzcperstage		<< std::endl;
-#endif
+	std::string nnzOutput  = std::to_string(nnzc);
+	std::string FreeMemory = std::to_string(free_memory);
+	std::string CompressionRatio = std::to_string(compression_ratio);
+	std::string RequiredMemory   = std::to_string(required_memory);
+	std::string RequiredStages   = std::to_string(stages);
+
+	printLog(nnzOutput);
+	printLog(CompressionRatio);
+	printLog(FreeMemory);
+	printLog(RequiredMemory);
+	printLog(RequiredStages);
 
 	IT * colStart = new IT[stages+1];	// one array is enough to set stage boundaries	              
 	colStart[0] = 0;
@@ -1095,18 +1100,16 @@ void HashSpGEMMGPU(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation
 
 	for(int b = 0; b < stages; ++b) 
 	{
-#ifdef TIMESTEP
+
 		double alnlenl = omp_get_wtime();
-#endif
+
 		vector<IT> * RowIdsofC = new vector<IT>[colStart[b+1]-colStart[b]];    // row ids for each column of C (bunch of cols)
 		vector<FT> * ValuesofC = new vector<FT>[colStart[b+1]-colStart[b]];    // values for each column of C (bunch of cols)
 
 		LocalSpGEMM(colStart[b], colStart[b+1], A, B, multop, addop, RowIdsofC, ValuesofC, colptrC, true);
 
-#ifdef TIMESTEP
 		double alnlen2 = omp_get_wtime();
 		cout << "\nColumns [" << colStart[b] << " - " << colStart[b+1] << "] overlap time:	" << alnlen2-alnlenl << "s" << endl;
-#endif
 
 		IT endnz = colptrC[colStart[b+1]];
 		IT begnz = colptrC[colStart[b]];
@@ -1128,7 +1131,6 @@ void HashSpGEMMGPU(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation
 		tuple<size_t, size_t, size_t, size_t, size_t, size_t, double> alignstats; // (alignedpairs, alignedbases, totalreadlen, outputted, alignedtrue, alignedfalse, timeoutputt)
 		alignstats = RunPairWiseAlignmentsGPU(colStart[b], colStart[b+1], begnz, colptrC, rowids, values, reads, b_pars, filename, ratiophi);
 
-#ifdef TIMESTEP
 		if(!b_pars.skipAlignment)
 		{
 			double elapsed = omp_get_wtime()-alnlen2;
@@ -1141,7 +1143,7 @@ void HashSpGEMMGPU(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation
 			cout << "averageLength of successful alignment:	"	<< (int)(static_cast<double>(get<4>(alignstats)) / get<3>(alignstats))							<< " bps" << endl;
 			cout << "averageLength of failed alignment:	"		<< (int)(static_cast<double>(get<5>(alignstats)) / (get<0>(alignstats) - get<3>(alignstats)))	<< " bps" << endl;
 		}
-#endif
+
 		cout << "\nOutputted " << get<3>(alignstats) << " lines in " << get<6>(alignstats) << "s" << endl;
 		delete [] rowids;
 		delete [] values;
