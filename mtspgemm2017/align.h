@@ -123,16 +123,18 @@ void alignLogan(vector<string>&	target, vector<string>&	query, vector<SeedL>& se
 	std::vector<ScoringSchemeL> scoring;
 	scoring.push_back(sscheme);
 
-	int numAlignments = seeds.size();
+	int AlignmentsToBePerformed = seeds.size();
+	printLog(AlignmentsToBePerformed);
 	//int* res = (int*)malloc(BATCH_SIZE*sizeof(int));
 	int numAlignmentsLocal = BATCH_SIZE * b_pars.numGPU; 
-	std::cout << "numAlignments: " << numAlignments << std::endl;
+
+	
 
 	//	Divide the alignment in batches of 100K alignments
-	for(int i = 0; i < numAlignments; i += BATCH_SIZE * b_pars.numGPU)
+	for(int i = 0; i < AlignmentsToBePerformed; i += BATCH_SIZE * b_pars.numGPU)
 	{
-		if(numAlignments < (i + BATCH_SIZE * b_pars.numGPU))
-			numAlignmentsLocal = numAlignments % (BATCH_SIZE * b_pars.numGPU);
+		if(AlignmentsToBePerformed < (i + BATCH_SIZE * b_pars.numGPU))
+			numAlignmentsLocal = AlignmentsToBePerformed % (BATCH_SIZE * b_pars.numGPU);
 
 		int* res = (int*)malloc(numAlignmentsLocal * sizeof(int));	
 

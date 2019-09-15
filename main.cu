@@ -424,27 +424,29 @@ int main (int argc, char *argv[]) {
     // Sparse matrices construction
     //
 
+    unsigned int nkmer = countsreliable.size();
     double matcreat = omp_get_wtime();
-	unsigned int nkmer = countsreliable.size();
 	CSC<unsigned int, unsigned short int> spmat(occurrences, numReads, nkmer, 
 							[] (unsigned short int& p1, unsigned short int& p2) 
 							{
 								return p1;
 							});
-	// remove memory of transtuples
-	std::vector<tuple<unsigned int, unsigned int, unsigned short int>>().swap(occurrences);
+    // remove memory of transtuples
+    std::vector<tuple<unsigned int, unsigned int, unsigned short int>>().swap(occurrences);
+
+    double SparseMatrixCreationTime = omp_get_wtime() - matcreat;
+    printLog(SparseMatrixCreationTime);
 
 	CSC<unsigned int, unsigned short int> transpmat(transtuples, nkmer, numReads, 
 							[] (unsigned short int& p1, unsigned short int& p2) 
 							{
 								return p1;
 							});
-	// remove memory of transtuples
-	std::vector<tuple<unsigned int, unsigned int, unsigned short int>>().swap(transtuples);
+    // remove memory of transtuples
+    std::vector<tuple<unsigned int, unsigned int, unsigned short int>>().swap(transtuples);
 
-    float CSCBuiltTime = omp_get_wtime()-matcreat;
-    printLog(CSCBuiltTime);
-
+    double TransposeSparseMatrixCreationTime = omp_get_wtime() - SparseMatrixCreationTime;
+    printLog(TransposeSparseMatrixCreationTime);
 	//
 	// Overlap detection (sparse matrix multiplication) and seed-and-extend alignment
     //
@@ -477,8 +479,8 @@ int main (int argc, char *argv[]) {
 		},
         reads, getvaluetype, OutputFile, b_parameters, ratiophi);
     
-    float BELLARuntime = omp_get_wtime()-all;
-    printLog(BELLARuntime);
+    float BELLATime = omp_get_wtime()-all;
+    printLog(BELLATime);
 
 	return 0;
 }
