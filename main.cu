@@ -263,35 +263,35 @@ int main (int argc, char *argv[]) {
     //
     
 #ifdef PRINT
-    pringLog(OutputFile);
-    pringLog(InputCoverage);
+    printLog(OutputFile);
+    printLog(InputCoverage);
 
     std::string KmerSize = std::to_string(b_parameters.kmerSize);
-    pringLog(KmerSize);
+    printLog(KmerSize);
 
     std::string GPUs = std::to_string(b_parameters.numGPU);
-    pringLog(GPUs);
+    printLog(GPUs);
 
     std::string OutputPAF = std::to_string(b_parameters.outputPaf);
-    pringLog(OutputPAF);
+    printLog(OutputPAF);
 
     std::string BinSize = std::to_string(b_parameters.binSize);
-    pringLog(BinSize);
+    printLog(BinSize);
     
     std::string DeltaChernoff = std::to_string(b_parameters.deltaChernoff);
-    pringLog(DeltaChernoff);
+    printLog(DeltaChernoff);
 
     std::string RunPairwiseAlignment = std::to_string(!b_parameters.skipAlignment);
-    pringLog(RunPairwiseAlignment);
+    printLog(RunPairwiseAlignment);
 
     std::string xDrop = std::to_string(b_parameters.xDrop);
-    pringLog(xDrop);
+    printLog(xDrop);
 
     std::string ReliableCutoffProbability = std::to_string(b_parameters.minProbability);
-    pringLog(ReliableCutoffProbability);
+    printLog(ReliableCutoffProbability);
 
     std::string KmerBuckets = std::to_string(b_parameters.numKmerBucket);
-    pringLog(KmerBuckets);
+    printLog(KmerBuckets);
 #endif
 
     //
