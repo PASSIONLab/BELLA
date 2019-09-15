@@ -15,7 +15,8 @@
 #include <sys/time.h>
 
 #include "fq_reader.h"
-#include "../mtspgemm2017/common.h"
+
+#define printLog(var) do { std::cerr << "INFO:	" << __FILE__ << "(" << __LINE__ << ")	" << #var << " = " << (var) << std::endl; } while(0)
 
 #ifndef MMAP_BLOCK_SIZE
 #define MMAP_BLOCK_SIZE getpagesize()
