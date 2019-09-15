@@ -117,7 +117,10 @@ int main (int argc, char *argv[]) {
 				out_file[len1 + len2] = '\0';
 
 				delete line1;
-				delete line2;
+                delete line2;
+                
+                // Delete file to avoid errors in output
+                remove(out_file);
 
 				break;
 			}

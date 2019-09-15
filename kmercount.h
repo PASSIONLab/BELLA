@@ -85,7 +85,7 @@ vector<filedata>  GetFiles(char *filename) {
 		printLog(ErrorMessage);
 		exit(1);
 	}
-	allfiles.getline(fdata.filename,MAX_FILE_PATH);
+	allfiles.getline(fdata.filename, MAX_FILE_PATH);
 	while(!allfiles.eof())
 	{
 		struct stat st;
@@ -94,7 +94,10 @@ vector<filedata>  GetFiles(char *filename) {
 		
 		filesview.push_back(fdata);
 		std::string inputFile = filesview.back().filename;
-		int inputSize = (float)filesview.back().filesize / (1024*1024);
+		std::string str1 = std::to_string((float)filesview.back().filesize / (1024*1024));
+		std::string str2 = " MB";
+		std::string inputSize = str1 + str2;
+
 		printLog(inputFile);
 		printLog(inputSize);
 		allfiles.getline(fdata.filename, MAX_FILE_PATH);
@@ -252,7 +255,7 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable
 	}
 
 	double SecondKmerPassTime = omp_get_wtime() - firstpass;
-	printLog(FirstKmerPassTime);
+	printLog(SecondKmerPassTime);
 
 	// Reliable bounds computation using estimated error rate from phred quality score
 	lower = computeLower(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);

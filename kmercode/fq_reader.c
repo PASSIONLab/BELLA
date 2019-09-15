@@ -345,7 +345,12 @@ void open_fq(fq_reader_t fqr, const char *fname, int cached_io) {
     fqr->fpos = fqr->start_read;
     assert(fqr->fpos == ftell(fqr->f));
     if(MYTHREAD==0)
-    	fprintf(stdout, "Reading FASTQ file %s\n", fname);
+    {
+        // fprintf(stdout, "Reading FASTQ file %s\n", fname);
+        const char* ReadingFASTQ = fname;
+        printLog(ReadingFASTQ);
+    }
+    	
 #ifndef __APPLE__
     if (fqr->f) {
         posix_fadvise(fileno(fqr->f), fqr->start_read, fqr->end_read - fqr->start_read, 

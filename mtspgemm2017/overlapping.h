@@ -1000,11 +1000,10 @@ auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * ro
 
 	std::ofstream ofs(filename, std::ios::binary | std::ios::app);
 
-	std::string str1 = "Creating or appending to output file with ";
-	std::string str2 = std::to_string((double)bytestotal/(double)(1024 * 1024));
-	std::string str3 = " MB";
-	std::string InfoMessage = str1 + str2 + str3;
-	printLog(InfoMessage);
+	std::string str1 = std::to_string((double)bytestotal/(double)(1024 * 1024));
+	std::string str2 = " MB";
+	std::string OutputSize = str1 + str2;
+	printLog(OutputSize);
 
 	ofs.seekp(bytestotal - 1);
 	ofs.write("", 1); // this will likely create a sparse file so the actual disks won't spin yet
