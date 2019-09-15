@@ -434,10 +434,10 @@ void PostAlignDecisionGPU(const loganResult& maxExtScore, const readType_& read1
 
 	// {begin/end}Position{V/H}: Returns the begin/end position of the seed in the query (vertical/horizonral direction)
 	// these four return seqan:Tposition objects
-	int begpV  	 = getBeginPositionV(maxseed);
-	int endpV 	 = getEndPositionV(maxseed);	
-	int begpH 	 = getBeginPositionH(maxseed);
-	int endpH 	 = getEndPositionH(maxseed);
+	auto begpV   = getBeginPositionV(maxseed);
+	auto endpV 	 = getEndPositionV(maxseed);	
+	auto begpH 	 = getBeginPositionH(maxseed);
+	auto endpH 	 = getEndPositionH(maxseed);
 
 	// get references for better naming
 	const string& seq1 = read1.seq;	// H
@@ -499,44 +499,6 @@ void PostAlignDecisionGPU(const loganResult& maxExtScore, const readType_& read1
 	{
 		numBasesAlignedFalse += (endpV-begpV);
 	}
-}
-
-int getChainLen(const string& seqH, const string& seqV, const int begpH, const int endpH, 
-	const int begpV, const int endpV, const int size, const string& strand)
-{
-	//	GG: TODO modify Kmer to accept different kmerSizes
-	cuckoohash_map<Kmer, int> countsubkmers;
-	int matchingSubKmers = 0;
-	//	std::unordered_mapKmer, bool> countsubkmers;
-
-	for(int i = begpV; i < endpV - size + 1; i++)
-	{
-		std::string kmerstrfromstr = seqV.substr(i, size);
-		Kmer mykmer(kmerstrfromstr.c_str(), kmerstrfromstr.length());
-		Kmer lexsmall = mykmer.rep();
-		countsubkmers.insert(lexsmall, 1);
-	}
-
-	std::string seqHcpy = seqH;
-	if(strand == "c")
-	{
-		seqHcpy = reversecomplement(seqH);
-	}
-
-	for(int i = begpH; i < endpH - size + 1; i++)
-	{
-		std::string kmerstrfromstr = seqHcpy.substr(i, size);
-		Kmer mykmer(kmerstrfromstr.c_str(), kmerstrfromstr.length());
-		Kmer lexsmall = mykmer.rep();
-
-		int proxy;
-		auto found = countsubkmers.find(lexsmall, proxy);
-		if(found)
-			matchingSubKmers++;
-	}
-
-	int chainLen = matchingSubKmers * size;
-	return chainLen;
 }
 
 void PostAlignDecision(const seqAnResult& maxExtScore, const readType_& read1, const readType_& read2, 
@@ -809,18 +771,16 @@ void HashSpGEMM(const CSC<IT,NT>& A, const CSC<IT,NT>& B, MultiplyOperation mult
 
 	for(int b = 0; b < stages; ++b) 
 	{
-#ifdef TIMESTEP
+
 		double alnlenl = omp_get_wtime();
-#endif
+	
 		vector<IT> * RowIdsofC = new vector<IT>[colStart[b+1]-colStart[b]];    // row ids for each column of C (bunch of cols)
 		vector<FT> * ValuesofC = new vector<FT>[colStart[b+1]-colStart[b]];    // values for each column of C (bunch of cols)
 
 		LocalSpGEMM(colStart[b], colStart[b+1], A, B, multop, addop, RowIdsofC, ValuesofC, colptrC, true);
 
-#ifdef TIMESTEP
 		double alnlen2 = omp_get_wtime();
 		cout << "\nColumns [" << colStart[b] << " - " << colStart[b+1] << "] overlap time:	" << alnlen2-alnlenl << "s" << endl;
-#endif
 
 		IT endnz = colptrC[colStart[b+1]];
 		IT begnz = colptrC[colStart[b]];
@@ -879,10 +839,10 @@ auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * ro
 	size_t totfailbases = 0;
 	
 	int numThreads = 1;
-#pragma omp parallel
-	{
-		numThreads = omp_get_num_threads();
-	}
+// #pragma omp parallel
+// 	{
+// 		numThreads = omp_get_num_threads();
+// 	}
 
 	vector<stringstream> vss(numThreads); // any chance of false sharing here? depends on how stringstream is implemented. optimize later if needed...
 
@@ -1006,18 +966,16 @@ auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * ro
 				PostAlignDecisionGPU(maxExtScore, reads[rid], reads[cid], b_pars, ratiophi, val->count, 
 					vss[ithread], outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
 				idx++;
-#ifdef TIMESTEP
+
 				numBasesAlignedThread += getEndPositionV(maxExtScore.seed) - getBeginPositionV(maxExtScore.seed);
-#endif
 			}	// all nonzeros in that column of A^T A
-#ifdef TIMESTEP
+	
 			alignedpairs += numAlignmentsThread;
 			alignedbases += numBasesAlignedThread;
 			totalreadlen += readLengthsThread;
 			totaloutputt += outputted;
 			totsuccbases += numBasesAlignedTrue;
 			totfailbases += numBasesAlignedFalse;
-#endif
 		}	// all columns from start...end (omp for loop)
 	}
 
@@ -1033,9 +991,9 @@ auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * ro
 	int64_t bytestotal = std::accumulate(bytes, bytes+numThreads, static_cast<int64_t>(0));
 
 	std::ofstream ofs(filename, std::ios::binary | std::ios::app);
-#ifdef PRINT
+
 	cout << "Creating or appending to output file with " << (double)bytestotal/(double)(1024 * 1024) << " MB" << endl;
-#endif
+
 	ofs.seekp(bytestotal - 1);
 	ofs.write("", 1); // this will likely create a sparse file so the actual disks won't spin yet
 	ofs.close();

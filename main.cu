@@ -56,7 +56,7 @@ int main (int argc, char *argv[]) {
 	//
 	// Program name and purpose
 	//
-	cout << "\nBELLA - Long Read Aligner for De Novo Genome Assembly\n" << endl;
+	cout << "\nBELLA: Long Read to Long Read Aligner and Overlapper\n" << endl;
 	//
 	// Setup the input files
 	//
@@ -75,8 +75,9 @@ int main (int argc, char *argv[]) {
 
 	if(optList == NULL)
 	{
-		cout << "BELLA execution terminated: not enough parameters or invalid option" << endl;
-		cout << "Run with -h to print out the command line options\n" << endl;
+        std::string ErrorMessage = "BELLA execution terminated: not enough parameters or invalid option.\n" 
+                                        + "Run with -h to print out the command line options.\n";
+		printLog(ErrorMessage);
 		return 0;
 	}
 
@@ -292,7 +293,7 @@ int main (int argc, char *argv[]) {
 	all = omp_get_wtime();
     DeNovoCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound, coverage, reliableUpperBoundlimit, b_parameters);
 
-    int errorRate = b_parameters.errorRate;
+    double errorRate = b_parameters.errorRate;
     printLog(errorRate);
     printLog(reliableLowerBound);
     printLog(reliableUpperBound);
