@@ -32,6 +32,10 @@
 #include <fstream>
 #include <typeinfo>
 
+#ifdef __NVCC__
+#include "loganGPU/logan.cuh"
+#endif
+
 #include "libcuckoo/cuckoohash_map.hh"
 #include "libbloom/bloom64.h"
 
@@ -46,7 +50,9 @@
 #include "mtspgemm2017/common.h"
 
 using namespace std;
+
 #define ASCIIBASE 33 // Pacbio quality score ASCII BASE
+
 #ifndef PRINT
 #define PRINT
 #endif
@@ -74,7 +80,9 @@ vector<filedata>  GetFiles(char *filename) {
 	filedata fdata;
 	ifstream allfiles(filename);
 	if(!allfiles.is_open()) {
-		cerr << "Could not open " << filename << endl;
+		std::string someString(filename);
+		std::string ErrorMessage = "Could not open " + someString;
+		printLog(ErrorMessage);
 		exit(1);
 	}
 	allfiles.getline(fdata.filename,MAX_FILE_PATH);
@@ -85,9 +93,11 @@ vector<filedata>  GetFiles(char *filename) {
 		fdata.filesize = st.st_size;
 		
 		filesview.push_back(fdata);
-		std::cout << "inputFile:	" << filesview.back().filename << std::endl;
-		std::cout << "inputSize:	" << filesview.back().filesize / (1024*1024) << " MB" << endl;
-		allfiles.getline(fdata.filename,MAX_FILE_PATH);
+		std::string inputFile = filesview.back().filename;
+		int inputSize = (float)filesview.back().filesize / (1024*1024);
+		printLog(inputFile);
+		printLog(inputSize);
+		allfiles.getline(fdata.filename, MAX_FILE_PATH);
 		totalsize += fdata.filesize;
 		numfiles++;
 	}
@@ -198,14 +208,15 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable
 	}
 	CardinalityEstimate = hlls[0].estimate();
 
-	float kmerCountingTime = omp_get_wtime() - denovocount;
+	double load2kmers = omp_get_wtime(); 
+	double kmerCountingTime = load2kmers - denovocount;
 	printLog(kmerCountingTime);
 
 	const double desired_probability_of_false_positive = 0.05;
 	struct bloom * bm = (struct bloom*) malloc(sizeof(struct bloom));
 	bloom_init64(bm, CardinalityEstimate * 1.1, desired_probability_of_false_positive);
 
-	float TableSize = ((double)bm->bits)/8/1024/1024;
+	double TableSize = ((double)bm->bits)/8/1024/1024;
 	int numHashFunctions = bm->hashes;
 
 	printLog(CardinalityEstimate);
@@ -261,7 +272,8 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable
 	// Print some information about the table
 	if (countsreliable_denovo.size() == 0)
 	{
-		std::cerr << "BELLA terminated: 0 entries within reliable range. You may want to reduce the k-mer lenght.\n" << endl;
+		std::string ErrorMessage = "BELLA terminated: 0 entries within reliable range. You may want to reduce the k-mer lenght.";
+		printLog(ErrorMessage);
 		exit(1);
 	} 
 	else 

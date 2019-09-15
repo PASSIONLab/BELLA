@@ -11,12 +11,15 @@
 #define PRINT
 #endif
 
+#ifdef __NVCC__
+#include "loganGPU/logan.cuh"
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #include "../optlist/optlist.h" // command line parser
-//#include "gaba.h" // sequence alignment libgaba
 
 #ifdef __cplusplus
 }

@@ -31,6 +31,10 @@
 #include <stdint.h>
 #include <set> 
 
+#ifdef __NVCC__
+#include "loganGPU/logan.cuh"
+#endif
+
 using namespace seqan;
 
 typedef Seed<Simple>  TSeed;

@@ -260,17 +260,17 @@ int main (int argc, char *argv[]) {
 #ifdef PRINT
 	std::cout << std::fixed;
 	std::cout << std::setprecision(3);
-	std::cout << "outputFile:	"		<< out_file							<< std::endl;
-	std::cout << "inputCoverage:	"	<< coverage							<< std::endl;
-	std::cout << "kmerSize:	"			<< b_parameters.kmerSize			<< std::endl;
-    std::cout << "numberGPU:	 "		<< b_parameters.numGPU			    << std::endl;
-	std::cout << "outputPaf:	"		<< b_parameters.outputPaf			<< std::endl;
-	std::cout << "binSize:	"			<< b_parameters.binSize				<< std::endl;
-	std::cout << "deltaChernoff:	"	<< b_parameters.deltaChernoff		<< std::endl;
-	std::cout << "runAlignment:	"		<< !b_parameters.skipAlignment		<< std::endl;
-	std::cout << "seqAn xDrop:	"		<< b_parameters.xDrop				<< std::endl;
-    std::cout << "minProbability:	"	<< b_parameters.minProbability		<< std::endl;
-    std::cout << "numKmerBucket:   "    << b_parameters.numKmerBucket       << std::endl;
+	std::cout << "outputFile:   "		<< out_file							<< std::endl;
+	std::cout << "inputCoverage:    "	<< coverage							<< std::endl;
+	std::cout << "kmerSize: "			<< b_parameters.kmerSize			<< std::endl;
+    std::cout << "numberGPU:    "		<< b_parameters.numGPU			    << std::endl;
+	std::cout << "outputPaf:    "		<< b_parameters.outputPaf			<< std::endl;
+	std::cout << "binSize:  "			<< b_parameters.binSize				<< std::endl;
+	std::cout << "deltaChernoff:    "	<< b_parameters.deltaChernoff		<< std::endl;
+	std::cout << "runAlignment: "		<< !b_parameters.skipAlignment		<< std::endl;
+	std::cout << "seqAn xDrop:  "		<< b_parameters.xDrop				<< std::endl;
+    std::cout << "minProbability:   "	<< b_parameters.minProbability		<< std::endl;
+    std::cout << "numKmerBucket:    "    << b_parameters.numKmerBucket       << std::endl;
 #endif
 
     //
