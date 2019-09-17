@@ -412,6 +412,8 @@ reversecomplement(const std::string& seq) {
 	return cpyseq;
 }
 
+#ifndef __NVCC__
+
 // ======================================= //
 // 				CPU Functions			   //
 // ======================================= //
@@ -764,7 +766,7 @@ void HashSpGEMM(const CSC<IT,NT>& A, const CSC<IT,NT>& B, MultiplyOperation mult
 	delete [] colStart;
 }
 
-#ifdef __NVCC__
+#else	// #ifndef __NVCC__
 
 // ======================================= //
 // 				GPU Functions			   //
