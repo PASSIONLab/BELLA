@@ -19,7 +19,7 @@ sprng:
 rmat:	sprng
 	(cd $(RMATPATH); $(MAKE); cd ../..)
 
-LIBS = -L$(CURDIR)/libbloom/build -lbloom #-L${BOOST_LIB} -lboost_system -lboost_filesystem -lboost_regex -lpthread -lbz2 -lz
+LIBS = -L$(CURDIR)/libbloom/build -lbloom -lpthread -lbz2 -lz
    #-L$(CURDIR)/libgaba -lgaba
 
 Buffer.o: kmercode/Buffer.c
