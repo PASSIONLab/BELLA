@@ -47,7 +47,7 @@ struct BELLApars
 	double	minProbability;		// reliable range probability threshold 				(r)
 
 	BELLApars(): kmerSize(17), binSize(500), fixedThreshold(-1), xDrop(7), numGPU(1), 
-					numKmerBucket(2), skipEstimate(true), skipAlignment(false), outputPaf(false), 
+					numKmerBucket(2), skipEstimate(true), skipAlignment(false), outputPaf(false), userDefMem(false),
 						deltaChernoff(0.10), totalMemory(8000.0), errorRate(0.00), minProbability(0.002) {};
 };
 
@@ -58,6 +58,7 @@ template <typename T>
 
 #ifdef __NVCC_
 #include "../loganGPU/logan.cuh"
+
 // ======================================= //
 // 				GPU Functions			   //
 // ======================================= //
