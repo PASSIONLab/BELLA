@@ -27,7 +27,7 @@ extern "C" {
 
 #include "../libcuckoo/cuckoohash_map.hh"
 
-#ifdef  PRINT
+#ifdef PRINT
 	#define printLog(var) do { std::cerr << "INFO:	" << __FILE__ << "(" << __LINE__ << ")	" << #var << " = " << (var) << std::endl; } while(0)
 #else
 	#define printLog(var)
@@ -51,8 +51,8 @@ struct BELLApars
 	double	minProbability;		// reliable range probability threshold 				(r)
 
 	BELLApars(): kmerSize(17), binSize(500), fixedThreshold(-1), xDrop(7), numGPU(1), 
-					numKmerBucket(2), skipEstimate(false), skipAlignment(false), outputPaf(false), 
-						deltaChernoff(0.10), totalMemory(8000.0), errorRate(0.15), minProbability(0.002) {};
+					numKmerBucket(2), skipEstimate(true), skipAlignment(false), outputPaf(false), 
+						deltaChernoff(0.10), totalMemory(8000.0), errorRate(0.00), minProbability(0.002) {};
 };
 
 template <typename T>
@@ -65,12 +65,6 @@ struct seqAnResult {
 	int score;
 	std::string strand;
 	TSeed seed;
-};
-
-struct loganResult {
-    int score;
-    std::string strand;
-    SeedL seed;
 };
 
 struct readType_ {
@@ -158,5 +152,18 @@ struct alignmentInfo {
 	unsigned short int apos, bpos;	// (8)	pos in the sections
 	unsigned short int alen, blen;	// (8)	lengths of the segments
 };
+
+#ifdef __NVCC_
+
+// ======================================= //
+// 				GPU Functions			   //
+// ======================================= //
+struct loganResult {
+    int score;
+    std::string strand;
+    SeedL seed;
+};
+
+#endif // #ifdef __NVCC__
 
 #endif
