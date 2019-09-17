@@ -457,7 +457,7 @@ void PostAlignDecisionGPU(const loganResult& maxExtScore, const readType_& read1
 	unsigned short int normLen  = max(overlapLenV, overlapLenH);
 	unsigned short int minLen   = min(overlapLenV, overlapLenH);
 
-	if(b_pars.fixedThreshold != -1)
+	if(b_pars.fixedThreshold == -1)
 	{
 		printLog("ADAPTIVE THRESHOLD");
 		double mythreshold = (1 - b_pars.deltaChernoff) * (ratiophi * (double)ov);
@@ -470,7 +470,6 @@ void PostAlignDecisionGPU(const loganResult& maxExtScore, const readType_& read1
 	}
 	else if(maxExtScore.score >= b_pars.fixedThreshold)	// GG: this is only useful for debugging
 	{
-		printLog("FIXED THRESHOLD");
 		passed = true;
 	}
 
