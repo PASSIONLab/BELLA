@@ -114,12 +114,18 @@ seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rle
 	longestExtensionScore.strand = strand;
 	return longestExtensionScore;
 }
-//	GG: GPU alignment call
+
+#ifdef __NVCC__
+
+// ======================================= //
+// 				GPU Functions			   //
+// ======================================= //
+
 void alignLogan(vector<string>&	target, vector<string>&	query, vector<SeedL>& seeds, 
 	const BELLApars& b_pars, vector<loganResult>& longestExtensionScore)
 {
 
-	ScoringSchemeL sscheme(1,-1,-1,-1);
+	ScoringSchemeL sscheme(1, -1, -1, -1);
 	std::vector<ScoringSchemeL> scoring;
 	scoring.push_back(sscheme);
 
@@ -161,5 +167,5 @@ void alignLogan(vector<string>&	target, vector<string>&	query, vector<SeedL>& se
 		free(res);
 	}
 }
-
+#endif // #ifdef __NVCC__
 #endif

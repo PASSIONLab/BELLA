@@ -26,6 +26,9 @@
 #include <unordered_map>
 #include <omp.h>
 
+#ifdef __NVCC__
+#include "loganGPU/logan.cuh"
+#endif
 #include "libcuckoo/cuckoohash_map.hh"
 #include "kmercount.h"
 #include "chain.h"
@@ -55,7 +58,7 @@ int main (int argc, char *argv[]) {
 	//
 	// Program name and purpose
 	//
-	cout << "\nBELLA - Long Read Aligner for De Novo Genome Assembly\n" << endl;
+	cout << "\nBELLA: Long Read to Long Read Aligner and Overlapper\n" << endl;
 	//
 	// Setup the input files
 	//
@@ -67,15 +70,15 @@ int main (int argc, char *argv[]) {
 	optList = GetOptList(argc, argv, (char*)"f:o:c:d:hk:a:ze:x:c:m:r:pb:s:q:g:u:w:");
 
 	char	*all_inputs_fofn 	= NULL;	// List of fastqs (i)
-	char	*out_file 			= NULL;	// output filename (o)
-	int		coverage 			= 0;	// Coverage required (d)
+	char	*OutputFile 		= NULL;	// output filename (o)
+	int		InputCoverage 		= 0;	// Coverage required (d)
 
 	BELLApars b_parameters;
 
 	if(optList == NULL)
 	{
-		cout << "BELLA execution terminated: not enough parameters or invalid option" << endl;
-		cout << "Run with -h to print out the command line options\n" << endl;
+        std::string ErrorMessage("BELLA execution terminated: not enough parameters or invalid option. Run with -h to print out the command line options.\n");
+		printLog(ErrorMessage);
 		return 0;
 	}
 
@@ -86,8 +89,8 @@ int main (int argc, char *argv[]) {
 			case 'f': {
 				if(thisOpt->argument == NULL)
 				{
-					cout << "BELLA execution terminated: -i requires an argument" << endl;
-					cout << "Run with -h to print out the command line options\n" << endl;
+					std::string ErrorMessage = "BELLA execution terminated: -f requires an argument. Run with -h to print out the command line options.\n";
+					printLog(ErrorMessage);
 					return 0;
 				}
 				all_inputs_fofn = strdup(thisOpt->argument);
@@ -97,8 +100,8 @@ int main (int argc, char *argv[]) {
 			case 'o': {
 				if(thisOpt->argument == NULL)
 				{
-					cout << "BELLA execution terminated: -o requires an argument" << endl;
-					cout << "Run with -h to print out the command line options\n" << endl;
+					std::string ErrorMessage = "BELLA execution terminated: -o requires an argument. Run with -h to print out the command line options.\n";
+					printLog(ErrorMessage);
 					return 0;
 				}
 				char* line1 = strdup(thisOpt->argument);
@@ -106,26 +109,29 @@ int main (int argc, char *argv[]) {
 				unsigned int len1 = strlen(line1);
 				unsigned int len2 = strlen(line2);
 
-				out_file = (char*)malloc(len1 + len2 + 1);
-				if (!out_file) abort();
+				OutputFile = (char*)malloc(len1 + len2 + 1);
+				if (!OutputFile) abort();
 
-				memcpy(out_file, line1, len1);
-				memcpy(out_file + len1, line2, len2);
-				out_file[len1 + len2] = '\0';
+				memcpy(OutputFile, line1, len1);
+				memcpy(OutputFile + len1, line2, len2);
+				OutputFile[len1 + len2] = '\0';
 
 				delete line1;
-				delete line2;
+                delete line2;
+                
+                // Delete file to avoid errors in output
+                remove(OutputFile);
 
 				break;
 			}
 			case 'c': {
 				if(thisOpt->argument == NULL)
 				{
-					cout << "BELLA execution terminated: -d requires an argument" << endl;
-					cout << "Run with -h to print out the command line options\n" << endl;
+					std::string ErrorMessage = "BELLA execution terminated: -c requires an argument. Run with -h to print out the command line options.\n";
+					printLog(ErrorMessage);
 					return 0;
 				}
-				coverage = atoi(thisOpt->argument);  
+				InputCoverage = atoi(thisOpt->argument);  
 				break;
 			}
 			case 'z': b_parameters.skipAlignment = true; break;
@@ -137,8 +143,12 @@ int main (int argc, char *argv[]) {
 				b_parameters.minProbability = stod(thisOpt->argument);
 				break;
 			}
-			case 'e': { // User suggests erro rate
-				b_parameters.skipEstimate = true;
+			case 'e': { // User suggests error rate
+				if(thisOpt->argument == NULL)
+				{
+					std::string ErrorMessage = "BELLA execution terminated: -e requires an argument. Run with -h to print out the command line options.\n";
+					printLog(ErrorMessage);
+				}	
 				b_parameters.errorRate = strtod(thisOpt->argument, NULL);
 				break;
 			}
@@ -147,7 +157,6 @@ int main (int argc, char *argv[]) {
 				break;
 			}
 			case 'u': {	// Default: skipEstimate and errorRate = 0.15
-				b_parameters.skipEstimate = true;
 				b_parameters.errorRate = 0.15;	// Default value
 				break;
 			}
@@ -174,14 +183,15 @@ int main (int argc, char *argv[]) {
 			case 'm': {
 				b_parameters.totalMemory = stod(thisOpt->argument);
 				b_parameters.userDefMem = true;
-				cout << "User defined memory set to " << b_parameters.totalMemory << " MB " << endl;
+				std::string UserDefinedMemory = std::to_string(b_parameters.totalMemory) + " MB";
+				printLog(UserDefinedMemory);
 				break;
 			}
 			case 'd': {
 				if(stod(thisOpt->argument) > 1.0 || stod(thisOpt->argument) < 0.0)
 				{
-					cout << "BELLA execution terminated: -c requires a value in [0, 1]" 	<< endl;
-					cout << "Run with -h to print out the command line options\n" 		<< endl;
+					std::string ErrorMessage = "BELLA execution terminated: -d requires a value in [0, 1]. Run with -h to print out the command line options.\n";
+					printLog(ErrorMessage);
 					return 0;
 				}
 				b_parameters.deltaChernoff = stod(thisOpt->argument);
@@ -189,23 +199,23 @@ int main (int argc, char *argv[]) {
 			}
 			case 'h': {
 				cout << "Usage:\n" << endl;
-				cout << " -f : List of fastq(s)	(required)" 	<< endl;
-				cout << " -o : Output filename	(required)" 	<< endl;
-				cout << " -c : Dataset coverage	(required)" 	<< endl;
-				cout << " -k : KmerSize [17]" 					<< endl;
-				cout << " -a : User-defined alignment threshold [FALSE, 0]" 		<< endl;
-				cout << " -x : SeqAn xDrop [7]" 									<< endl;
-				cout << " -e : Error rate [0.15]" 				<< endl;
-				cout << " -q : Estimare error rate from the dataset [FALSE]" 	<< endl;
-				cout << " -u : Use default error rate setting [FALSE]"			<< endl;
-				cout << " -b : Buckets of counted k-mers [2]"   << endl;
-				cout << " -m : Total RAM of the system in MB [auto estimated if possible or 8,000 if not]" << endl;
-				cout << " -z : Do not run pairwise alignment [FALSE]" 				<< endl;
-				cout << " -d : Deviation from the mean alignment score [0.10]" 		<< endl;
-				cout << " -w : Bin size binning algorithm [500]" 	<< endl;
-				cout << " -p : Output in PAF format [FALSE]\n" 		<< endl;
-				cout << " -r : Probability threshold for reliable range [0.002]\n"  << endl;
-                cout << " -g : GPUs available [1, only works when BELLA is compiled for GPU]\n" 		<< endl;
+				cout << "	-f : List of fastq(s)	(required)" 	<< endl;
+				cout << "	-o : Output filename	(required)" 	<< endl;
+				cout << "	-c : Dataset InputCoverage	(required)" << endl;
+				cout << "	-k : KmerSize [17]" 					<< endl;
+				cout << "	-a : User-defined alignment threshold [FALSE, -1]" 		<< endl;
+				cout << "	-x : SeqAn xDrop [7]" 									<< endl;
+				cout << "	-e : Error rate [0.15]" 				<< endl;
+				cout << "	-q : Estimare error rate from the dataset [FALSE]" 	<< endl;
+				cout << "	-u : Use default error rate setting [FALSE]"		<< endl;
+				cout << "	-b : Buckets of counted k-mers [2]"   	<< endl;
+				cout << "	-m : Total RAM of the system in MB [auto estimated if possible or 8,000 if not]"	<< endl;
+				cout << "	-z : Do not run pairwise alignment [FALSE]" 			<< endl;
+				cout << "	-d : Deviation from the mean alignment score [0.10]"	<< endl;
+				cout << "	-w : Bin size binning algorithm [500]" 	<< endl;
+				cout << "	-p : Output in PAF format [FALSE]" 		<< endl;
+				cout << "	-r : Probability threshold for reliable range [0.002]"  << endl;
+                cout << "	-g : GPUs available [1, only works when BELLA is compiled for GPU]\n" 	<< endl;
 
 				FreeOptList(thisOpt); // Done with this list, free it
 				return 0;
@@ -213,20 +223,24 @@ int main (int argc, char *argv[]) {
 		}
 	}
 
-	if(all_inputs_fofn == NULL || out_file == NULL || coverage == 0)
+	if(all_inputs_fofn == NULL || OutputFile == NULL || InputCoverage == 0)
 	{
-		cout << "BELLA execution terminated: missing arguments" << endl;
-		cout << "Run with -h to print out the command line options\n" << endl;
+		std::string ErrorMessage = "BELLA execution terminated: missing arguments. Run with -h to print out the command line options.\n";
+		printLog(ErrorMessage);
+
 		return 0;
     }
     
 	if(b_parameters.errorRate == 0.00 && b_parameters.skipEstimate == true)
 	{
-		cout << "BELLA execution terminated." 	<< endl;
-		cout << " The user should either:" 		<< endl;
-		cout << " * -e = suggest an error rate"	<< endl;
-		cout << " * -q = confirm that the data has quality values and we can estimate the error rate from the data set" << endl;
-		cout << " * -u = confirm that we can use a default error rate (0.15)\n" << endl;
+		std::string str1 = "BELLA execution terminated. The user should either:\n\n";
+		std::string str2 = "	* -e = suggest an error rate;\n";
+		std::string str3 = "	* -q = confirm that the data has quality values and we can estimate the error rate from the data set;\n";
+		std::string str4 = "	* -u = confirm that we can use a default error rate (0.15).\n";
+		std::string ErrorMessage = str1 + str2 + str3 + str4;
+
+		printLog(ErrorMessage);
+
 		return 0;
 	}
 
@@ -257,19 +271,52 @@ int main (int argc, char *argv[]) {
     //
     
 #ifdef PRINT
-	std::cout << std::fixed;
-	std::cout << std::setprecision(3);
-	std::cout << "outputFile:	"		<< out_file							<< std::endl;
-	std::cout << "inputCoverage:	"	<< coverage							<< std::endl;
-	std::cout << "kmerSize:	"			<< b_parameters.kmerSize			<< std::endl;
-    std::cout << "numberGPU:	 "		<< b_parameters.numGPU			    << std::endl;
-	std::cout << "outputPaf:	"		<< b_parameters.outputPaf			<< std::endl;
-	std::cout << "binSize:	"			<< b_parameters.binSize				<< std::endl;
-	std::cout << "deltaChernoff:	"	<< b_parameters.deltaChernoff		<< std::endl;
-	std::cout << "runAlignment:	"		<< !b_parameters.skipAlignment		<< std::endl;
-	std::cout << "seqAn xDrop:	"		<< b_parameters.xDrop				<< std::endl;
-    std::cout << "minProbability:	"	<< b_parameters.minProbability		<< std::endl;
-    std::cout << "numKmerBucket:   "    << b_parameters.numKmerBucket       << std::endl;
+    printLog(OutputFile);
+    printLog(InputCoverage);
+
+    std::string kmerSize = std::to_string(b_parameters.kmerSize);
+    printLog(kmerSize);
+
+#ifdef __NVCC__
+    std::string GPUs = std::to_string(b_parameters.numGPU);
+#else
+	std::string GPUs = "DISABLED";
+#endif
+    printLog(GPUs);
+
+    std::string OutputPAF = std::to_string(b_parameters.outputPaf);
+    printLog(OutputPAF);
+
+    std::string BinSize = std::to_string(b_parameters.binSize);
+    printLog(BinSize);
+    
+    std::string DeltaChernoff = std::to_string(b_parameters.deltaChernoff);
+    printLog(DeltaChernoff);
+
+    std::string RunPairwiseAlignment = std::to_string(!b_parameters.skipAlignment);
+    printLog(RunPairwiseAlignment);
+
+	if(b_parameters.fixedThreshold == -1)
+	{
+		std::string AdaptiveAlignmentThreshold = "ENABLED";
+		printLog(AdaptiveAlignmentThreshold);
+	}
+	else 
+	{
+		std::string AdaptiveAlignmentThreshold = "DISABLE";
+		std::string FixedAlignmentThreshold = std::to_string(b_parameters.fixedThreshold);
+    	printLog(AdaptiveAlignmentThreshold);
+		printLog(FixedAlignmentThreshold);
+	}
+
+    std::string xDrop = std::to_string(b_parameters.xDrop);
+    printLog(xDrop);
+
+    std::string ReliableCutoffProbability = std::to_string(b_parameters.minProbability);
+    printLog(ReliableCutoffProbability);
+
+    std::string kmerBuckets = std::to_string(b_parameters.numKmerBucket);
+    printLog(kmerBuckets);
 #endif
 
     //
@@ -289,23 +336,18 @@ int main (int argc, char *argv[]) {
     printLog(numThreads);
 
 	all = omp_get_wtime();
-    DeNovoCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound, coverage, reliableUpperBoundlimit, b_parameters);
+    DeNovoCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound, InputCoverage, reliableUpperBoundlimit, b_parameters);
 
-    int errorRate = b_parameters.errorRate;
+    double errorRate = b_parameters.errorRate;
     printLog(errorRate);
     printLog(reliableLowerBound);
     printLog(reliableUpperBound);
 
-	if(b_parameters.fixedThreshold != -1)
-	{
-        float userDefinedThreshold = b_parameters.fixedThreshold;
-        printLog(userDefinedThreshold);
-	}
-    else
+	if(b_parameters.fixedThreshold == -1)
     {
         ratiophi = adaptiveSlope(b_parameters.errorRate);
-        float adaptiveThresholdConstant = ratiophi * (1 - b_parameters.deltaChernoff);
-		printLog(adaptiveThresholdConstant);       
+        float AdaptiveThresholdConstant = ratiophi * (1 - b_parameters.deltaChernoff);
+		printLog(AdaptiveThresholdConstant);       
     }
 
     //
@@ -360,7 +402,6 @@ int main (int argc, char *argv[]) {
 					}
 				}
 			} // for(int i=0; i<nreads; i++)
-			//cout << "total number of reads processed so far is " << numReads << endl;
 			numReads += nreads;
 		} //while(fillstatus) 
 		delete pfq;
@@ -394,7 +435,7 @@ int main (int argc, char *argv[]) {
 	std::vector<string>().swap(seqs);		// free memory of seqs  
 	std::vector<string>().swap(quals);		// free memory of quals
 
-    float fastqParsingTime = omp_get_wtime() - parsefastq;
+    std::string fastqParsingTime = std::to_string(omp_get_wtime() - parsefastq) + " seconds";
     printLog(fastqParsingTime);
     printLog(numReads);
 
@@ -402,33 +443,43 @@ int main (int argc, char *argv[]) {
     // Sparse matrices construction
     //
 
+    unsigned int nkmer = countsreliable.size();
     double matcreat = omp_get_wtime();
-	unsigned int nkmer = countsreliable.size();
 	CSC<unsigned int, unsigned short int> spmat(occurrences, numReads, nkmer, 
 							[] (unsigned short int& p1, unsigned short int& p2) 
 							{
 								return p1;
 							});
-	// remove memory of transtuples
-	std::vector<tuple<unsigned int, unsigned int, unsigned short int>>().swap(occurrences);
+    // remove memory of transtuples
+    std::vector<tuple<unsigned int, unsigned int, unsigned short int>>().swap(occurrences);
 
+    std::string SparseMatrixCreationTime = std::to_string(omp_get_wtime() - matcreat) + " seconds";
+    printLog(SparseMatrixCreationTime);
+
+    matcreat = omp_get_wtime();
 	CSC<unsigned int, unsigned short int> transpmat(transtuples, nkmer, numReads, 
 							[] (unsigned short int& p1, unsigned short int& p2) 
 							{
 								return p1;
 							});
-	// remove memory of transtuples
-	std::vector<tuple<unsigned int, unsigned int, unsigned short int>>().swap(transtuples);
+    // remove memory of transtuples
+    std::vector<tuple<unsigned int, unsigned int, unsigned short int>>().swap(transtuples);
 
-    float CSCBuiltTime = omp_get_wtime()-matcreat;
-    printLog(CSCBuiltTime);
+    std::string TransposeSparseMatrixCreationTime = std::to_string(omp_get_wtime() - matcreat) + " seconds";
+    printLog(TransposeSparseMatrixCreationTime);
 
 	//
 	// Overlap detection (sparse matrix multiplication) and seed-and-extend alignment
     //
     
 	spmatPtr_ getvaluetype(make_shared<spmatType_>());
-	HashSpGEMM(spmat, transpmat, 
+
+#ifdef __NVCC__ // GG: if compiled for GPU
+	HashSpGEMMGPU(
+#else
+	HashSpGEMM(
+#endif 
+		spmat, transpmat, 
 		// n-th k-mer positions on read i and on read j
         [&b_parameters, &reads] (const unsigned short int& begpH, const unsigned short int& begpV, 
             const unsigned int& id1, const unsigned int& id2)
@@ -453,10 +504,10 @@ int main (int argc, char *argv[]) {
 			chainop(m1, m2, b_parameters, readname1, readname2);
 			return m1;
 		},
-        reads, getvaluetype, out_file, b_parameters, ratiophi);
-    
-    float BELLARuntime = omp_get_wtime()-all;
-    printLog(BELLARuntime);
+        reads, getvaluetype, OutputFile, b_parameters, ratiophi);
+
+    std::string TotalRuntime = std::to_string(omp_get_wtime()-all) + " seconds";   
+    printLog(TotalRuntime);
 
 	return 0;
 }

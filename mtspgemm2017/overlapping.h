@@ -723,7 +723,7 @@ void HashSpGEMM(const CSC<IT,NT>& A, const CSC<IT,NT>& B, MultiplyOperation mult
 
 		// GG: all paralelism moved to GPU we can do better
 		tuple<size_t, size_t, size_t, size_t, size_t, size_t, double> alignstats; // (alignedpairs, alignedbases, totalreadlen, outputted, alignedtrue, alignedfalse, timeoutputt)
-		alignstats = RunPairWiseAlignments(colStart[b], colStart[b+1], begnz, colptrC, rowids, values, reads, b_pars, filename, ratiophi);
+		alignstats = RunPairWiseAlignments(colStart[b], colStart[b+1], begnz, colptrC, rowids, values, reads, filename, b_pars, ratiophi);
 
 		if(!b_pars.skipAlignment)
 		{
@@ -763,6 +763,8 @@ void HashSpGEMM(const CSC<IT,NT>& A, const CSC<IT,NT>& B, MultiplyOperation mult
 	delete [] colptrC;
 	delete [] colStart;
 }
+
+#ifdef __NVCC__
 
 // ======================================= //
 // 				GPU Functions			   //
@@ -1169,3 +1171,5 @@ void HashSpGEMMGPU(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation
 	delete [] colptrC;
 	delete [] colStart;
 }
+
+#endif // #ifdef __NVCC__
