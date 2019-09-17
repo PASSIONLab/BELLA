@@ -49,7 +49,7 @@ bella: main.cpp hash_funcs.o fq_reader.o Buffer.o Kmer.o bound.o optlist.o rmat 
 
 # GPU build
 bella-gpu: main.cu hash_funcs.o fq_reader.o Buffer.o Kmer.o bound.o optlist.o rmat bloomlib
-	$(COMPILER_GPU) $(CUDAFLAGS) $(INCLUDE) $(SEQINCLUDE) -o bella hash_funcs.o Kmer.o Buffer.o fq_reader.o bound.o optlist.o main.cu ${LIBS}
+	$(COMPILER_GPU) $(CUDAFLAGS) $(INCLUDE) $(SEQINCLUDE) -o bella hash_funcs.o Kmer.o Buffer.o fq_reader.o bound.o optlist.o main.cu ${LIBS} -D__NVCC__
 
 # makes evaluation
 result:
