@@ -953,13 +953,13 @@ RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * rowids,
 
 		uint64_t idx = 0;
 		//	no parallelism to keep same order of pairs in alignment
-		for(IT j = start; j < end; ++j) // for (end-start) columns of A^T A (one block)
+		for(IT j = start; j < end; ++j) // for (end-start) columns of A^T A (one block) 
 		{
-			uint64_t numAlignmentsThread   = 0;
-			uint64_t numBasesAlignedThread = 0;
-			uint64_t readLengthsThread     = 0;
-			uint64_t numBasesAlignedTrue   = 0;
-			uint64_t numBasesAlignedFalse  = 0;
+			// uint64_t numAlignmentsThread   = 0;
+			// uint64_t numBasesAlignedThread = 0;
+			// uint64_t readLengthsThread     = 0;
+			// uint64_t numBasesAlignedTrue   = 0;
+			// uint64_t numBasesAlignedFalse  = 0;
 
 			for (IT i = colptrC[j]; i < colptrC[j+1]; ++i)	// all nonzeros in that column of A^T A
 			{
@@ -974,28 +974,32 @@ RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * rowids,
 
 				spmatPtr_ val = values[i-offset];
 
-				numAlignmentsThread++;
-				readLengthsThread = readLengthsThread + seq1len + seq2len;
+				alignedpairs++;
+				totalreadlen = totalreadlen + seq1len + seq2len;
+				// readLengthsThread = readLengthsThread + seq1len + seq2len;
 
 				bool passed = false;
 				loganResult maxExtScore = maxExtScoreL[idx];
 
 				PostAlignDecisionGPU(maxExtScore, reads[rid], reads[cid], b_pars, ratiophi, val->count, 
-					ss, outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
+					ss, totaloutputt, totsuccbases, totfailbases, passed);
 
 				idx++;	// pairs aligned
 
-				numBasesAlignedThread += getEndPositionV(maxExtScore.seed) - getBeginPositionV(maxExtScore.seed);
+				// numBasesAlignedThread += getEndPositionV(maxExtScore.seed) - getBeginPositionV(maxExtScore.seed);
+				alignedbases += getEndPositionV(maxExtScore.seed) - getBeginPositionV(maxExtScore.seed);
 			}	// all nonzeros in that column of A^T A
-	
-			alignedpairs += numAlignmentsThread;
-			alignedbases += numBasesAlignedThread;
-			totalreadlen += readLengthsThread;
-			totaloutputt += outputted;
-			totsuccbases += numBasesAlignedTrue;
-			totfailbases += numBasesAlignedFalse;
-			printLog(totsuccbases);
-			printLog(totfailbases);
+
+			// GG: no need for multithreaded style here
+			// alignedpairs += numAlignmentsThread;
+			// alignedbases += numBasesAlignedThread;
+			// totalreadlen += readLengthsThread;
+			// totaloutputt += outputted;
+			// totsuccbases += numBasesAlignedTrue;
+			// totfailbases += numBasesAlignedFalse;
+			// printLog(totsuccbases);
+			// printLog(totfailbases);
+
 		}	// all columns from start...end (omp for loop)
 	}
 
