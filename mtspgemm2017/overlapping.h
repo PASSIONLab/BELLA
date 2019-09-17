@@ -665,9 +665,9 @@ void HashSpGEMM(const CSC<IT,NT>& A, const CSC<IT,NT>& B, MultiplyOperation mult
 	uint64_t nnzcperstage = free_memory / (safety_net * (sizeof(FT)+sizeof(IT)));
 
 	std::string nnzOutput  = std::to_string(nnzc);
-	std::string FreeMemory = std::to_string(free_memory);
+	std::string FreeMemory = std::to_string(free_memory) + " MB";
 	std::string CompressionRatio = std::to_string(compression_ratio);
-	std::string RequiredMemory   = std::to_string(required_memory);
+	std::string RequiredMemory   = std::to_string(required_memory) + " MB";
 	std::string RequiredStages   = std::to_string(stages);
 
 	printLog(nnzOutput);
@@ -1079,9 +1079,9 @@ void HashSpGEMMGPU(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation
 	uint64_t nnzcperstage = free_memory / (safety_net * (sizeof(FT)+sizeof(IT)));
 
 	std::string nnzOutput  = std::to_string(nnzc);
-	std::string FreeMemory = std::to_string(free_memory);
+	std::string FreeMemory = std::to_string(free_memory) + " MB";
 	std::string CompressionRatio = std::to_string(compression_ratio);
-	std::string RequiredMemory   = std::to_string(required_memory);
+	std::string RequiredMemory   = std::to_string(required_memory) + " MB";
 	std::string RequiredStages   = std::to_string(stages);
 
 	printLog(nnzOutput);
