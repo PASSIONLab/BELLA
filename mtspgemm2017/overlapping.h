@@ -459,14 +459,18 @@ void PostAlignDecisionGPU(const loganResult& maxExtScore, const readType_& read1
 
 	if(b_pars.fixedThreshold != -1)
 	{
-		float mythreshold = (1 - b_pars.deltaChernoff) * (ratiophi * (float)ov);
-		if((float)maxExtScore.score > mythreshold)
+		printLog("ADAPTIVE THRESHOLD");
+		double mythreshold = (1 - b_pars.deltaChernoff) * (ratiophi * (double)ov);
+		printLog(mythreshold);
+		printLog(maxExtScore.score);
+		if((double)maxExtScore.score > mythreshold)
 		{
 			passed = true;
 		}
 	}
 	else if(maxExtScore.score >= b_pars.fixedThreshold)	// GG: this is only useful for debugging
 	{
+		printLog("FIXED THRESHOLD");
 		passed = true;
 	}
 
@@ -494,18 +498,10 @@ void PostAlignDecisionGPU(const loganResult& maxExtScore, const readType_& read1
 		}
 		++outputted;
 		numBasesAlignedTrue += (endpV-begpV);
-		#pragma omp critical
-		{
-			printLog(numBasesAlignedTrue);
-		}
 	}
 	else
 	{
 		numBasesAlignedFalse += (endpV-begpV);
-		#pragma omp critical
-		{
-			printLog(numBasesAlignedFalse);
-		}
 	}
 }
 
@@ -864,14 +860,7 @@ auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * ro
 	size_t totaloutputt = 0;
 	size_t totsuccbases = 0;
 	size_t totfailbases = 0;
-	
-//	int numThreads = 1;
-// #pragma omp parallel
-// 	{
-// 		numThreads = omp_get_num_threads();
-// 	}
 
-//	vector<stringstream> vss(numThreads); // any chance of false sharing here? depends on how stringstream is implemented. optimize later if needed...
 	stringstream ss;
 
 	vector<string> seq1s;
@@ -880,13 +869,13 @@ auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * ro
 	vector<loganResult> maxExtScoreL;
 
 	size_t outputted = 0;
-
+	int count = 0;
 	//#pragma omp parallel for schedule(dynamic)	//	keep the order for the post evaluation code
 	for(IT j = start; j < end; ++j)					//	acculate sequences for GPU batch alignment
 	{
+		count++;
 		for (IT i = colptrC[j]; i < colptrC[j+1]; ++i)
 		{
-	//		int ithread = omp_get_thread_num();		// GG: this is useless hence remove and rewrite outputting task accordingly
 			unsigned int rid = rowids[i-offset];	// row id
 			unsigned int cid = j;					// column id
 
@@ -973,7 +962,7 @@ auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * ro
 			size_t numBasesAlignedFalse  = 0;
 
 			//	size_t outputted = 0;	//	moved up
-			// int ithread = omp_get_thread_num();
+			//  int ithread = omp_get_thread_num();
 
 			for (IT i = colptrC[j]; i < colptrC[j+1]; ++i)	// all nonzeros in that column of A^T A
 			{
@@ -1007,12 +996,9 @@ auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * ro
 			totaloutputt += outputted;
 			totsuccbases += numBasesAlignedTrue;
 			totfailbases += numBasesAlignedFalse;
-		#pragma omp critical
-		{
-			printLog(totsuccbases);
-			printLog(totfailbases);
-		}
 		}	// all columns from start...end (omp for loop)
+		printLog(totsuccbases);
+		printLog(totfailbases);
 	}
 
 	double outputting = omp_get_wtime();
@@ -1131,7 +1117,6 @@ void HashSpGEMMGPU(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation
 
 	for(int b = 0; b < stages; ++b) 
 	{
-
 		double alnlenl = omp_get_wtime();
 
 		vector<IT> * RowIdsofC = new vector<IT>[colStart[b+1]-colStart[b]];    // row ids for each column of C (bunch of cols)
@@ -1164,6 +1149,9 @@ void HashSpGEMMGPU(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation
 		delete [] RowIdsofC;
 		delete [] ValuesofC;
 
+		printLog("Call RunPairwiseAlignmentGPU");
+
+		// GG: all paralelism moved to GPU we can do better
 		tuple<size_t, size_t, size_t, size_t, size_t, size_t, double> alignstats; // (alignedpairs, alignedbases, totalreadlen, outputted, alignedtrue, alignedfalse, timeoutputt)
 		alignstats = RunPairWiseAlignmentsGPU(colStart[b], colStart[b+1], begnz, colptrC, rowids, values, reads, b_pars, filename, ratiophi);
 
@@ -1187,7 +1175,7 @@ void HashSpGEMMGPU(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation
 			std::string PairsAligned = std::to_string(get<0>(alignstats));
 			printLog(PairsAligned);
 
-			std::string AverageLengthSuccessfulAlignment = std::to_string((int)(static_cast<double>(get<4>(alignstats)) / get<3>(alignstats))) + " bps";
+			int AverageLengthSuccessfulAlignment = std::to_string((int)(static_cast<double>(get<4>(alignstats))/get<3>(alignstats))) + " bps";
 			printLog(AverageLengthSuccessfulAlignment);
 
 			std::string AverageLengthFailedAlignment = std::to_string((int)(static_cast<double>(get<5>(alignstats)) / (get<0>(alignstats) - get<3>(alignstats)))) + " bps";
@@ -1202,7 +1190,7 @@ void HashSpGEMMGPU(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation
 		delete [] rowids;
 		delete [] values;
 
-	}//for(int b = 0; b < states; ++b)
+	} //for(int b = 0; b < states; ++b)
 
 	delete [] colptrC;
 	delete [] colStart;
