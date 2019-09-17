@@ -25,7 +25,7 @@
 #include <stdint.h>
 
 #ifdef __NVCC__
-#include "logan.cuh"
+#include <loganGPU/logan.cuh>
 #endif
 
 #define BATCH_SIZE 30000

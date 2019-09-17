@@ -33,6 +33,10 @@
 
 using namespace seqan;
 
+#ifdef __NVCC__
+#include <loganGPU/logan.cuh>
+#endif
+
 typedef Seed<Simple>  TSeed;
 typedef SeedSet<TSeed> TSeedSet;
 
@@ -763,7 +767,6 @@ void HashSpGEMM(const CSC<IT,NT>& A, const CSC<IT,NT>& B, MultiplyOperation mult
 }
 
 #else	// #ifndef __NVCC__
-#include "logan.cuh"
 
 // ======================================= //
 // 				GPU Functions			   //
