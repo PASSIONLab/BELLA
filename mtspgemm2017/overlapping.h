@@ -34,7 +34,7 @@
 using namespace seqan;
 
 #ifdef __NVCC__
-#include <loganGPU/logan.cuh>
+#include "../loganGPU/logan.cuh"
 #endif
 
 typedef Seed<Simple>  TSeed;
@@ -431,14 +431,13 @@ void PostAlignDecision(const seqAnResult& maxExtScore, const readType_& read1, c
 	int begpH = beginPositionH(maxseed);
 	int endpH = endPositionH(maxseed);
 
-	// get references for better naming
+	// Get references for better naming
 	const string& seq1 = read1.seq;	// H
 	const string& seq2 = read2.seq;	// Vzw
 
 	unsigned short int read1len = seq1.length();
 	unsigned short int read2len = seq2.length();
 
-	//	GG: divergence estimation
 	unsigned short int overlapLenV = endpV - begpV;
 	unsigned short int overlapLenH = endpH - begpH;
 
@@ -452,7 +451,7 @@ void PostAlignDecision(const seqAnResult& maxExtScore, const readType_& read1, c
 	if(b_pars.fixedThreshold == -1)
 	{
 		float mythreshold = (1 - b_pars.deltaChernoff) * (ratiophi * (float)ov);
-		if((float)maxExtScore.score > mythreshold)
+		if((float)maxExtScore.score >= mythreshold)
 		{
 			passed = true;
 		}
@@ -807,7 +806,7 @@ void PostAlignDecisionGPU(const loganResult& maxExtScore, const readType_& read1
 	if(b_pars.fixedThreshold == -1)
 	{
 		double mythreshold = (1 - b_pars.deltaChernoff) * (ratiophi * (double)ov);
-		if((double)maxExtScore.score > mythreshold)
+		if((double)maxExtScore.score >= mythreshold)
 		{
 			passed = true;
 		}

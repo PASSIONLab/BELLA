@@ -25,7 +25,7 @@
 #include <stdint.h>
 
 #ifdef __NVCC__
-#include <loganGPU/logan.cuh>
+#include "../loganGPU/logan.cuh"
 #endif
 
 #define BATCH_SIZE 30000
@@ -41,22 +41,6 @@ double adaptiveSlope(double error)
 	double beta  = 1;                // mismatch/gap penalty
 
 	return alpha*p_mat - beta*p_mis;
-}
-
-bool toEnd(int colStart, int colEnd, int colLen, int rowStart, int rowEnd, int rowLen, int relaxMargin)
-{
-	int minLeft = min(colStart, rowStart);
-	int minRight = min(colLen-colEnd, rowLen-rowEnd);
-
-	 if(minLeft-relaxMargin <= 0)
-		minLeft = 0;
-	 if(minRight-relaxMargin <= 0)
-		minRight = 0;
-
-	 if((minLeft == 0 || minRight == 0))
-		return true;
-	else
-		return false;
 }
 
 /**

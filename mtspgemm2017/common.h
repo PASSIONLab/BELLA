@@ -57,7 +57,7 @@ template <typename T>
 }
 
 #ifdef __NVCC_
-#include <loganGPU/logan.cuh>
+#include "../loganGPU/logan.cuh"
 // ======================================= //
 // 				GPU Functions			   //
 // ======================================= //
@@ -148,7 +148,7 @@ struct spmatType_ {
 		ids.resize(1);			// GG: we don't care about other support, we want only the majority voted one
 		pos[ids[0]].resize(1);	// GG: same for the number of kmers in the choosen bin, we need only one
 
-		return pos[ids[0]][0];	// GG: returning choosen seed
+		return pos[ids[0]][0];	// GG: returning choosen seed // It might be better choose the kmer randomly and find an x-drop/binsize ratio to justify
 	}
 
 };
