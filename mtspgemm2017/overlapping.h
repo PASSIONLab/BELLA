@@ -141,12 +141,6 @@ IT* estimateFLOP(const CSC<IT,NT> & A, const CSC<IT,NT> & B, bool lowtriout)
 		return NULL;
 	}
 		
-	// int numThreads = 1;
-	// #pragma omp parallel
-	// {
-	// 		numThreads = omp_get_num_threads();
-	// }
-	
 	IT* colflopC = new IT[B.cols]; // nnz in every  column of C
 		
 	#pragma omp parallel for
@@ -195,12 +189,6 @@ IT* estimateNNZ_Hash(const CSC<IT,NT>& A, const CSC<IT,NT>& B, const IT* flopC, 
 		return NULL;
 	}
 			
-// 	int numThreads = 1;
-// #pragma omp parallel
-// 	{
-// 		numThreads = omp_get_num_threads();
-// 	}
-
 	IT* colnnzC = new IT[B.cols]; // nnz in every  column of C
 	
 #pragma omp parallel for
@@ -424,85 +412,9 @@ reversecomplement(const std::string& seq) {
 	return cpyseq;
 }
 
-
-void PostAlignDecisionGPU(const loganResult& maxExtScore, const readType_& read1, const readType_& read2, 
-					const BELLApars& b_pars, double ratiophi, int count, stringstream& myBatch, size_t& outputted,
-					size_t& numBasesAlignedTrue, size_t& numBasesAlignedFalse, bool& passed)
-{
-	// returns a Logan::Seed object
-	SeedL maxseed = maxExtScore.seed;
-
-	// {begin/end}Position{V/H}: Returns the begin/end position of the seed in the query (vertical/horizonral direction)
-	// these four return seqan:Tposition objects
-	auto begpV   = getBeginPositionV(maxseed);
-	auto endpV 	 = getEndPositionV(maxseed);	
-	auto begpH 	 = getBeginPositionH(maxseed);
-	auto endpH 	 = getEndPositionH(maxseed);
-
-	// get references for better naming
-	const string& seq1 = read1.seq;	// H
-	const string& seq2 = read2.seq;	// Vzw
-
-	unsigned short int read1len = seq1.length();
-	unsigned short int read2len = seq2.length();
-
-	//	GG: divergence estimation
-	unsigned short int overlapLenV = endpV - begpV;
-	unsigned short int overlapLenH = endpH - begpH;
-
-	unsigned short int minLeft  = min(begpV, begpH);
-	unsigned short int minRight = min(read2len - endpV, read1len - endpH);
-	unsigned short int ov       = minLeft + minRight + (overlapLenV + overlapLenH) / 2;
-
-	unsigned short int normLen  = max(overlapLenV, overlapLenH);
-	unsigned short int minLen   = min(overlapLenV, overlapLenH);
-
-	if(b_pars.fixedThreshold == -1)
-	{
-		printLog("ADAPTIVE THRESHOLD");
-		double mythreshold = (1 - b_pars.deltaChernoff) * (ratiophi * (double)ov);
-		printLog(mythreshold);
-		printLog(maxExtScore.score);
-		if((double)maxExtScore.score > mythreshold)
-		{
-			passed = true;
-		}
-	}
-	else if(maxExtScore.score >= b_pars.fixedThreshold)	// GG: this is only useful for debugging
-	{
-		passed = true;
-	}
-
-	if(passed)
-	{
-		if(!b_pars.outputPaf)		// BELLA output format
-		{
-			myBatch << read2.nametag << '\t' << read1.nametag << '\t' << count << '\t' << maxExtScore.score << '\t' << ov << '\t' << maxExtScore.strand << '\t' << 
-				begpV << '\t' << endpV << '\t' << read2len << '\t' << begpH << '\t' << endpH << '\t' << read1len << endl;
-		}
-		else
-		{
-			std::string pafstrand;	// maxExtScore not modifiable
-			unsigned short int mapq = 255;			// mapping quality (0-255; 255 for missing)
-
-			if(maxExtScore.strand == "n") pafstrand = "+";
-			else pafstrand = "-";
-
-			if(pafstrand == "-")
-				toOriginalCoordinates(begpH, endpH, read1len);
-
-			// PAF format is the output format used by minimap/minimap2: https://github.com/lh3/miniasm/blob/master/PAF.md
-			myBatch << read2.nametag << '\t' << read2len << '\t' << begpV << '\t' << endpV << '\t' << pafstrand << '\t' << 
-				read1.nametag << '\t' << read1len << '\t' << begpH << '\t' << endpH << '\t' << maxExtScore.score << '\t' << ov << '\t' << mapq << endl;
-		}
-		++outputted;
-		numBasesAlignedTrue += (endpV-begpV);
-	}
-	else
-	{
-		numBasesAlignedFalse += (endpV-begpV);
-	}
-}
+// ======================================= //
+// 				CPU Functions			   //
+// ======================================= //
 
 void PostAlignDecision(const seqAnResult& maxExtScore, const readType_& read1, const readType_& read2, 
 					const BELLApars& b_pars, double ratiophi, int count, stringstream& myBatch, size_t& outputted,
@@ -535,7 +447,7 @@ void PostAlignDecision(const seqAnResult& maxExtScore, const readType_& read1, c
 	unsigned short int normLen  = max(overlapLenV, overlapLenH);
 	unsigned short int minLen   = min(overlapLenV, overlapLenH);
 
-	if(b_pars.fixedThreshold != -1)
+	if(b_pars.fixedThreshold == -1)
 	{
 		float mythreshold = (1 - b_pars.deltaChernoff) * (ratiophi * (float)ov);
 		if((float)maxExtScore.score > mythreshold)
@@ -579,138 +491,138 @@ void PostAlignDecision(const seqAnResult& maxExtScore, const readType_& read1, c
 	}
 }
 
-// template <typename IT, typename FT>
-// auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowids, FT * values, const readVector_& reads, 
-// 	char* filename, const BELLApars& b_pars, const double& ratiophi)
-// {
-// 	size_t alignedpairs = 0;
-// 	size_t alignedbases = 0;
-// 	size_t totalreadlen = 0;
-// 	size_t totaloutputt = 0;
-// 	size_t totsuccbases = 0;
-// 	size_t totfailbases = 0;
+template <typename IT, typename FT>
+auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowids, FT * values, const readVector_& reads, 
+	char* filename, const BELLApars& b_pars, const double& ratiophi)
+{
+	size_t alignedpairs = 0;
+	size_t alignedbases = 0;
+	size_t totalreadlen = 0;
+	size_t totaloutputt = 0;
+	size_t totsuccbases = 0;
+	size_t totfailbases = 0;
 
-// 	int numThreads = 1;
-// #pragma omp parallel
-// 	{
-// 		numThreads = omp_get_num_threads();
-// 	}
+	int numThreads = 1;
+#pragma omp parallel
+	{
+		numThreads = omp_get_num_threads();
+	}
 
-// 	vector<stringstream> vss(numThreads); // any chance of false sharing here? depends on how stringstream is implemented. optimize later if needed...
+	vector<stringstream> vss(numThreads); // any chance of false sharing here? depends on how stringstream is implemented. optimize later if needed...
 
-// #pragma omp parallel for schedule(dynamic)
-// 	for(IT j = start; j < end; ++j)	// for (end-start) columns of A^T A (one block)
-// 	{
-// 		size_t numAlignmentsThread		= 0;
-// 		size_t numBasesAlignedThread	= 0;
-// 		size_t readLengthsThread		= 0;
-// 		size_t numBasesAlignedTrue		= 0;
-// 		size_t numBasesAlignedFalse		= 0;
+#pragma omp parallel for schedule(dynamic)
+	for(IT j = start; j < end; ++j)	// for (end-start) columns of A^T A (one block)
+	{
+		size_t numAlignmentsThread		= 0;
+		size_t numBasesAlignedThread	= 0;
+		size_t readLengthsThread		= 0;
+		size_t numBasesAlignedTrue		= 0;
+		size_t numBasesAlignedFalse		= 0;
 
-// 		size_t outputted = 0;
+		size_t outputted = 0;
 
-// 		int ithread = omp_get_thread_num();
+		int ithread = omp_get_thread_num();
 
-// 		for (IT i = colptrC[j]; i < colptrC[j+1]; ++i)  // all nonzeros in that column of A^T A
-// 		{
-// 			unsigned int rid = rowids[i-offset];	// row id
-// 			unsigned int cid = j;					// column id
+		for (IT i = colptrC[j]; i < colptrC[j+1]; ++i)  // all nonzeros in that column of A^T A
+		{
+			unsigned int rid = rowids[i-offset];	// row id
+			unsigned int cid = j;					// column id
 
-// 			const string& seq1 = reads[rid].seq;	// get reference for readibility
-// 			const string& seq2 = reads[cid].seq;	// get reference for readibility
+			const string& seq1 = reads[rid].seq;	// get reference for readibility
+			const string& seq2 = reads[cid].seq;	// get reference for readibility
 
-// 			unsigned short int seq1len = seq1.length();
-// 			unsigned short int seq2len = seq2.length();
+			unsigned short int seq1len = seq1.length();
+			unsigned short int seq2len = seq2.length();
 
-// 			spmatPtr_ val = values[i-offset];
+			spmatPtr_ val = values[i-offset];
 
-// 			if(!b_pars.skipAlignment) // fix -z to not print 
-// 			{
-// 				numAlignmentsThread++;
-// 				readLengthsThread = readLengthsThread + seq1len + seq2len;
+			if(!b_pars.skipAlignment) // fix -z to not print 
+			{
+				numAlignmentsThread++;
+				readLengthsThread = readLengthsThread + seq1len + seq2len;
 
-// 				seqAnResult maxExtScore;
-// 				bool passed = false;
+				seqAnResult maxExtScore;
+				bool passed = false;
 
-// 				//	GG: number of matching kmer into the majority voted bin
-// 				unsigned short int matches = val->chain();
-// 				unsigned short int minkmer = 1;
+				//	GG: number of matching kmer into the majority voted bin
+				unsigned short int matches = val->chain();
+				unsigned short int minkmer = 1;
 
-// 				//	GG: b_pars.minSurvivedKmers should be function of Markov chain
-// 				if (matches < minkmer)
-// 					continue;
+				//	GG: b_pars.minSurvivedKmers should be function of Markov chain
+				if (matches < minkmer)
+					continue;
 
-// 				pair<int, int> kmer = val->choose();
-// 				int i = kmer.first, j = kmer.second;
+				pair<int, int> kmer = val->choose();
+				int i = kmer.first, j = kmer.second;
 
-// 				//	GG: nucleotide alignment
-// 				maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, b_pars.xDrop, b_pars.kmerSize);
-// 				PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratiophi, val->count, vss[ithread], 
-// 					outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed, matches);
+				//	GG: nucleotide alignment
+				maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, b_pars.xDrop, b_pars.kmerSize);
+				PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratiophi, val->count, vss[ithread], 
+					outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed, matches);
 
-// 				numBasesAlignedThread += endPositionV(maxExtScore.seed)-beginPositionV(maxExtScore.seed);
-// 			}
-// 			else // if skipAlignment == false do alignment, else save just some info on the pair to file
-// 			{
-// 				vss[ithread] << reads[cid].nametag << '\t' << reads[rid].nametag << '\t' << val->count << '\t' << 
-// 						seq2len << '\t' << seq1len << endl;
-// 				++outputted;
-// 			}
-// 		} // all nonzeros in that column of A^T A
+				numBasesAlignedThread += endPositionV(maxExtScore.seed)-beginPositionV(maxExtScore.seed);
+			}
+			else // if skipAlignment == false do alignment, else save just some info on the pair to file
+			{
+				vss[ithread] << reads[cid].nametag << '\t' << reads[rid].nametag << '\t' << val->count << '\t' << 
+						seq2len << '\t' << seq1len << endl;
+				++outputted;
+			}
+		} // all nonzeros in that column of A^T A
+		#pragma omp critical
+		{
+			alignedpairs += numAlignmentsThread;
+			alignedbases += numBasesAlignedThread;
+			totalreadlen += readLengthsThread;
+			totaloutputt += outputted;
+			totsuccbases += numBasesAlignedTrue;
+			totfailbases += numBasesAlignedFalse;
+		}
+	} // all columns from start...end (omp for loop)
 
-// #ifdef TIMESTEP	
-// 		#pragma omp critical
-// 		{
-// 			alignedpairs += numAlignmentsThread;
-// 			alignedbases += numBasesAlignedThread;
-// 			totalreadlen += readLengthsThread;
-// 			totaloutputt += outputted;
-// 			totsuccbases += numBasesAlignedTrue;
-// 			totfailbases += numBasesAlignedFalse;
-// 		}
-// #endif
-// 	} // all columns from start...end (omp for loop)
+	double outputting = omp_get_wtime();
 
-// 	double outputting = omp_get_wtime();
+	int64_t* bytes = new int64_t[numThreads];
+	for(int i = 0; i < numThreads; ++i)
+	{
+		vss[i].seekg(0, ios::end);
+		bytes[i] = vss[i].tellg();
+		vss[i].seekg(0, ios::beg);
+	}
 
-// 	int64_t* bytes = new int64_t[numThreads];
-// 	for(int i = 0; i < numThreads; ++i)
-// 	{
-// 		vss[i].seekg(0, ios::end);
-// 		bytes[i] = vss[i].tellg();
-// 		vss[i].seekg(0, ios::beg);
-// 	}
-// 	int64_t bytestotal = std::accumulate(bytes, bytes+numThreads, static_cast<int64_t>(0));
+	int64_t bytestotal = std::accumulate(bytes, bytes+numThreads, static_cast<int64_t>(0));
+	std::ofstream ofs(filename, std::ios::binary | std::ios::app);
 
-// 	std::ofstream ofs(filename, std::ios::binary | std::ios::app);
-// #ifdef PRINT
-// 	cout << "Creating output file with	" << (double)bytestotal/(double)(1024 * 1024) << " MB" << endl;
-// #endif
-// 	ofs.seekp(bytestotal - 1);
-// 	ofs.write("", 1); // this will likely create a sparse file so the actual disks won't spin yet
-// 	ofs.close();
+	std::string str1 = std::to_string((double)bytestotal/(double)(1024 * 1024));
+	std::string str2 = " MB";
+	std::string OutputSize = str1 + str2;
+	printLog(OutputSize);
 
-// 	#pragma omp parallel
-// 	{
-// 		int ithread = omp_get_thread_num();	
+	ofs.seekp(bytestotal - 1);
+	ofs.write("", 1); // this will likely create a sparse file so the actual disks won't spin yet
+	ofs.close();
 
-// 		FILE *ffinal;
-// 		if ((ffinal = fopen(filename, "rb+")) == NULL)	// then everyone fills it
-// 		{
-// 			fprintf(stderr, "File %s failed to open at thread %d\n", filename, ithread);
-// 		}
-// 		int64_t bytesuntil = std::accumulate(bytes, bytes+ithread, static_cast<int64_t>(0));
-// 		fseek (ffinal, bytesuntil, SEEK_SET);
-// 		std::string text = vss[ithread].str();
-// 		fwrite(text.c_str(),1, bytes[ithread] ,ffinal);
-// 		fflush(ffinal);
-// 		fclose(ffinal);
-// 	}
-// 	delete [] bytes;
-// 	double timeoutputt = omp_get_wtime()-outputting;
+	#pragma omp parallel
+	{
+		int ithread = omp_get_thread_num();	
 
-// 	return make_tuple(alignedpairs, alignedbases, totalreadlen, totaloutputt, totsuccbases, totfailbases, timeoutputt);
-// }
+		FILE *ffinal;
+		if ((ffinal = fopen(filename, "rb+")) == NULL)	// then everyone fills it
+		{
+			fprintf(stderr, "File %s failed to open at thread %d\n", filename, ithread);
+		}
+		int64_t bytesuntil = std::accumulate(bytes, bytes+ithread, static_cast<int64_t>(0));
+		fseek (ffinal, bytesuntil, SEEK_SET);
+		std::string text = vss[ithread].str();
+		fwrite(text.c_str(),1, bytes[ithread] ,ffinal);
+		fflush(ffinal);
+		fclose(ffinal);
+	}
+	delete [] bytes;
+	double timeoutputt = omp_get_wtime()-outputting;
+
+	return make_tuple(alignedpairs, alignedbases, totalreadlen, totaloutputt, totsuccbases, totfailbases, timeoutputt);
+}
 
 /**
   * Sparse multithreaded GEMM.
@@ -736,9 +648,8 @@ void HashSpGEMM(const CSC<IT,NT>& A, const CSC<IT,NT>& B, MultiplyOperation mult
 	IT* flopptr = prefixsum<IT>(flopC, B.cols, numThreads);
 	IT flops = flopptr[B.cols];
 
-#ifdef PRINT
-	cout << "FLOPS is\t" << flops << endl;
-#endif
+	std::string FLOPs = std::to_string(flops);
+	printLog(FLOPs);
 
 	IT* colnnzC = estimateNNZ_Hash(A, B, flopC, true);
 	IT* colptrC = prefixsum<IT>(colnnzC, B.cols, numThreads);	// colptrC[i] = rolling sum of nonzeros in C[1...i]
@@ -752,14 +663,17 @@ void HashSpGEMM(const CSC<IT,NT>& A, const CSC<IT,NT>& B, MultiplyOperation mult
 	int stages = std::ceil((double) required_memory/ free_memory); 	// form output in stages 
 	uint64_t nnzcperstage = free_memory / (safety_net * (sizeof(FT)+sizeof(IT)));
 
-#ifdef PRINT
-	std::cout << "nnz (output):	"			<< nnzc					<< std::endl;
-	std::cout << "Compression ratio:	"	<< compression_ratio	<< std::endl;
-	std::cout << "Free memory:	"		<< free_memory		<< std::endl;
-	std::cout << "Required memory:	"	<< required_memory	<< std::endl; 
-	std::cout << "SpGEMM stages:	"	<< stages			<< std::endl;
-//	std::cout << "max nnz per stage:	"	<< nnzcperstage		<< std::endl;
-#endif
+	std::string nnzOutput  = std::to_string(nnzc);
+	std::string FreeMemory = std::to_string(free_memory);
+	std::string CompressionRatio = std::to_string(compression_ratio);
+	std::string RequiredMemory   = std::to_string(required_memory);
+	std::string RequiredStages   = std::to_string(stages);
+
+	printLog(nnzOutput);
+	printLog(CompressionRatio);
+	printLog(FreeMemory);
+	printLog(RequiredMemory);
+	printLog(RequiredStages);
 
 	IT * colStart = new IT[stages+1];	// one array is enough to set stage boundaries	              
 	colStart[0] = 0;
@@ -775,21 +689,21 @@ void HashSpGEMM(const CSC<IT,NT>& A, const CSC<IT,NT>& B, MultiplyOperation mult
 
 	for(int b = 0; b < stages; ++b) 
 	{
-
 		double alnlenl = omp_get_wtime();
-	
+
 		vector<IT> * RowIdsofC = new vector<IT>[colStart[b+1]-colStart[b]];    // row ids for each column of C (bunch of cols)
 		vector<FT> * ValuesofC = new vector<FT>[colStart[b+1]-colStart[b]];    // values for each column of C (bunch of cols)
 
 		LocalSpGEMM(colStart[b], colStart[b+1], A, B, multop, addop, RowIdsofC, ValuesofC, colptrC, true);
 
 		double alnlen2 = omp_get_wtime();
-
+	
 		std::string ColumnsRange = "[" + std::to_string(colStart[b]) + " - " + std::to_string(colStart[b+1]) + "]";
 		printLog(ColumnsRange);
 	
 		std::string OverlapTime = std::to_string(alnlen2-alnlenl) + " seconds";
 		printLog(OverlapTime);
+
 		IT endnz = colptrC[colStart[b+1]];
 		IT begnz = colptrC[colStart[b]];
 
@@ -807,11 +721,11 @@ void HashSpGEMM(const CSC<IT,NT>& A, const CSC<IT,NT>& B, MultiplyOperation mult
 		delete [] RowIdsofC;
 		delete [] ValuesofC;
 
+		// GG: all paralelism moved to GPU we can do better
 		tuple<size_t, size_t, size_t, size_t, size_t, size_t, double> alignstats; // (alignedpairs, alignedbases, totalreadlen, outputted, alignedtrue, alignedfalse, timeoutputt)
-		alignstats = RunPairWiseAlignments(colStart[b], colStart[b+1], begnz, colptrC, rowids, values, reads, filename, b_pars, ratiophi);
+		alignstats = RunPairWiseAlignments(colStart[b], colStart[b+1], begnz, colptrC, rowids, values, reads, b_pars, filename, ratiophi);
 
-#ifdef TIMESTEP
-if(!b_pars.skipAlignment)
+		if(!b_pars.skipAlignment)
 		{
 			double elapsed = omp_get_wtime()-alnlen2;
 			double aligntime = elapsed-get<6>(alignstats); // substracting outputting time
@@ -831,22 +745,105 @@ if(!b_pars.skipAlignment)
 			std::string PairsAligned = std::to_string(get<0>(alignstats));
 			printLog(PairsAligned);
 
-			std::string AverageLengthSuccessfulAlignment = std::to_string((int)(static_cast<double>(get<4>(alignstats)) / get<3>(alignstats))) + " bps";
+			std::string AverageLengthSuccessfulAlignment = std::to_string((int)(static_cast<double>(get<4>(alignstats))/get<3>(alignstats))) + " bps";
 			printLog(AverageLengthSuccessfulAlignment);
 
 			std::string AverageLengthFailedAlignment = std::to_string((int)(static_cast<double>(get<5>(alignstats)) / (get<0>(alignstats) - get<3>(alignstats)))) + " bps";
 			printLog(AverageLengthFailedAlignment);
 		}
-#endif
-		cout << "\nOutputted " << get<3>(alignstats) << " lines in	" << get<6>(alignstats) << "s" << endl;
+
+		int LinesOutputted = get<3>(alignstats);
+		printLog(LinesOutputted);
+		std::string OutputtingTime = std::to_string(get<6>(alignstats)) + " seconds";
+		printLog(OutputtingTime);
+
 		delete [] rowids;
 		delete [] values;
-
-	}//for(int b = 0; b < states; ++b)
-
+	} // for(int b = 0; b < states; ++b)
 	delete [] colptrC;
 	delete [] colStart;
 }
+
+// ======================================= //
+// 				GPU Functions			   //
+// ======================================= //
+
+void PostAlignDecisionGPU(const loganResult& maxExtScore, const readType_& read1, const readType_& read2, 
+					const BELLApars& b_pars, double ratiophi, int count, stringstream& myBatch, size_t& outputted,
+					size_t& numBasesAlignedTrue, size_t& numBasesAlignedFalse, bool& passed)
+{
+	// returns a Logan::Seed object
+	SeedL maxseed = maxExtScore.seed;
+
+	// {begin/end}Position{V/H}: Returns the begin/end position of the seed in the query (vertical/horizonral direction)
+	// these four return seqan:Tposition objects
+	auto begpV   = getBeginPositionV(maxseed);
+	auto endpV 	 = getEndPositionV(maxseed);	
+	auto begpH 	 = getBeginPositionH(maxseed);
+	auto endpH 	 = getEndPositionH(maxseed);
+
+	// get references for better naming
+	const string& seq1 = read1.seq;	// H
+	const string& seq2 = read2.seq;	// Vzw
+
+	unsigned short int read1len = seq1.length();
+	unsigned short int read2len = seq2.length();
+
+	//	GG: divergence estimation
+	unsigned short int overlapLenV = endpV - begpV;
+	unsigned short int overlapLenH = endpH - begpH;
+
+	unsigned short int minLeft  = min(begpV, begpH);
+	unsigned short int minRight = min(read2len - endpV, read1len - endpH);
+	unsigned short int ov       = minLeft + minRight + (overlapLenV + overlapLenH) / 2;
+
+	unsigned short int normLen  = max(overlapLenV, overlapLenH);
+	unsigned short int minLen   = min(overlapLenV, overlapLenH);
+
+	if(b_pars.fixedThreshold == -1)
+	{
+		double mythreshold = (1 - b_pars.deltaChernoff) * (ratiophi * (double)ov);
+		if((double)maxExtScore.score > mythreshold)
+		{
+			passed = true;
+		}
+	}
+	else if(maxExtScore.score >= b_pars.fixedThreshold)	// GG: this is only useful for debugging
+	{
+		passed = true;
+	}
+
+	if(passed)
+	{
+		if(!b_pars.outputPaf)		// BELLA output format
+		{
+			myBatch << read2.nametag << '\t' << read1.nametag << '\t' << count << '\t' << maxExtScore.score << '\t' << ov << '\t' << maxExtScore.strand << '\t' << 
+				begpV << '\t' << endpV << '\t' << read2len << '\t' << begpH << '\t' << endpH << '\t' << read1len << endl;
+		}
+		else
+		{
+			std::string pafstrand;	// maxExtScore not modifiable
+			unsigned short int mapq = 255;			// mapping quality (0-255; 255 for missing)
+
+			if(maxExtScore.strand == "n") pafstrand = "+";
+			else pafstrand = "-";
+
+			if(pafstrand == "-")
+				toOriginalCoordinates(begpH, endpH, read1len);
+
+			// PAF format is the output format used by minimap/minimap2: https://github.com/lh3/miniasm/blob/master/PAF.md
+			myBatch << read2.nametag << '\t' << read2len << '\t' << begpV << '\t' << endpV << '\t' << pafstrand << '\t' << 
+				read1.nametag << '\t' << read1len << '\t' << begpH << '\t' << endpH << '\t' << maxExtScore.score << '\t' << ov << '\t' << mapq << endl;
+		}
+		++outputted;
+		numBasesAlignedTrue += (endpV-begpV);
+	}
+	else
+	{
+		numBasesAlignedFalse += (endpV-begpV);
+	}
+}
+
 // (unsigned int, unsigned int, unsigned int, unsigned int *, unsigned int *, spmatPtr_ *,  
 // 		const readVector_, const BELLApars, char *, double)
 template <typename IT, typename FT>
@@ -960,9 +957,6 @@ auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * ro
 			size_t numBasesAlignedTrue   = 0;
 			size_t numBasesAlignedFalse  = 0;
 
-			//	size_t outputted = 0;	//	moved up
-			//  int ithread = omp_get_thread_num();
-
 			for (IT i = colptrC[j]; i < colptrC[j+1]; ++i)	// all nonzeros in that column of A^T A
 			{
 				unsigned int rid = rowids[i-offset];		// row id
@@ -996,8 +990,6 @@ auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * ro
 			totsuccbases += numBasesAlignedTrue;
 			totfailbases += numBasesAlignedFalse;
 		}	// all columns from start...end (omp for loop)
-		printLog(totsuccbases);
-		printLog(totfailbases);
 	}
 
 	double outputting = omp_get_wtime();
@@ -1006,15 +998,6 @@ auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * ro
 	ss.seekg(0, ios::end);
 	bytestotal = ss.tellg();
 	ss.seekg(0, ios::beg);
-
-	// = new int64_t[numThreads];
-	// for(int i=0; i < numThreads; ++i)
-	// {
-		// vss[i].seekg(0, ios::end);
-		// bytes[i] = vss[i].tellg();
-		// vss[i].seekg(0, ios::beg);
-	// }
-	// int64_t bytestotal = std::accumulate(bytes, bytes+numThreads, static_cast<int64_t>(0));
 
 	std::ofstream ofs(filename, std::ios::binary | std::ios::app);
 
@@ -1027,14 +1010,10 @@ auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * ro
 	ofs.write("", 1); // this will likely create a sparse file so the actual disks won't spin yet
 	ofs.close();
 
-	// #pragma omp parallel
-	// {
-	int ithread = omp_get_thread_num();	
-
 	FILE *ffinal;
 	if ((ffinal = fopen(filename, "rb+")) == NULL)	// then everyone fills it
 	{
-		fprintf(stderr, "File %s failed to open at thread %d\n", filename, ithread);
+		fprintf(stderr, "File %s failed to open\n", filename);
 	}
 	// int64_t bytesuntil = std::accumulate(bytes, bytes+ithread, static_cast<int64_t>(0));
 	fseek (ffinal , bytestotal , SEEK_SET);
@@ -1043,9 +1022,7 @@ auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * ro
 	fwrite(text.c_str(), 1, bytestotal, ffinal);
 	fflush(ffinal);
 	fclose(ffinal);
-	// }
 
-	// delete [] bytes;
 	double timeoutputt = omp_get_wtime()-outputting;
 	return make_tuple(alignedpairs, alignedbases, totalreadlen, totaloutputt, totsuccbases, totfailbases, timeoutputt);
 }
@@ -1147,8 +1124,6 @@ void HashSpGEMMGPU(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation
 
 		delete [] RowIdsofC;
 		delete [] ValuesofC;
-
-		printLog("Call RunPairwiseAlignmentGPU");
 
 		// GG: all paralelism moved to GPU we can do better
 		tuple<size_t, size_t, size_t, size_t, size_t, size_t, double> alignstats; // (alignedpairs, alignedbases, totalreadlen, outputted, alignedtrue, alignedfalse, timeoutputt)
