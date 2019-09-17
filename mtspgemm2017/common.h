@@ -11,10 +11,6 @@
 #define PRINT
 #endif
 
-#ifdef __NVCC__
-#include "../loganGPU/logan.cuh"
-#endif
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -59,6 +55,20 @@ template <typename T>
 	bool isinrift(const T& value, const T& left, const T& right) {
 	return (value > left) && (value < right);
 }
+
+#ifdef __NVCC_
+#include "../loganGPU/logan.cuh"
+// ======================================= //
+// 				GPU Functions			   //
+// ======================================= //
+
+struct loganResult {
+    int score;
+    std::string strand;
+    SeedL seed;
+};
+
+#endif // #ifdef __NVCC__
 
 typedef seqan::Seed<seqan::Simple> TSeed;
 struct seqAnResult {
@@ -152,18 +162,5 @@ struct alignmentInfo {
 	unsigned short int apos, bpos;	// (8)	pos in the sections
 	unsigned short int alen, blen;	// (8)	lengths of the segments
 };
-
-#ifdef __NVCC_
-
-// ======================================= //
-// 				GPU Functions			   //
-// ======================================= //
-struct loganResult {
-    int score;
-    std::string strand;
-    SeedL seed;
-};
-
-#endif // #ifdef __NVCC__
 
 #endif
