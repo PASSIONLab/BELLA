@@ -494,10 +494,18 @@ void PostAlignDecisionGPU(const loganResult& maxExtScore, const readType_& read1
 		}
 		++outputted;
 		numBasesAlignedTrue += (endpV-begpV);
+		#pragma omp critical
+		{
+			printLog(numBasesAlignedTrue);
+		}
 	}
 	else
 	{
 		numBasesAlignedFalse += (endpV-begpV);
+		#pragma omp critical
+		{
+			printLog(numBasesAlignedFalse);
+		}
 	}
 }
 
@@ -965,7 +973,7 @@ auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * ro
 			size_t numBasesAlignedFalse  = 0;
 
 			//	size_t outputted = 0;	//	moved up
-			int ithread = omp_get_thread_num();
+			// int ithread = omp_get_thread_num();
 
 			for (IT i = colptrC[j]; i < colptrC[j+1]; ++i)	// all nonzeros in that column of A^T A
 			{
@@ -999,6 +1007,11 @@ auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * ro
 			totaloutputt += outputted;
 			totsuccbases += numBasesAlignedTrue;
 			totfailbases += numBasesAlignedFalse;
+		#pragma omp critical
+		{
+			printLog(totsuccbases);
+			printLog(totfailbases);
+		}
 		}	// all columns from start...end (omp for loop)
 	}
 
