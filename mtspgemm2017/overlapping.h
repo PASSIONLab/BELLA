@@ -850,16 +850,10 @@ void PostAlignDecisionGPU(const loganResult& maxExtScore, const readType_& read1
 // (unsigned int, unsigned int, unsigned int, unsigned int *, unsigned int *, spmatPtr_ *,  
 // 		const readVector_, const BELLApars, char *, double)
 template <typename IT, typename FT>
-auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * rowids, FT * values, const readVector_& reads, 
+std::tuple<uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, double>
+RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * rowids, FT * values, const readVector_& reads, 
 	const BELLApars& b_pars, char* filename, double ratiophi)
 {
-	size_t alignedpairs = 0;
-	size_t alignedbases = 0;
-	size_t totalreadlen = 0;
-	size_t totaloutputt = 0;
-	size_t totsuccbases = 0;
-	size_t totfailbases = 0;
-
 	stringstream ss;
 
 	vector<string> seq1s;
@@ -867,7 +861,7 @@ auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * ro
 	vector<SeedL>  seeds;
 	vector<loganResult> maxExtScoreL;
 
-	size_t outputted = 0;
+	uint64_t outputted = 0;
 	int count = 0;
 	//#pragma omp parallel for schedule(dynamic)	//	keep the order for the post evaluation code
 	for(IT j = start; j < end; ++j)					//	acculate sequences for GPU batch alignment
@@ -942,6 +936,13 @@ auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * ro
 		}
 	}
 
+	uint64_t alignedpairs = 0;
+	uint64_t alignedbases = 0;
+	uint64_t totalreadlen = 0;
+	uint64_t totaloutputt = 0;
+	uint64_t totsuccbases = 0;
+	uint64_t totfailbases = 0;
+
 	if(!b_pars.skipAlignment) // fix -z to not print 
 	{
 		std::string AlignmentGPU = "Started";
@@ -950,15 +951,15 @@ auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * ro
 		AlignmentGPU  = "Completed";
 		printLog(AlignmentGPU);
 
-		unsigned int idx = 0;
+		uint64_t idx = 0;
 		//	no parallelism to keep same order of pairs in alignment
 		for(IT j = start; j < end; ++j) // for (end-start) columns of A^T A (one block)
 		{
-			size_t numAlignmentsThread   = 0;
-			size_t numBasesAlignedThread = 0;
-			size_t readLengthsThread     = 0;
-			size_t numBasesAlignedTrue   = 0;
-			size_t numBasesAlignedFalse  = 0;
+			uint64_t numAlignmentsThread   = 0;
+			uint64_t numBasesAlignedThread = 0;
+			uint64_t readLengthsThread     = 0;
+			uint64_t numBasesAlignedTrue   = 0;
+			uint64_t numBasesAlignedFalse  = 0;
 
 			for (IT i = colptrC[j]; i < colptrC[j+1]; ++i)	// all nonzeros in that column of A^T A
 			{
@@ -981,7 +982,8 @@ auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * ro
 
 				PostAlignDecisionGPU(maxExtScore, reads[rid], reads[cid], b_pars, ratiophi, val->count, 
 					ss, outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed);
-				idx++;
+
+				idx++;	// pairs aligned
 
 				numBasesAlignedThread += getEndPositionV(maxExtScore.seed) - getBeginPositionV(maxExtScore.seed);
 			}	// all nonzeros in that column of A^T A
@@ -992,6 +994,8 @@ auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * ro
 			totaloutputt += outputted;
 			totsuccbases += numBasesAlignedTrue;
 			totfailbases += numBasesAlignedFalse;
+			printLog(totsuccbases);
+			printLog(totfailbases);
 		}	// all columns from start...end (omp for loop)
 	}
 
@@ -1027,7 +1031,7 @@ auto RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * ro
 	fclose(ffinal);
 
 	double timeoutputt = omp_get_wtime()-outputting;
-	return make_tuple(alignedpairs, alignedbases, totalreadlen, totaloutputt, totsuccbases, totfailbases, timeoutputt);
+	return std::make_tuple(alignedpairs, alignedbases, totalreadlen, totaloutputt, totsuccbases, totfailbases, timeoutputt);
 }
 
 /**
@@ -1129,7 +1133,7 @@ void HashSpGEMMGPU(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation
 		delete [] ValuesofC;
 
 		// GG: all paralelism moved to GPU we can do better
-		tuple<size_t, size_t, size_t, size_t, size_t, size_t, double> alignstats; // (alignedpairs, alignedbases, totalreadlen, outputted, alignedtrue, alignedfalse, timeoutputt)
+		std::tuple<uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, double> alignstats; // (alignedpairs, alignedbases, totalreadlen, outputted, alignedtrue, alignedfalse, timeoutputt)
 		alignstats = RunPairWiseAlignmentsGPU(colStart[b], colStart[b+1], begnz, colptrC, rowids, values, reads, b_pars, filename, ratiophi);
 
 		if(!b_pars.skipAlignment)
