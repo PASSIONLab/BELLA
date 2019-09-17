@@ -565,11 +565,11 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 			else // if skipAlignment == false do alignment, else save just some info on the pair to file
 			{
 				vss[ithread] << reads[cid].nametag << '\t' << reads[rid].nametag << '\t' << val->count << '\t' << 
-						seq2len << '\t' << seq1len << endl;
+						seq2len << '\t' << seq1len << std::endl;
 				++outputted;
 			}
 		} // all nonzeros in that column of A^T A
-		#pragma omp critical
+	#pragma omp critical
 		{
 			alignedpairs += numAlignmentsThread;
 			alignedbases += numBasesAlignedThread;
