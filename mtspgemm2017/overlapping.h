@@ -1175,7 +1175,7 @@ void HashSpGEMMGPU(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation
 			std::string PairsAligned = std::to_string(get<0>(alignstats));
 			printLog(PairsAligned);
 
-			int AverageLengthSuccessfulAlignment = std::to_string((int)(static_cast<double>(get<4>(alignstats))/get<3>(alignstats))) + " bps";
+			std::string AverageLengthSuccessfulAlignment = std::to_string((int)(static_cast<double>(get<4>(alignstats))/get<3>(alignstats))) + " bps";
 			printLog(AverageLengthSuccessfulAlignment);
 
 			std::string AverageLengthFailedAlignment = std::to_string((int)(static_cast<double>(get<5>(alignstats)) / (get<0>(alignstats) - get<3>(alignstats)))) + " bps";
