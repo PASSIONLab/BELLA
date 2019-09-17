@@ -31,10 +31,6 @@
 #include <stdint.h>
 #include <set> 
 
-#ifdef __NVCC__
-#include "../loganGPU/logan.cuh"
-#endif
-
 using namespace seqan;
 
 typedef Seed<Simple>  TSeed;
@@ -767,6 +763,7 @@ void HashSpGEMM(const CSC<IT,NT>& A, const CSC<IT,NT>& B, MultiplyOperation mult
 }
 
 #else	// #ifndef __NVCC__
+#include "logan.cuh"
 
 // ======================================= //
 // 				GPU Functions			   //

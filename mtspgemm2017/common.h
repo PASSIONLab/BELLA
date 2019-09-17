@@ -57,7 +57,7 @@ template <typename T>
 }
 
 #ifdef __NVCC_
-#include "../loganGPU/logan.cuh"
+#include "logan.cuh"
 // ======================================= //
 // 				GPU Functions			   //
 // ======================================= //
