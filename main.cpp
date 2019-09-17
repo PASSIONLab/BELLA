@@ -26,9 +26,6 @@
 #include <unordered_map>
 #include <omp.h>
 
-#ifdef __NVCC__
-#include "loganGPU/logan.cuh"
-#endif
 #include "libcuckoo/cuckoohash_map.hh"
 #include "kmercount.h"
 #include "chain.h"
@@ -277,11 +274,7 @@ int main (int argc, char *argv[]) {
     std::string kmerSize = std::to_string(b_parameters.kmerSize);
     printLog(kmerSize);
 
-#ifdef __NVCC__
-    std::string GPUs = std::to_string(b_parameters.numGPU);
-#else
 	std::string GPUs = "DISABLED";
-#endif
     printLog(GPUs);
 
     std::string OutputPAF = std::to_string(b_parameters.outputPaf);
@@ -474,11 +467,7 @@ int main (int argc, char *argv[]) {
     
 	spmatPtr_ getvaluetype(make_shared<spmatType_>());
 
-#ifdef __NVCC__ // GG: if compiled for GPU
-	HashSpGEMMGPU(
-#else
 	HashSpGEMM(
-#endif 
 		spmat, transpmat, 
 		// n-th k-mer positions on read i and on read j
         [&b_parameters, &reads] (const unsigned short int& begpH, const unsigned short int& begpV, 
