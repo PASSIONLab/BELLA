@@ -26,6 +26,16 @@
 //#include <cub/cub.cuh>
 //#include<boost/array.hpp>
 
+// ======================================= //
+// 				   GPU STRUCT			   //
+// ======================================= //
+
+struct loganResult {
+    int score;
+    std::string strand;
+    SeedL seed;
+};
+
 // __inline__ __device__ short simple_max(int *antidiag, int &dim, int &offset);
 // __inline__ __device__ void warpReduce(volatile int *input, int myTId);
 // __inline__ __device__ short warpReduceMax(short val);

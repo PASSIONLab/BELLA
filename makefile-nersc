@@ -43,7 +43,7 @@ Kmer.o:	kmercode/Kmer.cpp
 	$(COMPILER) -fopenmp -std=c++11 -O3 -c -o Kmer.o kmercode/Kmer.cpp
 
 # flags defined in mtspgemm2017/GTgraph/Makefile.var
-bella: main.cpp hash_funcs.o fq_reader.o Buffer.o Kmer.o bound.o optlist.o rmat bloomlib #$(CUDA_OBJ) $(CPP_OBJ)
+bella: main.cpp hash_funcs.o fq_reader.o Buffer.o Kmer.o bound.o optlist.o rmat bloomlib
 	$(COMPILER) -std=c++14 -w -O3 $(INCLUDE) -march=native -fopenmp -fpermissive -o bella hash_funcs.o Kmer.o Buffer.o fq_reader.o bound.o optlist.o main.cpp ${LIBS}
 
 # GPU build

@@ -56,21 +56,6 @@ template <typename T>
 	return (value > left) && (value < right);
 }
 
-#ifdef __NVCC_
-#include "../loganGPU/logan.cuh"
-
-// ======================================= //
-// 				GPU Functions			   //
-// ======================================= //
-
-struct loganResult {
-    int score;
-    std::string strand;
-    SeedL seed;
-};
-
-#endif // #ifdef __NVCC__
-
 typedef seqan::Seed<seqan::Simple> TSeed;
 struct seqAnResult {
 	int score;
