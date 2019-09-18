@@ -117,7 +117,7 @@ vector<filedata>  GetFiles(char *filename) {
  * @param upperlimit
  */
 void DeNovoCount(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable_denovo, int& lower, int& upper,
-	int coverage, size_t upperlimit, BELLApars & b_pars)
+	int coverage, size_t upperlimit, BELLApars & b_pars, int bucketId)
 {
 	vector < vector<Kmer> >   allkmers(MAXTHREADS);
 	vector < vector<double> > allquals(MAXTHREADS);
@@ -131,7 +131,6 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable
 	{
 		#pragma omp parallel
 		{
-
 			ParallelFASTQ *pfq = new ParallelFASTQ();
 			pfq->open(itr->filename, false, itr->filesize);
 
@@ -163,20 +162,28 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable
 						std::string kmerstrfromfastq = seqs[i].substr(j, b_pars.kmerSize);
 						Kmer mykmer(kmerstrfromfastq.c_str(), kmerstrfromfastq.length());
 						Kmer lexsmall = mykmer.rep();
-						allkmers[MYTHREAD].push_back(lexsmall);
-						hlls[MYTHREAD].add((const char*) lexsmall.getBytes(), lexsmall.getNumBytes());
+						
+						int hashbucket = lexsmall.hash() % b_pars.numKmerBucket;
 
-					if(b_pars.skipEstimate == false)
+						// Divide in buckets to reduce memory footprint ==> TODO: implement subsampling
+						if(hashbucket == bucketId) 
+						{
+							allkmers[MYTHREAD].push_back(lexsmall);
+							hlls[MYTHREAD].add((const char*) lexsmall.getBytes(), lexsmall.getNumBytes());
+						}
+
+						// Do this only if bucketId == 0
+						if(b_pars.skipEstimate == false && bucketId == 0) 
+						{
+								// accuracy
+								int bqual = (int)quals[i][j] - ASCIIBASE;
+								double berror = pow(10,-(double)bqual/10);
+								rerror += berror;
+						}
+					}
+					// Do this only if bucketId == 0
+					if(b_pars.skipEstimate == false && bucketId == 0) 
 					{
-							// accuracy
-							int bqual = (int)quals[i][j] - ASCIIBASE;
-							double berror = pow(10,-(double)bqual/10);
-							rerror += berror;
-					}
-
-					}
-			if(b_pars.skipEstimate == false)
-			{
 						// remaining k qual position accuracy
 						for(int j = len - b_pars.kmerSize + 1; j < len; j++)
 						{
@@ -186,20 +193,23 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable
 						}
 						rerror = rerror / len;
 						allquals[MYTHREAD].push_back(rerror);
-			}
+					}
 				} // for(int i=0; i<nreads; i++)
 				tlreads += nreads;
 			} //while(fillstatus) 
 			delete pfq;
 
 			#pragma omp critical
-			totreads += tlreads;
+			{
+				totreads += tlreads;
+			}
 		}
 	}
 
 	// Error estimation
 	double& errorRate = b_pars.errorRate;
-	if(b_pars.skipEstimate == false)
+	// Do this only if bucketId == 0
+	if(b_pars.skipEstimate == false && bucketId == 0)
 	{
 		errorRate = 0.0; // reset to 0 here, otherwise it cointains default or user-defined values
 		#pragma omp for reduction(+:errorRate)
@@ -235,7 +245,7 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable
 
 	dictionary_t_16bit countsdenovo;
 
-#pragma omp parallel
+	#pragma omp parallel
 	{
 		for(auto v:allkmers[MYTHREAD])
 		{
@@ -252,7 +262,7 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable
 
 	// in this pass, only use entries that already are in the hash table
 	auto updatecount = [](unsigned short int &num) { ++num; };
-#pragma omp parallel
+	#pragma omp parallel
 	{
 		for(auto v:allkmers[MYTHREAD])
 		{
