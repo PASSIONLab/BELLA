@@ -176,6 +176,7 @@ To cite our work or to know more about our methods, please refer to:
 * [**Kathy Yelick**](https://people.eecs.berkeley.edu/~yelick/)
 * [**Alberto Zeni**](https://it.linkedin.com/in/alberto-zeni-b61077158)
 * [**Elizabeth Koning**](https://www.linkedin.com/in/elizabeth-koning)
+* [**Qi Zhou**](https://www.linkedin.com/in/qizhou1512/?originalSubdomain=it)
 
 ## Copyright Notice
  
