@@ -48,7 +48,7 @@ struct BELLApars
 
 	BELLApars(): kmerSize(17), binSize(500), fixedThreshold(-1), xDrop(7), numGPU(1), 
 					numKmerBucket(2), skipEstimate(true), skipAlignment(false), outputPaf(false), userDefMem(false),
-						deltaChernoff(0.10), totalMemory(8000.0), errorRate(0.00), minProbability(0.002) {};
+						deltaChernoff(0.10), totalMemory(8000.0), errorRate(0.00), minProbability(0.10) {};
 };
 
 template <typename T>
