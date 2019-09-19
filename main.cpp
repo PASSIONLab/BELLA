@@ -521,9 +521,25 @@ int main (int argc, char *argv[]) {
 				chainop(m1, m2, b_parameters, readname1, readname2);
 				return m1;
 			},
-		    reads, getvaluetype, OutputFile, b_parameters, ratiophi);
+		    reads, getvaluetype, OutputFile, b_parameters, ratiophi, bucketId);
 
 	} // for(int bucketId = 0; bucketId < b_parameters.numKmerBucket; bucketId++)
+
+	// merge output files
+	if(b_parameters.numKmerBucket > 1)
+	{
+		std::ofstream ffinal(OutputFile, std::ios_base::binary | std::ios_base::app);
+
+		const std::string suffix(OutputFile);
+    	for (int prefix = 0; prefix < b_parameters.numKmerBucket; prefix++)
+		{
+			std::string name = std::to_string(prefix) + "_" + suffix;
+			std::ifstream ftemp(name, std::ios_base::binary);
+			ffinal << ftemp.rdbuf();
+			remove(name.c_str());	// remove temporary files
+		}
+		ffinal.close();
+	}
 
     std::string TotalRuntime = std::to_string(omp_get_wtime()-all) + " seconds";   
     printLog(TotalRuntime);
