@@ -6,6 +6,7 @@
 #include <seqan/score.h>
 #include <seqan/modifier.h>
 #include <seqan/seeds.h>
+#include "../loganSIMD/logan.h"
 
 #ifndef PRINT
 #define PRINT
@@ -55,6 +56,15 @@ template <typename T>
 	bool isinrift(const T& value, const T& left, const T& right) {
 	return (value > left) && (value < right);
 }
+
+#ifndef __NVCC__
+
+struct loganResult {
+    int score;
+    std::string strand;
+    SeedL seed;
+};
+#endif
 
 typedef seqan::Seed<seqan::Simple> TSeed;
 struct seqAnResult {

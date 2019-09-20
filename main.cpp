@@ -355,7 +355,7 @@ int main (int argc, char *argv[]) {
 
 			if(b_parameters.fixedThreshold == -1)
 			{
-			    ratiophi = adaptiveSlope(b_parameters.errorRate);
+			    ratiophi = slope(b_parameters.errorRate);
 			    float AdaptiveThresholdConstant = ratiophi * (1 - b_parameters.deltaChernoff);
 				printLog(AdaptiveThresholdConstant);       
 			}

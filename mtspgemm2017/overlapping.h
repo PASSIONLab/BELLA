@@ -381,38 +381,6 @@ double estimateMemory(const BELLApars & b_pars)
 	return free_memory;
 }
 
-char
-complementbase(char n) {
-	switch(n)
-	{
-	case 'A':
-		return 'T';
-	case 'T':
-		return 'A';
-	case 'G':
-		return 'C';
-	case 'C':
-		return 'G';
-	}
-	assert(false);
-	return ' ';
-}
-
-std::string
-reversecomplement(const std::string& seq) {
-
-	std::string cpyseq = seq;
-	std::reverse(cpyseq.begin(), cpyseq.end());
-
-	std::transform(
-		std::begin(cpyseq),
-		std::end  (cpyseq),
-		std::begin(cpyseq),
-	complementbase);
-
-	return cpyseq;
-}
-
 #ifndef __NVCC__
 
 // ======================================= //

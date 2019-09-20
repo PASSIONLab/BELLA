@@ -34,7 +34,39 @@
 using namespace seqan;
 using namespace std;
 
-double adaptiveSlope(double error)
+char
+complementbase(char n) {
+	switch(n)
+	{
+	case 'A':
+		return 'T';
+	case 'T':
+		return 'A';
+	case 'G':
+		return 'C';
+	case 'C':
+		return 'G';
+	}
+	assert(false);
+	return ' ';
+}
+
+std::string
+reversecomplement(const std::string& seq) {
+
+	std::string cpyseq = seq;
+	std::reverse(cpyseq.begin(), cpyseq.end());
+
+	std::transform(
+		std::begin(cpyseq),
+		std::end  (cpyseq),
+		std::begin(cpyseq),
+	complementbase);
+
+	return cpyseq;
+}
+
+double slope(double error)
 {
 	double p_mat = pow(1-error,2);  // match
 	double p_mis = 1-p_mat;         // mismatch/gap
@@ -98,6 +130,66 @@ seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rle
 	longestExtensionScore.seed = seed;
 	longestExtensionScore.strand = strand;
 	return longestExtensionScore;
+}
+
+/**
+ * @brief alignLogan does the seed-and-extend alignment
+ * @param row
+ * @param col
+ * @param rowLen is the length of the row sequence
+ * @param i is the starting position of the k-mer on the first read
+ * @param j is the starting position of the k-mer on the second read
+ * @param xDrop
+ * @return alignment score and extended seed
+ */
+loganResult alignLogan(const std::string& row, const std::string& col, int rowLen, int i, int j, int xDrop, int kmerSize)
+{
+	// result.first = best score, result.second = exit score when (if) x-drop termination is satified
+	std::pair<int, int> tmp;
+	loganResult result;
+
+	// penalties (LOGAN currently supports only linear gap penalty and penalty within +/- 3)
+	short match    =  1;
+	short mismatch = -1;
+	short gap 	   = -1;
+
+	// initialize scoring scheme
+	ScoringSchemeL scoringScheme(match, mismatch, gap);	// enalties (LOGAN currently supports only linear gap penalty and penalty within +/- 3)
+
+	SeedL seed(i, j, kmerSize);
+
+	std::string seedH = row.substr(getBeginPositionH(seed), kmerSize);
+	std::string seedV = col.substr(getBeginPositionV(seed), kmerSize);
+
+	std::string rep = reversecomplement(seedH);
+	std::string cpyrow(row);
+
+	if(rep == seedV)
+	{
+		std::reverse(std::begin(cpyrow), std::end(cpyrow));
+		std::transform(std::begin(cpyrow), std::end(cpyrow), std::begin(cpyrow), complementbase);
+
+		setBeginPositionH(seed, rowLen - i - kmerSize);
+		setBeginPositionV(seed, j);
+
+		setEndPositionH(seed, rowLen - i);
+		setEndPositionV(seed, j + kmerSize);
+
+		// perform match extension reverse string
+		tmp = LoganXDrop(seed, LOGAN_EXTEND_BOTH, cpyrow, col, scoringScheme, xDrop);
+		result.strand = "c";
+	}
+	else
+	{
+		// perform match extension forward string
+		tmp = LoganXDrop(seed, LOGAN_EXTEND_BOTH, row, col, scoringScheme, xDrop);
+		result.strand = "n";
+	}
+
+	result.score = tmp.first; 	// best score
+	result.seed  = seed;		// updated extension
+
+	return result;
 }
 
 #ifdef __NVCC__
