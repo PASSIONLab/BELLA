@@ -4,6 +4,9 @@
 // Date:   22 April 2019
 //==================================================================
 
+#ifndef LOGAN_H
+#define LOGAN_H
+
 #include<vector>
 #include<iostream>
 #include<omp.h>
@@ -370,3 +373,4 @@ LoganXDrop
 		return std::make_pair(result1.get_best_score(), result1.get_curr_score());
 	}
 }
+#endif

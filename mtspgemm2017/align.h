@@ -7,6 +7,7 @@
 #include <seqan/modifier.h>
 #include <seqan/seeds.h>
 #include "common.h"
+#include "../loganSIMD/logan.h"
 #include <omp.h>
 #include <fstream>
 #include <iostream>

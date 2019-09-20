@@ -205,7 +205,7 @@ int main (int argc, char *argv[]) {
 				cout << "	-e : Error rate [0.15]" 				<< endl;
 				cout << "	-q : Estimare error rate from the dataset [FALSE]" 	<< endl;
 				cout << "	-u : Use default error rate setting [FALSE]"		<< endl;
-				cout << "	-b : Buckets of counted k-mers [2]"   	<< endl;
+				cout << "	-b : Buckets of counted k-mers [1]"   	<< endl;
 				cout << "	-m : Total RAM of the system in MB [auto estimated if possible or 8,000 if not]"	<< endl;
 				cout << "	-z : Do not run pairwise alignment [FALSE]" 			<< endl;
 				cout << "	-d : Deviation from the mean alignment score [0.10]"	<< endl;
