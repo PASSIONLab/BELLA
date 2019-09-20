@@ -40,7 +40,7 @@ LoganPhase1(LoganState& state)
 	// dynamic programming loop to fill DPmatrix
 	for(int i = 1; i < LOGICALWIDTH + 2; i++)
 	{
-		for (int j = 1; j < LOGICALWIDTH + 2; j++)
+		for (int j = 1; j < LOGICALWIDTH + 2 - i; j++) // we only need the upper-left triangular matrix
 		{
 			int oneF = DPmatrix[i-1][j-1];
 
@@ -57,7 +57,7 @@ LoganPhase1(LoganState& state)
 
 			// heuristic to keep track of the max in phase1
 			if(DPmatrix[i][j] > DPmax)
-				DPmax = DPmatrix[i][j];
+				DPmax = DPmatrix[i][j];			
 		}
 	}
 
@@ -85,7 +85,7 @@ LoganPhase1(LoganState& state)
 		state.update_antiDiag2(i, value2);
 		// state.update_antiDiag1(i - 1, value1 - state.get_score_offset());
 		// state.update_antiDiag2(i, value2 - state.get_score_offset());
-
+		// myLog(value1);
 		if(value1 > antiDiag1Max)
 			antiDiag1Max = value1;
 	}
