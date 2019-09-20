@@ -387,18 +387,30 @@ double estimateMemory(const BELLApars & b_pars)
 // 				CPU Functions			   //
 // ======================================= //
 
-void PostAlignDecision(const seqAnResult& maxExtScore, const readType_& read1, const readType_& read2, 
-					const BELLApars& b_pars, double ratiophi, int count, stringstream& myBatch, size_t& outputted,
+#ifdef __AVX2__
+void PostAlignDecision(const loganResult& maxExtScore, 
+#else
+void PostAlignDecision(const seqAnResult& maxExtScore, 
+#endif
+	const readType_& read1, const readType_& read2, 
+			const BELLApars& b_pars, double ratiophi, int count, stringstream& myBatch, size_t& outputted,
 					size_t& numBasesAlignedTrue, size_t& numBasesAlignedFalse, bool& passed, int const& matches)
 {
 	auto maxseed = maxExtScore.seed;	// returns a seqan:Seed object
 
 	// {begin/end}Position{V/H}: Returns the begin/end position of the seed in the query (vertical/horizonral direction)
 	// these four return seqan:Tposition objects
+#ifdef __AVX2__
+	int begpV = getBeginPositionV(maxseed);
+	int endpV = getEndPositionV(maxseed);
+	int begpH = getBeginPositionH(maxseed);
+	int endpH = getEndPositionH(maxseed);
+#else
 	int begpV = beginPositionV(maxseed);
 	int endpV = endPositionV(maxseed);
 	int begpH = beginPositionH(maxseed);
 	int endpH = endPositionH(maxseed);
+#endif
 
 	// Get references for better naming
 	const string& seq1 = read1.seq;	// H
@@ -510,8 +522,12 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 			{
 				numAlignmentsThread++;
 				readLengthsThread = readLengthsThread + seq1len + seq2len;
-
+			#ifdef __AVX2__
+				loganResult maxExtScore;
+			#else
 				seqAnResult maxExtScore;
+			#endif
+			
 				bool passed = false;
 
 				//	GG: number of matching kmer into the majority voted bin
@@ -526,11 +542,19 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 				int i = kmer.first, j = kmer.second;
 
 				//	GG: nucleotide alignment
+			#ifdef __AVX2__
+				maxExtScore = alignLogan(seq1, seq2, seq1len, i, j, b_pars.xDrop, b_pars.kmerSize);
+			#else
 				maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, b_pars.xDrop, b_pars.kmerSize);
+			#endif
+
 				PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratiophi, val->count, vss[ithread], 
 					outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed, matches);
-
+			#ifdef __AVX2__
+				numBasesAlignedThread += getEndPositionV(maxExtScore.seed)-getBeginPositionV(maxExtScore.seed);
+			#else
 				numBasesAlignedThread += endPositionV(maxExtScore.seed)-beginPositionV(maxExtScore.seed);
+			#endif
 			}
 			else // if skipAlignment == false do alignment, else save just some info on the pair to file
 			{

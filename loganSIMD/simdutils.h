@@ -14,7 +14,7 @@
 //======================================================================================
 // GLOBAL FUNCTION DECLARATION
 //======================================================================================
-#define __AVX2__
+//#define __AVX2__
 #ifdef  __AVX2__ 	// Compile flag: -mavx2
 #define VECTORWIDTH  (32)
 #define LOGICALWIDTH (VECTORWIDTH - 1)
