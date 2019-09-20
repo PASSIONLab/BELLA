@@ -85,6 +85,7 @@ LoganPhase1(LoganState& state)
 		state.update_antiDiag2(i, value2);
 		// state.update_antiDiag1(i - 1, value1 - state.get_score_offset());
 		// state.update_antiDiag2(i, value2 - state.get_score_offset());
+
 		// myLog(value1);
 		if(value1 > antiDiag1Max)
 			antiDiag1Max = value1;
@@ -361,11 +362,11 @@ LoganXDrop
 		LoganState result2(_seed2, targetSuffix, querySuffix, scoringScheme, scoreDropOff);
 		LoganOneDirection (result2);
 
-		setBeginPositionH (result1.seed, getEndPositionH(seed) - getEndPositionH(result1.seed));
-		setBeginPositionV (result1.seed, getEndPositionV(seed) - getEndPositionV(result1.seed));
+		setBeginPositionH (seed, getEndPositionH(seed) - getEndPositionH(result1.seed));
+		setBeginPositionV (seed, getEndPositionV(seed) - getEndPositionV(result1.seed));
 
-		setEndPositionH (result1.seed, getEndPositionH(seed) + getEndPositionH(result2.seed));
-		setEndPositionV (result1.seed, getEndPositionV(seed) + getEndPositionV(result2.seed));
+		setEndPositionH (seed, getEndPositionH(seed) + getEndPositionH(result2.seed));
+		setEndPositionV (seed, getEndPositionV(seed) + getEndPositionV(result2.seed));
 
 		// seed already updated and saved in result1
 		// this operation sums up best and exit scores for result1 and result2 and stores them in result1
