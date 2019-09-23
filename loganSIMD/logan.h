@@ -72,7 +72,8 @@ LoganPhase1(LoganState& state)
 
 	// let's assume we fit in int8_t
 	// int64_t antiDiagMin = std::numeric_limits<int64_t>::max();
-	int antiDiag1Max = std::numeric_limits<int8_t>::min();
+	int antiDiagMax = std::numeric_limits<int8_t>::min();
+	int antiDiagMin = std::numeric_limits<int8_t>::max();
 
 	// load DPmatrix into antiDiag1 and antiDiag2 vector and find max elem at the end of phase1 in antiDiag1
 	// GG: double check loop bound
@@ -83,11 +84,17 @@ LoganPhase1(LoganState& state)
 
 		state.update_antiDiag1(i - 1, value1);
 		state.update_antiDiag2(i, value2);
-		// state.update_antiDiag1(i - 1, value1 - state.get_score_offset());
-		// state.update_antiDiag2(i, value2 - state.get_score_offset());
+		state.update_antiDiag1(i - 1, value1 - state.get_score_offset());
+		state.update_antiDiag2(i, value2 - state.get_score_offset());
 
-		if(value1 > antiDiag1Max)
-			antiDiag1Max = value1;
+		if(value1 > antiDiagMax)
+			antiDiagMax = value1;
+		if(value2 > antiDiagMax)
+			antiDiagMax = value2;
+		if(value1 < antiDiagMin)
+			antiDiagMin = value1;
+		if(value2 < antiDiagMin)
+			antiDiagMin = value2;
 	}
 
 	state.update_antiDiag1(LOGICALWIDTH, NINF);
@@ -96,18 +103,18 @@ LoganPhase1(LoganState& state)
 	state.broadcast_antiDiag3(NINF);
 
 	state.set_best_score(DPmax);
-	state.set_curr_score(antiDiag1Max);
+	state.set_curr_score(antiDiagMax);
 
 	// check x-drop condition
-	if(antiDiag1Max < DPmax - state.get_score_dropoff())
+	if(antiDiagMax < DPmax - state.get_score_dropoff())
 	{
 		state.xDropCond = true;
 		return;
 	}
 
 	// I'm gonna assume this is fine for now
-	// if(antiDiagMax > CUTOFF)
-	//	state.set_score_offset(state.get_score_offset() + antiDiagMin);
+	if(antiDiagMax > CUTOFF)
+		state.set_score_offset(state.get_score_offset() + antiDiagMin);
 
 	// antiDiag2 going right, first computation of antiDiag3 is going down
 }

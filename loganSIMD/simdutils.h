@@ -171,7 +171,11 @@ public:
 		vlength = querySeg.length()  + 1;
 
 		if (hlength <= 1 || vlength <= 1)
-			myLog("ERROR STATE, Fix this here buddy!");
+		{
+			std::string ErrorMessage = "Read(s) has length smaller than 1.";
+			myLog(ErrorMessage);
+			return;
+		}
 
 		// Convert from string to int array
 		// This is the entire sequences
