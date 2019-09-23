@@ -85,14 +85,14 @@ int main(int argc, char const *argv[])
 	std::string seq1, seq2;
 
 	/* Sequences length */
-	unsigned int len1 = 10000;
-	unsigned int len2 = 11000;
+	unsigned int len1 = 1000;
+	unsigned int len2 = 1000;
 
 	/* Bandwidth (the alignment path of the input sequence and the result does not go out of the band) */
 	unsigned short bw = 32;
 
 	/* Error rate composition */
-	double indels = 0.13; // indels probability
+	double indels = 0.12; // indels probability
 	double substs = 0.03; // substitution probability
 
 	/* Penalties (LOGAN temporarily supports only linear gap penalty) */
@@ -104,11 +104,13 @@ int main(int argc, char const *argv[])
 	ScoringSchemeL penalties(match, mismatch, gap);
 
 	/* Generate pair of sequences */
-	generate_random_sequence(seq1, len1);
-	seq2 = generate_mutated_sequence(seq1, len2, bw, indels, substs);
+//	generate_random_sequence(seq1, len1);
+	seq1 = "GCTCGTTACCGTATGGTTAGGAGGCACTCCCGAGCCTCCAAGTACCAAATATGCGCAGTACAAGCTACTTGCCCGTGCTACGTGCTCAACCAAGGGATCGACACGCGGAGCTTCGCGGCCTTAGTTCTTGCGTGCTGGGGCAATATTTCATTCATGGCGGAGGCAAGGCGATACCCAAAACAGCGAGTGTATAGCGGCGATGCGAACGGTGCTAAAAACGATTTACAACCTGTGAAGGATGCTCATTCTCGCACATATGTTCCGTTGCTAGCCGCCGAGGAGTGAGGCAGCTATTGATTTACCATTTTTACCCTCGGCCTTTGAGACCCACAATACGACTAGCTCAGTACGGGCCGGAGAATGTCAGACCGCGAACTGGAATCGGTCACCGGATTTCACGCTAGTACTGACGTCGTACATTTTTCGGAGCAGAGCCGATTTGCCCAACCGGAGGACGGACTGGTTGTAGCACGCTATAACGCTGGTTCCGGTGTCCTCAGAGAGGGGGAGCGAATGCGTGCTTTGGATATTCTAACTGACGACTTCTTCGTGAAAGCTCAGGAGTGCTTGTGCTGAGGGACTCAAGGATCATGTCGAGCTTTTCTAACTCCATGACAAGTGCGACCACCCAATGAACCCCCGGCAAATACAGCGGGTATGTTCTATTGAGTTCTAGCGTATGGTCTGAACTCCGTGTATCAGCGCGTCTCCTGCATGTTATGCCGGGTGCCTATTTTCAATACAGATCTACAAGATCGCCAAGGCTTCATCCGAAATCCAAGAGCAGACACAAAGCTGGTAAGTAGCAGCGCACGAAGATCGACCGCGCCCTCATAGACCCGGATTGTCAGCACTAACTTACCTACTTCGCGCGTTCATGTGTCGTCACTCCAGATTTGAGACTGCCGGTAGAATATCGAGCATAGAATTTAACTTATACTACGGAGGTAAAAGATAAACTTGAACCCTGCTTGTGTAGTAAACCTAACCGCCATATTAG";
+	seq2 = seq1;//generate_mutated_sequence(seq1, len2, bw, indels, substs);
+
 
 	/* x-drop value */
-	unsigned short x = 15;
+	unsigned short x = 11;
 
 	/* seed/k-mer length */
 	unsigned short k = 17;
@@ -126,7 +128,10 @@ int main(int argc, char const *argv[])
 	//======================================================================================
 
 	result = LoganXDrop(seed, LOGAN_EXTEND_RIGHT, seq1, seq2, penalties, x);
-	std::cout << "Best score : " << result.first << "\tExit score : " << result.second << std::endl;
+	std::cout << "BestScore = " << result.first  << std::endl;
+	std::cout << "ExitScore = " << result.second << std::endl;
+	std::cout << "begPosH = " << getBeginPositionH(seed) << "\tendPosH = " << getEndPositionH(seed) << std::endl;
+	std::cout << "begPosV = " << getBeginPositionV(seed) << "\tendPosV = " << getEndPositionV(seed) << std::endl;
 
 	return 0;
 }

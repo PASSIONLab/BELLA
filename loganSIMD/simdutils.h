@@ -14,21 +14,25 @@
 //======================================================================================
 // GLOBAL FUNCTION DECLARATION
 //======================================================================================
-//#define __AVX2__
+
+#ifndef __AVX2__
+#define __AVX2__
+#endif
+
 #ifdef  __AVX2__ 	// Compile flag: -mavx2
 #define VECTORWIDTH  (32)
 #define LOGICALWIDTH (VECTORWIDTH - 1)
-#define vectorType    __m256i
+#define vectorType   __m256i
 #define addOp    	_mm256_adds_epi8  	// saturated arithmetic
 #define subOp    	_mm256_subs_epi8  	// saturated arithmetic
 #define maxOp    	_mm256_max_epi8   	// max
 #define setOp   	_mm256_set1_epi8  	// set1 operation
-#define blendvOp	 _mm256_blendv_epi8 // blending operation
-#define cmpeqOp 	 _mm256_cmpeq_epi8 	// compare equality operation
+#define blendvOp	_mm256_blendv_epi8  // blending operation
+#define cmpeqOp 	_mm256_cmpeq_epi8 	// compare equality operation
 #elif __SSE4_2__ 	// Compile flag: -msse4.2
 #define VECTORWIDTH  (8)
 #define LOGICALWIDTH (VECTORWIDTH - 1)
-#define vectorType    __m128i
+#define vectorType  __m128i
 #define addOp    	_mm_adds_epi16 	// saturated arithmetic
 #define subOp    	_mm_subs_epi16  // saturated arithmetic
 #define maxOp    	_mm_max_epi16  	// max
@@ -49,7 +53,7 @@
 #define CUTOFF	(std::numeric_limits<int8_t>::max() - 25)
 
 #ifdef DEBUG
-	#define myLog( var ) do { std::cerr << "LOG: " << __FILE__ << "(" << __LINE__ << ") " << #var << " = " << (var) << std::endl; } while(0)
+	#define myLog( var ) do { std::cerr << "LOG:	" << __FILE__ << "(" << __LINE__ << ")	" << #var << " = " << (var) << std::endl; } while(0)
 #else
 	#define myLog( var )
 #endif
@@ -63,12 +67,12 @@ typedef int8_t element_t;
 typedef union {
 	vectorType  simd;
 	element_t 	elem[VECTORWIDTH];
-} vector_union_t;
+} vectorUnionType;
 
 void
 printVectorC(vectorType a) {
 
-	vector_union_t tmp;
+	vectorUnionType tmp;
 	tmp.simd = a;
 
 	printf("{");
@@ -80,7 +84,7 @@ printVectorC(vectorType a) {
 void
 printVectorD(vectorType a) {
 
-	vector_union_t tmp;
+	vectorUnionType tmp;
 	tmp.simd = a;
 
 	printf("{");
@@ -100,46 +104,48 @@ enum ExtDirectionL
 // TODO: REWRITE shiftLeft/RightShift for int8_t
 // TODO: Verify
 #ifdef __AVX2__
-inline vector_union_t
+inline vectorUnionType
 shiftLeft (const vectorType& _a) { // this work for avx2
-	vector_union_t a;
+
+	vectorUnionType a;
 	a.simd = _a;
 
-	vector_union_t b;
+	vectorUnionType b;
 	// https://stackoverflow.com/questions/25248766/emulating-shifts-on-32-bytes-with-avx
 	b.simd = _mm256_alignr_epi8(_mm256_permute2x128_si256(a.simd, a.simd, _MM_SHUFFLE(2, 0, 0, 1)), a.simd, 1);
 	b.elem[VECTORWIDTH - 1] = NINF;
+
 	return b;
 }
-inline vector_union_t
+inline vectorUnionType
 shiftRight (const vectorType& _a) { // this work for avx2
-	vector_union_t a;
+	vectorUnionType a;
 	a.simd = _a;
 
-	vector_union_t b;
+	vectorUnionType b;
 	// https://stackoverflow.com/questions/25248766/emulating-shifts-on-32-bytes-with-avx
 	b.simd = _mm256_alignr_epi8(a.simd, _mm256_permute2x128_si256(a.simd, a.simd, _MM_SHUFFLE(0, 0, 2, 0)), 16 - 1);
 	b.elem[0] = NINF;
 	return b;
 }
 #elif __SSE4_2__
-inline vector_union_t
+inline vectorUnionType
 shiftLeft(const vectorType& _a) { // this work for avx2
-	vector_union_t a;
+	vectorUnionType a;
 	a.simd = _a;
 
-	vector_union_t b;
+	vectorUnionType b;
 	// https://stackoverflow.com/questions/25248766/emulating-shifts-on-32-bytes-with-avx
 	b.simd = _mm256_alignr_epi8(_mm256_permute2x128_si256(a.simd, a.simd, _MM_SHUFFLE(2, 0, 0, 1)), a.simd, 2);
 	b.elem[VECTORWIDTH - 1] = NINF;
 	return b;
 }
-inline vector_union_t
+inline vectorUnionType
 shiftRight(const vectorType& _a) { // this work for avx2
-	vector_union_t a;
+	vectorUnionType a;
 	a.simd = _a;
 
-	vector_union_t b;
+	vectorUnionType b;
 	// https://stackoverflow.com/questions/25248766/emulating-shifts-on-32-bytes-with-avx
 	b.simd = _mm256_alignr_epi8(a.simd, _mm256_permute2x128_si256(a.simd, a.simd, _MM_SHUFFLE(0, 0, 2, 0)), 16 - 2);
 	b.elem[0] = NINF;
@@ -296,12 +302,12 @@ public:
 	vectorType vzeros;
 
 	// Computation Vectors
-	vector_union_t antiDiag1;
-	vector_union_t antiDiag2;
-	vector_union_t antiDiag3;
+	vectorUnionType antiDiag1;
+	vectorUnionType antiDiag2;
+	vectorUnionType antiDiag3;
 
-	vector_union_t vqueryh;
-	vector_union_t vqueryv;
+	vectorUnionType vqueryh;
+	vectorUnionType vqueryv;
 
 	// X-Drop Variables
 	int64_t bestScore;
