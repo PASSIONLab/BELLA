@@ -156,10 +156,17 @@ LoganPhase2(LoganState& state)
 		state.set_curr_score(antiDiagBest + state.get_score_offset());
 
 		int64_t scoreThreshold = state.get_best_score() - state.get_score_dropoff();
-
+		
 		if (state.get_curr_score() < scoreThreshold)
 		{
 			state.xDropCond = true;
+			
+			setBeginPositionH(state.seed, 0);
+			setBeginPositionV(state.seed, 0);
+
+			setEndPositionH(state.seed, state.hoffset);
+			setEndPositionV(state.seed, state.voffset);
+			
 			return; // GG: it's a void function and the values are saved in LoganState object
 		}
 
@@ -196,10 +203,9 @@ LoganPhase2(LoganState& state)
 			state.moveDown();
 	}
 
-	// TODO: check here
 	setBeginPositionH(state.seed, 0);
 	setBeginPositionV(state.seed, 0);
-	// TODO: check here
+
 	setEndPositionH(state.seed, state.hoffset);
 	setEndPositionV(state.seed, state.voffset);
 }
@@ -246,6 +252,13 @@ LoganPhase4(LoganState& state)
 		if (state.get_curr_score() < scoreThreshold)
 		{
 			state.xDropCond = true;
+			
+			setBeginPositionH(state.seed, 0);
+			setBeginPositionV(state.seed, 0);
+
+			setEndPositionH(state.seed, state.hoffset);
+			setEndPositionV(state.seed, state.voffset);
+			
 			return; // GG: it's a void function and the values are saved in LoganState object
 		}
 
@@ -329,8 +342,8 @@ LoganXDrop
 		LoganState result (_seed, targetPrefix, queryPrefix, scoringScheme, scoreDropOff);
 		LoganOneDirection (result);
 
-		setBeginPositionH(result.seed, getEndPositionH(seed) - getEndPositionH(result.seed));
-		setBeginPositionV(result.seed, getEndPositionV(seed) - getEndPositionV(result.seed));
+		setBeginPositionH(seed, getEndPositionH(seed) - getEndPositionH(result.seed));
+		setBeginPositionV(seed, getEndPositionV(seed) - getEndPositionV(result.seed));
 
 		return std::make_pair(result.get_best_score(), result.get_curr_score());
 	}
@@ -344,8 +357,8 @@ LoganXDrop
 		LoganState result (_seed, targetSuffix, querySuffix, scoringScheme, scoreDropOff);
 		LoganOneDirection (result);
 
-		setEndPositionH (result.seed, getBeginPositionH(seed) + getEndPositionH(result.seed));
-		setEndPositionV (result.seed, getBeginPositionV(seed) + getEndPositionV(result.seed));
+		setEndPositionH (seed, getBeginPositionH(seed) + getEndPositionH(result.seed));
+		setEndPositionV (seed, getBeginPositionV(seed) + getEndPositionV(result.seed));
 
 		return std::make_pair(result.get_best_score(), result.get_curr_score());
 	}

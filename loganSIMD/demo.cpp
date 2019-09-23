@@ -109,7 +109,7 @@ int main(int argc, char const *argv[])
 	seq2 = generate_mutated_sequence(seq1, len2, bw, indels, substs);
 
 	/* x-drop value */
-	unsigned short x = 11;
+	unsigned short x = 3;
 
 	/* seed/k-mer length */
 	unsigned short k = 17;
