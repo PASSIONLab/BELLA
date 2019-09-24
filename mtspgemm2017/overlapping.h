@@ -387,7 +387,7 @@ double estimateMemory(const BELLApars & b_pars)
 // 				CPU Functions			   //
 // ======================================= //
 
-#ifdef __AVX2__
+#ifdef __SIMD__
 void PostAlignDecision(const loganResult& maxExtScore, 
 #else
 void PostAlignDecision(const seqAnResult& maxExtScore, 
@@ -400,7 +400,7 @@ void PostAlignDecision(const seqAnResult& maxExtScore,
 
 	// {begin/end}Position{V/H}: Returns the begin/end position of the seed in the query (vertical/horizonral direction)
 	// these four return seqan:Tposition objects
-#ifdef __AVX2__
+#ifdef __SIMD__
 	int begpV = getBeginPositionV(maxseed);
 	int endpV = getEndPositionV(maxseed);
 	int begpH = getBeginPositionH(maxseed);
@@ -522,7 +522,7 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 			{
 				numAlignmentsThread++;
 				readLengthsThread = readLengthsThread + seq1len + seq2len;
-			#ifdef __AVX2__
+			#ifdef __SIMD__
 				loganResult maxExtScore;
 			#else
 				seqAnResult maxExtScore;
@@ -542,7 +542,7 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 				int i = kmer.first, j = kmer.second;
 
 				//	GG: nucleotide alignment
-			#ifdef __AVX2__
+			#ifdef __SIMD__
 				maxExtScore = alignLogan(seq1, seq2, seq1len, i, j, b_pars.xDrop, b_pars.kmerSize);
 			#else
 				maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, b_pars.xDrop, b_pars.kmerSize);
@@ -550,7 +550,7 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 
 				PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratiophi, val->count, vss[ithread], 
 					outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed, matches);
-			#ifdef __AVX2__
+			#ifdef __SIMD__
 				numBasesAlignedThread += getEndPositionV(maxExtScore.seed)-getBeginPositionV(maxExtScore.seed);
 			#else
 				numBasesAlignedThread += endPositionV(maxExtScore.seed)-beginPositionV(maxExtScore.seed);
