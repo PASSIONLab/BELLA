@@ -96,11 +96,8 @@ LoganPhase1(LoganState& state)
 	{
 		state.xDropCond = true;
 
-		setBeginPositionH(state.seed, 0);
-		setBeginPositionV(state.seed, 0);
-
-		setEndPositionH(state.seed, LOGICALWIDTH);
-		setEndPositionV(state.seed, LOGICALWIDTH);
+		setEndPositionH(state.seed, state.hoffset);
+		setEndPositionV(state.seed, state.voffset);
 
 		return;
 	}
@@ -111,7 +108,7 @@ void
 LoganPhase2(LoganState& state)
 {
 	myLog("Phase2");
-	while(state.hoffset <= state.hlength && state.voffset <= state.vlength)
+	while(state.hoffset < state.hlength && state.voffset < state.vlength)
 	{
 		// antiDiag1F (final)
 		// NOTE: -1 for a match and 0 for a mismatch
@@ -167,9 +164,6 @@ LoganPhase2(LoganState& state)
 		if (state.get_curr_score() > state.get_best_score())
 			state.set_best_score(state.get_curr_score());
 
-		if(state.get_best_score() > std::max(state.hlength, state.vlength))
-			myLog("Fishy");
-
 		// TODO: optimize this
 		int maxpos, max = 0;
 		for (int i = 0; i < VECTORWIDTH; ++i)
@@ -181,17 +175,14 @@ LoganPhase2(LoganState& state)
 			}
 		}
 
+		setEndPositionH(state.seed, state.hoffset);
+		setEndPositionV(state.seed, state.voffset);
+
 		if (maxpos > MIDDLE)
 			state.moveRight();
 		else
 			state.moveDown();
 	}
-
-	setBeginPositionH(state.seed, 0);
-	setBeginPositionV(state.seed, 0);
-
-	setEndPositionH(state.seed, state.hoffset);
-	setEndPositionV(state.seed, state.voffset);
 }
 
 void
@@ -234,13 +225,6 @@ LoganPhase4(LoganState& state)
 		if (state.get_curr_score() < scoreThreshold)
 		{
 			state.xDropCond = true;
-			
-			setBeginPositionH(state.seed, 0);
-			setBeginPositionV(state.seed, 0);
-
-			setEndPositionH(state.seed, state.hoffset);
-			setEndPositionV(state.seed, state.voffset);
-			
 			return; // GG: it's a void function and the values are saved in LoganState object
 		}
 
@@ -267,13 +251,6 @@ LoganPhase4(LoganState& state)
 		// Update direction
 		dir = nextDir;
 	}
-
-
-	setBeginPositionH(state.seed, 0);
-	setBeginPositionV(state.seed, 0);
-
-	setEndPositionH(state.seed, state.hoffset);
-	setEndPositionV(state.seed, state.voffset);
 }
 
 //======================================================================================
@@ -285,7 +262,7 @@ LoganOneDirection (LoganState& state) {
 
 	// PHASE 1 (initial values load using dynamic programming)
 	LoganPhase1(state);
-	if(state.xDropCond) return;
+	if(state.xDropCond)  return;
 
 	// PHASE 2 (core vectorized computation)
 	LoganPhase2(state);
@@ -322,7 +299,9 @@ LoganXDrop
 		std::reverse (queryPrefix.begin(),  queryPrefix.end());
 
 		LoganState result (_seed, targetPrefix, queryPrefix, scoringScheme, scoreDropOff);
-		LoganOneDirection (result);
+
+		if (targetPrefix.length() >= VECTORWIDTH || queryPrefix.length() >= VECTORWIDTH) 
+			LoganOneDirection (result);
 
 		setBeginPositionH(seed, getEndPositionH(seed) - getEndPositionH(result.seed));
 		setBeginPositionV(seed, getEndPositionV(seed) - getEndPositionV(result.seed));
@@ -337,7 +316,9 @@ LoganXDrop
 		std::string querySuffix  = query.substr  (getBeginPositionV(seed), query.length());		// from end seed until the end (seed included)
 
 		LoganState result (_seed, targetSuffix, querySuffix, scoringScheme, scoreDropOff);
-		LoganOneDirection (result);
+
+		if (targetSuffix.length() >= VECTORWIDTH || querySuffix.length() >= VECTORWIDTH) 
+			LoganOneDirection (result);
 
 		setEndPositionH (seed, getBeginPositionH(seed) + getEndPositionH(result.seed));
 		setEndPositionV (seed, getBeginPositionV(seed) + getEndPositionV(result.seed));
@@ -356,19 +337,37 @@ LoganXDrop
 		std::reverse (queryPrefix.begin(),  queryPrefix.end());
 
 		LoganState result1(_seed1, targetPrefix, queryPrefix, scoringScheme, scoreDropOff);
-		LoganOneDirection (result1);
+
+		if (targetPrefix.length() < VECTORWIDTH || queryPrefix.length() < VECTORWIDTH) 
+		{
+			setBeginPositionH (seed, getEndPositionH(seed) - targetPrefix.length());
+			setBeginPositionV (seed, getEndPositionV(seed) - queryPrefix.length());
+		}
+		else
+		{
+			LoganOneDirection (result1);
+
+			setBeginPositionH (seed, getEndPositionH(seed) - getEndPositionH(result1.seed));
+			setBeginPositionV (seed, getEndPositionV(seed) - getEndPositionV(result1.seed));
+		}
 
 		std::string targetSuffix = target.substr (getEndPositionH(seed), target.length()); 	// from end seed until the end (seed included)
 		std::string querySuffix  = query.substr  (getEndPositionV(seed), query.length());	// from end seed until the end (seed included)
 
 		LoganState result2(_seed2, targetSuffix, querySuffix, scoringScheme, scoreDropOff);
-		LoganOneDirection (result2);
 
-		setBeginPositionH (seed, getEndPositionH(seed) - getEndPositionH(result1.seed));
-		setBeginPositionV (seed, getEndPositionV(seed) - getEndPositionV(result1.seed));
-
-		setEndPositionH (seed, getEndPositionH(seed) + getEndPositionH(result2.seed));
-		setEndPositionV (seed, getEndPositionV(seed) + getEndPositionV(result2.seed));
+		if (targetSuffix.length() < VECTORWIDTH || querySuffix.length() < VECTORWIDTH) 
+		{
+			setBeginPositionH (seed, getEndPositionH(seed) + targetSuffix.length());
+			setBeginPositionV (seed, getEndPositionV(seed) + querySuffix.length());
+		}
+		else
+		{
+			LoganOneDirection (result2);
+			
+			setEndPositionH (seed, getEndPositionH(seed) + getEndPositionH(result2.seed));
+			setEndPositionV (seed, getEndPositionV(seed) + getEndPositionV(result2.seed));
+		}
 
 		// seed already updated and saved in result1
 		// this operation sums up best and exit scores for result1 and result2 and stores them in result1

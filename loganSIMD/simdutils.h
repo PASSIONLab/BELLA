@@ -156,6 +156,7 @@ shiftRight(const vectorType& _a) { // this work for avx2
 class LoganState
 {
 public:
+
 	LoganState
 	(
 		SeedL& _seed,
@@ -170,11 +171,12 @@ public:
 		hlength = targetSeg.length() + 1;
 		vlength = querySeg.length()  + 1;
 
-		if (hlength <= 1 || vlength <= 1)
+		if (hlength < VECTORWIDTH || vlength < VECTORWIDTH)
 		{
-			std::string ErrorMessage = "Read(s) has length smaller than 1.";
-			myLog(ErrorMessage);
-			return;
+			setEndPositionH(seed, hlength);
+			setEndPositionV(seed, vlength);
+			//	GG: main function takes care of this
+			// 	return;
 		}
 
 		// Convert from string to int array
