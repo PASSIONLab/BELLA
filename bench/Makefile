@@ -1,5 +1,5 @@
-COMPILER = g++-6
-CC = gcc-6
+COMPILER = g++
+CC = gcc
 CFLAGS = -I. -O3 -Wall -Wextra -pedantic -ansi -c 
 OMPFLAG = -fopenmp -fpermissive
 
