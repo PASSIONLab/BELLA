@@ -8,7 +8,9 @@
 #include "../kmercode/fq_reader.h"
 #include "../kmercode/ParallelFASTQ.h"
 #include "../libcuckoo/cuckoohash_map.hh"
-#include "../loganSIMD/logan.h"
+#ifndef __NVCC__
+	#include "../loganSIMD/logan.h"
+#endif
 #include <seqan/sequence.h>
 #include <seqan/align.h>
 #include <seqan/score.h>

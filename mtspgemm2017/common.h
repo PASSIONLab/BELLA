@@ -6,7 +6,9 @@
 #include <seqan/score.h>
 #include <seqan/modifier.h>
 #include <seqan/seeds.h>
-#include "../loganSIMD/logan.h"
+#ifndef __NVCC__
+	#include "../loganSIMD/logan.h"
+#endif
 
 #ifndef PRINT
 #define PRINT
