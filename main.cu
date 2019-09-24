@@ -329,10 +329,11 @@ int main (int argc, char *argv[]) {
         numThreads = omp_get_num_threads();
     }
 
-    printLog(numThreads);
+	printLog(numThreads);
+	int bucketId = 0;
 
 	all = omp_get_wtime();
-    DeNovoCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound, InputCoverage, reliableUpperBoundlimit, b_parameters);
+    DeNovoCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound, InputCoverage, reliableUpperBoundlimit, b_parameters, bucketId);
 
     double errorRate = b_parameters.errorRate;
     printLog(errorRate);
