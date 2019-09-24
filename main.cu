@@ -496,7 +496,7 @@ int main (int argc, char *argv[]) {
 			chainop(m1, m2, b_parameters, readname1, readname2);
 			return m1;
 		},
-        reads, getvaluetype, OutputFile, b_parameters, ratiophi);
+        reads, getvaluetype, OutputFile, b_parameters, ratiophi, bucketId);
 
     std::string TotalRuntime = std::to_string(omp_get_wtime()-all) + " seconds";   
     printLog(TotalRuntime);
