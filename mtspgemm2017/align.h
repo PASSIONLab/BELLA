@@ -134,6 +134,7 @@ seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rle
 	return longestExtensionScore;
 }
 
+#ifndef __NVCC__
 /**
  * @brief alignLogan does the seed-and-extend alignment
  * @param row
@@ -196,7 +197,7 @@ loganResult alignLogan(const std::string& row, const std::string& col, int rowLe
 	return result;
 }
 
-#ifdef __NVCC__
+#else
 
 // ======================================= //
 // 				GPU Functions			   //
@@ -248,5 +249,5 @@ void alignLogan(vector<string>&	target, vector<string>&	query, vector<SeedL>& se
 		free(res);
 	}
 }
-#endif // #ifdef __NVCC__
-#endif
+#endif // __NVCC__
+#endif // _ALIGNMENT_H_
