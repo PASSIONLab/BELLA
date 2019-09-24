@@ -469,6 +469,7 @@ int main (int argc, char *argv[]) {
     //
     
 	spmatPtr_ getvaluetype(make_shared<spmatType_>());
+	int bucketId = 0; // temp
 
 	HashSpGEMMGPU(
 		spmat, transpmat, 
