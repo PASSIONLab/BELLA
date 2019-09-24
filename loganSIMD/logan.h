@@ -14,11 +14,7 @@
 #include<inttypes.h>
 #include<assert.h>
 #include<iterator>
-#include<xmmintrin.h> // SSE
-#include<emmintrin.h> // SSE2
-#include<smmintrin.h> // SSE4.1
-#include<nmmintrin.h> // SSE4.2
-#include<immintrin.h> // AVX
+#include<x86intrin.h>
 #include"simdutils.h"
 
 // GG: max penalty = +/- 3 (we can easily removed this limitation)
