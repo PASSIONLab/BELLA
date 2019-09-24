@@ -4,6 +4,8 @@
 // Date:   8 March 2019
 //==================================================================
 
+#ifndef __NVCC__
+
 #ifndef SCORE_H
 #define SCORE_H
 
@@ -101,3 +103,5 @@ score(ScoringSchemeL const & me, char valH, char valV) {
 }
 
 #endif
+
+#endif // __NVCC__

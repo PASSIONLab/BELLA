@@ -4,6 +4,8 @@
 // Date:   6 April 2019
 //==================================================================
 
+#ifndef __NVCC__
+
 #ifndef UTILS_H
 #define UTILS_H
 
@@ -169,3 +171,5 @@ setEndDiagonal(SeedL &myseed,int const value){
 }
 
 #endif
+
+#endif // __NVCC__

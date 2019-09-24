@@ -1050,7 +1050,7 @@ RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * rowids,
  **/
 template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation>
 void HashSpGEMMGPU(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, const readVector_& reads, 
-	FT& getvaluetype, char* filename, const BELLApars& b_pars, const double& ratiophi)
+	FT& getvaluetype, char* filename, const BELLApars& b_pars, const double& ratiophi, int bucketId)
 {
 	double free_memory = estimateMemory(b_pars);
 
