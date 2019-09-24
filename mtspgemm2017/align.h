@@ -87,7 +87,7 @@ double slope(double error)
  * @return alignment score and extended seed
  */
 seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rlen, int i, int j, int xDrop, int kmerSize) {
-
+	// printLog("SeqAn");
 	Score<int, Simple> scoringScheme(1,-1,-1);
 
 	Dna5String seqH(row); 
@@ -170,24 +170,26 @@ loganResult alignLogan(const std::string& row, const std::string& col, int rowLe
 		std::transform(std::begin(cpyrow), std::end(cpyrow), std::begin(cpyrow), complementbase);
 
 		setBeginPositionH(seed, rowLen - i - kmerSize);
-		setBeginPositionV(seed, j);
-
 		setEndPositionH(seed, rowLen - i);
-		setEndPositionV(seed, j + kmerSize);
 
 		// perform match extension reverse string
-		tmp = LoganXDrop(seed, LOGAN_EXTEND_BOTH, cpyrow, col, scoringScheme, xDrop);
+ 		tmp = LoganXDrop(seed, LOGAN_EXTEND_BOTH, cpyrow, col, scoringScheme, xDrop);
 		result.strand = "c";
 	}
 	else
 	{
 		// perform match extension forward string
-		tmp = LoganXDrop(seed, LOGAN_EXTEND_BOTH, row, col, scoringScheme, xDrop);
+	 	tmp = LoganXDrop(seed, LOGAN_EXTEND_BOTH, row, col, scoringScheme, xDrop);
 		result.strand = "n";
 	}
 
 	result.score = tmp.first; 	// best score
-	result.seed  = seed;		// updated extension
+
+	setBeginPositionH(result.seed, getBeginPositionH(seed));	// updated extension
+	setBeginPositionV(result.seed, getBeginPositionV(seed));	// updated extension
+
+	setEndPositionH(result.seed, getEndPositionH(seed));		// updated extension
+	setEndPositionV(result.seed, getEndPositionV(seed));		// updated extension
 
 	return result;
 }
