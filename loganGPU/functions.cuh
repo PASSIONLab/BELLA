@@ -3,13 +3,11 @@
 // Author: G. Guidi, A. Zeni
 // Date:   6 March 2019
 //==================================================================
-#define N_THREADS 256 
-#define N_BLOCKS 500000 
+
 #define MIN -32768
 #define BYTES_INT 4
-#define XDROP 21
-// #define N_STREAMS 60
-#define MAX_SIZE_ANTIDIAG 8000
+//#define N_STREAMS 60
+//#define MAX_SIZE_ANTIDIAG 8000
 #define MAX_GPUS 8
 
 //trying to see if the scoring scheme is a bottleneck in some way
@@ -18,6 +16,7 @@
 #define GAP_EXT  -1
 #define GAP_OPEN -1
 #define UNDEF -32767
+#define WARP_DIM 32 
 #define NOW std::chrono::high_resolution_clock::now()
 
 using namespace std;
@@ -50,10 +49,10 @@ __inline__ __device__ void warpReduce(volatile short *input,
 		input[myTId] = (input[myTId] > input[myTId + 1]) ? input[myTId] : input[myTId + 1];
 }
 
-__inline__ __device__ short reduce_max(short *input, int dim){
+__inline__ __device__ short reduce_max(short *input, int dim, int n_threads){
 	unsigned int myTId = threadIdx.x;   
 	if(dim>32){
-		for(int i = N_THREADS/2; i >32; i>>=1){
+		for(int i = n_threads/2; i >32; i>>=1){
 			if(myTId < i){
 						input[myTId] = (input[myTId] > input[myTId + i]) ? input[myTId] : input[myTId + i];
 			}__syncthreads();
@@ -114,11 +113,12 @@ __inline__ __device__ void computeAntidiag(short *antiDiag1,
 									int &antiDiagNo,
 									int &offset1,
 									int &offset2,
-									ExtensionDirectionL direction
+									ExtensionDirectionL direction,
+									int n_threads
 									){
 	int tid = threadIdx.x;
 	
-	for(int i = 0; i < maxCol; i+=N_THREADS){
+	for(int i = 0; i < maxCol; i+=n_threads){
 
 		int col = tid + minCol + i;
 		int queryPos, dbPos;
@@ -231,7 +231,8 @@ __global__ void extendSeedLGappedXDropOneDirectionGlobal(
 		int *offsetQuery,
 		int *offsetTarget,
 		int offAntidiag,
-		short *antidiag
+		short *antidiag,
+		int n_threads
 		)
 {
 	int myId = blockIdx.x;
@@ -287,6 +288,9 @@ __global__ void extendSeedLGappedXDropOneDirectionGlobal(
 	int lowerDiag = 0;
 	int upperDiag = 0;
 
+	extern __shared__ short temp_alloc[];
+	short *temp= &temp_alloc[0];
+
 	while (minCol < maxCol)
 	{	
 
@@ -308,23 +312,23 @@ __global__ void extendSeedLGappedXDropOneDirectionGlobal(
 		offset1 = offset2;
 		offset2 = offset3;
 		offset3 = minCol-1;
-		__shared__ short temp[N_THREADS];
+		
 		initAntiDiag3(antiDiag3, a3size, offset3, maxCol, antiDiagNo, best - scoreDropOff, GAP_EXT, UNDEF);
 		
-		computeAntidiag(antiDiag1, antiDiag2, antiDiag3, querySeg, databaseSeg, best, scoreDropOff, cols, rows, minCol, maxCol, antiDiagNo, offset1, offset2, direction);	 	
+		computeAntidiag(antiDiag1, antiDiag2, antiDiag3, querySeg, databaseSeg, best, scoreDropOff, cols, rows, minCol, maxCol, antiDiagNo, offset1, offset2, direction, n_threads);	 	
 		//roofline analysis
 		__syncthreads();	
 	
 		int tmp, antiDiagBest = UNDEF;	
-		for(int i=0; i<a3size; i+=N_THREADS){
+		for(int i=0; i<a3size; i+=n_threads){
 			int size = a3size-i;
 			
-			if(myTId<N_THREADS){
+			if(myTId<n_threads){
 				temp[myTId] = (myTId<size) ? antiDiag3[myTId+i]:UNDEF;				
 			}
 			__syncthreads();
 			
-			tmp = reduce_max(temp,size);
+			tmp = reduce_max(temp,size, n_threads);
 			antiDiagBest = (tmp>antiDiagBest) ? tmp:antiDiagBest;
 
 		}
@@ -433,6 +437,14 @@ inline void extendSeedL(vector<SeedL> &seeds,
 	}
 	//start measuring time
 	auto start_t1 = NOW;
+
+	//set num of threads
+	
+        //std::cout<< "AUTOMATIC DETECTION OF THREADS" << std::endl;
+        int n_threads = (XDrop/WARP_DIM + 1)* WARP_DIM;
+        if(n_threads>1024)
+        	n_threads=1024;
+        
 
 	//declare streams
 	cudaStream_t stream_r[MAX_GPUS], stream_l[MAX_GPUS];
@@ -617,8 +629,8 @@ inline void extendSeedL(vector<SeedL> &seeds,
 		if(i==ngpus-1)
 			dim = nSequencesLast;
 		
-		extendSeedLGappedXDropOneDirectionGlobal <<<dim, N_THREADS, 0, stream_l[i]>>> (seed_d_l[i], prefQ_d[i], prefT_d[i], EXTEND_LEFTL, XDrop, scoreLeft_d[i], offsetLeftQ_d[i], offsetLeftT_d[i], ant_len_left[i], ant_l[i]);
-		extendSeedLGappedXDropOneDirectionGlobal <<<dim, N_THREADS, 0, stream_r[i]>>> (seed_d_r[i], suffQ_d[i], suffT_d[i], EXTEND_RIGHTL, XDrop, scoreRight_d[i], offsetRightQ_d[i], offsetRightT_d[i], ant_len_right[i], ant_r[i]);
+		extendSeedLGappedXDropOneDirectionGlobal <<<dim, n_threads, n_threads*sizeof(short), stream_l[i]>>> (seed_d_l[i], prefQ_d[i], prefT_d[i], EXTEND_LEFTL, XDrop, scoreLeft_d[i], offsetLeftQ_d[i], offsetLeftT_d[i], ant_len_left[i], ant_l[i], n_threads);
+		extendSeedLGappedXDropOneDirectionGlobal <<<dim, n_threads, n_threads*sizeof(short), stream_r[i]>>> (seed_d_r[i], suffQ_d[i], suffT_d[i], EXTEND_RIGHTL, XDrop, scoreRight_d[i], offsetRightQ_d[i], offsetRightT_d[i], ant_len_right[i], ant_r[i], n_threads);
 
 		//cout<<"LAUNCHED"<<endl;
 	}
