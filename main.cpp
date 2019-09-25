@@ -101,8 +101,10 @@ int main (int argc, char *argv[]) {
 					printLog(ErrorMessage);
 					return 0;
 				}
+				
 				char* line1 = strdup(thisOpt->argument);
 				char* line2 = strdup(".out");
+
 				unsigned int len1 = strlen(line1);
 				unsigned int len2 = strlen(line2);
 
@@ -357,7 +359,7 @@ int main (int argc, char *argv[]) {
 			{
 			    ratiophi = slope(b_parameters.errorRate);
 			    float AdaptiveThresholdConstant = ratiophi * (1 - b_parameters.deltaChernoff);
-				printLog(AdaptiveThresholdConstant);       
+				printLog(AdaptiveThresholdConstant); 
 			}
 		}
 

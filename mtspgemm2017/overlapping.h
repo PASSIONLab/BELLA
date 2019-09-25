@@ -56,6 +56,10 @@ typedef SeedSet<TSeed> TSeedSet;
 //#define LINUX
 //#define RAM
 
+#ifndef __SIMD__
+#define __SIMD__
+#endif
+
 #ifdef OSX
 #include <mach/mach.h>
 #include <mach/vm_statistics.h>

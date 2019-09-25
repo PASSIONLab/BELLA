@@ -138,7 +138,6 @@ LoganPhase2(LoganState& state)
 		state.set_curr_score(antiDiagBest + state.get_score_offset());
 
 		int64_t scoreThreshold = state.get_best_score() - state.get_score_dropoff();
-		
 		if (state.get_curr_score() < scoreThreshold)
 		{
 			state.xDropCond = true;
