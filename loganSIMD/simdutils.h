@@ -160,16 +160,16 @@ public:
 	LoganState
 	(
 		SeedL& _seed,
-	 	std::string const& targetSeg,
-		std::string const& querySeg,
+	 	std::string const& hseq,
+		std::string const& vseq,
 		ScoringSchemeL& scoringScheme,
 		int64_t const &_scoreDropOff
 	)
 	{
 		seed = _seed;
 
-		hlength = targetSeg.length() + 1;
-		vlength = querySeg.length()  + 1;
+		hlength = hseq.length() + 1;	// + VECTORWIDTH;
+		vlength = vseq.length() + 1;	// + VECTORWIDTH;
 
 		if (hlength < VECTORWIDTH || vlength < VECTORWIDTH)
 		{
@@ -181,13 +181,14 @@ public:
 
 		// Convert from string to int array
 		// This is the entire sequences
-		queryh = new int8_t[hlength];
-		queryv = new int8_t[vlength];
-		std::copy(targetSeg.begin(), targetSeg.end(), queryh);
-		std::copy(querySeg.begin(), querySeg.end(), queryv);
+		queryh = new int8_t[hlength + VECTORWIDTH];
+		queryv = new int8_t[vlength + VECTORWIDTH];
 
-		// pay attention
-		// myLog( "Verify Here (ASSERT)" );
+		std::copy(hseq.begin(), hseq.begin() + hlength, queryh);
+		std::copy(vseq.begin(), vseq.begin() + vlength, queryv);
+
+		std::fill(queryh + hlength, queryh + hlength + VECTORWIDTH, NINF);
+		std::fill(queryv + vlength, queryv + vlength + VECTORWIDTH, NINF);
 
 		matchCost    = scoreMatch(scoringScheme   );
 		mismatchCost = scoreMismatch(scoringScheme);
@@ -255,7 +256,7 @@ public:
 	void set_antiDiag2 ( vectorType vector ) { antiDiag2.simd = vector; }
 	void set_antiDiag3 ( vectorType vector ) { antiDiag3.simd = vector; }
 
-	void moveRight ( void )
+	void moveRight (void)
 	{
 		// (a) shift to the left on query horizontal
 		vqueryh = shiftLeft( vqueryh.simd );
@@ -264,15 +265,17 @@ public:
 		// (b) shift left on updated vector 1
 		// this places the right-aligned vector 2 as a left-aligned vector 1
 		antiDiag1.simd = antiDiag2.simd;
-		antiDiag1 = shiftLeft( antiDiag1.simd );
+		antiDiag1 = shiftLeft(antiDiag1.simd);
 		antiDiag2.simd = antiDiag3.simd;
 	}
 
-	void moveDown ( void )
+	void moveDown (void)
 	{
 		// (a) shift to the right on query vertical
-		vqueryv = shiftRight( vqueryv.simd );
-		vqueryv.elem[0] = queryv[voffset++];
+		vqueryv = shiftRight(vqueryv.simd);
+		// ==50054==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x60600062b0e0 at pc 
+		// 0x0001019b50f1 bp 0x70000678ba30 sp 0x70000678ba28 READ of size 1 at 0x60600062b0e0 thread T6
+		vqueryv.elem[0] = queryv[voffset++]; 
 
 		// (b) shift to the right on updated vector 2
 		// this places the left-aligned vector 3 as a right-aligned vector 2
