@@ -116,6 +116,148 @@ vector<filedata>  GetFiles(char *filename) {
  * @param b_pars.kmerSize
  * @param upperlimit
  */
+void SimpleCount(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable_denovo, int& lower, int& upper,
+	int coverage, size_t upperlimit, BELLApars & b_pars)
+{
+	vector < vector<double> > allquals(MAXTHREADS);
+
+	double denovocount = omp_get_wtime();
+	size_t totreads = 0;
+
+	dictionary_t_16bit countsdenovo;
+	auto updatefn = [](unsigned short int &count) { if (count < std::numeric_limits<unsigned short int>::max()) ++count; };
+
+	for(auto itr=allfiles.begin(); itr!=allfiles.end(); itr++) 
+	{
+		#pragma omp parallel
+		{
+			ParallelFASTQ *pfq = new ParallelFASTQ();
+			pfq->open(itr->filename, false, itr->filesize);
+
+			if(MYTHREAD == 0)
+    			{
+    		    		const char* ReadingFASTQ = itr->filename;
+    		    		printLog(ReadingFASTQ);
+    			}
+
+			vector<string> seqs;
+			vector<string> quals;
+			vector<string> nametags;
+			size_t tlreads = 0; // thread local reads
+
+			size_t fillstatus = 1;
+			while(fillstatus) 
+			{ 
+				fillstatus = pfq->fill_block(nametags, seqs, quals, upperlimit);
+				size_t nreads = seqs.size();
+
+				for(int i=0; i<nreads; i++) 
+				{
+					// remember that the last valid position is length()-1
+					int len = seqs[i].length();
+					double rerror = 0.0;
+
+					for(int j = 0; j<= len - b_pars.kmerSize; j++)  
+					{
+						std::string kmerstrfromfastq = seqs[i].substr(j, b_pars.kmerSize);
+						Kmer mykmer(kmerstrfromfastq.c_str(), kmerstrfromfastq.length());
+						Kmer lexsmall = mykmer.rep();
+
+                        			countsdenovo.upsert(lexsmall, updatefn, 1);
+						
+						if(b_pars.skipEstimate == false) 
+						{
+								// accuracy
+								int bqual = (int)quals[i][j] - ASCIIBASE;
+								double berror = pow(10,-(double)bqual/10);
+								rerror += berror;
+						}
+					}
+
+					if(b_pars.skipEstimate == false) 
+					{
+						// remaining k qual position accuracy
+						for(int j = len - b_pars.kmerSize + 1; j < len; j++)
+						{
+							int bqual = (int)quals[i][j] - ASCIIBASE;
+							double berror = pow(10,-(double)bqual/10);
+							rerror += berror;
+						}
+						rerror = rerror / len;
+						allquals[MYTHREAD].push_back(rerror);
+					}
+				} // for(int i=0; i<nreads; i++)
+				tlreads += nreads;
+			} //while(fillstatus) 
+			delete pfq;
+
+			#pragma omp critical
+			{
+				totreads += tlreads;
+			}
+		}
+	}
+
+	// Error estimation
+	double& errorRate = b_pars.errorRate;
+	if(b_pars.skipEstimate == false)
+	{
+		errorRate = 0.0; // reset to 0 here, otherwise it cointains default or user-defined values
+		#pragma omp for reduction(+:errorRate)
+		for (int i = 0; i < MAXTHREADS; i++) 
+			{
+				double temp = std::accumulate(allquals[i].begin(), allquals[i].end(), 0.0);
+				errorRate += temp / (double)allquals[i].size();
+			}
+		b_pars.errorRate = errorRate / (double)MAXTHREADS;
+	}
+
+	double load2kmers = omp_get_wtime(); 
+	std::string kmerCountingTime = std::to_string(load2kmers - denovocount) + " seconds";
+	printLog(kmerCountingTime);
+
+
+	
+	// Reliable bounds computation using estimated error rate from phred quality score
+	lower = computeLower(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
+	upper = computeUpper(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
+
+	// Reliable k-mer filter on countsdenovo
+	unsigned int kmer_id_denovo = 0;
+	auto lt = countsdenovo.lock_table(); // our counting
+	for (const auto &it : lt) 
+		if (it.second >= lower && it.second <= upper)
+		{
+			countsreliable_denovo.insert(it.first, kmer_id_denovo);
+			++kmer_id_denovo;
+		}
+	lt.unlock(); // unlock the table
+
+	// Print some information about the table
+	if (countsreliable_denovo.size() == 0)
+	{
+		std::string ErrorMessage = "BELLA terminated: 0 entries within reliable range. You may want to reduce the k-mer lenght.";
+		printLog(ErrorMessage);
+		exit(1);
+	} 
+	else 
+	{
+		int numReliableKmers = countsreliable_denovo.size();
+		printLog(numReliableKmers);
+	}
+
+	countsdenovo.clear(); // free
+}
+
+/**
+ * @brief DeNovoCount
+ * @param allfiles
+ * @param countsreliable_denovo
+ * @param lower
+ * @param upper
+ * @param b_pars.kmerSize
+ * @param upperlimit
+ */
 void DeNovoCount(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable_denovo, int& lower, int& upper,
 	int coverage, size_t upperlimit, BELLApars & b_pars)
 {
@@ -135,10 +277,10 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable
 			pfq->open(itr->filename, false, itr->filesize);
 
 			if(MYTHREAD == 0)
-    		{
-    		    const char* ReadingFASTQ = itr->filename;
-    		    printLog(ReadingFASTQ);
-    		}
+    			{
+    		    		const char* ReadingFASTQ = itr->filename;
+    		    		printLog(ReadingFASTQ);
+    			}
 
 			vector<string> seqs;
 			vector<string> quals;
@@ -245,8 +387,14 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable
 			if(inBloom) countsdenovo.insert(v, 0);
 		}
 	}
+	size_t x = 0;
+	for (int i=0; i<MAXTHREADS; i++)
+		x += allkmers[i].size();
+
 	printLog("initial population + bloom filter");
-	std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+	printLog("total k-mers");
+	printLog(x);	
+//	std::this_thread::sleep_for(std::chrono::milliseconds(5000));
 	
 
 	double firstpass = omp_get_wtime();
