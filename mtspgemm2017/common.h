@@ -14,6 +14,16 @@
 #define PRINT
 #endif
 
+#include "../kmercode/hash_funcs.h"
+#include "../kmercode/Kmer.hpp"
+#include "../kmercode/Buffer.h"
+#include "../kmercode/common.h"
+#include "../kmercode/fq_reader.h"
+#include "../kmercode/ParallelFASTQ.h"
+#include "../kmercode/bound.hpp"
+
+using namespace std;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -39,7 +49,7 @@ struct BELLApars
 	short int		        fixedThreshold;		// Default alignment score threshold 	(a)
 	unsigned short int		xDrop;				// SeqAn xDrop value 					(x)
 	unsigned short int		numGPU;				// Number GPUs available/to be used  	(g)
-	unsigned short int		numKmerBucket;		// Number of buckets to count k-mers 	(b)
+	short int		        myMarkovOverlap;	// Overlap length to see 1 shared k-mer (b)
 	bool	skipEstimate;		// Do not estimate error but use user-defined error 	(e)
 	bool	skipAlignment;		// Do not align 										(z)
 	bool	outputPaf;			// Output in paf format 								(p)
@@ -50,7 +60,7 @@ struct BELLApars
 	double	minProbability;		// reliable range probability threshold 				(r)
 
 	BELLApars(): kmerSize(17), binSize(500), fixedThreshold(-1), xDrop(7), numGPU(1), 
-					numKmerBucket(1), skipEstimate(true), skipAlignment(false), outputPaf(false), userDefMem(false),
+					myMarkovOverlap(0), skipEstimate(true), skipAlignment(false), outputPaf(false), userDefMem(false),
 						deltaChernoff(0.10), totalMemory(8000.0), errorRate(0.00), minProbability(0.10) {};
 };
 
@@ -86,9 +96,9 @@ struct readType_ {
 	}
 };
 
-typedef vector<readType_> readVector_;
+typedef std::vector<readType_> readVector_;
 
-// EK: sort function for sorting a vector of indices by the values in a vector of int
+// EK: sort function for sorting a std::vector of indices by the values in a std::vector of int
 struct SortBy:std::binary_function<unsigned short int, unsigned short int, bool>
 {
 	SortBy(const std::vector<unsigned short int>& par) : vec(par) {}
@@ -99,14 +109,14 @@ struct SortBy:std::binary_function<unsigned short int, unsigned short int, bool>
 struct spmatType_ {
 
 	unsigned short int count = 0;		// number of shared k-mers
-	vector<vector<pair<unsigned short int, unsigned short int>>> pos;	// vector of k-mer positions <read-i, read-j> (if !K, use at most 2 kmers, otherwise all) per bin
-	vector<unsigned short int> support;	// number of k-mers supporting a given overlap
-	vector<unsigned short int> overlap;	// overlap values
-	vector<unsigned short int> ids;		// indices corresponded to sorting of support
+	std::vector<std::vector<pair<unsigned short int, unsigned short int>>> pos;	// std::vector of k-mer positions <read-i, read-j> (if !K, use at most 2 kmers, otherwise all) per bin
+	std::vector<unsigned short int> support;	// number of k-mers supporting a given overlap
+	std::vector<unsigned short int> overlap;	// overlap values
+	std::vector<unsigned short int> ids;		// indices corresponded to sorting of support
 
 	//	GG: sort according to support number
 	void sort() {
-		ids = vector<unsigned short int>(support.size());					// number of support
+		ids = std::vector<unsigned short int>(support.size());					// number of support
 		std::iota(ids.begin(), ids.end(), 0);				// assign an id
 		std::sort(ids.begin(), ids.end(), SortBy(support));	// sort support by supporting k-mers
 	}
@@ -119,7 +129,7 @@ struct spmatType_ {
 
 	//	GG: number of kmer supporting the most voted bin
 	int chain() {
-		ids = vector<unsigned short int>(support.size());	// number of support
+		ids = std::vector<unsigned short int>(support.size());	// number of support
 		std::iota(ids.begin(), ids.end(), 0);				// assign an id
 		std::sort(ids.begin(), ids.end(), SortBy(support));	// sort support by supporting k-mers
 
@@ -129,7 +139,7 @@ struct spmatType_ {
 
 	//	GG: overlap len in the most voted bin
 	int overlaplength() {
-		ids = vector<unsigned short int>(support.size());	// number of support
+		ids = std::vector<unsigned short int>(support.size());	// number of support
 		std::iota(ids.begin(), ids.end(), 0);				// assign an id
 		std::sort(ids.begin(), ids.end(), SortBy(support));	// sort support by supporting k-mers
 
@@ -139,7 +149,7 @@ struct spmatType_ {
 
 	//	GG: choose does also sorting and return the position of the first k-mer in each bin
 	pair<unsigned short int, unsigned short int> choose() {
-		ids = vector<unsigned short int>(support.size());	// number of support
+		ids = std::vector<unsigned short int>(support.size());	// number of support
 		std::iota(ids.begin(), ids.end(), 0);				// assign an id
 		std::sort(ids.begin(), ids.end(), SortBy(support));	// sort support by supporting k-mers
 

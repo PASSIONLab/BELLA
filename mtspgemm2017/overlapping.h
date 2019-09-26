@@ -481,7 +481,7 @@ void PostAlignDecision(const seqAnResult& maxExtScore,
 
 template <typename IT, typename FT>
 auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowids, FT * values, const readVector_& reads, 
-	char* filename, const BELLApars& b_pars, const double& ratiophi, int bucketId)
+	char* filename, const BELLApars& b_pars, const double& ratiophi)
 {
 	size_t alignedpairs = 0;
 	size_t alignedbases = 0;
@@ -538,7 +538,18 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 
 				//	GG: number of matching kmer into the majority voted bin
 				unsigned short int matches = val->chain();
-				unsigned short int minkmer = 1;
+				unsigned short int overlap;
+				unsigned short int minkmer;
+				
+				if(b_pars.myMarkovOverlap != -1) 
+				{
+					overlap = val->overlaplength();
+					minkmer = std::floor((float)overlap/(float)b_pars.myMarkovOverlap);
+				}
+				else 
+				{
+					minkmer = 1;
+				}
 
 				//	GG: b_pars.minSurvivedKmers should be function of Markov chain
 				if (matches < minkmer)
@@ -589,22 +600,8 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 		bytes[i] = vss[i].tellg();
 		vss[i].seekg(0, ios::beg);
 	}
-
-	std::string tmp = std::to_string(bucketId) + "_";
-	char const *idx = tmp.c_str();
-
-	short len1 = strlen(idx);
-	short len2 = strlen(filename);
-
-	char *fname = malloc(len1 + len2 + 1);
-	if (!fname) abort();
-
-	memcpy(fname, idx, len1);
-	memcpy(fname + len1, filename, len2);
-	fname[len1 + len2] = '\0';
-
 	int64_t bytestotal = std::accumulate(bytes, bytes+numThreads, static_cast<int64_t>(0));
-	std::ofstream ofs(fname, std::ios::binary | std::ios::app);
+	std::ofstream ofs(filename, std::ios::binary | std::ios::app);
 
 	std::string str1 = std::to_string((double)bytestotal/(double)(1024 * 1024));
 	std::string str2 = " MB";
@@ -620,9 +617,9 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 		int ithread = omp_get_thread_num();	
 
 		FILE *ffinal;
-		if ((ffinal = fopen(fname, "rb+")) == NULL)	// then everyone fills it
+		if ((ffinal = fopen(filename, "rb+")) == NULL)	// then everyone fills it
 		{
-			fprintf(stderr, "File %s failed to open at thread %d\n", fname, ithread);
+			fprintf(stderr, "File %s failed to open at thread %d\n", filename, ithread);
 		}
 		int64_t bytesuntil = std::accumulate(bytes, bytes+ithread, static_cast<int64_t>(0));
 		fseek (ffinal, bytesuntil, SEEK_SET);
@@ -631,7 +628,7 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 		fflush(ffinal);
 		fclose(ffinal);
 	}
-	delete [] fname;
+	delete [] filename;
 	delete [] bytes;
 	double timeoutputt = omp_get_wtime()-outputting;
 
@@ -643,7 +640,7 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
  **/
 template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation>
 void HashSpGEMM(const CSC<IT,NT>& A, const CSC<IT,NT>& B, MultiplyOperation multop, AddOperation addop, const readVector_& reads, 
-	FT& getvaluetype, char* filename, const BELLApars& b_pars, const double& ratiophi, int bucketId)
+	FT& getvaluetype, char* filename, const BELLApars& b_pars, const double& ratiophi)
 {
 	double free_memory = estimateMemory(b_pars);
 
@@ -737,7 +734,7 @@ void HashSpGEMM(const CSC<IT,NT>& A, const CSC<IT,NT>& B, MultiplyOperation mult
 
 		// GG: all paralelism moved to GPU we can do better
 		tuple<size_t, size_t, size_t, size_t, size_t, size_t, double> alignstats; // (alignedpairs, alignedbases, totalreadlen, outputted, alignedtrue, alignedfalse, timeoutputt)
-		alignstats = RunPairWiseAlignments(colStart[b], colStart[b+1], begnz, colptrC, rowids, values, reads, filename, b_pars, ratiophi, bucketId);
+		alignstats = RunPairWiseAlignments(colStart[b], colStart[b+1], begnz, colptrC, rowids, values, reads, filename, b_pars, ratiophi);
 
 		if(!b_pars.skipAlignment)
 		{
@@ -865,7 +862,7 @@ void PostAlignDecisionGPU(const loganResult& maxExtScore, const readType_& read1
 template <typename IT, typename FT>
 std::tuple<uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, double>
 RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * rowids, FT * values, const readVector_& reads, 
-	const BELLApars& b_pars, char* filename, double ratiophi, int bucketId)
+	const BELLApars& b_pars, char* filename, double ratiophi)
 {
 	stringstream ss;
 
@@ -1056,7 +1053,7 @@ RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * rowids,
  **/
 template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation>
 void HashSpGEMMGPU(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, const readVector_& reads, 
-	FT& getvaluetype, char* filename, const BELLApars& b_pars, const double& ratiophi, int bucketId)
+	FT& getvaluetype, char* filename, const BELLApars& b_pars, const double& ratiophi)
 {
 	double free_memory = estimateMemory(b_pars);
 
@@ -1151,7 +1148,7 @@ void HashSpGEMMGPU(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation
 
 		// GG: all paralelism moved to GPU we can do better
 		std::tuple<uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, double> alignstats; // (alignedpairs, alignedbases, totalreadlen, outputted, alignedtrue, alignedfalse, timeoutputt)
-		alignstats = RunPairWiseAlignmentsGPU(colStart[b], colStart[b+1], begnz, colptrC, rowids, values, reads, b_pars, filename, ratiophi, bucketId);
+		alignstats = RunPairWiseAlignmentsGPU(colStart[b], colStart[b+1], begnz, colptrC, rowids, values, reads, b_pars, filename, ratiophi);
 
 		if(!b_pars.skipAlignment)
 		{
