@@ -31,7 +31,7 @@
 #include "../loganGPU/logan.cuh"
 #endif
 
-#define BATCH_SIZE 30000
+#define BATCH_SIZE 35000
 
 using namespace seqan;
 using namespace std;
@@ -215,7 +215,7 @@ void alignLogan(vector<string>&	target, vector<string>&	query, vector<SeedL>& se
 	printLog(AlignmentsToBePerformed);
 	//int* res = (int*)malloc(BATCH_SIZE*sizeof(int));
 	int numAlignmentsLocal = BATCH_SIZE * b_pars.numGPU; 
-
+	cout <<"///////////////////////////////////////////////" <<b_pars.numGPU << endl;
 	
 
 	//	Divide the alignment in batches of 100K alignments
