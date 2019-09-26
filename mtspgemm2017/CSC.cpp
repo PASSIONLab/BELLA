@@ -192,7 +192,7 @@ CSC<IT,NT>::CSC(Triple<IT,NT> * triples, IT mynnz, IT m, IT n):nnz(mynnz),rows(m
 				rowids[ind] = itr->first;
 				values[ind] = itr->second;
 			}
-			}
+		}
 	}
 	delete [] work;
 }
