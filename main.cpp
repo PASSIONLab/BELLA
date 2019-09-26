@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <algorithm>
 #include <utility>
+#include <Python.h>
 #include <array>
 #include <tuple>
 #include <queue>
@@ -26,6 +27,7 @@
 #include <unordered_map>
 #include <omp.h>
 
+#include "myMarkov.h"
 #include "libcuckoo/cuckoohash_map.hh"
 #include "kmercount.h"
 #include "chain.h"
@@ -64,7 +66,7 @@ int main (int argc, char *argv[]) {
 	// Follow an option with a colon to indicate that it requires an argument.
 
 	optList = NULL;
-	optList = GetOptList(argc, argv, (char*)"f:o:c:d:hk:a:ze:x:c:m:r:pb:s:q:g:u:w:");
+	optList = GetOptList(argc, argv, (char*)"f:o:c:d:hk:a:ze:x:c:m:r:pbs:q:g:u:w:");
 
 	char	*all_inputs_fofn 	= NULL;	// List of fastqs (i)
 	char	*OutputFile 		= NULL;	// output filename (o)
@@ -101,7 +103,7 @@ int main (int argc, char *argv[]) {
 					printLog(ErrorMessage);
 					return 0;
 				}
-				
+
 				char* line1 = strdup(thisOpt->argument);
 				char* line2 = strdup(".out");
 
@@ -160,7 +162,7 @@ int main (int argc, char *argv[]) {
 				break;
 			}
 			case 'b': { // K-mer buckets to reduce memory footprint
-				b_parameters.numKmerBucket = atoi(thisOpt->argument);
+				b_parameters.myMarkovOverlap = -1;
 				break;
 			}
 			case 'a': {
@@ -310,8 +312,6 @@ int main (int argc, char *argv[]) {
     std::string ReliableCutoffProbability = std::to_string(b_parameters.minProbability);
     printLog(ReliableCutoffProbability);
 
-    std::string kmerBuckets = std::to_string(b_parameters.numKmerBucket);
-    printLog(kmerBuckets);
 #endif
 
 	double all;
@@ -333,215 +333,188 @@ int main (int argc, char *argv[]) {
 
 	all = omp_get_wtime();
 
-	// GG: experiencing significant load imbalance with 2 buckets
-	for(int bucketId = 0; bucketId < b_parameters.numKmerBucket; bucketId++)
-	{
-		// ================ //
-		//  K-mer Counting  //
-		// ================ //
+	// ================ //
+	//  K-mer Counting  //
+	// ================ //
 
-		std::string numKmerBucket = std::to_string(bucketId + 1) + "/" + std::to_string(b_parameters.numKmerBucket);
-		printLog(numKmerBucket);
+	dictionary_t_32bit countsreliable;
 
-		dictionary_t_32bit countsreliable;
+	DeNovoCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound, 
+		InputCoverage, reliableUpperBoundlimit, b_parameters);
 	
-		DeNovoCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound, 
-			InputCoverage, reliableUpperBoundlimit, b_parameters, bucketId);
+	// ==================== //
+	//  Markov Computation  //
+	// ==================== //
 
-		if(bucketId == 0)
-		{
-			double errorRate = b_parameters.errorRate;
-			printLog(errorRate);
-			printLog(reliableLowerBound);
-			printLog(reliableUpperBound);
+	if(b_parameters.myMarkovOverlap != -1)
+		b_parameters.myMarkovOverlap = myMarkovFunc(b_parameters);
 
-			if(b_parameters.fixedThreshold == -1)
-			{
-			    ratiophi = slope(b_parameters.errorRate);
-			    float AdaptiveThresholdConstant = ratiophi * (1 - b_parameters.deltaChernoff);
-				printLog(AdaptiveThresholdConstant); 
-			}
-		}
+	double errorRate = b_parameters.errorRate;
+	int markovOverlap = b_parameters.myMarkovOverlap;
+	printLog(errorRate);
+	printLog(markovOverlap);
+	printLog(reliableLowerBound);
+	printLog(reliableUpperBound);
 
-		// ================ //
-		// Fastq(s) Parsing //
-		// ================ //
-
-		double parsefastq = omp_get_wtime();
-
-		vector<vector<tuple<unsigned int, unsigned int, unsigned short int>>> alloccurrences(MAXTHREADS);
-		vector<vector<tuple<unsigned int, unsigned int, unsigned short int>>> alltranstuples(MAXTHREADS);
-
-		unsigned int numReads = 0; // numReads needs to be global (not just per file)
-
-		for(auto itr=allfiles.begin(); itr!=allfiles.end(); itr++)
-		{
-			ParallelFASTQ *pfq = new ParallelFASTQ();
-			pfq->open(itr->filename, false, itr->filesize);
-
-			unsigned int fillstatus = 1;
-			while(fillstatus)
-			{ 
-				fillstatus = pfq->fill_block(nametags, seqs, quals, reliableUpperBoundlimit);
-				unsigned int nreads = seqs.size();
-
-				#pragma omp parallel for
-				for(int i=0; i<nreads; i++) 
-				{
-					// remember that the last valid position is length()-1
-					int len = seqs[i].length();
-
-					if(bucketId == 0)
-					{
-						readType_ temp;
-						nametags[i].erase(nametags[i].begin());	// removing "@"
-						temp.nametag = nametags[i];
-						temp.seq = seqs[i];    					// save reads for seeded alignment
-						temp.readid = numReads+i;
-						allreads[MYTHREAD].push_back(temp);
-					}
-
-					for(int j = 0; j <= len - b_parameters.kmerSize; j++)  
-					{
-						std::string kmerstrfromfastq = seqs[i].substr(j, b_parameters.kmerSize);
-						Kmer mykmer(kmerstrfromfastq.c_str(), kmerstrfromfastq.length());
-						// remember to use only ::rep() when building kmerdict as well
-						Kmer lexsmall = mykmer.rep();
-
-						unsigned int idx; // kmer_id
-						auto found = countsreliable.find(lexsmall,idx);
-						if(found)
-						{
-							alloccurrences[MYTHREAD].emplace_back(std::make_tuple(numReads+i, idx, j)); // vector<tuple<numReads,kmer_id,kmerpos>>
-							alltranstuples[MYTHREAD].emplace_back(std::make_tuple(idx, numReads+i, j)); // transtuples.push_back(col_id,row_id,kmerpos)
-						}
-					}
-				} // for(int i=0; i<nreads; i++)
-				numReads += nreads;
-			} //while(fillstatus) 
-			delete pfq;
-		} // for all files
-
-		unsigned int readcount = 0;
-		unsigned int tuplecount = 0;
-
-		for(int t=0; t<MAXTHREADS; ++t)
-		{
-			readcount  += allreads[t].size();
-			tuplecount += alloccurrences[t].size();
-		}
-
-		reads.resize(readcount);
-		occurrences.resize(tuplecount);
-		transtuples.resize(tuplecount);
-
-		unsigned int readssofar = 0;
-		unsigned int tuplesofar = 0;
-
-		for(int t=0; t<MAXTHREADS; ++t)
-		{
-			if(bucketId == 0)
-			{
-				copy(allreads[t].begin(), allreads[t].end(), reads.begin()+readssofar);
-				readssofar += allreads[t].size();
-			}
-
-			copy(alloccurrences[t].begin(), alloccurrences[t].end(), occurrences.begin() + tuplesofar);
-			copy(alltranstuples[t].begin(), alltranstuples[t].end(), transtuples.begin() + tuplesofar);
-			tuplesofar += alloccurrences[t].size();
-		}
-
-		if(bucketId == 0)
-		{
-			std::sort(reads.begin(), reads.end());	// bool operator in global.h: sort by readid
-		}
-
-		std::vector<string>().swap(seqs);		// free memory of seqs  
-		std::vector<string>().swap(quals);		// free memory of quals
-
-		std::string fastqParsingTime = std::to_string(omp_get_wtime() - parsefastq) + " seconds";
-		printLog(fastqParsingTime);
-		printLog(numReads);
-
-		// ====================== //
-		// Sparse Matrix Creation //
-		// ====================== //
-
-		unsigned int nkmer = countsreliable.size();
-		double matcreat = omp_get_wtime();
-		CSC<unsigned int, unsigned short int> spmat(occurrences, numReads, nkmer, 
-								[] (unsigned short int& p1, unsigned short int& p2) 
-								{
-									return p1;
-								});
-		// remove memory of transtuples
-		std::vector<tuple<unsigned int, unsigned int, unsigned short int>>().swap(occurrences);
-
-		std::string SparseMatrixCreationTime = std::to_string(omp_get_wtime() - matcreat) + " seconds";
-		printLog(SparseMatrixCreationTime);
-
-		matcreat = omp_get_wtime();
-		CSC<unsigned int, unsigned short int> transpmat(transtuples, nkmer, numReads, 
-								[] (unsigned short int& p1, unsigned short int& p2) 
-								{
-									return p1;
-								});
-		// remove memory of transtuples
-		std::vector<tuple<unsigned int, unsigned int, unsigned short int>>().swap(transtuples);
-
-		std::string TransposeSparseMatrixCreationTime = std::to_string(omp_get_wtime() - matcreat) + " seconds";
-		printLog(TransposeSparseMatrixCreationTime);
-
-		// ==================================================== //
-		// Sparse Matrix Multiplication (aka Overlap Detection) //
-		// ==================================================== //
-			
-		spmatPtr_ getvaluetype(make_shared<spmatType_>());
-		HashSpGEMM(
-			spmat, transpmat, 
-			// n-th k-mer positions on read i and on read j
-		    [&b_parameters, &reads] (const unsigned short int& begpH, const unsigned short int& begpV, 
-		        const unsigned int& id1, const unsigned int& id2)
-			{
-				spmatPtr_ value(make_shared<spmatType_>());
-
-				std::string& read1 = reads[id1].seq;
-				std::string& read2 = reads[id2].seq;
-
-				// GG: function in chain.h
-				multiop(value, read1, read2, begpH, begpV, b_parameters.kmerSize);
-				return value;
-			},
-		    [&b_parameters, &reads] (spmatPtr_& m1, spmatPtr_& m2, const unsigned int& id1, 
-		        const unsigned int& id2)
-			{
-				// GG: after testing correctness, these variables can be removed
-				std::string& readname1 = reads[id1].nametag;
-				std::string& readname2 = reads[id2].nametag;
-
-				// GG: function in chain.h
-				chainop(m1, m2, b_parameters, readname1, readname2);
-				return m1;
-			},
-		    reads, getvaluetype, OutputFile, b_parameters, ratiophi, bucketId);
-
-	} // for(int bucketId = 0; bucketId < b_parameters.numKmerBucket; bucketId++)
-
-	// merge output files
-	if(b_parameters.numKmerBucket > 1)
+	if(b_parameters.fixedThreshold == -1)
 	{
-		std::ofstream ffinal(OutputFile, std::ios_base::binary | std::ios_base::app);
-
-		const std::string suffix(OutputFile);
-    	for (int prefix = 0; prefix < b_parameters.numKmerBucket; prefix++)
-		{
-			std::string name = std::to_string(prefix) + "_" + suffix;
-			std::ifstream ftemp(name, std::ios_base::binary);
-			ffinal << ftemp.rdbuf();
-			remove(name.c_str());	// remove temporary files
-		}
-		ffinal.close();
+	    ratiophi = slope(b_parameters.errorRate);
+	    float AdaptiveThresholdConstant = ratiophi * (1 - b_parameters.deltaChernoff);
+		printLog(AdaptiveThresholdConstant); 
 	}
+
+	// ================ //
+	// Fastq(s) Parsing //
+	// ================ //
+
+	double parsefastq = omp_get_wtime();
+
+	vector<vector<tuple<unsigned int, unsigned int, unsigned short int>>> alloccurrences(MAXTHREADS);
+	vector<vector<tuple<unsigned int, unsigned int, unsigned short int>>> alltranstuples(MAXTHREADS);
+
+	unsigned int numReads = 0; // numReads needs to be global (not just per file)
+
+	for(auto itr=allfiles.begin(); itr!=allfiles.end(); itr++)
+	{
+		ParallelFASTQ *pfq = new ParallelFASTQ();
+		pfq->open(itr->filename, false, itr->filesize);
+
+		unsigned int fillstatus = 1;
+		while(fillstatus)
+		{ 
+			fillstatus = pfq->fill_block(nametags, seqs, quals, reliableUpperBoundlimit);
+			unsigned int nreads = seqs.size();
+
+			#pragma omp parallel for
+			for(int i=0; i<nreads; i++) 
+			{
+				// remember that the last valid position is length()-1
+				int len = seqs[i].length();
+
+				readType_ temp;
+				nametags[i].erase(nametags[i].begin());	// removing "@"
+				temp.nametag = nametags[i];
+				temp.seq = seqs[i];    					// save reads for seeded alignment
+				temp.readid = numReads+i;
+				allreads[MYTHREAD].push_back(temp);
+
+				for(int j = 0; j <= len - b_parameters.kmerSize; j++)  
+				{
+					std::string kmerstrfromfastq = seqs[i].substr(j, b_parameters.kmerSize);
+					Kmer mykmer(kmerstrfromfastq.c_str(), kmerstrfromfastq.length());
+					// remember to use only ::rep() when building kmerdict as well
+					Kmer lexsmall = mykmer.rep();
+
+					unsigned int idx; // kmer_id
+					auto found = countsreliable.find(lexsmall,idx);
+					if(found)
+					{
+						alloccurrences[MYTHREAD].emplace_back(std::make_tuple(numReads+i, idx, j)); // vector<tuple<numReads,kmer_id,kmerpos>>
+						alltranstuples[MYTHREAD].emplace_back(std::make_tuple(idx, numReads+i, j)); // transtuples.push_back(col_id,row_id,kmerpos)
+					}
+				}
+			} // for(int i=0; i<nreads; i++)
+			numReads += nreads;
+		} //while(fillstatus) 
+		delete pfq;
+	} // for all files
+
+	unsigned int readcount = 0;
+	unsigned int tuplecount = 0;
+
+	for(int t=0; t<MAXTHREADS; ++t)
+	{
+		readcount  += allreads[t].size();
+		tuplecount += alloccurrences[t].size();
+	}
+
+	reads.resize(readcount);
+	occurrences.resize(tuplecount);
+	transtuples.resize(tuplecount);
+
+	unsigned int readssofar = 0;
+	unsigned int tuplesofar = 0;
+
+	for(int t=0; t<MAXTHREADS; ++t)
+	{
+		copy(allreads[t].begin(), allreads[t].end(), reads.begin()+readssofar);
+		readssofar += allreads[t].size();
+
+		copy(alloccurrences[t].begin(), alloccurrences[t].end(), occurrences.begin() + tuplesofar);
+		copy(alltranstuples[t].begin(), alltranstuples[t].end(), transtuples.begin() + tuplesofar);
+		tuplesofar += alloccurrences[t].size();
+	}
+
+	std::sort(reads.begin(), reads.end());	// bool operator in global.h: sort by readid
+
+	std::vector<string>().swap(seqs);		// free memory of seqs  
+	std::vector<string>().swap(quals);		// free memory of quals
+
+	std::string fastqParsingTime = std::to_string(omp_get_wtime() - parsefastq) + " seconds";
+	printLog(fastqParsingTime);
+	printLog(numReads);
+
+	// ====================== //
+	// Sparse Matrix Creation //
+	// ====================== //
+
+	unsigned int nkmer = countsreliable.size();
+	double matcreat = omp_get_wtime();
+	CSC<unsigned int, unsigned short int> spmat(occurrences, numReads, nkmer, 
+							[] (unsigned short int& p1, unsigned short int& p2) 
+							{
+								return p1;
+							});
+	// remove memory of transtuples
+	std::vector<tuple<unsigned int, unsigned int, unsigned short int>>().swap(occurrences);
+
+	std::string SparseMatrixCreationTime = std::to_string(omp_get_wtime() - matcreat) + " seconds";
+	printLog(SparseMatrixCreationTime);
+
+	matcreat = omp_get_wtime();
+	CSC<unsigned int, unsigned short int> transpmat(transtuples, nkmer, numReads, 
+							[] (unsigned short int& p1, unsigned short int& p2) 
+							{
+								return p1;
+							});
+	// remove memory of transtuples
+	std::vector<tuple<unsigned int, unsigned int, unsigned short int>>().swap(transtuples);
+
+	std::string TransposeSparseMatrixCreationTime = std::to_string(omp_get_wtime() - matcreat) + " seconds";
+	printLog(TransposeSparseMatrixCreationTime);
+
+	// ==================================================== //
+	// Sparse Matrix Multiplication (aka Overlap Detection) //
+	// ==================================================== //
+		
+	spmatPtr_ getvaluetype(make_shared<spmatType_>());
+	HashSpGEMM(
+		spmat, transpmat, 
+		// n-th k-mer positions on read i and on read j
+	    [&b_parameters, &reads] (const unsigned short int& begpH, const unsigned short int& begpV, 
+	        const unsigned int& id1, const unsigned int& id2)
+		{
+			spmatPtr_ value(make_shared<spmatType_>());
+
+			std::string& read1 = reads[id1].seq;
+			std::string& read2 = reads[id2].seq;
+
+			// GG: function in chain.h
+			multiop(value, read1, read2, begpH, begpV, b_parameters.kmerSize);
+			return value;
+		},
+	    [&b_parameters, &reads] (spmatPtr_& m1, spmatPtr_& m2, const unsigned int& id1, 
+	        const unsigned int& id2)
+		{
+			// GG: after testing correctness, these variables can be removed
+			std::string& readname1 = reads[id1].nametag;
+			std::string& readname2 = reads[id2].nametag;
+
+			// GG: function in chain.h
+			chainop(m1, m2, b_parameters, readname1, readname2);
+			return m1;
+		},
+	    reads, getvaluetype, OutputFile, b_parameters, ratiophi);
 
     std::string TotalRuntime = std::to_string(omp_get_wtime()-all) + " seconds";   
     printLog(TotalRuntime);

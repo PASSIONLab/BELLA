@@ -117,7 +117,7 @@ vector<filedata>  GetFiles(char *filename) {
  * @param upperlimit
  */
 void DeNovoCount(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable_denovo, int& lower, int& upper,
-	int coverage, size_t upperlimit, BELLApars & b_pars, int bucketId)
+	int coverage, size_t upperlimit, BELLApars & b_pars)
 {
 	vector < vector<Kmer> >   allkmers(MAXTHREADS);
 	vector < vector<double> > allquals(MAXTHREADS);
@@ -162,18 +162,11 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable
 						std::string kmerstrfromfastq = seqs[i].substr(j, b_pars.kmerSize);
 						Kmer mykmer(kmerstrfromfastq.c_str(), kmerstrfromfastq.length());
 						Kmer lexsmall = mykmer.rep();
-						
-						int hashbucket = lexsmall.hash() % b_pars.numKmerBucket;
 
-						// Divide in buckets to reduce memory footprint ==> TODO: implement subsampling
-						if(hashbucket == bucketId) 
-						{
-							allkmers[MYTHREAD].push_back(lexsmall);
-							hlls[MYTHREAD].add((const char*) lexsmall.getBytes(), lexsmall.getNumBytes());
-						}
+						allkmers[MYTHREAD].push_back(lexsmall);
+						hlls[MYTHREAD].add((const char*) lexsmall.getBytes(), lexsmall.getNumBytes());
 
-						// Do this only if bucketId == 0
-						if(b_pars.skipEstimate == false && bucketId == 0) 
+						if(b_pars.skipEstimate == false) 
 						{
 								// accuracy
 								int bqual = (int)quals[i][j] - ASCIIBASE;
@@ -181,8 +174,8 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable
 								rerror += berror;
 						}
 					}
-					// Do this only if bucketId == 0
-					if(b_pars.skipEstimate == false && bucketId == 0) 
+
+					if(b_pars.skipEstimate == false) 
 					{
 						// remaining k qual position accuracy
 						for(int j = len - b_pars.kmerSize + 1; j < len; j++)
@@ -208,8 +201,7 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable
 
 	// Error estimation
 	double& errorRate = b_pars.errorRate;
-	// Do this only if bucketId == 0
-	if(b_pars.skipEstimate == false && bucketId == 0)
+	if(b_pars.skipEstimate == false)
 	{
 		errorRate = 0.0; // reset to 0 here, otherwise it cointains default or user-defined values
 		#pragma omp for reduction(+:errorRate)
