@@ -3,7 +3,8 @@ SPRNPATH = mtspgemm2017/GTgraph/sprng2.0-lite
 SEQANPATH = seqan
 LOGANPATH = loganGPU
 include mtspgemm2017/GTgraph/Makefile.var
-INCLUDE = -I$(SPRNPATH)/include -I$(LOGANPATH) -I$(SEQANPATH) -I/usr/include/python2.7
+PINCLUDE = $(shell python-config --includes)
+INCLUDE = -I$(SPRNPATH)/include -I$(LOGANPATH) -I$(SEQANPATH) $(PINCLUDE)
 MLKINCLUDE = -I/opt/intel/composer_xe_2015.0.039/mkl/include
 LIBPATH = -L/opt/intel/composer_xe_2015.0.039/mkl/lib 
 
