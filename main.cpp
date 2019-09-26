@@ -19,6 +19,8 @@
 #include <math.h>
 #include <cassert>
 #include <ios>
+#include <chrono>
+#include <thread>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/sysctl.h>
@@ -366,6 +368,8 @@ int main (int argc, char *argv[]) {
 		// ================ //
 		// Fastq(s) Parsing //
 		// ================ //
+		//
+		
 
 		double parsefastq = omp_get_wtime();
 

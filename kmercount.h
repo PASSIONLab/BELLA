@@ -253,6 +253,9 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable
 			if(inBloom) countsdenovo.insert(v, 0);
 		}
 	}
+	printLog("initial population + bloom filter");
+	std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+	
 
 	double firstpass = omp_get_wtime();
 	std::string FirstKmerPassTime = std::to_string(firstpass - load2kmers) + " seconds";
