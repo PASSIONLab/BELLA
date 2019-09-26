@@ -71,7 +71,7 @@ Optional flag description:
 -e : Error rate [0.15]   				 
 -q : Estimare error rate from the dataset [FALSE]   	 
 -u : Use default error rate setting [FALSE]  		 
--b : Buckets of counted k-mers [2]     	 
+-b : Discard pairs with less than <MarkovThreshold> shared k-mers [FALSE]     	 
 -m : Total RAM of the system in MB [auto estimated if possible or 8,000 if not]  	 
 -z : Do not run pairwise alignment [FALSE]   			 
 -d : Deviation from the mean alignment score [0.10]  	 
