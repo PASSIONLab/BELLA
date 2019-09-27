@@ -514,25 +514,25 @@ void SplitCount(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable_
 							{
 								allkmers[MYTHREAD].push_back(lexsmall);
 								hlls[MYTHREAD].add((const char*) lexsmall.getBytes(), lexsmall.getNumBytes());
-
-								if(b_pars.skipEstimate == false) 
-								{
-									// accuracy
-									int bqual = (int)quals[i][j] - ASCIIBASE;
-									double berror = pow(10,-(double)bqual/10);
-        							tlave = getAvg(tlave, berror, tlbases++); 
-								}
 							}
+							if(sp == 0 && b_pars.skipEstimate == false) 
+							{
+								// accuracy
+								int bqual = (int)quals[i][j] - ASCIIBASE;
+								double berror = pow(10,-(double)bqual/10);
+        							tlave = getAvg(tlave, berror, tlbases++); 
+							}
+
 						}
 
-						if(b_pars.skipEstimate == false) 
+						if(sp == 0 && b_pars.skipEstimate == false) 
 						{
 							// remaining k qual position accuracy
 							for(int j = len - b_pars.kmerSize + 1; j < len; j++)
 							{
 								int bqual = (int)quals[i][j] - ASCIIBASE;
 								double berror = pow(10,-(double)bqual/10);
-        						tlave = getAvg(tlave, berror, tlbases++); 									
+        							tlave = getAvg(tlave, berror, tlbases++); 									
 							}
 						}
 					} // for(int i=0; i<nreads; i++)
@@ -540,21 +540,33 @@ void SplitCount(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable_
 				} //while(fillstatus) 
 				delete pfq;
 
-				#pragma omp critical
+				if(sp == 0)	// don't overcount by a factor of splits 
 				{
-					totreads += tlreads;
-					avesofar = (avesofar * totbases + tlave * tlbases) / (totbases + tlbases);				
-					totbases += tlbases;
+					#pragma omp critical
+					{
+						totreads += tlreads;
+						avesofar = (avesofar * totbases + tlave * tlbases) / (totbases + tlbases);				
+						totbases += tlbases;
+					}
 				}
 
 			} // #pragma omp parallel
 
 		} // for allfiles
 
-		if(b_pars.skipEstimate == false)
+		if(sp == 0)
 		{
-			b_pars.errorRate = avesofar;	// this 25% sample should be good enough, no?
-			printLog(b_pars.errorRate);
+			if(b_pars.skipEstimate == false)
+			{
+				b_pars.errorRate = avesofar;	
+				printLog(b_pars.errorRate);
+			}
+
+			// Reliable bounds computation using estimated error rate from phred quality score
+			lower = computeLower(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
+			upper = computeUpper(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
+			printLog(lower);
+			printLog(upper);
 		}
 	
 		// HLL reduction (serial for now) to avoid double iteration
@@ -618,13 +630,7 @@ void SplitCount(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable_
 		std::string SecondKmerPassTime = std::to_string(omp_get_wtime() - firstpass) + " seconds";
 		printLog(SecondKmerPassTime);
 
-		// Reliable bounds computation using estimated error rate from phred quality score
-		lower = computeLower(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
-		upper = computeUpper(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
-		printLog(lower);
-		printLog(upper);
-		printLog(b_pars.errorRate);
-
+		
 		auto lt = countsdenovo.lock_table(); // our counting
 		for (const auto &it : lt) 
 		{
