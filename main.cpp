@@ -341,8 +341,8 @@ int main (int argc, char *argv[]) {
 
 	dictionary_t_32bit countsreliable;
 
-	Split4Count(allfiles, countsreliable, reliableLowerBound, reliableUpperBound, 
-		InputCoverage, upperlimit, b_parameters);
+	SplitCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound, 
+		InputCoverage, upperlimit, b_parameters, 4);
 	
 	// ==================== //
 	//  Markov Computation  //

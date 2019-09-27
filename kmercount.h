@@ -454,7 +454,7 @@ double getAvg(double prev_avg, double x, int64_t n)
  * @param b_pars.kmerSize
  * @param upperlimit
  */
-void Split4Count(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable_denovo, int& lower, int& upper, int coverage, size_t upperlimit, BELLApars & b_pars)
+void SplitCount(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable_denovo, int& lower, int& upper, int coverage, size_t upperlimit, BELLApars & b_pars, const int splits)
 {
 	size_t totreads = 0;
 	size_t totbases = 0;
@@ -464,7 +464,7 @@ void Split4Count(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable
 	// Reliable k-mer filter on countsdenovo
 	unsigned int kmer_id_denovo = 0;
 
-	for(int splits = 0; splits < 4; ++splits)	// splits
+	for(int sp = 0; sp < splits; ++sp)	// splits
 	{
 		double denovocount = omp_get_wtime();
 		
@@ -510,7 +510,7 @@ void Split4Count(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable
 							Kmer mykmer(kmerstrfromfastq.c_str(), kmerstrfromfastq.length());
 							Kmer lexsmall = mykmer.rep();
 
-							if(lexsmall.hash() % 4 == splits)	// mod 4
+							if(lexsmall.hash() % 4 == sp)	// mod 4
 							{
 								allkmers[MYTHREAD].push_back(lexsmall);
 								hlls[MYTHREAD].add((const char*) lexsmall.getBytes(), lexsmall.getNumBytes());
@@ -594,7 +594,7 @@ void Split4Count(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable
 		for (int i=0; i<MAXTHREADS; i++)
 			tot_kmers+= allkmers[i].size();
 
-		printLog(splits);
+		printLog(sp);
 		printLog(tot_kmers);	
 	
 
