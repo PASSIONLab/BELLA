@@ -341,7 +341,7 @@ int main (int argc, char *argv[]) {
 
 	dictionary_t_32bit countsreliable;
 
-	DeNovoCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound, 
+	Split4Count(allfiles, countsreliable, reliableLowerBound, reliableUpperBound, 
 		InputCoverage, reliableUpperBoundlimit, b_parameters);
 	
 	// ==================== //
