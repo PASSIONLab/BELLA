@@ -1,1 +1,0 @@
-/global/cscratch1/sd/qizhou/real_datasets/celegans40x_allfastq.fastq

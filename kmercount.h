@@ -440,7 +440,7 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable
 }
 
 // Returns the new average after including x 
-double getAvg(double prev_avg, int64_t x, int64_t n) 
+double getAvg(double prev_avg, double x, int64_t n) 
 { 
 	return (prev_avg * n + x) / (n + 1); 
 } 
@@ -464,7 +464,7 @@ void Split4Count(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable
 	// Reliable k-mer filter on countsdenovo
 	unsigned int kmer_id_denovo = 0;
 
-	for(int splits=0; splits< 4; ++splits)	// splits
+	for(int splits = 0; splits < 4; ++splits)	// splits
 	{
 		double denovocount = omp_get_wtime();
 		
@@ -475,8 +475,6 @@ void Split4Count(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable
 		{
 			#pragma omp parallel
 			{
-				double tlave = 0.0;
-
 				ParallelFASTQ *pfq = new ParallelFASTQ();
 				pfq->open(itr->filename, false, itr->filesize);
 
@@ -489,8 +487,10 @@ void Split4Count(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable
 				vector<string> seqs;
 				vector<string> quals;
 				vector<string> nametags;
+
 				size_t tlreads = 0; // thread local reads
 				size_t tlbases = 0; // thread local bases
+				double tlave = 0.0; // thread local error rate average
 
 				size_t fillstatus = 1;
 				while(fillstatus) 
@@ -498,7 +498,7 @@ void Split4Count(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable
 					fillstatus = pfq->fill_block(nametags, seqs, quals, upperlimit);
 					size_t nreads = seqs.size();
 
-					for(int i=0; i<nreads; i++) 
+					for(int i = 0; i < nreads; i++) 
 					{
 						// remember that the last valid position is length()-1
 						int len = seqs[i].length();
@@ -509,7 +509,8 @@ void Split4Count(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable
 							std::string kmerstrfromfastq = seqs[i].substr(j, b_pars.kmerSize);
 							Kmer mykmer(kmerstrfromfastq.c_str(), kmerstrfromfastq.length());
 							Kmer lexsmall = mykmer.rep();
-							if(lexsmall.hash() % 4 ==  splits)	// mod 4
+
+							if(lexsmall.hash() % 4 == splits)	// mod 4
 							{
 								allkmers[MYTHREAD].push_back(lexsmall);
 								hlls[MYTHREAD].add((const char*) lexsmall.getBytes(), lexsmall.getNumBytes());
@@ -519,7 +520,7 @@ void Split4Count(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable
 									// accuracy
 									int bqual = (int)quals[i][j] - ASCIIBASE;
 									double berror = pow(10,-(double)bqual/10);
-        								tlave = getAvg(tlave, berror, tlbases++); 	
+        							tlave = getAvg(tlave, berror, tlbases++); 
 								}
 							}
 						}
@@ -531,7 +532,7 @@ void Split4Count(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable
 							{
 								int bqual = (int)quals[i][j] - ASCIIBASE;
 								double berror = pow(10,-(double)bqual/10);
-        							tlave = getAvg(tlave, berror, tlbases++); 									
+        						tlave = getAvg(tlave, berror, tlbases++); 									
 							}
 						}
 					} // for(int i=0; i<nreads; i++)

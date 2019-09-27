@@ -259,7 +259,7 @@ int main (int argc, char *argv[]) {
 	int reliableLowerBound, reliableUpperBound; // reliable range reliableLowerBound and reliableUpperBound bound
 	double ratiophi;
 	Kmer::set_k(b_parameters.kmerSize);
-	unsigned int reliableUpperBoundlimit = 10000000; // in bytes
+	unsigned int upperlimit = 10000000; // in bytes
 	Kmers kmervect;
 	vector<string> seqs;
 	vector<string> quals;
@@ -342,7 +342,7 @@ int main (int argc, char *argv[]) {
 	dictionary_t_32bit countsreliable;
 
 	Split4Count(allfiles, countsreliable, reliableLowerBound, reliableUpperBound, 
-		InputCoverage, reliableUpperBoundlimit, b_parameters);
+		InputCoverage, reliableUpperBound, b_parameters);
 	
 	// ==================== //
 	//  Markov Computation  //
@@ -385,7 +385,7 @@ int main (int argc, char *argv[]) {
 		unsigned int fillstatus = 1;
 		while(fillstatus)
 		{ 
-			fillstatus = pfq->fill_block(nametags, seqs, quals, reliableUpperBoundlimit);
+			fillstatus = pfq->fill_block(nametags, seqs, quals, upperlimit);
 			unsigned int nreads = seqs.size();
 
 			#pragma omp parallel for
