@@ -60,7 +60,7 @@ struct BELLApars
 	double	minProbability;		// reliable range probability threshold 				(r)
 
 	BELLApars(): kmerSize(17), binSize(500), fixedThreshold(-1), xDrop(7), numGPU(1), 
-					myMarkovOverlap(0), skipEstimate(true), skipAlignment(false), outputPaf(false), userDefMem(false),
+					myMarkovOverlap(-1), skipEstimate(true), skipAlignment(false), outputPaf(false), userDefMem(false),
 						deltaChernoff(0.10), totalMemory(8000.0), errorRate(0.00), minProbability(0.10) {};
 };
 
