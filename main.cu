@@ -280,7 +280,7 @@ int main (int argc, char *argv[]) {
     std::string kmerSize = std::to_string(b_parameters.kmerSize);
     printLog(kmerSize);
 
-	std::string GPUs = "DISABLED";
+	std::string GPUs = std::to_string(b_parameters.numGPU);
     printLog(GPUs);
 
     std::string OutputPAF = std::to_string(b_parameters.outputPaf);
