@@ -628,7 +628,7 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 		fflush(ffinal);
 		fclose(ffinal);
 	}
-	delete [] filename;
+
 	delete [] bytes;
 	double timeoutputt = omp_get_wtime()-outputting;
 
