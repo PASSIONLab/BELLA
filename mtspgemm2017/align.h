@@ -31,7 +31,7 @@
 #include "../loganGPU/logan.cuh"
 #endif
 
-#define BATCH_SIZE 35000
+#define BATCH_SIZE 30000
 
 using namespace seqan;
 using namespace std;
