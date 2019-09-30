@@ -9,7 +9,7 @@
 #include "../kmercode/ParallelFASTQ.h"
 #include "../libcuckoo/cuckoohash_map.hh"
 #ifndef __NVCC__
-	#include "../loganSIMD/logan.h"
+	#include "../xavier/xavier.h"
 #endif
 #include <seqan/sequence.h>
 #include <seqan/align.h>
@@ -394,7 +394,7 @@ double estimateMemory(const BELLApars & b_pars)
 // ======================================= //
 
 #ifdef __SIMD__
-void PostAlignDecision(const loganResult& maxExtScore, 
+void PostAlignDecision(const xavierResult& maxExtScore, 
 #else
 void PostAlignDecision(const seqAnResult& maxExtScore, 
 #endif
@@ -529,7 +529,7 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 				numAlignmentsThread++;
 				readLengthsThread = readLengthsThread + seq1len + seq2len;
 			#ifdef __SIMD__
-				loganResult maxExtScore;
+				xavierResult maxExtScore;
 			#else
 				seqAnResult maxExtScore;
 			#endif
@@ -560,7 +560,7 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 
 				//	GG: nucleotide alignment
 			#ifdef __SIMD__
-				maxExtScore = alignLogan(seq1, seq2, seq1len, i, j, b_pars.xDrop, b_pars.kmerSize);
+				maxExtScore = xavierAlign(seq1, seq2, seq1len, i, j, b_pars.xDrop, b_pars.kmerSize);
 			#else
 				maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, b_pars.xDrop, b_pars.kmerSize);
 			#endif

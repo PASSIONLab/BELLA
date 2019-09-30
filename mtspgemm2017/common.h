@@ -7,7 +7,7 @@
 #include <seqan/modifier.h>
 #include <seqan/seeds.h>
 #ifndef __NVCC__
-	#include "../loganSIMD/logan.h"
+	#include "../xavier/xavier.h"
 #endif
 
 #ifndef PRINT
@@ -71,11 +71,20 @@ template <typename T>
 
 #ifndef __NVCC__
 
+struct xavierResult {
+    int score;
+    std::string strand;
+    SeedX seed;
+};
+
+#else
+
 struct loganResult {
     int score;
     std::string strand;
     SeedL seed;
 };
+
 #endif
 
 typedef seqan::Seed<seqan::Simple> TSeed;

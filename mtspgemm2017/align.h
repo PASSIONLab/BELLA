@@ -8,7 +8,7 @@
 #include <seqan/seeds.h>
 #include "common.h"
 #ifndef __NVCC__
-	#include "../loganSIMD/logan.h"
+	#include "../xavier/xavier.h"
 #endif
 #include <omp.h>
 #include <fstream>
@@ -145,11 +145,11 @@ seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rle
  * @param xDrop
  * @return alignment score and extended seed
  */
-loganResult alignLogan(const std::string& row, const std::string& col, int rowLen, int i, int j, int xDrop, int kmerSize)
+xavierResult xavierAlign(const std::string& row, const std::string& col, int rowLen, int i, int j, int xDrop, int kmerSize)
 {
 	// result.first = best score, result.second = exit score when (if) x-drop termination is satified
 	std::pair<int, int> tmp;
-	loganResult result;
+	xavierResult result;
 
 	// penalties (LOGAN currently supports only linear gap penalty and penalty within +/- 3)
 	short match    =  1;
@@ -157,9 +157,9 @@ loganResult alignLogan(const std::string& row, const std::string& col, int rowLe
 	short gap 	   = -1;
 
 	// initialize scoring scheme
-	ScoringSchemeL scoringScheme(match, mismatch, gap);	// enalties (LOGAN currently supports only linear gap penalty and penalty within +/- 3)
+	ScoringSchemeX scoringScheme(match, mismatch, gap);	// enalties (LOGAN currently supports only linear gap penalty and penalty within +/- 3)
 
-	SeedL seed(i, j, kmerSize);
+	SeedX seed(i, j, kmerSize);
 
 	std::string seedH = row.substr(getBeginPositionH(seed), kmerSize);
 	std::string seedV = col.substr(getBeginPositionV(seed), kmerSize);
@@ -176,13 +176,13 @@ loganResult alignLogan(const std::string& row, const std::string& col, int rowLe
 		setEndPositionH(seed, rowLen - i);
 
 		// perform match extension reverse string
- 		tmp = LoganXDrop(seed, LOGAN_EXTEND_BOTH, cpyrow, col, scoringScheme, xDrop);
+ 		tmp = XavierXDrop(seed, XAVIER_EXTEND_BOTH, cpyrow, col, scoringScheme, xDrop);
 		result.strand = "c";
 	}
 	else
 	{
 		// perform match extension forward string
-	 	tmp = LoganXDrop(seed, LOGAN_EXTEND_BOTH, row, col, scoringScheme, xDrop);
+	 	tmp = XavierXDrop(seed, XAVIER_EXTEND_BOTH, row, col, scoringScheme, xDrop);
 		result.strand = "n";
 	}
 
