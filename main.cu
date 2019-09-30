@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <algorithm>
 #include <utility>
+#include <Python.h>
 #include <array>
 #include <tuple>
 #include <queue>
@@ -19,6 +20,8 @@
 #include <math.h>
 #include <cassert>
 #include <ios>
+#include <chrono>
+#include <thread>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/sysctl.h>
@@ -26,9 +29,7 @@
 #include <unordered_map>
 #include <omp.h>
 
-#ifdef __NVCC__
-#include "loganGPU/logan.cuh"
-#endif
+#include "myMarkov.h"
 #include "libcuckoo/cuckoohash_map.hh"
 #include "kmercount.h"
 #include "chain.h"
@@ -67,7 +68,7 @@ int main (int argc, char *argv[]) {
 	// Follow an option with a colon to indicate that it requires an argument.
 
 	optList = NULL;
-	optList = GetOptList(argc, argv, (char*)"f:o:c:d:hk:a:ze:x:c:m:r:pb:s:q:g:u:w:");
+	optList = GetOptList(argc, argv, (char*)"f:o:c:d:hk:a:ze:x:c:m:r:pbs:q:g:u:w:");
 
 	char	*all_inputs_fofn 	= NULL;	// List of fastqs (i)
 	char	*OutputFile 		= NULL;	// output filename (o)
@@ -104,8 +105,10 @@ int main (int argc, char *argv[]) {
 					printLog(ErrorMessage);
 					return 0;
 				}
+
 				char* line1 = strdup(thisOpt->argument);
 				char* line2 = strdup(".out");
+
 				unsigned int len1 = strlen(line1);
 				unsigned int len2 = strlen(line2);
 
@@ -161,7 +164,7 @@ int main (int argc, char *argv[]) {
 				break;
 			}
 			case 'b': { // K-mer buckets to reduce memory footprint
-				b_parameters.numKmerBucket = atoi(thisOpt->argument);
+				b_parameters.myMarkovOverlap = 0;
 				break;
 			}
 			case 'a': {
@@ -208,7 +211,7 @@ int main (int argc, char *argv[]) {
 				cout << "	-e : Error rate [0.15]" 				<< endl;
 				cout << "	-q : Estimare error rate from the dataset [FALSE]" 	<< endl;
 				cout << "	-u : Use default error rate setting [FALSE]"		<< endl;
-				cout << "	-b : Buckets of counted k-mers [2]"   	<< endl;
+				cout << "	-b : Discard pairs with less than <MarkovThreshold> shared k-mers [FALSE]"   	<< endl;
 				cout << "	-m : Total RAM of the system in MB [auto estimated if possible or 8,000 if not]"	<< endl;
 				cout << "	-z : Do not run pairwise alignment [FALSE]" 			<< endl;
 				cout << "	-d : Deviation from the mean alignment score [0.10]"	<< endl;
@@ -236,7 +239,7 @@ int main (int argc, char *argv[]) {
 		std::string str1 = "BELLA execution terminated. The user should either:\n\n";
 		std::string str2 = "	* -e = suggest an error rate;\n";
 		std::string str3 = "	* -q = confirm that the data has quality values and we can estimate the error rate from the data set;\n";
-		std::string str4 = "	* -u = confirm that we can use a default error rate (0.15).\n";
+		std::string str4 = "	* -u = confirm that we can use a default error rate (0.15).\n"; // This might not be worth it for large runs (diBELLA)
 		std::string ErrorMessage = str1 + str2 + str3 + str4;
 
 		printLog(ErrorMessage);
@@ -247,16 +250,16 @@ int main (int argc, char *argv[]) {
 	free(optList);
     free(thisOpt);
     
-	//
-	// Declarations 
-    //
+	// ================ //
+	// 	 Declarations   //
+	// ================ //
     
 	vector<filedata> allfiles = GetFiles(all_inputs_fofn);
 	std::string all_inputs_gerbil = std::string(all_inputs_fofn); 
 	int reliableLowerBound, reliableUpperBound; // reliable range reliableLowerBound and reliableUpperBound bound
 	double ratiophi;
 	Kmer::set_k(b_parameters.kmerSize);
-	unsigned int reliableUpperBoundlimit = 10000000; // in bytes
+	unsigned int upperlimit = 10000000; // in bytes
 	Kmers kmervect;
 	vector<string> seqs;
 	vector<string> quals;
@@ -266,9 +269,9 @@ int main (int argc, char *argv[]) {
 	vector<tuple<unsigned int, unsigned int, unsigned short int>> occurrences;	// 32 bit, 32 bit, 16 bit (read, kmer, position)
     vector<tuple<unsigned int, unsigned int, unsigned short int>> transtuples;	// 32 bit, 32 bit, 16 bit (kmer, read, position)
     
-	// 
-	// File and setting used
-    //
+	// ================== //
+	// Parameters Summary //
+	// ================== //
     
 #ifdef PRINT
     printLog(OutputFile);
@@ -277,7 +280,7 @@ int main (int argc, char *argv[]) {
     std::string kmerSize = std::to_string(b_parameters.kmerSize);
     printLog(kmerSize);
 
-    std::string GPUs = std::to_string(b_parameters.numGPU);
+	std::string GPUs = "DISABLED";
     printLog(GPUs);
 
     std::string OutputPAF = std::to_string(b_parameters.outputPaf);
@@ -311,52 +314,68 @@ int main (int argc, char *argv[]) {
     std::string ReliableCutoffProbability = std::to_string(b_parameters.minProbability);
     printLog(ReliableCutoffProbability);
 
-    std::string kmerBuckets = std::to_string(b_parameters.numKmerBucket);
-    printLog(kmerBuckets);
 #endif
 
-    //
-    // Kmer file parsing, error estimation, reliable bounds computation, and k-mer dictionary creation
-    //
+	double all;
 
-	dictionary_t_32bit countsreliable;
-    double all;
+	// ================ //
+	//  Reliable Bound  //
+	// ================ //
 
-    // Reliable range computation within denovo counting
-    int numThreads = 1;
-    #pragma omp parallel
-    {
-        numThreads = omp_get_num_threads();
-    }
+	int numThreads = 1;
+	#pragma omp parallel
+	{
+	    numThreads = omp_get_num_threads();
+	}
 
 	printLog(numThreads);
-	int bucketId = 0;
+
+	// GG: reads global
+	vector<readVector_> allreads(MAXTHREADS);
 
 	all = omp_get_wtime();
-    DeNovoCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound, InputCoverage, reliableUpperBoundlimit, b_parameters, bucketId);
 
-    double errorRate = b_parameters.errorRate;
-    printLog(errorRate);
-    printLog(reliableLowerBound);
-    printLog(reliableUpperBound);
+	// ================ //
+	//  K-mer Counting  //
+	// ================ //
+
+	dictionary_t_32bit countsreliable;
+
+	SplitCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound, 
+		InputCoverage, upperlimit, b_parameters, 4);
+	
+	// ==================== //
+	//  Markov Computation  //
+	// ==================== //
+
+	if(b_parameters.myMarkovOverlap != -1)
+		b_parameters.myMarkovOverlap = myMarkovFunc(b_parameters);
+
+	double errorRate = b_parameters.errorRate;
+	int markovOverlap = b_parameters.myMarkovOverlap;
+	printLog(errorRate);
+	printLog(markovOverlap);
+	printLog(reliableLowerBound);
+	printLog(reliableUpperBound);
 
 	if(b_parameters.fixedThreshold == -1)
-    {
-        ratiophi = slope(b_parameters.errorRate);
-        float AdaptiveThresholdConstant = ratiophi * (1 - b_parameters.deltaChernoff);
-		printLog(AdaptiveThresholdConstant);       
-    }
+	{
+	    ratiophi = slope(b_parameters.errorRate);
+	    float AdaptiveThresholdConstant = ratiophi * (1 - b_parameters.deltaChernoff);
+		printLog(AdaptiveThresholdConstant); 
+	}
 
-    //
-    // Fastq(s) parsing
-    //
+
+	// ================ //
+	// Fastq(s) Parsing //
+	// ================ //
 
 	double parsefastq = omp_get_wtime();
-	unsigned int numReads = 0; // numReads needs to be global (not just per file)
 
 	vector<vector<tuple<unsigned int, unsigned int, unsigned short int>>> alloccurrences(MAXTHREADS);
 	vector<vector<tuple<unsigned int, unsigned int, unsigned short int>>> alltranstuples(MAXTHREADS);
-	vector<readVector_> allreads(MAXTHREADS);
+
+	unsigned int numReads = 0; // numReads needs to be global (not just per file)
 
 	for(auto itr=allfiles.begin(); itr!=allfiles.end(); itr++)
 	{
@@ -366,7 +385,7 @@ int main (int argc, char *argv[]) {
 		unsigned int fillstatus = 1;
 		while(fillstatus)
 		{ 
-			fillstatus = pfq->fill_block(nametags, seqs, quals, reliableUpperBoundlimit);
+			fillstatus = pfq->fill_block(nametags, seqs, quals, upperlimit);
 			unsigned int nreads = seqs.size();
 
 			#pragma omp parallel for
@@ -376,11 +395,10 @@ int main (int argc, char *argv[]) {
 				int len = seqs[i].length();
 
 				readType_ temp;
-				nametags[i].erase(nametags[i].begin());     // removing "@"
+				nametags[i].erase(nametags[i].begin());	// removing "@"
 				temp.nametag = nametags[i];
-				temp.seq = seqs[i];     // save reads for seeded alignment
+				temp.seq = seqs[i];    					// save reads for seeded alignment
 				temp.readid = numReads+i;
-
 				allreads[MYTHREAD].push_back(temp);
 
 				for(int j = 0; j <= len - b_parameters.kmerSize; j++)  
@@ -406,11 +424,13 @@ int main (int argc, char *argv[]) {
 
 	unsigned int readcount = 0;
 	unsigned int tuplecount = 0;
+
 	for(int t=0; t<MAXTHREADS; ++t)
 	{
-		readcount += allreads[t].size();
+		readcount  += allreads[t].size();
 		tuplecount += alloccurrences[t].size();
 	}
+
 	reads.resize(readcount);
 	occurrences.resize(tuplecount);
 	transtuples.resize(tuplecount);
@@ -429,53 +449,53 @@ int main (int argc, char *argv[]) {
 	}
 
 	std::sort(reads.begin(), reads.end());	// bool operator in global.h: sort by readid
+
 	std::vector<string>().swap(seqs);		// free memory of seqs  
 	std::vector<string>().swap(quals);		// free memory of quals
 
-    std::string fastqParsingTime = std::to_string(omp_get_wtime() - parsefastq) + " seconds";
-    printLog(fastqParsingTime);
-    printLog(numReads);
+	std::string fastqParsingTime = std::to_string(omp_get_wtime() - parsefastq) + " seconds";
+	printLog(fastqParsingTime);
+	printLog(numReads);
 
-    //
-    // Sparse matrices construction
-    //
+	// ====================== //
+	// Sparse Matrix Creation //
+	// ====================== //
 
-    unsigned int nkmer = countsreliable.size();
-    double matcreat = omp_get_wtime();
+	unsigned int nkmer = countsreliable.size();
+	double matcreat = omp_get_wtime();
 	CSC<unsigned int, unsigned short int> spmat(occurrences, numReads, nkmer, 
 							[] (unsigned short int& p1, unsigned short int& p2) 
 							{
 								return p1;
 							});
-    // remove memory of transtuples
-    std::vector<tuple<unsigned int, unsigned int, unsigned short int>>().swap(occurrences);
+	// remove memory of transtuples
+	std::vector<tuple<unsigned int, unsigned int, unsigned short int>>().swap(occurrences);
 
-    std::string SparseMatrixCreationTime = std::to_string(omp_get_wtime() - matcreat) + " seconds";
-    printLog(SparseMatrixCreationTime);
+	std::string SparseMatrixCreationTime = std::to_string(omp_get_wtime() - matcreat) + " seconds";
+	printLog(SparseMatrixCreationTime);
 
-    matcreat = omp_get_wtime();
+	matcreat = omp_get_wtime();
 	CSC<unsigned int, unsigned short int> transpmat(transtuples, nkmer, numReads, 
 							[] (unsigned short int& p1, unsigned short int& p2) 
 							{
 								return p1;
 							});
-    // remove memory of transtuples
-    std::vector<tuple<unsigned int, unsigned int, unsigned short int>>().swap(transtuples);
+	// remove memory of transtuples
+	std::vector<tuple<unsigned int, unsigned int, unsigned short int>>().swap(transtuples);
 
-    std::string TransposeSparseMatrixCreationTime = std::to_string(omp_get_wtime() - matcreat) + " seconds";
-    printLog(TransposeSparseMatrixCreationTime);
+	std::string TransposeSparseMatrixCreationTime = std::to_string(omp_get_wtime() - matcreat) + " seconds";
+	printLog(TransposeSparseMatrixCreationTime);
 
-	//
-	// Overlap detection (sparse matrix multiplication) and seed-and-extend alignment
-    //
-    
+	// ==================================================== //
+	// Sparse Matrix Multiplication (aka Overlap Detection) //
+	// ==================================================== //
+		
 	spmatPtr_ getvaluetype(make_shared<spmatType_>());
-
 	HashSpGEMMGPU(
 		spmat, transpmat, 
 		// n-th k-mer positions on read i and on read j
-        [&b_parameters, &reads] (const unsigned short int& begpH, const unsigned short int& begpV, 
-            const unsigned int& id1, const unsigned int& id2)
+	    [&b_parameters, &reads] (const unsigned short int& begpH, const unsigned short int& begpV, 
+	        const unsigned int& id1, const unsigned int& id2)
 		{
 			spmatPtr_ value(make_shared<spmatType_>());
 
@@ -486,8 +506,8 @@ int main (int argc, char *argv[]) {
 			multiop(value, read1, read2, begpH, begpV, b_parameters.kmerSize);
 			return value;
 		},
-        [&b_parameters, &reads] (spmatPtr_& m1, spmatPtr_& m2, const unsigned int& id1, 
-            const unsigned int& id2)
+	    [&b_parameters, &reads] (spmatPtr_& m1, spmatPtr_& m2, const unsigned int& id1, 
+	        const unsigned int& id2)
 		{
 			// GG: after testing correctness, these variables can be removed
 			std::string& readname1 = reads[id1].nametag;
@@ -497,7 +517,7 @@ int main (int argc, char *argv[]) {
 			chainop(m1, m2, b_parameters, readname1, readname2);
 			return m1;
 		},
-        reads, getvaluetype, OutputFile, b_parameters, ratiophi, bucketId);
+	    reads, getvaluetype, OutputFile, b_parameters, ratiophi);
 
     std::string TotalRuntime = std::to_string(omp_get_wtime()-all) + " seconds";   
     printLog(TotalRuntime);
