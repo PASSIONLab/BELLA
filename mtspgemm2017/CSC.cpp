@@ -158,8 +158,8 @@ template <class IT, class NT>
 CSC<IT,NT>::CSC(Triple<IT,NT> * triples, IT mynnz, IT m, IT n):nnz(mynnz),rows(m),cols(n)
 {
 	colptr = new IT[cols+1]();
-		rowids = new IT[nnz];
-		values = new NT[nnz];
+	rowids = new IT[nnz];
+	values = new NT[nnz];
 	vector< pair<IT,NT> > tosort (nnz);
 
 	IT * work = new IT[cols];	// workspace
@@ -174,14 +174,14 @@ CSC<IT,NT>::CSC(Triple<IT,NT> * triples, IT mynnz, IT m, IT n):nnz(mynnz),rows(m
 	if(nnz > 0)
 	{
 		colptr[cols] = CumulativeSum (work, cols) ;		// cumulative sum of w
-			copy(work, work+cols, colptr);
+		copy(work, work+cols, colptr);
 		IT last;
 		for (IT k = 0 ; k < nnz ; ++k)
-			{
+		{
 			tosort[ work[triples[k].col]++] = make_pair( triples[k].row, triples[k].val);
 		}
 		#pragma omp parallel for
-		for(int i=0; i< cols; ++i)
+		for(IT i=0; i< cols; ++i)
 		{
 			sort(tosort.begin() + colptr[i], tosort.begin() + colptr[i+1]);
 
