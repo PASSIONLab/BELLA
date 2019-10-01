@@ -185,7 +185,7 @@ void BELLA2PAF(ifstream& input, char* filename)
 	    int normLen     = max(overlapLenV, overlapLenH);
     
 	    int size = 17;
-	    float matchRate     = kmers / normLen;
+	    float matchRate     = (float)kmers / (float)normLen;
 	    float seqDivergence = std::log(1 / matchRate) / size;
     
         // /* compute overlap length if missing (begpV, endpV, lenV, begpH, endpH, lenH) */

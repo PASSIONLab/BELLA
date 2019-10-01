@@ -50,14 +50,14 @@ int main (int argc, char* argv[]) {
     optList = NULL;
     optList = GetOptList(argc, argv, (char*)"b:B:m:t:r:d:f:i:h");
 
-    char *b = NULL;     // bella
-    // char *B = NULL;  // dibella // not supported yet
-    char *m = NULL;     // mhap
-    char *t = NULL;     // mecat
-    char *r = NULL;     // blasr
-    char *d = NULL;     // daligner
+    char *b = NULL;         // bella
+    // char *B = NULL;      // dibella // not supported yet
+    char *m = NULL;         // mhap
+    char *t = NULL;         // mecat
+    char *r = NULL;         // blasr
+    char *d = NULL;         // daligner
     char *filename = NULL;  // filename translated output
-    char *index = NULL;  // filename translated output
+    char *index = NULL;     // filename translated output
 
     if(optList == NULL)
     {
@@ -164,6 +164,5 @@ int main (int argc, char* argv[]) {
     //    ifstream input(B);
     //    diBELLA2PAF(input, filename);
     //}
-
     return 0;
 }
