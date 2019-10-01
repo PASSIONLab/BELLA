@@ -88,7 +88,7 @@ void mecatidx (ifstream& idx2read, map<uint32_t, std::string>& names)
         {
             stringstream linestream(line);
 
-            getline(linestream, num, ' ');
+            getline(linestream, num, ' ' );
             getline(linestream, name, ' ' );
 
             /* sequence on new line */
@@ -164,25 +164,36 @@ void BELLA2PAF(ifstream& input, char* filename)
         /* improve readability */
         std::string& nameV = v[0];
         std::string& nameH = v[1];
-        std::string& score = v[3];
-        std::string& isRev = v[4];
-        std::string& begpV = v[5];
-        std::string& endpV = v[6];
-        std::string& lengV = v[7];
-        std::string& begpH = v[8];
-        std::string& endpH = v[9];
-        std::string& lengH = v[10];
+        std::string& isRev = v[5];
+        int kmers = std::stoi(v[2]);
+        int score = std::stoi(v[3]);
+        int ovlen = std::stoi(v[4]);
+        int begpV = std::stoi(v[6]);
+        int endpV = std::stoi(v[7]);
+        int lengV = std::stoi(v[8]);
+        int begpH = std::stoi(v[9]);
+        int endpH = std::stoi(v[10]);
+        int lengH = std::stoi(v[11]);
 
         /* change strand formatting */
         if(isRev == "n") isRev = "+";         
             else isRev = "-";
-
-        /* compute overlap length if missing (begpV, endpV, lenV, begpH, endpH, lenH) */
-        int ovlen = estimate (stoi(begpV), stoi(endpV), stoi(lengV), stoi(begpH), stoi(endpH), stoi(lengH));
+        
+        //	GG: sequence divergence estimation
+	    int overlapLenV = endpV - begpV;
+	    int overlapLenH = endpH - begpH;
+	    int normLen     = max(overlapLenV, overlapLenH);
+    
+	    int size = 17;
+	    float matchRate     = kmers / normLen;
+	    float seqDivergence = std::log(1 / matchRate) / size;
+    
+        // /* compute overlap length if missing (begpV, endpV, lenV, begpH, endpH, lenH) */
+        // int ovlen = estimate (stoi(begpV), stoi(endpV), stoi(lengV), stoi(begpH), stoi(endpH), stoi(lengH));
 
         local[ithread] << nameV << "\t" << lengV << "\t" << begpV << "\t" << endpV << "\t" << isRev 
-            << "\t" << nameH << "\t" << lengH << "\t" << begpH << "\t" << endpH << "\t" << score 
-                << "\t" << ovlen << "\t255" << endl;
+            << "\t" << nameH << "\t" << lengH << "\t" << begpH << "\t" << endpH << "\t" << (int)(normLen * seqDivergence) 
+                << "\t" << normLen << "\t255" << endl;
     }
 
     /* write to a new file */
