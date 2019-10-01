@@ -422,6 +422,7 @@ int main (int argc, char *argv[]) {
 		delete pfq;
 	} // for all files
 
+
 	unsigned int readcount = 0;
 	unsigned int tuplecount = 0;
 

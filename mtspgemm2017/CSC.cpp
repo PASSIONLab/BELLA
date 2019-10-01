@@ -181,7 +181,7 @@ CSC<IT,NT>::CSC(Triple<IT,NT> * triples, IT mynnz, IT m, IT n):nnz(mynnz),rows(m
 			tosort[ work[triples[k].col]++] = make_pair( triples[k].row, triples[k].val);
 		}
 		#pragma omp parallel for
-		for(int i=0; i< cols; ++i)
+		for(IT i=0; i< cols; ++i)
 		{
 			sort(tosort.begin() + colptr[i], tosort.begin() + colptr[i+1]);
 
