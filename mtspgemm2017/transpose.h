@@ -1,12 +1,17 @@
+#include <atomic>
+
 Function csr2csc_atomic(m, n, nnz, csrRowPtr, csrColIdx, csrVal,
 cscColPtr, cscRowIdx, cscVal)
-// construct an array of size nnz to record the relative
-position of a nonzero element in corresponding column
-1 ∗dloc = new int[nnz]();
-2 #pragma omp parallel for schedule(dynamic)
-3 for i ←0; i < m; i++ do
-4 for j ←csrRowPtr[i]; j <csrRowPtr[i+1]; j++ do
-5 dloc[j] =
+{
+	// construct an array of size nnz to record the relative
+	// position of a nonzero element in corresponding column
+	int * dloc = new int[nnz]();
+	#pragma omp parallel for schedule(dynamic)
+	for (size_t i=0; i < m; i++)
+	{
+		for (size_t j=csrRowPtr[i]; j < csrRowPtr[i+1]; j++)
+		{
+			std::atomic_fetch_add(&cnt, 1);
 f etch and add(&(cscColPtr[csrColIdx[j] + 1]), 1);
 6 pref ix sum(cscColP tr, n + 1);
 7 #pragma omp parallel for schedule(dynamic)
