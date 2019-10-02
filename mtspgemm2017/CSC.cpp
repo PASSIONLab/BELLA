@@ -285,10 +285,9 @@ void CSC<IT,NT>::ParallelWrite(const string & filename, bool onebased, HANDLER h
 	}
 };
 
-
 template <class IT, class NT>
 template <typename AddOperation>
-void CSC<IT,NT>::MergeDuplicates (AddOperation addop)
+void CSC<IT,NT>::MergeDuplicates (AddOperation addop, bool issorted)
 {
 	vector<IT> diff(cols,0);
 	std::adjacent_difference(colptr+1, colptr+cols+1, diff.begin());
@@ -301,15 +300,78 @@ void CSC<IT,NT>::MergeDuplicates (AddOperation addop)
 	#pragma omp parallel for
 		for(int i=0; i<cols; ++i)
 		{
-			for(size_t j=colptr[i]; j<colptr[i+1]; ++j)
-			{
-				v_rowids[i].push_back(rowids[j]); 
-				v_values[i].push_back(values[j]);
-				while(j < colptr[i+1]-1 && rowids[j] == rowids[j+1])
+			if(!issorted)
+			{	
+				const unsigned int minHashTableSize = 16;
+				const unsigned int hashScale = 107;
+
+				// Initialize hash tables
+				size_t ht_size = minHashTableSize;
+				while(ht_size < (colptr[i+1]-colptr[i])) //ht_size is set as 2^n
 				{
-					v_values[i].back() = addop(v_values[i].back(), values[j+1]);
-					j++;    // increment j
-					diff[i]--;
+					ht_size <<= 1;
+				}
+				std::vector<pair<IT,NT>> globalHashVec(ht_size);
+			
+				//	Initialize hash tables
+				for(IT j=0; j < ht_size; ++j)
+				{
+					globalHashVec[j].first = -1;
+				}
+
+				for(size_t j=colptr[i]; j<colptr[i+1]; ++j)
+				{
+					IT key = rowids[j];
+					IT hash = (key*hashScale) & (ht_size-1);
+
+					while (1) //hash probing
+					{
+						if (globalHashVec[hash].first == key) //key is found in hash table
+						{
+							globalHashVec[hash].second = addop(values[j], globalHashVec[hash].second);
+							break;
+						}
+						else if (globalHashVec[hash].first == -1) //key is not registered yet
+						{
+							globalHashVec[hash] = make_pair(key, values[j]);							
+							break;
+						}
+						else //key is not found
+						{
+							hash = (hash+1) & (ht_size-1);	// don't exit the while loop yet
+						}
+					}
+				}
+				IT index = 0;
+				for (IT j=0; j < ht_size; ++j)
+				{
+					if (globalHashVec[j].first != -1)
+					{
+						globalHashVec[index++] = globalHashVec[j];
+					}
+				}
+				v_rowids[i].resize(index); 
+				v_values[i].resize(index);
+
+				for (IT j=0; j< index; ++j)
+				{
+					v_rowids[i][j] = globalHashVec[j].first;
+					v_values[i][j] = globalHashVec[j].second;
+				}
+				diff[i] = index;
+			}
+			else
+			{	
+				for(size_t j=colptr[i]; j<colptr[i+1]; ++j)
+				{
+					v_rowids[i].push_back(rowids[j]); 
+					v_values[i].push_back(values[j]);
+					while(j < colptr[i+1]-1 && rowids[j] == rowids[j+1])
+					{
+						v_values[i].back() = addop(v_values[i].back(), values[j+1]);
+						j++;    // increment j
+						diff[i]--;
+					}
 				}
 			}
 		}
@@ -399,7 +461,7 @@ CSC<IT,NT>::CSC(vector<tuple<IT,IT,NT>> & tuple, IT m, IT n, AddOperation addop,
 		}
 	}
 	delete [] work;
-	MergeDuplicates(addop);
+	MergeDuplicates(addop, needsort);
 }
 
 // Construct a Csc object from parallel arrays

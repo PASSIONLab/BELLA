@@ -37,7 +37,7 @@ public:
     CSC (vector<tuple<IT,IT,NT>> & tuple, IT m, IT n, AddOperation addop, bool needsort); // costruttore
     
     template <typename AddOperation>
-    void MergeDuplicates (AddOperation addop); // method
+    void MergeDuplicates (AddOperation addop, bool issorted); // method
 
     CSC(graph & G);
     CSC (IT * ri, IT * ci, NT * val, IT mynnz, IT m, IT n);
