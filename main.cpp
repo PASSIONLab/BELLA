@@ -266,8 +266,8 @@ int main (int argc, char *argv[]) {
 	vector<string> nametags;
 	readVector_ reads;
 	Kmers kmersfromreads;
-	vector<tuple<unsigned int, unsigned int, unsigned short int>> occurrences;	// 32 bit, 32 bit, 16 bit (read, kmer, position)
-    vector<tuple<unsigned int, unsigned int, unsigned short int>> transtuples;	// 32 bit, 32 bit, 16 bit (kmer, read, position)
+	// vector<tuple<unsigned int, unsigned int, unsigned short int>> occurrences;	// 32 bit, 32 bit, 16 bit (read, kmer, position)
+    	vector<tuple<unsigned int, unsigned int, unsigned short int>> transtuples;	// 32 bit, 32 bit, 16 bit (kmer, read, position)
     
 	// ================== //
 	// Parameters Summary //
@@ -372,7 +372,7 @@ int main (int argc, char *argv[]) {
 
 	double parsefastq = omp_get_wtime();
 
-	vector<vector<tuple<unsigned int, unsigned int, unsigned short int>>> alloccurrences(MAXTHREADS);
+	// vector<vector<tuple<unsigned int, unsigned int, unsigned short int>>> alloccurrences(MAXTHREADS);
 	vector<vector<tuple<unsigned int, unsigned int, unsigned short int>>> alltranstuples(MAXTHREADS);
 
 	unsigned int numReads = 0; // numReads needs to be global (not just per file)
@@ -412,7 +412,7 @@ int main (int argc, char *argv[]) {
 					auto found = countsreliable.find(lexsmall,idx);
 					if(found)
 					{
-						alloccurrences[MYTHREAD].emplace_back(std::make_tuple(numReads+i, idx, j)); // vector<tuple<numReads,kmer_id,kmerpos>>
+						//alloccurrences[MYTHREAD].emplace_back(std::make_tuple(numReads+i, idx, j)); // vector<tuple<numReads,kmer_id,kmerpos>>
 						alltranstuples[MYTHREAD].emplace_back(std::make_tuple(idx, numReads+i, j)); // transtuples.push_back(col_id,row_id,kmerpos)
 					}
 				}
@@ -429,11 +429,11 @@ int main (int argc, char *argv[]) {
 	for(int t=0; t<MAXTHREADS; ++t)
 	{
 		readcount  += allreads[t].size();
-		tuplecount += alloccurrences[t].size();
+		tuplecount += alltranstuples[t].size();
 	}
 
 	reads.resize(readcount);
-	occurrences.resize(tuplecount);
+	//occurrences.resize(tuplecount);
 	transtuples.resize(tuplecount);
 
 	unsigned int readssofar = 0;
@@ -444,9 +444,9 @@ int main (int argc, char *argv[]) {
 		copy(allreads[t].begin(), allreads[t].end(), reads.begin()+readssofar);
 		readssofar += allreads[t].size();
 
-		copy(alloccurrences[t].begin(), alloccurrences[t].end(), occurrences.begin() + tuplesofar);
+		//copy(alloccurrences[t].begin(), alloccurrences[t].end(), occurrences.begin() + tuplesofar);
 		copy(alltranstuples[t].begin(), alltranstuples[t].end(), transtuples.begin() + tuplesofar);
-		tuplesofar += alloccurrences[t].size();
+		tuplesofar += alltranstuples[t].size();
 	}
 
 	std::sort(reads.begin(), reads.end());	// bool operator in global.h: sort by readid
@@ -464,18 +464,6 @@ int main (int argc, char *argv[]) {
 
 	unsigned int nkmer = countsreliable.size();
 	double matcreat = omp_get_wtime();
-	CSC<unsigned int, unsigned short int> spmat(occurrences, numReads, nkmer, 
-							[] (unsigned short int& p1, unsigned short int& p2) 
-							{
-								return p1;
-							}, false);	// hashspgemm doesn't require sorted rowids within each column
-	// remove memory of transtuples
-	std::vector<tuple<unsigned int, unsigned int, unsigned short int>>().swap(occurrences);
-
-	std::string SparseMatrixCreationTime = std::to_string(omp_get_wtime() - matcreat) + " seconds";
-	printLog(SparseMatrixCreationTime);
-
-	matcreat = omp_get_wtime();
 	CSC<unsigned int, unsigned short int> transpmat(transtuples, nkmer, numReads, 
 							[] (unsigned short int& p1, unsigned short int& p2) 
 							{
@@ -486,6 +474,13 @@ int main (int argc, char *argv[]) {
 
 	std::string TransposeSparseMatrixCreationTime = std::to_string(omp_get_wtime() - matcreat) + " seconds";
 	printLog(TransposeSparseMatrixCreationTime);
+
+
+	double transbeg = omp_get_wtime();	
+	CSC<unsigned int, unsigned short int> spmat = transpmat.Transpose();
+	std::string ReTransposeTime = std::to_string(omp_get_wtime() - transbeg) + " seconds";
+	printLog(ReTransposeTime);
+
 
 	// ==================================================== //
 	// Sparse Matrix Multiplication (aka Overlap Detection) //

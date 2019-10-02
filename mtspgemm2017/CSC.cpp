@@ -2,6 +2,7 @@
 #include "utility.h"
 #include "BitMap.h"
 #include "common.h"
+#include "transpose.h"
 #include <algorithm>
 #include <numeric>
 #include <vector>
@@ -284,6 +285,18 @@ void CSC<IT,NT>::ParallelWrite(const string & filename, bool onebased, HANDLER h
 		fclose(ffinal);
 	}
 };
+
+template <class IT, class NT>
+CSC<IT,NT> CSC<IT,NT>::Transpose ()
+{
+	CSC AT(nnz, cols, rows); // new object with swapped columns and rows
+
+	csr2csc_atomic_nosort(cols, rows, nnz, colptr, rowids, values,
+			AT.colptr, AT.rowids, AT.values);
+
+	//copy(AT.colptr, AT.colptr+AT.cols, ostream_iterator<IT>(cout, " ")); cout << endl;  
+	return AT;
+}
 
 template <class IT, class NT>
 template <typename AddOperation>
