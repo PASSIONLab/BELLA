@@ -345,43 +345,56 @@ void CSC<IT,NT>::MergeDuplicates (AddOperation addop)
 //! this version handles duplicates in the input
 template <class IT, class NT>
 template <typename AddOperation>
-CSC<IT,NT>::CSC(vector<tuple<IT,IT,NT>> & tuple, IT m, IT n, AddOperation addop): rows(m), cols(n)
+CSC<IT,NT>::CSC(vector<tuple<IT,IT,NT>> & tuple, IT m, IT n, AddOperation addop, bool needsort): rows(m), cols(n)
 {
 	nnz = tuple.size(); // there might be duplicates
 
 	colptr = new IT[cols+1]();
 	rowids = new IT[nnz];
 	values = new NT[nnz];
-	vector<pair<IT,NT>> tosort (nnz);
 
 	IT *work = new IT[cols](); // workspace
 	std::fill(work, work+cols, (IT) 0);
-
 	for (IT k = 0; k < nnz; ++k)
 	{
 		IT tmp = get<1>(tuple[k]); 
 		work[tmp]++;	        	// column counts (i.e, work holds the "col difference array") 
 	}
-
+	
 	if(nnz > 0)
 	{
 		colptr[cols] = CumulativeSum (work, cols);		// cumulative sum of work 
 		copy(work, work+cols, colptr);
-	
-		for (IT k = 0 ; k < nnz; ++k)
+		std::fill(work, work+cols, (IT) 0);	// set back to zero
+
+		if(needsort)
 		{
-			tosort[work[get<1>(tuple[k])]++] = make_pair(get<0>(tuple[k]), get<2>(tuple[k]));
-		}
-#pragma omp parallel for
-		for(int i=0; i<cols; ++i)
-		{
-			sort(tosort.begin() + colptr[i], tosort.begin() + colptr[i+1]);
-			typename vector<pair<IT,NT> >::iterator itr;	// iterator is a dependent name
-			IT ind;
-			for(itr = tosort.begin() + colptr[i], ind = colptr[i]; itr != tosort.begin() + colptr[i+1]; ++itr, ++ind)
+			vector<pair<IT,NT>> tosort (nnz);
+			for (IT k = 0 ; k < nnz; ++k)
 			{
-				rowids[ind] = itr->first;
-				values[ind] = itr->second;
+				tosort[work[get<1>(tuple[k])]++] = make_pair(get<0>(tuple[k]), get<2>(tuple[k]));
+			}
+			#pragma omp parallel for schedule(dynamic)
+			for(int i=0; i<cols; ++i)
+			{
+				sort(tosort.begin() + colptr[i], tosort.begin() + colptr[i+1]);
+				typename vector<pair<IT,NT> >::iterator itr;	// iterator is a dependent name
+				IT ind;
+				for(itr = tosort.begin() + colptr[i], ind = colptr[i]; itr != tosort.begin() + colptr[i+1]; ++itr, ++ind)
+				{
+					rowids[ind] = itr->first;
+					values[ind] = itr->second;
+				}
+			}
+		}
+		else
+		{
+			for (IT k = 0 ; k < nnz; ++k)
+			{
+				IT cid = get<1>(tuple[k]); // get the col id
+				rowids[ colptr[cid] + work[cid]] =  get<0>(tuple[k]);	// get the row id
+				values[ colptr[cid] + work[cid]] =  get<2>(tuple[k]);	// get the value
+				work[cid]++; // increment work
 			}
 		}
 	}

@@ -468,7 +468,7 @@ int main (int argc, char *argv[]) {
 							[] (unsigned short int& p1, unsigned short int& p2) 
 							{
 								return p1;
-							});
+							}, false);	// hashspgemm doesn't require sorted rowids within each column
 	// remove memory of transtuples
 	std::vector<tuple<unsigned int, unsigned int, unsigned short int>>().swap(occurrences);
 
@@ -480,7 +480,7 @@ int main (int argc, char *argv[]) {
 							[] (unsigned short int& p1, unsigned short int& p2) 
 							{
 								return p1;
-							});
+							}, false);	// hashspgemm doesn't require sorted rowids within each column
 	// remove memory of transtuples
 	std::vector<tuple<unsigned int, unsigned int, unsigned short int>>().swap(transtuples);
 

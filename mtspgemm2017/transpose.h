@@ -5,9 +5,10 @@
  ** one can simply use this to transpose a matrix in CSR format to its transpose also in CSR format
  ** or vice versa: transpose a matrix in CSC format to its transpose also in CSC format
  ** just read CSR related params as the "old matrix" and CSC related params as the "output/new matrix"
+ ** currently only the nonsorted output case is implemented (i.e. rowids in each column of the output matrix is not sorted)
  **/
 template <class IT, class NT>
-void csr2csc_atomic (IT m, IT n, IT nnz, IT * csrRowPtr, IT * csrColIdx, NT * csrVal,
+void csr2csc_atomic_nosort (IT m, IT n, IT nnz, IT * csrRowPtr, IT * csrColIdx, NT * csrVal,
 			IT * cscColPtr, IT * cscRowIdx, NT * cscVal)
 {
 	std::atomic<int> * atomicColPtr = new std::atomic<int>[n+1];
@@ -18,6 +19,7 @@ void csr2csc_atomic (IT m, IT n, IT nnz, IT * csrRowPtr, IT * csrColIdx, NT * cs
 
 	// construct an array of size nnz to record the relative
 	// position of a nonzero element in corresponding column
+	// this is what allows us to parallelize the last loop
 	IT * dloc = new IT[nnz]();
 	#pragma omp parallel for schedule(dynamic)
 	for (IT i=0; i < m; i++)
@@ -28,7 +30,7 @@ void csr2csc_atomic (IT m, IT n, IT nnz, IT * csrRowPtr, IT * csrColIdx, NT * cs
 		}
 	}
 	// The output iterator result is allowed to be the same iterator as the input iterator first,
-	// so that partial sums may be computed in place; but note we are writing to the non-atomic
+	// so that partial sums may be computed in place; but note we are writing to the non-atomic cscColPtr anyway ;)
 	std::partial_sum (atomicColPtr, atomicColPtr+n+1, cscColPtr);
 	delete [] atomicColPtr;
 	
@@ -37,17 +39,10 @@ void csr2csc_atomic (IT m, IT n, IT nnz, IT * csrRowPtr, IT * csrColIdx, NT * cs
 	{
 		for (IT j=csrRowPtr[i]; j < csrRowPtr[i+1]; j++)
 		{
-			IT loc = cscColPtr[csrColIdx[j]] + dloc[j];
+			IT loc = cscColPtr[csrColIdx[j]] + dloc[j];	// dloc[j] (as opposed to a O(N) work array) is what makes this loop race free
 			cscRowIdx[loc] = i;
 			cscVal[loc] = csrVal[j];
 		}
 	}
 	delete[] dloc;
-
-	// sort cscRowIdx,cscVal in each column
-	#pragma omp parallel for schedule(dynamic)
-	for (IT i=0; i < n; i++)
-	{
-		// can we do this without using std::pair?
-	}
 }
