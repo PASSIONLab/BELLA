@@ -77,15 +77,15 @@ struct xavierResult {
     SeedX seed;
 };
 
-#else
-
-struct loganResult {
-    int score;
-    std::string strand;
-    SeedL seed;
-};
-
 #endif
+
+//struct loganResult {
+  //  int score;
+  //  std::string strand;
+  //  SeedL seed;
+//};
+
+//#endif
 
 typedef seqan::Seed<seqan::Simple> TSeed;
 struct seqAnResult {
