@@ -2,6 +2,7 @@
 #include "utility.h"
 #include "BitMap.h"
 #include "common.h"
+#include "transpose.h"
 #include <algorithm>
 #include <numeric>
 #include <vector>
@@ -285,10 +286,21 @@ void CSC<IT,NT>::ParallelWrite(const string & filename, bool onebased, HANDLER h
 	}
 };
 
+template <class IT, class NT>
+CSC<IT,NT> CSC<IT,NT>::Transpose ()
+{
+	CSC AT(nnz, cols, rows); // new object with swapped columns and rows
+
+	csr2csc_atomic_nosort(cols, rows, nnz, colptr, rowids, values,
+			AT.colptr, AT.rowids, AT.values);
+
+	//copy(AT.colptr, AT.colptr+AT.cols, ostream_iterator<IT>(cout, " ")); cout << endl;  
+	return AT;
+}
 
 template <class IT, class NT>
 template <typename AddOperation>
-void CSC<IT,NT>::MergeDuplicates (AddOperation addop)
+void CSC<IT,NT>::MergeDuplicates (AddOperation addop, bool issorted)
 {
 	vector<IT> diff(cols,0);
 	std::adjacent_difference(colptr+1, colptr+cols+1, diff.begin());
@@ -301,15 +313,78 @@ void CSC<IT,NT>::MergeDuplicates (AddOperation addop)
 	#pragma omp parallel for
 		for(int i=0; i<cols; ++i)
 		{
-			for(size_t j=colptr[i]; j<colptr[i+1]; ++j)
-			{
-				v_rowids[i].push_back(rowids[j]); 
-				v_values[i].push_back(values[j]);
-				while(j < colptr[i+1]-1 && rowids[j] == rowids[j+1])
+			if(!issorted)
+			{	
+				const unsigned int minHashTableSize = 16;
+				const unsigned int hashScale = 107;
+
+				// Initialize hash tables
+				size_t ht_size = minHashTableSize;
+				while(ht_size < (colptr[i+1]-colptr[i])) //ht_size is set as 2^n
 				{
-					v_values[i].back() = addop(v_values[i].back(), values[j+1]);
-					j++;    // increment j
-					diff[i]--;
+					ht_size <<= 1;
+				}
+				std::vector<pair<IT,NT>> globalHashVec(ht_size);
+			
+				//	Initialize hash tables
+				for(IT j=0; j < ht_size; ++j)
+				{
+					globalHashVec[j].first = -1;
+				}
+
+				for(size_t j=colptr[i]; j<colptr[i+1]; ++j)
+				{
+					IT key = rowids[j];
+					IT hash = (key*hashScale) & (ht_size-1);
+
+					while (1) //hash probing
+					{
+						if (globalHashVec[hash].first == key) //key is found in hash table
+						{
+							globalHashVec[hash].second = addop(values[j], globalHashVec[hash].second);
+							break;
+						}
+						else if (globalHashVec[hash].first == -1) //key is not registered yet
+						{
+							globalHashVec[hash] = make_pair(key, values[j]);							
+							break;
+						}
+						else //key is not found
+						{
+							hash = (hash+1) & (ht_size-1);	// don't exit the while loop yet
+						}
+					}
+				}
+				IT index = 0;
+				for (IT j=0; j < ht_size; ++j)
+				{
+					if (globalHashVec[j].first != -1)
+					{
+						globalHashVec[index++] = globalHashVec[j];
+					}
+				}
+				v_rowids[i].resize(index); 
+				v_values[i].resize(index);
+
+				for (IT j=0; j< index; ++j)
+				{
+					v_rowids[i][j] = globalHashVec[j].first;
+					v_values[i][j] = globalHashVec[j].second;
+				}
+				diff[i] = index;
+			}
+			else
+			{	
+				for(size_t j=colptr[i]; j<colptr[i+1]; ++j)
+				{
+					v_rowids[i].push_back(rowids[j]); 
+					v_values[i].push_back(values[j]);
+					while(j < colptr[i+1]-1 && rowids[j] == rowids[j+1])
+					{
+						v_values[i].back() = addop(v_values[i].back(), values[j+1]);
+						j++;    // increment j
+						diff[i]--;
+					}
 				}
 			}
 		}
@@ -345,48 +420,61 @@ void CSC<IT,NT>::MergeDuplicates (AddOperation addop)
 //! this version handles duplicates in the input
 template <class IT, class NT>
 template <typename AddOperation>
-CSC<IT,NT>::CSC(vector<tuple<IT,IT,NT>> & tuple, IT m, IT n, AddOperation addop): rows(m), cols(n)
+CSC<IT,NT>::CSC(vector<tuple<IT,IT,NT>> & tuple, IT m, IT n, AddOperation addop, bool needsort): rows(m), cols(n)
 {
 	nnz = tuple.size(); // there might be duplicates
 
 	colptr = new IT[cols+1]();
 	rowids = new IT[nnz];
 	values = new NT[nnz];
-	vector<pair<IT,NT>> tosort (nnz);
 
 	IT *work = new IT[cols](); // workspace
 	std::fill(work, work+cols, (IT) 0);
-
 	for (IT k = 0; k < nnz; ++k)
 	{
 		IT tmp = get<1>(tuple[k]); 
 		work[tmp]++;	        	// column counts (i.e, work holds the "col difference array") 
 	}
-
+	
 	if(nnz > 0)
 	{
 		colptr[cols] = CumulativeSum (work, cols);		// cumulative sum of work 
 		copy(work, work+cols, colptr);
-	
-		for (IT k = 0 ; k < nnz; ++k)
+		std::fill(work, work+cols, (IT) 0);	// set back to zero
+
+		if(needsort)
 		{
-			tosort[work[get<1>(tuple[k])]++] = make_pair(get<0>(tuple[k]), get<2>(tuple[k]));
-		}
-#pragma omp parallel for
-		for(int i=0; i<cols; ++i)
-		{
-			sort(tosort.begin() + colptr[i], tosort.begin() + colptr[i+1]);
-			typename vector<pair<IT,NT> >::iterator itr;	// iterator is a dependent name
-			IT ind;
-			for(itr = tosort.begin() + colptr[i], ind = colptr[i]; itr != tosort.begin() + colptr[i+1]; ++itr, ++ind)
+			vector<pair<IT,NT>> tosort (nnz);
+			for (IT k = 0 ; k < nnz; ++k)
 			{
-				rowids[ind] = itr->first;
-				values[ind] = itr->second;
+				tosort[work[get<1>(tuple[k])]++] = make_pair(get<0>(tuple[k]), get<2>(tuple[k]));
+			}
+			#pragma omp parallel for schedule(dynamic)
+			for(int i=0; i<cols; ++i)
+			{
+				sort(tosort.begin() + colptr[i], tosort.begin() + colptr[i+1]);
+				typename vector<pair<IT,NT> >::iterator itr;	// iterator is a dependent name
+				IT ind;
+				for(itr = tosort.begin() + colptr[i], ind = colptr[i]; itr != tosort.begin() + colptr[i+1]; ++itr, ++ind)
+				{
+					rowids[ind] = itr->first;
+					values[ind] = itr->second;
+				}
+			}
+		}
+		else
+		{
+			for (IT k = 0 ; k < nnz; ++k)
+			{
+				IT cid = get<1>(tuple[k]); // get the col id
+				rowids[ colptr[cid] + work[cid]] =  get<0>(tuple[k]);	// get the row id
+				values[ colptr[cid] + work[cid]] =  get<2>(tuple[k]);	// get the value
+				work[cid]++; // increment work
 			}
 		}
 	}
 	delete [] work;
-	MergeDuplicates(addop);
+	MergeDuplicates(addop, needsort);
 }
 
 // Construct a Csc object from parallel arrays

@@ -22,7 +22,7 @@ class CSC
 {
 public:
     CSC():nnz(0), rows(0), cols(0) {}
-    CSC(IT mynnz, IT m, IT n, int nt):nnz(mynnz),rows(m),cols(n) // costruttore di default 
+    CSC(IT mynnz, IT m, IT n):nnz(mynnz),rows(m),cols(n) 
     {
         // Constructing empty Csc objects (size = 0) are not allowed.
         assert(nnz != 0 && cols != 0);
@@ -31,13 +31,13 @@ public:
         rowids = new IT[nnz];
         values = new NT[nnz];
     }
-    CSC (Triple<IT,NT> * triples, IT mynnz, IT m, IT n); // altro costruttore di default
+    CSC (Triple<IT,NT> * triples, IT mynnz, IT m, IT n); 
     
     template <typename AddOperation>
-    CSC (vector<tuple<IT,IT,NT>> & tuple, IT m, IT n, AddOperation addop); // costruttore
+    CSC (vector<tuple<IT,IT,NT>> & tuple, IT m, IT n, AddOperation addop, bool needsort); // costruttore
     
     template <typename AddOperation>
-    void MergeDuplicates (AddOperation addop); // method
+    void MergeDuplicates (AddOperation addop, bool issorted); // method
 
     CSC(graph & G);
     CSC (IT * ri, IT * ci, NT * val, IT mynnz, IT m, IT n);
@@ -64,6 +64,8 @@ public:
 			os << v;
 		}
     };
+
+    CSC<IT,NT> Transpose();
 
     void ParallelWrite(const string & filename, bool onebased) { ParallelWrite(filename, onebased, ScalarReadSaveHandler()); };
 

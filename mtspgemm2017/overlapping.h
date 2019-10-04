@@ -263,6 +263,7 @@ IT* estimateNNZ_Hash(const CSC<IT,NT>& A, const CSC<IT,NT>& B, const IT* flopC, 
 
 //! Hash based column-by-column spgemm algorithm. Based on earlier code by Buluc, Azad, and Nagasaka
 //! If lowtriout= true, then only creates the lower triangular part: no diagonal and no upper triangular
+//! input matrices do not need to have sorted rowids within each column
 template <typename IT, typename NT, typename MultiplyOperation, typename AddOperation, typename FT>
 void LocalSpGEMM(IT & start, IT & end, const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, 
 		vector<IT> * RowIdsofC, vector<FT> * ValuesofC, IT* colptrC, bool lowtriout)
@@ -275,67 +276,67 @@ void LocalSpGEMM(IT & start, IT & end, const CSC<IT,NT> & A, const CSC<IT,NT> & 
 		const IT hashScale = 107;
 		size_t nnzcolC = colptrC[i+1] - colptrC[i];	//nnz in the current column of C (=Output)
 
-	IT ht_size = minHashTableSize;
-	while(ht_size < nnzcolC)	//ht_size is set as 2^n
-	{
-		ht_size <<= 1;
-	}
-	std::vector< std::pair<IT,FT>> globalHashVec(ht_size);
-
-	//	Initialize hash tables
-	for(IT j=0; j < ht_size; ++j)
-	{
-		globalHashVec[j].first = -1;
-	}
-
-	for (IT j = B.colptr[i]; j < B.colptr[i+1]; ++j)	// all nonzeros in that column of B
-	{
-		IT col2fetch = B.rowids[j];	// find the row index of that nonzero in B, which is the column to fetch in A
-		NT valueofB = B.values[j];
-		for(IT k = A.colptr[col2fetch]; k < A.colptr[col2fetch+1]; ++k) // all nonzeros in this column of A
+		IT ht_size = minHashTableSize;
+		while(ht_size < nnzcolC)	//ht_size is set as 2^n
 		{
-			IT key = A.rowids[k];
+			ht_size <<= 1;
+		}
+		std::vector< std::pair<IT,FT>> globalHashVec(ht_size);
 
-			//	i is the column_id of the output and key is the row_id of the output
-			if(lowtriout && i >= key)
-				continue;
+		//	Initialize hash tables
+		for(IT j=0; j < ht_size; ++j)
+		{
+			globalHashVec[j].first = -1;
+		}
 
-			//	GG: modified to get read ids needed to compute alnlenerlap length
-			FT result =  multop(A.values[k], valueofB, key, i);
-
-			IT hash = (key*hashScale) & (ht_size-1);
-			while (1) //hash probing
+		for (IT j = B.colptr[i]; j < B.colptr[i+1]; ++j)	// all nonzeros in that column of B
+		{
+			IT col2fetch = B.rowids[j];	// find the row index of that nonzero in B, which is the column to fetch in A
+			NT valueofB = B.values[j];
+			for(IT k = A.colptr[col2fetch]; k < A.colptr[col2fetch+1]; ++k) // all nonzeros in this column of A
 			{
-				if (globalHashVec[hash].first == key) //key is found in hash table
-				{	//	GG: addop temporary modify, remalnlene key, i after testing
-					globalHashVec[hash].second = addop(result, globalHashVec[hash].second, key, i);
-					break;
-				}
-				else if (globalHashVec[hash].first == -1) //key is not registered yet
+				IT key = A.rowids[k];
+
+				//	i is the column_id of the output and key is the row_id of the output
+				if(lowtriout && i >= key)
+					continue;
+
+				//	GG: modified to get read ids needed to compute alnlenerlap length
+				FT result =  multop(A.values[k], valueofB, key, i);
+
+				IT hash = (key*hashScale) & (ht_size-1);
+				while (1) //hash probing
 				{
-					globalHashVec[hash].first = key;
-					globalHashVec[hash].second = result;
-					break;
-				}
-				else //key is not found
-				{
+					if (globalHashVec[hash].first == key) //key is found in hash table
+					{	//	GG: addop temporary modify, remalnlene key, i after testing
+						globalHashVec[hash].second = addop(result, globalHashVec[hash].second, key, i);
+						break;
+					}
+					else if (globalHashVec[hash].first == -1) //key is not registered yet
+					{
+						globalHashVec[hash].first = key;
+						globalHashVec[hash].second = result;
+						break;
+					}
+					else //key is not found
+					{
 					hash = (hash+1) & (ht_size-1);	// don't exit the while loop yet
+					}
 				}
 			}
 		}
-	}
-	// gather non-zero elements from hash table (and then sort them by row indices if needed)
-	IT index = 0;
-	for (IT j=0; j < ht_size; ++j)
-	{
-		if (globalHashVec[j].first != -1)
+		// gather non-zero elements from hash table (and then sort them by row indices if needed)
+		IT index = 0;
+		for (IT j=0; j < ht_size; ++j)
 		{
-			globalHashVec[index++] = globalHashVec[j];
+			if (globalHashVec[j].first != -1)
+			{
+				globalHashVec[index++] = globalHashVec[j];
+			}
 		}
-	}
-#ifdef SORTCOLS
+	#ifdef SORTCOLS
 		std::sort(globalHashVec.begin(), globalHashVec.begin() + index, sort_less<IT, NT>);
-#endif
+	#endif
 		RowIdsofC[i-start].resize(index); 
 		ValuesofC[i-start].resize(index);
 
