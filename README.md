@@ -25,7 +25,7 @@ These instructions will get you a copy of the project up and running on your loc
 ### Dependencies
 
 * **COMPILER:** the software **requires gcc-6 or higher** with OpenMP to be compiled.
-* [**CUDA**](https://docs.nvidia.com/cuda/) to compile and use GPU-accelerated pairwise alignment. You **do not** need CUDA to use CPU-based pairwise alignment. Our stand-alone GPU-based pairwise alignment, named LOGAN, can be found [here](https://github.com/albertozeni/LOGAN).
+* [**CUDA**](https://docs.nvidia.com/cuda/) to compile and use GPU-accelerated pairwise alignment. You **do not** need CUDA to use CPU-based pairwise alignment. Our stand-alone GPU-based pairwise alignment, named **LOGAN**, can be found [**here**](https://github.com/albertozeni/LOGAN).
 
 * **Python3** and **simplesam** are required to generare the ground truth data. You can install simplesam via [pip](https://pip.pypa.io/en/stable/installing/): 
 ```
