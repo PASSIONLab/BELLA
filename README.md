@@ -1,8 +1,8 @@
 # BELLA - Berkeley Efficient Long-Read to Long-Read Aligner and Overlapper
-
+<p align="justify">
 BELLA is a computationally efficient and highly accurate long-read to long-read aligner and overlapper. BELLA uses a k-mer based approach to detect overlaps between noisy, long reads. We demonstrated the feasibility of the k-mer based approach through a mathematical model based on Markov chains. BELLA provides a novel algorithm for pruning k-mers that are unlikely to be useful in overlap detection and whose presence would only incur unnecessary computational costs. Our reliable k-mers detection algorithm explicitly maximizes the probability of retaining k-mers that belong to unique regions of the genome.
 BELLA achieves fast overlapping without sketching using sparse matrix-matrix multiplication (SpGEMM), implemented utilizing high-performance software and libraries developed for this sparse matrix subroutine. Any novel sparse matrix format and multiplication algorithm would be applicable to overlap detection and enable continued performance improvements. We coupled BELLA's overlap detection with our newly developed vectorized seed-and-extend banded-alignment algorithm.
-The choice of the optimal k-mer seed occurs through our binning mechanism, where k-mer positions within a read pair are used to estimate the length of the overlap and to "bin" k-mers to form a consensus.We developed and implemented a new method to separate true alignments from false positives depending on the alignment score. This method demonstrates that the probability of false positives decreases exponentially as the overlap length between sequences increases.
+The choice of the optimal k-mer seed occurs through our binning mechanism, where k-mer positions within a read pair are used to estimate the length of the overlap and to "bin" k-mers to form a consensus.We developed and implemented a new method to separate true alignments from false positives depending on the alignment score. This method demonstrates that the probability of false positives decreases exponentially as the overlap length between sequences increases. </p>
 
 ## Content
 
@@ -25,7 +25,7 @@ These instructions will get you a copy of the project up and running on your loc
 ### Dependencies
 
 * **COMPILER:** the software **requires gcc-6 or higher** with OpenMP to be compiled.
-* [**CUDA**](https://docs.nvidia.com/cuda/) to compile and use GPU-accelerated pairwise alignment. You **do not** need CUDA to use CPU-based pairwise alignment.
+* [**CUDA**](https://docs.nvidia.com/cuda/) to compile and use GPU-accelerated pairwise alignment. You **do not** need CUDA to use CPU-based pairwise alignment. Our stand-alone GPU-based pairwise alignment, named **LOGAN**, can be found [**here**](https://github.com/albertozeni/LOGAN).
 
 * **Python3** and **simplesam** are required to generare the ground truth data. You can install simplesam via [pip](https://pip.pypa.io/en/stable/installing/): 
 ```
@@ -157,7 +157,9 @@ You can run the evaluation code located in /bench folder as:
 
 ## I get 0 outputs, what is likely going wrong?
 
+<p align="justify">
 Error rate estimation might have gone wrong. If the error estimated is greater than 1, the adaptive alignment threshold would be so high that no alignments would pass the threshold. Please check if your fastq file has proper quality values. If not, please define an error rate using command line options.
+</p>
 
 ## Citation
 
@@ -180,13 +182,19 @@ To cite our work or to know more about our methods, please refer to:
 * [**Qi Zhou**](https://www.linkedin.com/in/qizhou1512/?originalSubdomain=it)
 
 ## Copyright Notice
- 
+
+<p align="justify">
 Berkeley Efficient Long-Read to Long-Read Aligner and Overlapper (BELLA), Copyright (c) 2018, The Regents of the University of California, through Lawrence Berkeley National Laboratory (subject to receipt of any required approvals from the U.S. Dept. of Energy) Giulia Guidi and Marco Santambrogio. All rights reserved.
- 
+</p>
+
+<p align="justify">
 If you have questions about your rights to use or distribute this software, please contact Berkeley Lab's Innovation & Partnerships Office at IPO@lbl.gov.
- 
+</p>
+<p align="justify">
 NOTICE. This Software was developed under funding from the U.S. Department of Energy and the U.S. Government consequently retains certain rights. As such, the U.S. Government has been granted for itself and others acting on its behalf a paid-up, nonexclusive, irrevocable, worldwide license in the Software to reproduce, distribute copies to the public, prepare derivative works, and perform publicly and display publicly, and to permit other to do so. 
+</p>
 
 ## Acknowledgments
 
 Funding provided in part by DOE ASCR through the [Exascale Computing Project](https://www.exascaleproject.org/), and computing provided by [NERSC](https://www.nersc.gov/). Thanks to Rob Egan and [Steven Hofmeyr](https://crd.lbl.gov/departments/computer-science/CLaSS/members/class-staff/steven-hofmeyr/) for valuable discussions. Thanks to [NECST Laboratory](https://necst.it/) and Ed Younis for key collaborations.
+
