@@ -12,31 +12,6 @@ import matplotlib.pyplot as plt
 # NOTE: k-mers are found in the same location
 #
 
-def func(L, p, k):
-    states = k+1
-    transixMat = np.zeros((states, states))
-    for i in range(k):
-        transixMat[i, 0] = (1-p*p)
-        transixMat[i, i + 1] = p*p
-    transixMat[k, k] = 0.0
-
-    v = np.zeros(states)
-    v[0] = 1
-    vk   = []
-    for s in range(L):
-        v = np.dot(v, transixMat)
-        vk.append(v[k])
-    # print(vk)
-
-    transixMat[k, k] = 1.0
-    wk = 0.0
-    for s in range(L):
-        w = np.zeros(states)
-        w[0] = vk[L-s-1]
-        w = np.dot(w, np.linalg.matrix_power(transixMat, s))
-        wk = wk + w[k]
-    return np.linalg.matrix_power(transixMat, L)[0, k], wk
-
 def nmc(L, p, k, w):
     states = w*k+1
     transixMat = np.zeros((states, states))
@@ -51,8 +26,7 @@ def nmc(L, p, k, w):
 ksize=17
 pcorr=0.85
 
-p = nmc(L=2500, p=pcorr, k=ksize, w=2)
-print(p)
+## data generation
 
 # probs1 = [nmc(L=i, p=pcorr, k=ksize, w=1) for i in range(2000, 13005, 500)]
 # probs1 = np.asarray(probs1)
