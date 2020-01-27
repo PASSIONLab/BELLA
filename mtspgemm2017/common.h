@@ -46,6 +46,7 @@ struct BELLApars
 {
 	unsigned short int		kmerSize;			// KmerSize
 	unsigned short int		binSize;			// Bin size chaining algorithm 			(w)
+	unsigned short int		minOverlap;			// minimum overlap length	 			(l)
 	short int		        fixedThreshold;		// Default alignment score threshold 	(a)
 	unsigned short int		xDrop;				// SeqAn xDrop value 					(x)
 	unsigned short int		numGPU;				// Number GPUs available/to be used  	(g)
@@ -58,10 +59,11 @@ struct BELLApars
 	double	totalMemory;		// In MB, default is ~ 8GB
 	double	errorRate;			// default error rate if estimation is disable 			(e)
 	double	minProbability;		// reliable range probability threshold 				(r)
+	double	minpNMC;			// nested markov chain probability threshold 		    (n)
 
-	BELLApars(): kmerSize(17), binSize(500), fixedThreshold(-1), xDrop(7), numGPU(1), 
+	BELLApars(): kmerSize(17), binSize(500), minOverlap(2000), fixedThreshold(-1), xDrop(7), numGPU(1), 
 					myMarkovOverlap(-1), skipEstimate(true), skipAlignment(false), outputPaf(false), userDefMem(false),
-						deltaChernoff(0.10), totalMemory(8000.0), errorRate(0.00), minProbability(0.10) {};
+						deltaChernoff(0.10), totalMemory(8000.0), errorRate(0.00), minProbability(0.10), minpNMC(0.90) {};
 };
 
 template <typename T>
@@ -78,14 +80,6 @@ struct xavierResult {
 };
 
 #endif
-
-//struct loganResult {
-  //  int score;
-  //  std::string strand;
-  //  SeedL seed;
-//};
-
-//#endif
 
 typedef seqan::Seed<seqan::Simple> TSeed;
 struct seqAnResult {
@@ -179,5 +173,75 @@ struct alignmentInfo {
 	unsigned short int apos, bpos;	// (8)	pos in the sections
 	unsigned short int alen, blen;	// (8)	lengths of the segments
 };
+
+// modified from https://www.geeksforgeeks.org/interval-tree/
+struct Interval 
+{ 
+    int lower, upper, num;
+}; 
+  
+// node struct in interval search tree 
+struct ITNode 
+{
+    Interval *i;
+    ITNode *le, *ri; 
+}; 
+  
+// function to create a new interval search tree node 
+ITNode * create(Interval i) 
+{ 
+	ITNode *temp = new ITNode; 
+	temp->i = new Interval(i);
+	temp->le = temp->ri = NULL; 
+}; 
+
+// function to insert a new interval search tree node 
+ITNode *insert(ITNode *root, Interval i) 
+{ 
+    // tree is empty, new node becomes root 
+    if (root == NULL) 
+        return create(i); 
+  
+    // low value of interval at root 
+    int l = root->i->lower; 
+  
+    if (i.lower < l) root->le = insert(root->le, i);
+    else root->ri = insert(root->ri, i);
+  
+    return root; 
+}
+
+// function to check if L is in overlap
+bool within(Interval i, int L) 
+{ 
+    if (i.lower <= L && L < i.upper) return true; 
+    return false; 
+}
+
+// main function that searches a given interval i in a given interval tree 
+Interval *search(ITNode *root, int L) 
+{ 
+    // Base case the tree is empty
+    if (root == NULL) return NULL; 
+  
+	// L is in this interval
+    if (within(*(root->i), L)) 
+		return root->i; 
+
+	// L is greater and we are in the ri-most node
+	if (root->ri == NULL && L >= root->i.upper) 
+	{
+		root->i.num++;
+		return root->i;	
+	}
+
+	// L is smaller and we are can go left
+    if (root->le != NULL && L < root->i.lower) 
+		return search(root->le, L);
+	
+	// L is greater and we are can go left
+	if (root->ri != NULL && L >= root->i.upper) 
+		return search(root->ri, L); 
+}
 
 #endif
