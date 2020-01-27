@@ -40,6 +40,23 @@ def myOverlap(p, k):
 	fundamentalMat = genN(transixMatQ, k)
 	return getResult(fundamentalMat)
 
+def NMC(L, p, k, w):
+    states = w*k+1
+    transixMat = np.zeros((states, states))
+    for i in range(w):
+        for j in range(k):
+            transixMat[j+i*k, i*k]       = (1-p*p)
+            transixMat[j+i*k, j+i*k + 1] = p*p      
+    transixMat[k*w, k*w] = 1.0
+    return np.linalg.matrix_power(transixMat, L)[0, w*k]
+
+def boundary(pcorr, ksize, w, L, minp):
+	p = 0.0
+	while p < minp:
+		p = NMC(L=L, p=pcorr, k=ksize, w=w)
+		L += 1
+	return L
+
 #
 # End of program
 #
