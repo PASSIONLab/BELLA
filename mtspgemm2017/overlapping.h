@@ -542,15 +542,16 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 				unsigned short int overlap;
 				unsigned short int minkmer;
 				
-				if(b_pars.myMarkovOverlap != -1) 
-				{
-					overlap = val->overlaplength();
-					minkmer = std::floor((float)overlap/(float)b_pars.myMarkovOverlap);
-				}
-				else 
-				{
-					minkmer = 1;
-				}
+				// if(b_pars.myMarkovOverlap != -1) 
+				// {
+				overlap = val->overlaplength();
+				Interval *interval 	= search(b_pars.root, overlap);
+				minkmer = interval->num;
+				// }
+				// else 
+				// {
+				// 	minkmer = 1;
+				// }
 
 				//	GG: b_pars.minSurvivedKmers should be function of Markov chain
 				if (matches < minkmer)

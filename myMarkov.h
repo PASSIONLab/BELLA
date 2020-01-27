@@ -20,11 +20,11 @@
 
 #include "mtspgemm2017/common.h"
 
-void NMC(BELLApars& b_pars, ITNode* root, int n)
+void NMC(BELLApars& b_pars)
 {
 	std::vector<Interval> intervals;
 	Interval tmp;
-    root = NULL; 
+   	b_pars.root = NULL; 
 
 	// https://stackoverflow.com/questions/3286448/calling-a-python-method-from-c-c-and-extracting-its-return-value/24687260	
   	// set PYTHONPATH to working directory
@@ -42,7 +42,7 @@ void NMC(BELLApars& b_pars, ITNode* root, int n)
    	pFunc = PyDict_GetItemString(pDict, (char*)"boundary");
 
 	tmp.lower = 0;
-	for(int i = 2; i < n+1; i++)
+	for(int i = 2; i < (b_pars.upperNMC+1); i++)
 	{
    		if(PyCallable_Check(pFunc))
    		{
@@ -68,8 +68,8 @@ void NMC(BELLApars& b_pars, ITNode* root, int n)
    	Py_Finalize();
 
 	// build interval tree
-    for (int i = 0; i < n-1; i++)
-        root = insert(root, intervals[i]);
+    for (int i = 0; i < (b_pars.upperNMC-1); i++)
+        b_pars.root = insert(b_pars.root, intervals[i]);
 }
 
 #endif //MARKOV_H

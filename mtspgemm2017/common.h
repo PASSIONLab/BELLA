@@ -42,15 +42,28 @@ extern "C" {
 	#define printLog(var)
 #endif
 
+// modified from https://www.geeksforgeeks.org/interval-tree/
+struct Interval 
+{ 
+    int lower, upper, num;
+}; 
+  
+// node struct in interval search tree 
+struct ITNode 
+{
+    Interval *i;
+    ITNode *le, *ri; 
+};
+
 struct BELLApars
 {
 	unsigned short int		kmerSize;			// KmerSize
 	unsigned short int		binSize;			// Bin size chaining algorithm 			(w)
 	unsigned short int		minOverlap;			// minimum overlap length	 			(l)
 	short int		        fixedThreshold;		// Default alignment score threshold 	(a)
+	short int		        upperNMC;			// Number of k-mers for NMC intervals	(b)
 	unsigned short int		xDrop;				// SeqAn xDrop value 					(x)
 	unsigned short int		numGPU;				// Number GPUs available/to be used  	(g)
-	short int		        myMarkovOverlap;	// Overlap length to see 1 shared k-mer (b)
 	bool	skipEstimate;		// Do not estimate error but use user-defined error 	(e)
 	bool	skipAlignment;		// Do not align 										(z)
 	bool	outputPaf;			// Output in paf format 								(p)
@@ -60,10 +73,11 @@ struct BELLApars
 	double	errorRate;			// default error rate if estimation is disable 			(e)
 	double	minProbability;		// reliable range probability threshold 				(r)
 	double	minpNMC;			// nested markov chain probability threshold 		    (n)
+	ITNode* root;
 
-	BELLApars(): kmerSize(17), binSize(500), minOverlap(2000), fixedThreshold(-1), xDrop(7), numGPU(1), 
-					myMarkovOverlap(-1), skipEstimate(true), skipAlignment(false), outputPaf(false), userDefMem(false),
-						deltaChernoff(0.10), totalMemory(8000.0), errorRate(0.00), minProbability(0.10), minpNMC(0.90) {};
+	BELLApars(): kmerSize(17), binSize(500), minOverlap(2000), fixedThreshold(-1), upperNMC(5), xDrop(7), numGPU(1),
+					skipEstimate(true), skipAlignment(false), outputPaf(false), userDefMem(false), deltaChernoff(0.10), 
+						totalMemory(8000.0), errorRate(0.00), minProbability(0.10), minpNMC(0.90) {};
 };
 
 template <typename T>
@@ -172,19 +186,6 @@ struct alignmentInfo {
 	int score;	//	score
 	unsigned short int apos, bpos;	// (8)	pos in the sections
 	unsigned short int alen, blen;	// (8)	lengths of the segments
-};
-
-// modified from https://www.geeksforgeeks.org/interval-tree/
-struct Interval 
-{ 
-    int lower, upper, num;
-}; 
-  
-// node struct in interval search tree 
-struct ITNode 
-{
-    Interval *i;
-    ITNode *le, *ri; 
 }; 
   
 // function to create a new interval search tree node 
@@ -229,18 +230,18 @@ Interval *search(ITNode *root, int L)
 		return root->i; 
 
 	// L is greater and we are in the ri-most node
-	if (root->ri == NULL && L >= root->i.upper) 
+	if (root->ri == NULL && L >= root->i->upper) 
 	{
-		root->i.num++;
+		root->i->num++;
 		return root->i;	
 	}
 
 	// L is smaller and we are can go left
-    if (root->le != NULL && L < root->i.lower) 
+    if (root->le != NULL && L < root->i->lower) 
 		return search(root->le, L);
 	
 	// L is greater and we are can go left
-	if (root->ri != NULL && L >= root->i.upper) 
+	if (root->ri != NULL && L >= root->i->upper) 
 		return search(root->ri, L); 
 }
 

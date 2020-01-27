@@ -68,7 +68,7 @@ int main (int argc, char *argv[]) {
 	// Follow an option with a colon to indicate that it requires an argument.
 
 	optList = NULL;
-	optList = GetOptList(argc, argv, (char*)"f:o:c:d:hk:a:ze:x:c:m:r:pbs:qg:u:w:");
+	optList = GetOptList(argc, argv, (char*)"f:o:c:d:hk:a:ze:x:c:m:r:pb:s:qg:u:w:l:n:");
 
 	char	*all_inputs_fofn 	= NULL;	// List of fastqs (i)
 	char	*OutputFile 		= NULL;	// output filename (o)
@@ -163,8 +163,8 @@ int main (int argc, char *argv[]) {
 				b_parameters.errorRate = 0.15;	// Default value
 				break;
 			}
-			case 'b': { // K-mer buckets to reduce memory footprint
-				b_parameters.myMarkovOverlap = 0;
+			case 'b': {
+				b_parameters.upperNMC = atoi(thisOpt->argument);
 				break;
 			}
 			case 'a': {
@@ -190,6 +190,14 @@ int main (int argc, char *argv[]) {
 				printLog(UserDefinedMemory);
 				break;
 			}
+			case 'l': {
+				b_parameters.minOverlap = atoi(thisOpt->argument);
+				break;
+			}
+			case 'n': {
+				b_parameters.minpNMC = stod(thisOpt->argument);
+				break;
+			}
 			case 'd': {
 				if(stod(thisOpt->argument) > 1.0 || stod(thisOpt->argument) < 0.0)
 				{
@@ -211,7 +219,7 @@ int main (int argc, char *argv[]) {
 				cout << "	-e : Error rate [0.15]" 				<< endl;
 				cout << "	-q : Estimare error rate from the dataset [FALSE]" 	<< endl;
 				cout << "	-u : Use default error rate setting [FALSE]"		<< endl;
-				cout << "	-b : Discard pairs with less than <MarkovThreshold> shared k-mers [FALSE]"   	<< endl;
+				cout << "	-b : Upper bound to compute NMC [5]"   	<< endl;
 				cout << "	-m : Total RAM of the system in MB [auto estimated if possible or 8,000 if not]"	<< endl;
 				cout << "	-z : Do not run pairwise alignment [FALSE]" 			<< endl;
 				cout << "	-d : Deviation from the mean alignment score [0.10]"	<< endl;
@@ -219,6 +227,8 @@ int main (int argc, char *argv[]) {
 				cout << "	-p : Output in PAF format [FALSE]" 		<< endl;
 				cout << "	-r : Probability threshold for reliable range [0.002]"  << endl;
                 cout << "	-g : GPUs available [1, only works when BELLA is compiled for GPU]\n" 	<< endl;
+				cout << "	-l : Lower bound for overlap length [2000]\n" 	<< endl;
+				cout << "	-n : NMC probability threshold [0.90]\n" 	<< endl;
 
 				FreeOptList(thisOpt); // Done with this list, free it
 				return 0;
@@ -343,28 +353,6 @@ int main (int argc, char *argv[]) {
 
 	SplitCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound, 
 		InputCoverage, upperlimit, b_parameters, 4);
-	
-	// ==================== //
-	//  Markov Computation  //
-	// ==================== //
-
-	if(b_parameters.myMarkovOverlap != -1)
-		b_parameters.myMarkovOverlap = myMarkovFunc(b_parameters);
-
-	double errorRate = b_parameters.errorRate;
-	int markovOverlap = b_parameters.myMarkovOverlap;
-	printLog(errorRate);
-	printLog(markovOverlap);
-	printLog(reliableLowerBound);
-	printLog(reliableUpperBound);
-
-	if(b_parameters.fixedThreshold == -1)
-	{
-	    ratiophi = slope(b_parameters.errorRate);
-	    float AdaptiveThresholdConstant = ratiophi * (1 - b_parameters.deltaChernoff);
-		printLog(AdaptiveThresholdConstant); 
-	}
-
 
 	// ================ //
 	// Fastq(s) Parsing //
@@ -388,7 +376,7 @@ int main (int argc, char *argv[]) {
 			fillstatus = pfq->fill_block(nametags, seqs, quals, upperlimit);
 			unsigned int nreads = seqs.size();
 
-			#pragma omp parallel for
+		#pragma omp parallel for
 			for(int i=0; i<nreads; i++) 
 			{
 				// remember that the last valid position is length()-1
@@ -457,6 +445,24 @@ int main (int argc, char *argv[]) {
 	std::string fastqParsingTime = std::to_string(omp_get_wtime() - parsefastq) + " seconds";
 	printLog(fastqParsingTime);
 	printLog(numReads);
+
+	// ==================== //
+	//  Markov Computation  //
+	// ==================== //
+
+	NMC(b_parameters);
+
+	double errorRate  = b_parameters.errorRate;
+	printLog(errorRate);
+	printLog(reliableLowerBound);
+	printLog(reliableUpperBound);
+
+	if(b_parameters.fixedThreshold == -1)
+	{
+	    ratiophi = slope(b_parameters.errorRate);
+	    float AdaptiveThresholdConstant = ratiophi * (1 - b_parameters.deltaChernoff);
+		printLog(AdaptiveThresholdConstant); 
+	}
 
 	// ====================== //
 	// Sparse Matrix Creation //
