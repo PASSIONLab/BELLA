@@ -73,7 +73,6 @@ struct BELLApars
 	double	errorRate;			// default error rate if estimation is disable 			(e)
 	double	minProbability;		// reliable range probability threshold 				(r)
 	double	minpNMC;			// nested markov chain probability threshold 		    (n)
-	ITNode* root;
 
 	BELLApars(): kmerSize(17), binSize(500), minOverlap(2000), fixedThreshold(-1), upperNMC(5), xDrop(7), numGPU(1),
 					skipEstimate(true), skipAlignment(false), outputPaf(false), userDefMem(false), deltaChernoff(0.10), 
@@ -189,28 +188,41 @@ struct alignmentInfo {
 }; 
   
 // function to create a new interval search tree node 
-ITNode * create(Interval i) 
+ITNode* create(Interval i) 
 { 
 	ITNode *temp = new ITNode; 
 	temp->i = new Interval(i);
 	temp->le = temp->ri = NULL; 
+	return temp;
 }; 
 
 // function to insert a new interval search tree node 
-ITNode *insert(ITNode *root, Interval i) 
+ITNode* insert(ITNode *root, Interval i) 
 { 
     // tree is empty, new node becomes root 
     if (root == NULL) 
         return create(i); 
   
-    // low value of interval at root 
-    int l = root->i->lower; 
-  
+    int l = root->i->lower;
+
     if (i.lower < l) root->le = insert(root->le, i);
     else root->ri = insert(root->ri, i);
   
     return root; 
 }
+
+void inorder(ITNode *root) 
+{ 
+    if (root == NULL) return; 
+  
+    inorder(root->le); 
+  
+    cout << "[" << root->i->lower << ", " << root->i->upper << "]"
+         << "	= " << root->i->num << endl; 
+  
+    inorder(root->ri); 
+} 
+  
 
 // function to check if L is in overlap
 bool within(Interval i, int L) 
@@ -222,6 +234,7 @@ bool within(Interval i, int L)
 // main function that searches a given interval i in a given interval tree 
 Interval *search(ITNode *root, int L) 
 { 
+
     // Base case the tree is empty
     if (root == NULL) return NULL; 
   

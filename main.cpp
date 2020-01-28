@@ -354,6 +354,32 @@ int main (int argc, char *argv[]) {
 	SplitCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound, 
 		InputCoverage, upperlimit, b_parameters, 4);
 
+	// ==================== //
+	//  Markov Computation  //
+	// ==================== //
+
+	ITNode *root = NULL; 
+	root = NMC(b_parameters, root);
+
+	// int test  = 13040;
+	// Interval *interval 	= search(root, test);
+	// int mkmer = interval->num;
+
+	printLog(test);
+	printLog(mkmer);
+
+	double errorRate  = b_parameters.errorRate;
+	printLog(errorRate);
+	printLog(reliableLowerBound);
+	printLog(reliableUpperBound);
+
+	if(b_parameters.fixedThreshold == -1)
+	{
+	    ratiophi = slope(b_parameters.errorRate);
+	    float AdaptiveThresholdConstant = ratiophi * (1 - b_parameters.deltaChernoff);
+		printLog(AdaptiveThresholdConstant); 
+	}
+
 	// ================ //
 	// Fastq(s) Parsing //
 	// ================ //
@@ -372,7 +398,7 @@ int main (int argc, char *argv[]) {
 
 		unsigned int fillstatus = 1;
 		while(fillstatus)
-		{ 
+		{
 			fillstatus = pfq->fill_block(nametags, seqs, quals, upperlimit);
 			unsigned int nreads = seqs.size();
 
@@ -446,24 +472,6 @@ int main (int argc, char *argv[]) {
 	printLog(fastqParsingTime);
 	printLog(numReads);
 
-	// ==================== //
-	//  Markov Computation  //
-	// ==================== //
-
-	NMC(b_parameters);
-
-	double errorRate  = b_parameters.errorRate;
-	printLog(errorRate);
-	printLog(reliableLowerBound);
-	printLog(reliableUpperBound);
-
-	if(b_parameters.fixedThreshold == -1)
-	{
-	    ratiophi = slope(b_parameters.errorRate);
-	    float AdaptiveThresholdConstant = ratiophi * (1 - b_parameters.deltaChernoff);
-		printLog(AdaptiveThresholdConstant); 
-	}
-
 	// ====================== //
 	// Sparse Matrix Creation //
 	// ====================== //
@@ -519,7 +527,7 @@ int main (int argc, char *argv[]) {
 			chainop(m1, m2, b_parameters, readname1, readname2);
 			return m1;
 		},
-	    reads, getvaluetype, OutputFile, b_parameters, ratiophi);
+	    reads, getvaluetype, OutputFile, b_parameters, ratiophi, root);
 
     std::string TotalRuntime = std::to_string(omp_get_wtime()-all) + " seconds";   
     printLog(TotalRuntime);

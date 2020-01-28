@@ -20,11 +20,10 @@
 
 #include "mtspgemm2017/common.h"
 
-void NMC(BELLApars& b_pars)
+ITNode* NMC(BELLApars& b_pars, ITNode *root)
 {
 	std::vector<Interval> intervals;
 	Interval tmp;
-   	b_pars.root = NULL; 
 
 	// https://stackoverflow.com/questions/3286448/calling-a-python-method-from-c-c-and-extracting-its-return-value/24687260	
   	// set PYTHONPATH to working directory
@@ -42,34 +41,41 @@ void NMC(BELLApars& b_pars)
    	pFunc = PyDict_GetItemString(pDict, (char*)"boundary");
 
 	tmp.lower = 0;
+	int trace = b_pars.minOverlap; 
 	for(int i = 2; i < (b_pars.upperNMC+1); i++)
 	{
    		if(PyCallable_Check(pFunc))
    		{
     	    double myProb = 1 - b_pars.errorRate;
-   		    pValue = Py_BuildValue("(di)", myProb, b_pars.kmerSize, i, b_pars.minOverlap, b_pars.minpNMC);
+   		    pValue = Py_BuildValue("(diiid)", myProb, b_pars.kmerSize, i, trace, b_pars.minpNMC);
    		    PyErr_Print();
    		    presult = PyObject_CallObject(pFunc, pValue);
    		    PyErr_Print();
+			trace = PyInt_AsLong(presult);
 	
    		} else PyErr_Print();
 
    		tmp.upper = PyInt_AsLong(presult);
 		tmp.num   = i-1;
+
 		intervals.push_back(tmp);
 
 		tmp.lower = tmp.upper;
 		Py_DECREF(pValue);
 	}
 
+	// build interval tree
+    for (int i = 0; i < intervals.size(); i++)
+		root = insert(root, intervals[i]);
+
+	// inorder(root);
+
    	// clean up
    	Py_DECREF(pModule);
    	Py_DECREF(pName);
    	Py_Finalize();
 
-	// build interval tree
-    for (int i = 0; i < (b_pars.upperNMC-1); i++)
-        b_pars.root = insert(b_pars.root, intervals[i]);
+	return root;
 }
 
 #endif //MARKOV_H
