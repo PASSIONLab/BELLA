@@ -361,12 +361,8 @@ int main (int argc, char *argv[]) {
 	ITNode *root = NULL; 
 	root = NMC(b_parameters, root);
 
-	// int test  = 13040;
-	// Interval *interval 	= search(root, test);
-	// int mkmer = interval->num;
-
-	printLog(test);
-	printLog(mkmer);
+	// printLog(b_parameters.upperNMC);
+	// inorder(root);
 
 	double errorRate  = b_parameters.errorRate;
 	printLog(errorRate);

@@ -245,7 +245,7 @@ Interval *search(ITNode *root, int L)
 	// L is greater and we are in the ri-most node
 	if (root->ri == NULL && L >= root->i->upper) 
 	{
-		root->i->num++;
+		// root->i->num++;
 		return root->i;	
 	}
 
