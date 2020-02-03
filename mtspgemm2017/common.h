@@ -77,6 +77,13 @@ struct xavierResult {
     SeedX seed;
 };
 
+struct editDistanceResult {
+	int ed = 0;
+	int ov = 0;
+	int begpH, endpH, begpV, endpV;
+	std::string rc;
+};
+
 #endif
 
 //struct loganResult {

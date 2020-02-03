@@ -8,6 +8,7 @@
 #include "../kmercode/fq_reader.h"
 #include "../kmercode/ParallelFASTQ.h"
 #include "../libcuckoo/cuckoohash_map.hh"
+#include "../edlib/include/edlib.h"
 #ifndef __NVCC__
 	#include "../xavier/xavier.h"
 #endif
@@ -586,6 +587,184 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 				// vss[ithread] << reads[cid].nametag << '\t' << reads[rid].nametag << '\t' << val->count << '\t' << 
 				// 		seq2len << '\t' << seq1len << std::endl;
 				// ++outputted;
+			}
+		} // all nonzeros in that column of A^T A
+	#pragma omp critical
+		{
+			alignedpairs += numAlignmentsThread;
+			alignedbases += numBasesAlignedThread;
+			totalreadlen += readLengthsThread;
+			totaloutputt += outputted;
+			totsuccbases += numBasesAlignedTrue;
+			totfailbases += numBasesAlignedFalse;
+		}
+	} // all columns from start...end (omp for loop)
+
+	double outputting = omp_get_wtime();
+
+	int64_t* bytes = new int64_t[numThreads];
+	for(int i = 0; i < numThreads; ++i)
+	{
+		vss[i].seekg(0, ios::end);
+		bytes[i] = vss[i].tellg();
+		vss[i].seekg(0, ios::beg);
+	}
+	int64_t bytestotal = std::accumulate(bytes, bytes+numThreads, static_cast<int64_t>(0));
+	std::ofstream ofs(filename, std::ios::binary | std::ios::app);
+
+	std::string str1 = std::to_string((double)bytestotal/(double)(1024 * 1024));
+	std::string str2 = " MB";
+	std::string OutputSize = str1 + str2;
+	printLog(OutputSize);
+
+	ofs.seekp(bytestotal - 1);
+	ofs.write("", 1); // this will likely create a sparse file so the actual disks won't spin yet
+	ofs.close();
+
+	#pragma omp parallel
+	{
+		int ithread = omp_get_thread_num();	
+
+		FILE *ffinal;
+		if ((ffinal = fopen(filename, "rb+")) == NULL)	// then everyone fills it
+		{
+			fprintf(stderr, "File %s failed to open at thread %d\n", filename, ithread);
+		}
+		int64_t bytesuntil = std::accumulate(bytes, bytes+ithread, static_cast<int64_t>(0));
+		fseek (ffinal, bytesuntil, SEEK_SET);
+		std::string text = vss[ithread].str();
+		fwrite(text.c_str(),1, bytes[ithread] ,ffinal);
+		fflush(ffinal);
+		fclose(ffinal);
+	}
+
+	delete [] bytes;
+	double timeoutputt = omp_get_wtime()-outputting;
+
+	return make_tuple(alignedpairs, alignedbases, totalreadlen, totaloutputt, totsuccbases, totfailbases, timeoutputt);
+}
+
+/* Edit distance for Shilpa Garg */
+template <typename IT, typename FT>
+auto RunEditDistance(IT start, IT end, IT offset, IT * colptrC, IT * rowids, FT * values, const readVector_& reads, 
+	char* filename, const BELLApars& b_pars)
+{
+	size_t alignedpairs = 0;
+	size_t alignedbases = 0;
+	size_t totalreadlen = 0;
+	size_t totaloutputt = 0;
+	size_t totsuccbases = 0;
+	size_t totfailbases = 0;
+
+	int numThreads = 1;
+#pragma omp parallel
+	{
+		numThreads = omp_get_num_threads();
+	}
+
+	vector<stringstream> vss(numThreads); // any chance of false sharing here? depends on how stringstream is implemented. optimize later if needed...
+
+#pragma omp parallel for schedule(dynamic)
+	for(IT j = start; j < end; ++j)	// for (end-start) columns of A^T A (one block)
+	{
+		size_t numAlignmentsThread		= 0;
+		size_t numBasesAlignedThread	= 0;
+		size_t readLengthsThread		= 0;
+		size_t numBasesAlignedTrue		= 0;
+		size_t numBasesAlignedFalse		= 0;
+
+		size_t outputted = 0;
+
+		int ithread = omp_get_thread_num();
+
+		for (IT i = colptrC[j]; i < colptrC[j+1]; ++i)  // all nonzeros in that column of A^T A
+		{
+			unsigned int rid = rowids[i-offset];	// row id
+			unsigned int cid = j;					// column id
+
+			const string& seq1 = reads[rid].seq;	// get reference for readibility
+			const string& seq2 = reads[cid].seq;	// get reference for readibility
+
+			unsigned short int seq1len = seq1.length();
+			unsigned short int seq2len = seq2.length();
+
+			spmatPtr_ val = values[i-offset];
+
+			if(!b_pars.skipAlignment) // fix -z to not print 
+			{
+				numAlignmentsThread++;
+				readLengthsThread = readLengthsThread + seq1len + seq2len;
+
+				editDistanceResult result;
+
+				// struct editDistanceResult {
+				//  int ed = 0;
+				//  int ov = 0;
+				// 	int begpH, endpH, begpV, endpV;
+				// 	std::string rc;
+				// };
+
+				bool passed = false;
+
+				//	GG: number of matching kmer into the majority voted bin
+				unsigned short int matches = val->chain();
+				unsigned short int overlap;
+				unsigned short int minkmer;
+				
+				if(b_pars.myMarkovOverlap != -1) 
+				{
+					overlap = val->overlaplength();
+					minkmer = std::floor((float)overlap/(float)b_pars.myMarkovOverlap);
+				}
+				else 
+				{
+					minkmer = 1;
+				}
+
+				//	GG: b_pars.minSurvivedKmers should be function of Markov chain
+				if (matches < minkmer)
+					continue;
+
+				pair<int, int> kmer = val->choose();
+				int i = kmer.first, j = kmer.second;
+
+				// TODO: chop sequences to compute global edit distance within the overlap
+				// ...
+				std::string cpyseq1 = seq1;	// read1 copsy that's gonna be chopped
+				std::string cpyseq2 = seq2;	// read2 copy that's gonna be chopped
+
+				result.begpH = i;
+				result.begpV = j;
+				result.endpH;
+				result.endpV;
+
+				chopoverlap(cpyseq1, cpyseq2, result.begpH, result.begpV, 
+									result.endpH, result.endpV, b_pars.kmerSize);
+
+				// GG: edit distance computation
+				EdlibAlignResult edlib = edlibAlign(cpyseq1, cpyseq1,length(), cpyseq2, cpyseq2.length(),
+                                    edlibNewAlignConfig(-1, EDLIB_MODE_HW, EDLIB_TASK_PATH, NULL, 0));
+
+				if (result.status == EDLIB_STATUS_OK)
+				{
+				    result.ed = edlib.editDistance;
+				    result.ov = edlib.alignmentLength;
+
+					PostAlignDecision(result, reads[rid], reads[cid], b_pars, ratiophi, val->count, vss[ithread], 
+									outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed, matches);
+				}
+				edlibFreeAlignResult(result);
+				numBasesAlignedThread += overlap;
+			}
+			else // if skipAlignment == false do alignment, else save just some info on the pair to file
+			{
+				pair<int, int> kmer = val->choose();
+				int i = kmer.first, j = kmer.second;
+
+				int overlap = overlapop(reads[rid].seq, reads[cid].seq, i, j, b_pars.kmerSize);
+				vss[ithread] << reads[cid].nametag << '\t' << reads[rid].nametag << '\t' << val->count << '\t' <<
+						overlap << '\t' << seq2len << '\t' << seq1len << endl;
+				++outputted;
 			}
 		} // all nonzeros in that column of A^T A
 	#pragma omp critical

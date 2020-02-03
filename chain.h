@@ -70,6 +70,88 @@ overlapop(const std::string& read1, const std::string& read2, unsigned short int
 	return overlap;
 }
 
+//	GG: check strand and compute overlap length
+int
+overlapop(const std::string& read1, const std::string& read2, unsigned short int begpH, 
+	unsigned short int begpV, const unsigned short int kmerSize) {
+
+	int read1len = read1.length();
+	int read2len = read2.length();
+
+	// GG: checking strand
+	bool oriented = checkstrand(read1, read2, begpH, begpV, kmerSize);
+
+	if(!oriented)
+	{
+		begpH = read1.length() - begpH - kmerSize;
+	}
+
+	// GG: computing overlap length
+	unsigned short int endpH = begpH + kmerSize;
+	unsigned short int endpV = begpV + kmerSize;
+
+	int margin1 = std::min(begpH, begpV);
+	int margin2 = std::min(read1len - endpH, read2len - endpV);
+	int overlap = margin1 + margin2 + kmerSize;
+
+	return overlap;
+}//	GG: check strand and compute overlap length
+void
+chopoverlap(std::string& read1, std::string& read2, unsigned short int begpH, 
+	unsigned short int begpV, unsigned short int endpH, unsigned short int endpV, 
+		const unsigned short int kmerSize)
+{
+
+	int read1len = read1.length();
+	int read2len = read2.length();
+
+	// GG: checking strand
+	bool oriented = checkstrand(read1, read2, begpH, begpV, kmerSize);
+
+	if(!oriented)
+	{
+		begpH = read1len - begpH - kmerSize;
+	}
+
+	// GG: computing overlap length
+	unsigned short int endpH = begpH + kmerSize;
+	unsigned short int endpV = begpV + kmerSize;
+
+	if (begpH > begpV) 
+	{
+		read1 = read1.substr(begpH - begpV);
+		
+		begpH = begpH - begpV;
+		begpV = 0;
+
+		read1len = read1.length();
+	}
+	else
+	{
+		read2 = read2.substr(begpV - begpH);
+
+		begpV = begpV - begpH;
+		begpH = 0;
+
+		read2len = read2.length();
+	}
+
+	if ((read1len - endpH) > (read2len - endpV))
+	{
+		read1 = read1.substr(0, read2len);
+
+		endpH = read2len;
+		endpV = read2len;
+	}
+	else
+	{
+		read2 = read2.substr(0, read1len);
+
+		endpH = read1len;
+		endpV = read1len;
+	}
+}
+
 //	GG: multiply operation
 void
 multiop(spmatPtr_& value, const std::string& read1, const std::string& read2, 
