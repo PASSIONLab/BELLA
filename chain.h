@@ -71,35 +71,10 @@ overlapop(const std::string& read1, const std::string& read2, unsigned short int
 }
 
 //	GG: check strand and compute overlap length
-int
-overlapop(const std::string& read1, const std::string& read2, unsigned short int begpH, 
-	unsigned short int begpV, const unsigned short int kmerSize) {
-
-	int read1len = read1.length();
-	int read2len = read2.length();
-
-	// GG: checking strand
-	bool oriented = checkstrand(read1, read2, begpH, begpV, kmerSize);
-
-	if(!oriented)
-	{
-		begpH = read1.length() - begpH - kmerSize;
-	}
-
-	// GG: computing overlap length
-	unsigned short int endpH = begpH + kmerSize;
-	unsigned short int endpV = begpV + kmerSize;
-
-	int margin1 = std::min(begpH, begpV);
-	int margin2 = std::min(read1len - endpH, read2len - endpV);
-	int overlap = margin1 + margin2 + kmerSize;
-
-	return overlap;
-}//	GG: check strand and compute overlap length
 void
 chopoverlap(std::string& read1, std::string& read2, unsigned short int begpH, 
 	unsigned short int begpV, unsigned short int endpH, unsigned short int endpV, 
-		const unsigned short int kmerSize)
+		const unsigned short int kmerSize, std::string& rc)
 {
 
 	int read1len = read1.length();
@@ -107,15 +82,20 @@ chopoverlap(std::string& read1, std::string& read2, unsigned short int begpH,
 
 	// GG: checking strand
 	bool oriented = checkstrand(read1, read2, begpH, begpV, kmerSize);
-
+	
 	if(!oriented)
 	{
-		begpH = read1len - begpH - kmerSize;
+		rc = "c";
+		begpH  = read1len - begpH - kmerSize;
+	}
+	else
+	{
+		rc = "n";
 	}
 
 	// GG: computing overlap length
-	unsigned short int endpH = begpH + kmerSize;
-	unsigned short int endpV = begpV + kmerSize;
+	endpH = begpH + kmerSize;
+	endpV = begpV + kmerSize;
 
 	if (begpH > begpV) 
 	{

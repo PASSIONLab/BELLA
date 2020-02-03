@@ -5,7 +5,7 @@ LOGANPATH = loganGPU
 include mtspgemm2017/GTgraph/Makefile.var
 PINCLUDE = $(shell python-config --includes)
 INCLUDE = -I$(SPRNPATH)/include -I$(LOGANPATH) -I$(SEQANPATH) $(PINCLUDE)
-MLKINCLUDE = -I/opt/intel/composer_xe_2015.0.039/mkl/include
+MLKINCLUDE = -I/opt/intel/composer_xe_2015.0.039/mkl/include -I edlib/edlib/include
 LIBPATH = -L/opt/intel/composer_xe_2015.0.039/mkl/lib 
 
 COMPILER = g++
@@ -20,7 +20,7 @@ sprng:
 rmat:	sprng
 	(cd $(RMATPATH); $(MAKE); cd ../..)
 
-LIBS = -L$(CURDIR)/libbloom/build -lbloom -lpthread -lbz2 -lz -lpython2.7
+LIBS = -L$(CURDIR)/libbloom/build -lbloom -lpthread -lbz2 -lz -lpython2.7 -L edlib -ledlib
 
 Buffer.o: kmercode/Buffer.c
 	$(CC) -O3 -fopenmp -c -o Buffer.o kmercode/Buffer.c

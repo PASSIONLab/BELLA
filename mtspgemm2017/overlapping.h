@@ -8,10 +8,12 @@
 #include "../kmercode/fq_reader.h"
 #include "../kmercode/ParallelFASTQ.h"
 #include "../libcuckoo/cuckoohash_map.hh"
-#include "../edlib/include/edlib.h"
+
 #ifndef __NVCC__
 	#include "../xavier/xavier.h"
 #endif
+
+#include <edlib.h>
 #include <seqan/sequence.h>
 #include <seqan/align.h>
 #include <seqan/score.h>
@@ -46,6 +48,7 @@ typedef SeedSet<TSeed> TSeedSet;
 
 #define PERCORECACHE (1024 * 1024)
 #define TIMESTEP
+#define ED
 
 #ifndef PRINT
 #define PRINT
@@ -481,6 +484,42 @@ void PostAlignDecision(const seqAnResult& maxExtScore,
 	}
 }
 
+void PostEditDistanceDecision(const editDistanceResult& result, const readType_& read1, const readType_& read2, 
+	const BELLApars& b_pars, int count, stringstream& myBatch, size_t& outputted, size_t& numBasesAlignedTrue, size_t& numBasesAlignedFalse, 
+		bool& passed, int const& matches)
+{
+	int begpV = result.begpV;
+	int endpV = result.endpV;
+	int begpH = result.begpH;
+	int endpH = result.endpH;
+
+	// Get references for better naming
+	const string& seq1 = read1.seq;	// H
+	const string& seq2 = read2.seq;	// V
+
+	unsigned short int read1len = seq1.length();
+	unsigned short int read2len = seq2.length();
+
+	// TODO: discuss with Shilpa a thresholding
+	// ...
+	float score = (float)result.ed / (float)result.ov;
+	passed = true;
+
+	if(passed)
+	{
+		myBatch << read2.nametag << '\t' << read1.nametag << '\t' << count << '\t' << result.ed << '\t' << result.ov << '\t' << result.rc << '\t' << 
+			begpV << '\t' << endpV << '\t' << read2len << '\t' << begpH << '\t' << endpH << '\t' << read1len << endl;
+	
+		++outputted;
+		numBasesAlignedTrue += result.ov;
+	}
+	else
+	{
+		numBasesAlignedFalse += result.ov;
+	}
+}
+
+
 template <typename IT, typename FT>
 auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowids, FT * values, const readVector_& reads, 
 	char* filename, const BELLApars& b_pars, const double& ratiophi)
@@ -696,14 +735,6 @@ auto RunEditDistance(IT start, IT end, IT offset, IT * colptrC, IT * rowids, FT 
 				readLengthsThread = readLengthsThread + seq1len + seq2len;
 
 				editDistanceResult result;
-
-				// struct editDistanceResult {
-				//  int ed = 0;
-				//  int ov = 0;
-				// 	int begpH, endpH, begpV, endpV;
-				// 	std::string rc;
-				// };
-
 				bool passed = false;
 
 				//	GG: number of matching kmer into the majority voted bin
@@ -739,22 +770,22 @@ auto RunEditDistance(IT start, IT end, IT offset, IT * colptrC, IT * rowids, FT 
 				result.endpV;
 
 				chopoverlap(cpyseq1, cpyseq2, result.begpH, result.begpV, 
-									result.endpH, result.endpV, b_pars.kmerSize);
+									result.endpH, result.endpV, b_pars.kmerSize, result.rc);
 
 				// GG: edit distance computation
-				EdlibAlignResult edlib = edlibAlign(cpyseq1, cpyseq1,length(), cpyseq2, cpyseq2.length(),
-                                    edlibNewAlignConfig(-1, EDLIB_MODE_HW, EDLIB_TASK_PATH, NULL, 0));
+				EdlibAlignResult edlib = edlibAlign(cpyseq1.c_str(), cpyseq1.length(), cpyseq2.c_str(), cpyseq2.length(),
+                                    edlibNewAlignConfig(-1, EDLIB_MODE_NW, EDLIB_TASK_DISTANCE, NULL, 0));
 
-				if (result.status == EDLIB_STATUS_OK)
+				if (edlib.status == EDLIB_STATUS_OK)
 				{
 				    result.ed = edlib.editDistance;
 				    result.ov = edlib.alignmentLength;
 
-					PostAlignDecision(result, reads[rid], reads[cid], b_pars, ratiophi, val->count, vss[ithread], 
+					PostEditDistanceDecision(result, reads[rid], reads[cid], b_pars, val->count, vss[ithread], 
 									outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed, matches);
 				}
-				edlibFreeAlignResult(result);
-				numBasesAlignedThread += overlap;
+				edlibFreeAlignResult(edlib);
+				numBasesAlignedThread += cpyseq1.length();
 			}
 			else // if skipAlignment == false do alignment, else save just some info on the pair to file
 			{
@@ -921,8 +952,13 @@ void HashSpGEMM(const CSC<IT,NT>& A, const CSC<IT,NT>& B, MultiplyOperation mult
 
 		// GG: all paralelism moved to GPU we can do better
 		tuple<size_t, size_t, size_t, size_t, size_t, size_t, double> alignstats; // (alignedpairs, alignedbases, totalreadlen, outputted, alignedtrue, alignedfalse, timeoutputt)
+	
+	#ifndef ED
 		alignstats = RunPairWiseAlignments(colStart[b], colStart[b+1], begnz, colptrC, rowids, values, reads, filename, b_pars, ratiophi);
-
+	#else
+		alignstats = RunEditDistance(colStart[b], colStart[b+1], begnz, colptrC, rowids, values, reads, filename, b_pars);
+	#endif
+		
 		if(!b_pars.skipAlignment)
 		{
 			double elapsed = omp_get_wtime()-alnlen2;
