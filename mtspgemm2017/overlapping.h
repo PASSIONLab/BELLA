@@ -482,7 +482,7 @@ void PostAlignDecision(const seqAnResult& maxExtScore,
 
 template <typename IT, typename FT>
 auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowids, FT * values, const readVector_& reads, 
-	char* filename, const BELLApars& b_pars, const double& ratiophi, ITNode *root)
+	char* filename, const BELLApars& b_pars, const double& ratiophi)
 {
 	size_t alignedpairs = 0;
 	size_t alignedbases = 0;
@@ -540,22 +540,6 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 				//	GG: number of matching kmer into the majority voted bin
 				unsigned short int matches = val->chain();
 				unsigned short int overlap;
-				unsigned short int minkmer;
-				
-				// if(b_pars.myMarkovOverlap != -1) 
-				// {
-				overlap = val->overlaplength();
-				Interval *interval 	= search(root, overlap);
-				minkmer = interval->num;
-				// }
-				// else 
-				// {
-				// 	minkmer = 1;
-				// }
-
-				//	GG: b_pars.minSurvivedKmers should be function of Markov chain
-				if (matches < minkmer)
-					continue;
 
 				pair<int, int> kmer = val->choose();
 				int i = kmer.first, j = kmer.second;
@@ -649,7 +633,7 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
  **/
 template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation>
 void HashSpGEMM(const CSC<IT,NT>& A, const CSC<IT,NT>& B, MultiplyOperation multop, AddOperation addop, const readVector_& reads, 
-	FT& getvaluetype, char* filename, const BELLApars& b_pars, const double& ratiophi, ITNode *root)
+	FT& getvaluetype, char* filename, const BELLApars& b_pars, const double& ratiophi)
 {
 	double free_memory = estimateMemory(b_pars);
 
@@ -743,7 +727,7 @@ void HashSpGEMM(const CSC<IT,NT>& A, const CSC<IT,NT>& B, MultiplyOperation mult
 
 		// GG: all paralelism moved to GPU we can do better
 		tuple<size_t, size_t, size_t, size_t, size_t, size_t, double> alignstats; // (alignedpairs, alignedbases, totalreadlen, outputted, alignedtrue, alignedfalse, timeoutputt)
-		alignstats = RunPairWiseAlignments(colStart[b], colStart[b+1], begnz, colptrC, rowids, values, reads, filename, b_pars, ratiophi, root);
+		alignstats = RunPairWiseAlignments(colStart[b], colStart[b+1], begnz, colptrC, rowids, values, reads, filename, b_pars, ratiophi);
 
 		if(!b_pars.skipAlignment)
 		{
@@ -905,11 +889,6 @@ RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * rowids,
 
 				//	GG: number of matching kmer into the majority voted bin
 				unsigned short int matches = val->chain();
-				unsigned short int minkmer = 1;
-
-				//	GG: b_pars.minSurvivedKmers should be function of Markov chain
-				if (matches < minkmer)
-					continue;
 
 				pair<int, int> kmer = val->choose();
 				int i = kmer.first, j = kmer.second;
