@@ -3,8 +3,7 @@ SPRNPATH = mtspgemm2017/GTgraph/sprng2.0-lite
 SEQANPATH = seqan
 LOGANPATH = loganGPU
 include mtspgemm2017/GTgraph/Makefile.var
-PINCLUDE = $(shell python-config --includes)
-INCLUDE = -I$(SPRNPATH)/include -I$(LOGANPATH) -I$(SEQANPATH) $(PINCLUDE)
+INCLUDE = -I$(SPRNPATH)/include -I$(LOGANPATH) -I$(SEQANPATH)
 MLKINCLUDE = -I/opt/intel/composer_xe_2015.0.039/mkl/include
 LIBPATH = -L/opt/intel/composer_xe_2015.0.039/mkl/lib 
 
@@ -20,7 +19,7 @@ sprng:
 rmat:	sprng
 	(cd $(RMATPATH); $(MAKE); cd ../..)
 
-LIBS = -L$(CURDIR)/libbloom/build -lbloom -lpthread -lbz2 -lz -lpython2.7
+LIBS = -L$(CURDIR)/libbloom/build -lbloom -lpthread -lbz2 -lz
 
 Buffer.o: kmercode/Buffer.c
 	$(CC) -O3 -fopenmp -c -o Buffer.o kmercode/Buffer.c
@@ -45,11 +44,11 @@ Kmer.o:	kmercode/Kmer.cpp
 
 # flags defined in mtspgemm2017/GTgraph/Makefile.var
 bella: main.cpp hash_funcs.o fq_reader.o Buffer.o Kmer.o bound.o optlist.o rmat bloomlib
-	$(COMPILER) -std=c++14 -w -O3  $(INCLUDE) $(pkg-config --cflags --libs python2) -march=native -fopenmp -fpermissive -o bella hash_funcs.o Kmer.o Buffer.o fq_reader.o bound.o optlist.o main.cpp ${LIBS}
+	$(COMPILER) -std=c++14 -w -O3  $(INCLUDE) -march=native -fopenmp -fpermissive -o bella hash_funcs.o Kmer.o Buffer.o fq_reader.o bound.o optlist.o main.cpp ${LIBS}
 
 # GPU build
 bella-gpu: main.cu hash_funcs.o fq_reader.o Buffer.o Kmer.o bound.o optlist.o rmat bloomlib
-	$(COMPILER_GPU) $(CUDAFLAGS) $(INCLUDE) -o bella hash_funcs.o Kmer.o Buffer.o fq_reader.o bound.o optlist.o main.cu ${LIBS} -D__NVCC__ -DPYTHON_LIBRARY=/anaconda/lib/python2.7 -DPYTHON_INCLUDE_DIR=/anaconda/include/python2.7
+	$(COMPILER_GPU) $(CUDAFLAGS) $(INCLUDE) -o bella hash_funcs.o Kmer.o Buffer.o fq_reader.o bound.o optlist.o main.cu ${LIBS} -D__NVCC__
 
 # makes evaluation
 result:

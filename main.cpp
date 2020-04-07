@@ -8,7 +8,6 @@
 #include <stdlib.h>
 #include <algorithm>
 #include <utility>
-#include <Python.h>
 #include <array>
 #include <tuple>
 #include <queue>
@@ -29,7 +28,6 @@
 #include <unordered_map>
 #include <omp.h>
 
-#include "myMarkov.h"
 #include "libcuckoo/cuckoohash_map.hh"
 #include "kmercount.h"
 #include "chain.h"
@@ -68,7 +66,7 @@ int main (int argc, char *argv[]) {
 	// Follow an option with a colon to indicate that it requires an argument.
 
 	optList = NULL;
-	optList = GetOptList(argc, argv, (char*)"f:o:c:d:hk:a:ze:x:c:m:r:pb:s:qg:u:w:l:n:");
+	optList = GetOptList(argc, argv, (char*)"f:o:c:d:hk:a:ze:x:c:m:r:ps:qg:u:w:l:");
 
 	char	*all_inputs_fofn 	= NULL;	// List of fastqs (i)
 	char	*OutputFile 		= NULL;	// output filename (o)
@@ -163,10 +161,6 @@ int main (int argc, char *argv[]) {
 				b_parameters.errorRate = 0.15;	// Default value
 				break;
 			}
-			case 'b': {
-				b_parameters.upperNMC = atoi(thisOpt->argument);
-				break;
-			}
 			case 'a': {
 				b_parameters.fixedThreshold = atoi(thisOpt->argument);
 				break;
@@ -194,10 +188,6 @@ int main (int argc, char *argv[]) {
 				b_parameters.minOverlap = atoi(thisOpt->argument);
 				break;
 			}
-			case 'n': {
-				b_parameters.minpNMC = stod(thisOpt->argument);
-				break;
-			}
 			case 'd': {
 				if(stod(thisOpt->argument) > 1.0 || stod(thisOpt->argument) < 0.0)
 				{
@@ -219,7 +209,6 @@ int main (int argc, char *argv[]) {
 				cout << "	-e : Error rate [0.15]" 				<< endl;
 				cout << "	-q : Estimare error rate from the dataset [FALSE]" 	<< endl;
 				cout << "	-u : Use default error rate setting [FALSE]"		<< endl;
-				cout << "	-b : Upper bound to compute NMC [5]"   	<< endl;
 				cout << "	-m : Total RAM of the system in MB [auto estimated if possible or 8,000 if not]"	<< endl;
 				cout << "	-z : Do not run pairwise alignment [FALSE]" 			<< endl;
 				cout << "	-d : Deviation from the mean alignment score [0.10]"	<< endl;
@@ -228,7 +217,6 @@ int main (int argc, char *argv[]) {
 				cout << "	-r : Probability threshold for reliable range [0.002]"  << endl;
                 cout << "	-g : GPUs available [1, only works when BELLA is compiled for GPU]\n" 	<< endl;
 				cout << "	-l : Lower bound for overlap length [2000]\n" 	<< endl;
-				cout << "	-n : NMC probability threshold [0.90]\n" 	<< endl;
 
 				FreeOptList(thisOpt); // Done with this list, free it
 				return 0;
@@ -353,16 +341,6 @@ int main (int argc, char *argv[]) {
 
 	SplitCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound, 
 		InputCoverage, upperlimit, b_parameters, 4);
-
-	// ==================== //
-	//  Markov Computation  //
-	// ==================== //
-
-	ITNode *root = NULL; 
-	root = NMC(b_parameters, root);
-
-	// printLog(b_parameters.upperNMC);
-	// inorder(root);
 
 	double errorRate  = b_parameters.errorRate;
 	printLog(errorRate);
@@ -523,7 +501,7 @@ int main (int argc, char *argv[]) {
 			chainop(m1, m2, b_parameters, readname1, readname2);
 			return m1;
 		},
-	    reads, getvaluetype, OutputFile, b_parameters, ratiophi, root);
+	    reads, getvaluetype, OutputFile, b_parameters, ratiophi);
 
     std::string TotalRuntime = std::to_string(omp_get_wtime()-all) + " seconds";   
     printLog(TotalRuntime);
