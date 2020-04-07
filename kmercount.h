@@ -510,7 +510,7 @@ void SplitCount(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable_
 							Kmer mykmer(kmerstrfromfastq.c_str(), kmerstrfromfastq.length());
 							Kmer lexsmall = mykmer.rep();
 
-							if(lexsmall.hash() % splits == sp)	// mod 4
+							if(lexsmall.hash() % splits == sp)	// mod splits
 							{
 								allkmers[MYTHREAD].push_back(lexsmall);
 								hlls[MYTHREAD].add((const char*) lexsmall.getBytes(), lexsmall.getNumBytes());
