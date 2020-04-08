@@ -50,6 +50,7 @@
 
 #define LSIZE 16000
 #define ITERS 10
+#define KMERINDEX uint64_t
   
 using namespace std;
 
@@ -265,7 +266,7 @@ int main (int argc, char *argv[]) {
 	readVector_ reads;
 	Kmers kmersfromreads;
 	// vector<tuple<unsigned int, unsigned int, unsigned short int>> occurrences;	// 32 bit, 32 bit, 16 bit (read, kmer, position)
-    	vector<tuple<unsigned int, unsigned int, unsigned short int>> transtuples;	// 32 bit, 32 bit, 16 bit (kmer, read, position)
+    	vector<tuple<KMERINDEX, KMERINDEX, unsigned short int>> transtuples;	// 32 bit, 32 bit, 16 bit (kmer, read, position)
     
 	// ================== //
 	// Parameters Summary //
@@ -337,7 +338,7 @@ int main (int argc, char *argv[]) {
 	//  K-mer Counting  //
 	// ================ //
 
-	dictionary_t_32bit countsreliable;
+	CuckooDict<KMERINDEX> countsreliable;
 
 	SplitCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound, 
 		InputCoverage, upperlimit, b_parameters, 8);
@@ -361,7 +362,7 @@ int main (int argc, char *argv[]) {
 	double parsefastq = omp_get_wtime();
 
 	// vector<vector<tuple<unsigned int, unsigned int, unsigned short int>>> alloccurrences(MAXTHREADS);
-	vector<vector<tuple<unsigned int, unsigned int, unsigned short int>>> alltranstuples(MAXTHREADS);
+	vector<vector<tuple<KMERINDEX, KMERINDEX, unsigned short int>>> alltranstuples(MAXTHREADS);
 
 	unsigned int numReads = 0; // numReads needs to be global (not just per file)
 
@@ -396,7 +397,7 @@ int main (int argc, char *argv[]) {
 					// remember to use only ::rep() when building kmerdict as well
 					Kmer lexsmall = mykmer.rep();
 
-					unsigned int idx; // kmer_id
+					KMERINDEX idx; // kmer_id
 					auto found = countsreliable.find(lexsmall,idx);
 					if(found)
 					{
@@ -498,20 +499,20 @@ int main (int argc, char *argv[]) {
 
 	unsigned int nkmer = countsreliable.size();
 	double matcreat = omp_get_wtime();
-	CSC<unsigned int, unsigned short int> transpmat(transtuples, nkmer, numReads, 
+	CSC<KMERINDEX, unsigned short int> transpmat(transtuples, nkmer, numReads,
 							[] (unsigned short int& p1, unsigned short int& p2) 
 							{
 								return p1;
 							}, false);	// hashspgemm doesn't require sorted rowids within each column
 	// remove memory of transtuples
-	std::vector<tuple<unsigned int, unsigned int, unsigned short int>>().swap(transtuples);
+	std::vector<tuple<KMERINDEX, KMERINDEX, unsigned short int>>().swap(transtuples);
 
 	std::string TransposeSparseMatrixCreationTime = std::to_string(omp_get_wtime() - matcreat) + " seconds";
 	printLog(TransposeSparseMatrixCreationTime);
 
 
 	double transbeg = omp_get_wtime();	
-	CSC<unsigned int, unsigned short int> spmat = transpmat.Transpose();
+	CSC<KMERINDEX, unsigned short int> spmat = transpmat.Transpose();
 	std::string ReTransposeTime = std::to_string(omp_get_wtime() - transbeg) + " seconds";
 	printLog(ReTransposeTime);
 
