@@ -339,7 +339,7 @@ int main (int argc, char *argv[]) {
 	//  K-mer Counting  //
 	// ================ //
 
-	dictionary_t_32bit countsreliable;
+	CuckooDict<uint32_t> countsreliable;
 
 	SplitCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound, 
 		InputCoverage, upperlimit, b_parameters, 4);

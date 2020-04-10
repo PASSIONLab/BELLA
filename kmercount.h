@@ -57,9 +57,13 @@ using namespace std;
 #define PRINT
 #endif
 
-//	GG: when couting k-mers the values can be 16bit (k-mer occurrence) instead of 32 (k-mer ids in the final dictionary)
-typedef cuckoohash_map<Kmer, unsigned int>       dictionary_t_32bit;	// <k-mer && reverse-complement, #kmers>
-typedef cuckoohash_map<Kmer, unsigned short int> dictionary_t_16bit;	// <k-mer && reverse-complement, kmer_id>
+
+template <typename IT>
+using CuckooDict = cuckoohash_map<Kmer, IT>;
+
+
+//    GG: when couting k-mers the values can be 16bit (k-mer occurrence) instead of 32 (k-mer ids in the final dictionary)
+typedef cuckoohash_map<Kmer, unsigned short int> dictionary_t_16bit;	// <k-mer && reverse-complement, kmer_multiplicity>
 
 struct filedata {
 
@@ -116,7 +120,8 @@ vector<filedata>  GetFiles(char *filename) {
  * @param b_pars.kmerSize
  * @param upperlimit
  */
-void SimpleCount(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable_denovo, int& lower, int& upper,
+template <typename IT>
+void SimpleCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_denovo, int& lower, int& upper,
 	int coverage, size_t upperlimit, BELLApars & b_pars)
 {
 	vector < vector<double> > allquals(MAXTHREADS);
@@ -223,7 +228,7 @@ void SimpleCount(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable
 	upper = computeUpper(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
 
 	// Reliable k-mer filter on countsdenovo
-	unsigned int kmer_id_denovo = 0;
+	IT kmer_id_denovo = 0;
 	auto lt = countsdenovo.lock_table(); // our counting
 	for (const auto &it : lt) 
 		if (it.second >= lower && it.second <= upper)
@@ -242,7 +247,7 @@ void SimpleCount(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable
 	} 
 	else 
 	{
-		int numReliableKmers = countsreliable_denovo.size();
+		size_t numReliableKmers = countsreliable_denovo.size();
 		printLog(numReliableKmers);
 	}
 
@@ -258,7 +263,8 @@ void SimpleCount(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable
  * @param b_pars.kmerSize
  * @param upperlimit
  */
-void DeNovoCount(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable_denovo, int& lower, int& upper,
+template <typename IT>
+void DeNovoCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_denovo, int& lower, int& upper,
 	int coverage, size_t upperlimit, BELLApars & b_pars)
 {
 	vector < vector<Kmer> >   allkmers(MAXTHREADS);
@@ -413,7 +419,7 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable
 	upper = computeUpper(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
 
 	// Reliable k-mer filter on countsdenovo
-	unsigned int kmer_id_denovo = 0;
+	IT kmer_id_denovo = 0;
 	auto lt = countsdenovo.lock_table(); // our counting
 	for (const auto &it : lt) 
 		if (it.second >= lower && it.second <= upper)
@@ -432,7 +438,7 @@ void DeNovoCount(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable
 	} 
 	else 
 	{
-		int numReliableKmers = countsreliable_denovo.size();
+		size_t numReliableKmers = countsreliable_denovo.size();
 		printLog(numReliableKmers);
 	}
 
@@ -454,7 +460,8 @@ double getAvg(double prev_avg, double x, int64_t n)
  * @param b_pars.kmerSize
  * @param upperlimit
  */
-void SplitCount(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable_denovo, int& lower, int& upper, int coverage, size_t upperlimit, BELLApars & b_pars, const int splits)
+template <typename IT>
+void SplitCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_denovo, int& lower, int& upper, int coverage, size_t upperlimit, BELLApars & b_pars, const int splits)
 {
 	size_t totreads = 0;
 	size_t totbases = 0;
@@ -462,7 +469,7 @@ void SplitCount(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable_
 	double avesofar = 0.0;
 	
 	// Reliable k-mer filter on countsdenovo
-	unsigned int kmer_id_denovo = 0;
+	IT kmer_id_denovo = 0;
 
 	for(int sp = 0; sp < splits; ++sp)	// splits
 	{
@@ -651,7 +658,7 @@ void SplitCount(vector<filedata> & allfiles, dictionary_t_32bit& countsreliable_
 		} 
 		else 
 		{
-			int numReliableKmers = countsreliable_denovo.size();
+			size_t numReliableKmers = countsreliable_denovo.size();
 			printLog(numReliableKmers);
 		}
 
