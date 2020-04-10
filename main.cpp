@@ -51,7 +51,9 @@
 
 #define LSIZE 16000
 #define ITERS 10
-#define KMERINDEX uint64_t
+
+#define KMERINDEX uint32_t
+// #define KMERINDEX uint64_t
   
 using namespace std;
 
@@ -342,7 +344,7 @@ int main (int argc, char *argv[]) {
 	CuckooDict<KMERINDEX> countsreliable;
 
 	SplitCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound, 
-		InputCoverage, upperlimit, b_parameters, 8);
+		InputCoverage, upperlimit, b_parameters, 4);
 
 	double errorRate  = b_parameters.errorRate;
 	printLog(errorRate);
@@ -423,7 +425,7 @@ int main (int argc, char *argv[]) {
 		tuplecount += alltranstuples[t].size();
 	}
 
-#define WRITEDATAMATRIX
+// #define WRITEDATAMATRIX
 #ifdef WRITEDATAMATRIX
     WriteToDisk(alltranstuples, countsreliable, readcount, tuplecount);
 #endif
