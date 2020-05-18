@@ -115,13 +115,13 @@ vector<filedata>  GetFiles(char *filename) {
  * @brief SimpleCount
  * @param allfiles
  * @param countsreliable_denovo
- * @param lower
- * @param upper
+ * @param LowerBound
+ * @param UpperBound
  * @param b_pars.kmerSize
  * @param upperlimit
  */
 template <typename IT>
-void SimpleCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_denovo, int& lower, int& upper,
+void SimpleCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_denovo, int& LowerBound, int& UpperBound,
 	int coverage, size_t upperlimit, BELLApars & b_pars)
 {
 	vector < vector<double> > allquals(MAXTHREADS);
@@ -224,14 +224,14 @@ void SimpleCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_de
 
 	
 	// Reliable bounds computation using estimated error rate from phred quality score
-	lower = computeLower(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
-	upper = computeUpper(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
+	LowerBound = computeLower(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
+	UpperBound = computeUpper(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
 
 	// Reliable k-mer filter on countsdenovo
 	IT kmer_id_denovo = 0;
 	auto lt = countsdenovo.lock_table(); // our counting
 	for (const auto &it : lt) 
-		if (it.second >= lower && it.second <= upper)
+		if (it.second >= LowerBound && it.second <= UpperBound)
 		{
 			countsreliable_denovo.insert(it.first, kmer_id_denovo);
 			++kmer_id_denovo;
@@ -258,13 +258,13 @@ void SimpleCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_de
  * @brief DeNovoCount
  * @param allfiles
  * @param countsreliable_denovo
- * @param lower
- * @param upper
+ * @param LowerBound
+ * @param UpperBound
  * @param b_pars.kmerSize
  * @param upperlimit
  */
 template <typename IT>
-void DeNovoCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_denovo, int& lower, int& upper,
+void DeNovoCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_denovo, int& LowerBound, int& UpperBound,
 	int coverage, size_t upperlimit, BELLApars & b_pars)
 {
 	vector < vector<Kmer> >   allkmers(MAXTHREADS);
@@ -415,14 +415,14 @@ void DeNovoCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_de
 	printLog(SecondKmerPassTime);
 
 	// Reliable bounds computation using estimated error rate from phred quality score
-	lower = computeLower(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
-	upper = computeUpper(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
+	LowerBound = computeLower(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
+	UpperBound = computeUpper(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
 
 	// Reliable k-mer filter on countsdenovo
 	IT kmer_id_denovo = 0;
 	auto lt = countsdenovo.lock_table(); // our counting
 	for (const auto &it : lt) 
-		if (it.second >= lower && it.second <= upper)
+		if (it.second >= LowerBound && it.second <= UpperBound)
 		{
 			countsreliable_denovo.insert(it.first, kmer_id_denovo);
 			++kmer_id_denovo;
@@ -455,13 +455,13 @@ double getAvg(double prev_avg, double x, int64_t n)
  * @brief Split4Count
  * @param allfiles
  * @param countsreliable_denovo
- * @param lower
- * @param upper
+ * @param LowerBound
+ * @param UpperBound
  * @param b_pars.kmerSize
  * @param upperlimit
  */
 template <typename IT>
-void SplitCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_denovo, int& lower, int& upper, int coverage, size_t upperlimit, BELLApars & b_pars, const int splits)
+void SplitCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_denovo, int& LowerBound, int& UpperBound, int coverage, size_t upperlimit, BELLApars & b_pars)
 {
 	size_t totreads = 0;
 	size_t totbases = 0;
@@ -471,7 +471,7 @@ void SplitCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_den
 	// Reliable k-mer filter on countsdenovo
 	IT kmer_id_denovo = 0;
 
-	for(int sp = 0; sp < splits; ++sp)	// splits
+	for(int CurrSplitCount = 0; CurrSplitCount < b_pars.SplitCount; ++CurrSplitCount)	// b_pars.SplitCount
 	{
 		double denovocount = omp_get_wtime();
 		
@@ -517,12 +517,12 @@ void SplitCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_den
 							Kmer mykmer(kmerstrfromfastq.c_str(), kmerstrfromfastq.length());
 							Kmer lexsmall = mykmer.rep();
 
-							if(lexsmall.hash() % splits == sp)	// mod splits
+							if(lexsmall.hash() % b_pars.SplitCount == CurrSplitCount)	// mod b_pars.SplitCount
 							{
 								allkmers[MYTHREAD].push_back(lexsmall);
 								hlls[MYTHREAD].add((const char*) lexsmall.getBytes(), lexsmall.getNumBytes());
 							}
-							if(sp == 0 && b_pars.skipEstimate == false) 
+							if(CurrSplitCount == 0 && b_pars.skipEstimate == false) 
 							{
 								// accuracy
 								int bqual = (int)quals[i][j] - ASCIIBASE;
@@ -532,7 +532,7 @@ void SplitCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_den
 
 						}
 
-						if(sp == 0 && b_pars.skipEstimate == false) 
+						if(CurrSplitCount == 0 && b_pars.skipEstimate == false) 
 						{
 							// remaining k qual position accuracy
 							for(int j = len - b_pars.kmerSize + 1; j < len; j++)
@@ -547,7 +547,7 @@ void SplitCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_den
 				} //while(fillstatus) 
 				delete pfq;
 
-				if(sp == 0)	// don't overcount by a factor of splits 
+				if(CurrSplitCount == 0)	// don't overcount by a factor of b_pars.SplitCount 
 				{
 					#pragma omp critical
 					{
@@ -561,7 +561,7 @@ void SplitCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_den
 
 		} // for allfiles
 
-		if(sp == 0)
+		if(CurrSplitCount == 0)
 		{
 			if(b_pars.skipEstimate == false)
 			{
@@ -570,10 +570,10 @@ void SplitCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_den
 			}
 
 			// Reliable bounds computation using estimated error rate from phred quality score
-			lower = computeLower(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
-			upper = computeUpper(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
-			printLog(lower);
-			printLog(upper);
+			LowerBound = computeLower(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
+			UpperBound = computeUpper(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
+			printLog(LowerBound);
+			printLog(UpperBound);
 		}
 	
 		// HLL reduction (serial for now) to avoid double iteration
@@ -613,8 +613,9 @@ void SplitCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_den
 		for (int i=0; i<MAXTHREADS; i++)
 			tot_kmers+= allkmers[i].size();
 
-		printLog(sp);
-		printLog(tot_kmers);	
+		printLog(CurrSplitCount);
+    	std::string TotalKmers = std::to_string(tot_kmers);
+		printLog(TotalKmers);	
 	
 
 		double firstpass = omp_get_wtime();
@@ -641,7 +642,7 @@ void SplitCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_den
 		auto lt = countsdenovo.lock_table(); // our counting
 		for (const auto &it : lt) 
 		{
-			if (it.second >= lower && it.second <= upper)
+			if (it.second >= LowerBound && it.second <= UpperBound)
 			{
 				countsreliable_denovo.insert(it.first, kmer_id_denovo);
 				++kmer_id_denovo;
@@ -664,7 +665,7 @@ void SplitCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_den
 
 		countsdenovo.clear(); // free
 		
-	} // for all splits
+	} // for all b_pars.SplitCount
 }
 
 #endif

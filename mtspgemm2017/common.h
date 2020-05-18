@@ -46,10 +46,10 @@ struct BELLApars
 {
 	unsigned short int		kmerSize;			// KmerSize
 	unsigned short int		binSize;			// Bin size chaining algorithm 			(w)
-	unsigned short int		minOverlap;			// minimum overlap length	 			(l)
 	short int		        fixedThreshold;		// Default alignment score threshold 	(a)
 	unsigned short int		xDrop;				// SeqAn xDrop value 					(x)
 	unsigned short int		numGPU;				// Number GPUs available/to be used  	(g)
+	unsigned short int		SplitCount;			// Number of splits counting k-mers  	(s)
 	bool	skipEstimate;		// Do not estimate error but use user-defined error 	(e)
 	bool	skipAlignment;		// Do not align 										(z)
 	bool	outputPaf;			// Output in paf format 								(p)
@@ -59,7 +59,7 @@ struct BELLApars
 	double	errorRate;			// default error rate if estimation is disable 			(e)
 	double	minProbability;		// reliable range probability threshold 				(r)
 
-	BELLApars(): kmerSize(17), binSize(500), minOverlap(2000), fixedThreshold(-1), xDrop(7), numGPU(1),
+	BELLApars(): kmerSize(17), binSize(500), fixedThreshold(-1), xDrop(7), numGPU(1), SplitCount(1),
 					skipEstimate(true), skipAlignment(false), outputPaf(false), userDefMem(false), deltaChernoff(0.10), 
 						totalMemory(8000.0), errorRate(0.00), minProbability(0.10) {};
 };

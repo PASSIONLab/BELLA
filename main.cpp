@@ -70,7 +70,7 @@ int main (int argc, char *argv[]) {
 	// Follow an option with a colon to indicate that it requires an argument.
 
 	optList = NULL;
-	optList = GetOptList(argc, argv, (char*)"f:o:c:d:hk:a:ze:x:c:m:r:ps:qg:u:w:l:");
+	optList = GetOptList(argc, argv, (char*)"f:o:c:d:hk:a:ze:x:c:m:r:ps:qg:u:w:l:i:");
 
 	char	*all_inputs_fofn 	= NULL;	// List of fastqs (i)
 	char	*OutputFile 		= NULL;	// output filename (o)
@@ -188,8 +188,8 @@ int main (int argc, char *argv[]) {
 				printLog(UserDefinedMemory);
 				break;
 			}
-			case 'l': {
-				b_parameters.minOverlap = atoi(thisOpt->argument);
+			case 's': {
+				b_parameters.SplitCount = atoi(thisOpt->argument);
 				break;
 			}
 			case 'd': {
@@ -219,8 +219,8 @@ int main (int argc, char *argv[]) {
 				cout << "	-w : Bin size binning algorithm [500]" 	<< endl;
 				cout << "	-p : Output in PAF format [FALSE]" 		<< endl;
 				cout << "	-r : Probability threshold for reliable range [0.002]"  << endl;
-                cout << "	-g : GPUs available [1, only works when BELLA is compiled for GPU]\n" 	<< endl;
-				cout << "	-l : Lower bound for overlap length [2000]\n" 	<< endl;
+                cout << "	-g : GPUs available [1, only works when BELLA is compiled for GPU]" 	<< endl;
+				cout << "	-s : K-mer counting split count can be increased for large dataset [1]\n" 	<< endl;
 
 				FreeOptList(thisOpt); // Done with this list, free it
 				return 0;
@@ -316,6 +316,9 @@ int main (int argc, char *argv[]) {
     std::string ReliableCutoffProbability = std::to_string(b_parameters.minProbability);
     printLog(ReliableCutoffProbability);
 
+ 	std::string KmerSplitCount = std::to_string(b_parameters.SplitCount);
+    printLog(KmerSplitCount);
+
 #endif
 
 	double all;
@@ -344,7 +347,7 @@ int main (int argc, char *argv[]) {
 	CuckooDict<KMERINDEX> countsreliable;
 
 	SplitCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound, 
-		InputCoverage, upperlimit, b_parameters, 4);
+		InputCoverage, upperlimit, b_parameters);
 
 	double errorRate  = b_parameters.errorRate;
 	printLog(errorRate);
