@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <utility>
 #include <array>
+#include <typeinfo>
 #include <tuple>
 #include <queue>
 #include <memory>
@@ -52,8 +53,8 @@
 #define LSIZE 16000
 #define ITERS 10
 
-#define KMERINDEX uint32_t
-// #define KMERINDEX uint64_t
+#define KMERINDEX uint32_t		
+// #define KMERINDEX uint64_t 	// Uncomment to for large genomes and comment out line 56
   
 using namespace std;
 
@@ -268,8 +269,9 @@ int main (int argc, char *argv[]) {
 	vector<string> nametags;
 	readVector_ reads;
 	Kmers kmersfromreads;
+
 	// vector<tuple<unsigned int, unsigned int, unsigned short int>> occurrences;	// 32 bit, 32 bit, 16 bit (read, kmer, position)
-    	vector<tuple<KMERINDEX, KMERINDEX, unsigned short int>> transtuples;	// 32 bit, 32 bit, 16 bit (kmer, read, position)
+    vector<tuple<KMERINDEX, KMERINDEX, unsigned short int>> transtuples;	// 32 bit, 32 bit, 16 bit (kmer, read, position)
     
 	// ================== //
 	// Parameters Summary //
