@@ -180,3 +180,4 @@ inline std::string toHOPC(std::string original) {
 
 	return hopc;
 }
+#endif
