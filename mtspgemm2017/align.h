@@ -26,6 +26,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include "../kmercode/Kmer.hpp"
 
 #ifdef __NVCC__
 #include "../loganGPU/logan.cuh"
@@ -85,53 +86,56 @@ double slope(double error)
  * @param rlen is the length of the row sequence
  * @param i is the starting position of the k-mer on the first read
  * @param j is the starting position of the k-mer on the second read
- * @param xDrop
+ * @param xdrop
+ * @param useHOPC specifies whether HOPC representations of kmers are used
  * @return alignment score and extended seed
  */
-seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rlen, int i, int j, int xDrop, int kmerSize) {
-	// printLog("SeqAn");
-	Score<int, Simple> scoringScheme(1,-1,-1);
+seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rlen, int i, int j, int xdrop, int kmer_len, bool useHOPC, bool iRev, bool jRev) {
 
-	Dna5String seqH(row); 
-	Dna5String seqV(col); 
-	Dna5String seedH;
-	Dna5String seedV;
-	string strand;
-	int longestExtensionTemp;
-	seqAnResult longestExtensionScore;
+    Score<int, Simple> scoringScheme(1,-1,-1);
+
+    Dna5String seqH(row);
+    Dna5String seqV(col);
+    Dna5String seedH;
+    Dna5String seedV;
+    string strand;
+    int longestExtensionTemp;
+    seqAnResult longestExtensionScore;
 
 
-	TSeed seed(i, j, i + kmerSize, j + kmerSize);
-	seedH = infix(seqH, beginPositionH(seed), endPositionH(seed));
-	seedV = infix(seqV, beginPositionV(seed), endPositionV(seed));
+    TSeed seed(i, j, i+kmer_len, j+kmer_len);
+    seedH = infix(seqH, beginPositionH(seed), endPositionH(seed));
+    seedV = infix(seqV, beginPositionV(seed), endPositionV(seed));
 
-	/* we are reversing the "row", "col" is always on the forward strand */
-	Dna5StringReverseComplement twin(seedH);
+    /* we are reversing the "row", "col" is always on the forward strand */
+    Dna5StringReverseComplement twin(seedH);
 
-	if(twin == seedV)
-	{
-		strand = 'c';
-		Dna5StringReverseComplement twinRead(seqH);
-		i = rlen - i - kmerSize;
+    bool reverse = (twin == seedV) || (useHOPC && ( iRev != jRev ));
 
-		setBeginPositionH(seed, i);
-		setBeginPositionV(seed, j);
-		setEndPositionH(seed, i + kmerSize);
-		setEndPositionV(seed, j + kmerSize);
+    if ( reverse )
+    {
+        strand = 'c';
+        Dna5StringReverseComplement twinRead(seqH);
+        i = rlen-i-kmer_len;
 
-		/* Perform match extension */
-		longestExtensionTemp = extendSeed(seed, twinRead, seqV, EXTEND_BOTH, scoringScheme, xDrop, kmerSize, GappedXDrop());
+        setBeginPositionH(seed, i);
+        setBeginPositionV(seed, j);
+        setEndPositionH(seed, i+kmer_len);
+        setEndPositionV(seed, j+kmer_len);
 
-	} else
-	{
-		strand = 'n';
-		longestExtensionTemp = extendSeed(seed, seqH, seqV, EXTEND_BOTH, scoringScheme, xDrop,  kmerSize, GappedXDrop());
-	} 
+        /* Perform match extension */
+        longestExtensionTemp = extendSeed(seed, twinRead, seqV, EXTEND_BOTH, scoringScheme, xdrop, kmer_len, GappedXDrop());
 
-	longestExtensionScore.score = longestExtensionTemp;
-	longestExtensionScore.seed = seed;
-	longestExtensionScore.strand = strand;
-	return longestExtensionScore;
+    } else
+    {
+        strand = 'n';
+        longestExtensionTemp = extendSeed(seed, seqH, seqV, EXTEND_BOTH, scoringScheme, xdrop, kmer_len, GappedXDrop());
+    }
+
+    longestExtensionScore.score = longestExtensionTemp;
+    longestExtensionScore.seed = seed;
+    longestExtensionScore.strand = strand;
+    return longestExtensionScore;
 }
 
 #ifndef __NVCC__

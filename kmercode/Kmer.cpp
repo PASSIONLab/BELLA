@@ -292,9 +292,9 @@ std::vector<Kmer> Kmer::getKmers(std::string seq) {
 				 Kmer test(seq.c_str() + i);
 				 if(kmers[i] != test) { fprintf(stderr, "Invalid kmer kmer %d %s %s from %s\n", i, kmers[i].toString().c_str(), test.toString().c_str(), seq.c_str()); }
 #endif
-		 }
-	 }
-	 return kmers;
+		}
+	}
+	return kmers;
 }
 
 
@@ -305,8 +305,6 @@ uint64_t Kmer::hash() const {
 	assert(k_bytes>0);
 	return MurmurHash3_x64_64((const void*)bytes.data(),N_BYTES);
 }
-
-
 
 
 // use:  rep = km.rep();
@@ -419,8 +417,6 @@ Kmer Kmer::twin() const {
 // }
 
 
-
-
 // use:  bw = km.backwardBase(c)
 // pre:
 // post: bw is the backward kmer from km with first character c,
@@ -482,7 +478,6 @@ Kmer Kmer::hopc() const {
 // post: The bits in the binary representation of the
 //       DNA string for km has been printed to stdout
 std::string Kmer::getBinary() const {
-
 	size_t nlongs = N_LONGS;
 	std::string r;
 	r.reserve(64*nlongs);
@@ -527,7 +522,6 @@ std::string Kmer::toString() const {
 	toString(buf);
 	return std::string(buf);
 }
-
 
 
 // use:  km.shiftForward(i);
@@ -588,8 +582,6 @@ void Kmer::set_k(unsigned int _k) {
 	k_bytes = (_k+3)/4;
 	k_modmask = (1 << (2*((k%4)?k%4:4)) )-1;
 }
-
-
 
 unsigned int Kmer::k = 0;
 unsigned int Kmer::k_bytes = 0;

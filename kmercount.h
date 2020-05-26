@@ -309,7 +309,17 @@ void DeNovoCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_de
 					{
 						std::string kmerstrfromfastq = seqs[i].substr(j, b_pars.kmerSize);
 						Kmer mykmer(kmerstrfromfastq.c_str(), kmerstrfromfastq.length());
-						Kmer lexsmall = mykmer.rep();
+
+						Kmer lexsmall;
+
+						if (b_parameters.useHOPC)
+						{
+							lexsmall = mykmer.hopc();
+						}
+						else
+						{
+							lexsmall = mykmer.rep();
+						}
 
 						allkmers[MYTHREAD].push_back(lexsmall);
 						hlls[MYTHREAD].add((const char*) lexsmall.getBytes(), lexsmall.getNumBytes());
@@ -447,9 +457,9 @@ void DeNovoCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_de
 
 // Returns the new average after including x 
 double getAvg(double prev_avg, double x, int64_t n) 
-{ 
+{
 	return (prev_avg * n + x) / (n + 1); 
-} 
+}
 
 /**
  * @brief Split4Count
