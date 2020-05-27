@@ -425,8 +425,17 @@ void DeNovoCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_de
 	printLog(SecondKmerPassTime);
 
 	// Reliable bounds computation using estimated error rate from phred quality score
-	LowerBound = computeLower(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
-	UpperBound = computeUpper(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
+
+	if(b_pars.useHOPC)
+	{
+		LowerBound = computeLower(coverage, b_pars.HOPCerate, b_pars.kmerSize, b_pars.minProbability);
+		UpperBound = computeUpper(coverage, b_pars.HOPCerate, b_pars.kmerSize, b_pars.minProbability);
+	}
+	else
+	{
+		LowerBound = computeLower(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
+		UpperBound = computeUpper(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
+	}
 
 	// Reliable k-mer filter on countsdenovo
 	IT kmer_id_denovo = 0;
@@ -525,7 +534,17 @@ void SplitCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_den
 						{
 							std::string kmerstrfromfastq = seqs[i].substr(j, b_pars.kmerSize);
 							Kmer mykmer(kmerstrfromfastq.c_str(), kmerstrfromfastq.length());
-							Kmer lexsmall = mykmer.rep();
+
+							Kmer lexsmall;
+
+							if (b_pars.useHOPC)
+							{
+								lexsmall = mykmer.hopc();
+							}
+							else
+							{
+								lexsmall = mykmer.rep();
+							}
 
 							if(lexsmall.hash() % b_pars.SplitCount == CurrSplitCount)	// mod b_pars.SplitCount
 							{
@@ -580,8 +599,16 @@ void SplitCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_den
 			}
 
 			// Reliable bounds computation using estimated error rate from phred quality score
-			LowerBound = computeLower(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
-			UpperBound = computeUpper(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
+			if(b_pars.useHOPC)
+			{
+				LowerBound = computeLower(coverage, b_pars.HOPCerate, b_pars.kmerSize, b_pars.minProbability);
+				UpperBound = computeUpper(coverage, b_pars.HOPCerate, b_pars.kmerSize, b_pars.minProbability);
+			}
+			else
+			{
+				LowerBound = computeLower(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
+				UpperBound = computeUpper(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
+			}
 			printLog(LowerBound);
 			printLog(UpperBound);
 		}

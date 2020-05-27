@@ -73,7 +73,7 @@ int main (int argc, char *argv[]) {
 	// Follow an option with a colon to indicate that it requires an argument.
 
 	optList = NULL;
-	optList = GetOptList(argc, argv, (char*)"f:o:c:d:hk:a:ze:x:c:m:r:ps:qg:u:w:l:i:b:");
+	optList = GetOptList(argc, argv, (char*)"f:o:c:d:hk:a:ze:x:c:m:r:ps:qg:u:w:l:i:b");
 
 	char	*all_inputs_fofn 	= NULL;	// List of fastqs (i)
 	char	*OutputFile 		= NULL;	// output filename (o)
@@ -207,8 +207,6 @@ int main (int argc, char *argv[]) {
 			}
 			case 'b': {
 				b_parameters.useHOPC = true;
-				b_parameters.HOPCerate = strtod(thisOpt->argument, NULL);
-				cout << "HOPC enabled with error rate of " << b_parameters.HOPCerate << endl;
 				break;
 			}
 			case 'h': {
@@ -308,6 +306,19 @@ int main (int argc, char *argv[]) {
     std::string RunPairwiseAlignment = std::to_string(!b_parameters.skipAlignment);
     printLog(RunPairwiseAlignment);
 
+	if(b_parameters.useHOPC)
+	{
+		std::string HOPC = "ENABLED";
+		std::string erHOPC = std::to_string(b_parameters.HOPCerate);
+		printLog(HOPC);
+		printLog(erHOPC);
+	}
+	else 
+	{
+		std::string HOPC = "DISABLED";
+		printLog(HOPC);
+	}
+
 	if(b_parameters.fixedThreshold == -1)
 	{
 		std::string AdaptiveAlignmentThreshold = "ENABLED";
@@ -360,7 +371,17 @@ int main (int argc, char *argv[]) {
 	SplitCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound, 
 		InputCoverage, upperlimit, b_parameters);
 
-	double errorRate  = b_parameters.errorRate;
+	double errorRate;
+
+	if(b_parameters.useHOPC)
+	{
+		errorRate = b_parameters.HOPCerate;
+	}
+	else
+	{
+		errorRate = b_parameters.errorRate;
+	}
+
 	printLog(errorRate);
 	printLog(reliableLowerBound);
 	printLog(reliableUpperBound);
