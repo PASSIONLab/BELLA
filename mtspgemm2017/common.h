@@ -112,14 +112,6 @@ struct SortBy:std::binary_function<unsigned short int, unsigned short int, bool>
 	const std::vector<unsigned short int>& vec;
 };
 
-// sort function for sorting a vector of indices by the values in a vector of ints
-// struct SortBy : std::binary_function<int, int, bool>
-// {
-// 	SortBy(const std::vector<int>& par) : vec(par) {}
-// 	bool operator()(int idx1, int idx2) const { return vec[idx1] > vec[idx2]; }
-// 	const std::vector<int>& vec;
-// };
-
 struct spmatType_ {
 
 // <<<<<<< HEAD
