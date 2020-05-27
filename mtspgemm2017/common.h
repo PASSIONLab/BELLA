@@ -113,12 +113,12 @@ struct SortBy:std::binary_function<unsigned short int, unsigned short int, bool>
 };
 
 // sort function for sorting a vector of indices by the values in a vector of ints
-struct SortBy : std::binary_function<int, int, bool>
-{
-	SortBy(const std::vector<int>& par) : vec(par) {}
-	bool operator()(int idx1, int idx2) const { return vec[idx1] > vec[idx2]; }
-	const std::vector<int>& vec;
-};
+// struct SortBy : std::binary_function<int, int, bool>
+// {
+// 	SortBy(const std::vector<int>& par) : vec(par) {}
+// 	bool operator()(int idx1, int idx2) const { return vec[idx1] > vec[idx2]; }
+// 	const std::vector<int>& vec;
+// };
 
 struct spmatType_ {
 
@@ -183,8 +183,7 @@ struct spmatType_ {
 	// 	sorted_idx = vector<int>(support.size());
 	// 	std::iota(sorted_idx.begin(), sorted_idx.end(), 0);
 	// 	std::sort(sorted_idx.begin(), sorted_idx.end(), SortBy(support));
-
-	// }
+	}
 };
 
 typedef shared_ptr<spmatType_> spmatPtr_; // pointer to spmatType_ datastruct

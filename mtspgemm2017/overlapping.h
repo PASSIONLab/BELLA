@@ -272,6 +272,7 @@ IT* estimateNNZ_Hash(const CSC<IT,NT>& A, const CSC<IT,NT>& B, const IT* flopC, 
 				}
 			}
 		}
+	}
 	return colnnzC;
 }
 

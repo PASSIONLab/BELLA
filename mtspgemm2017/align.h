@@ -92,12 +92,12 @@ double slope(double error)
  */
 seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rlen, int i, int j, int xdrop, int kmer_len, bool useHOPC, bool iRev, bool jRev) {
 
-    Score<int, Simple> scoringScheme(1,-1,-1);
+    seqan::Score<int, Simple> scoringScheme(1,-1,-1);
 
-    Dna5String seqH(row);
-    Dna5String seqV(col);
-    Dna5String seedH;
-    Dna5String seedV;
+    seqan::Dna5String seqH(row);
+    seqan::Dna5String seqV(col);
+    seqan::Dna5String seedH;
+    seqan::Dna5String seedV;
     string strand;
     int longestExtensionTemp;
     seqAnResult longestExtensionScore;
@@ -108,14 +108,14 @@ seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rle
     seedV = infix(seqV, beginPositionV(seed), endPositionV(seed));
 
     /* we are reversing the "row", "col" is always on the forward strand */
-    Dna5StringReverseComplement twin(seedH);
+    seqan::Dna5StringReverseComplement twin(seedH);
 
     bool reverse = (twin == seedV) || (useHOPC && ( iRev != jRev ));
 
     if ( reverse )
     {
         strand = 'c';
-        Dna5StringReverseComplement twinRead(seqH);
+        seqan::Dna5StringReverseComplement twinRead(seqH);
         i = rlen-i-kmer_len;
 
         setBeginPositionH(seed, i);

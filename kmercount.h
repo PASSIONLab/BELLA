@@ -312,7 +312,7 @@ void DeNovoCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_de
 
 						Kmer lexsmall;
 
-						if (b_parameters.useHOPC)
+						if (b_pars.useHOPC)
 						{
 							lexsmall = mykmer.hopc();
 						}
