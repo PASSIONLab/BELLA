@@ -78,7 +78,8 @@ Optional flag description:
 -w : Bin size binning algorithm [500]   	 
 -p : Output in PAF format [FALSE]   		 
 -r : Probability threshold for reliable range [0.002]     
--g : GPUs available [1, only works when BELLA is compiled for GPU] 	 
+-g : GPUs available [1, only works when BELLA is compiled for GPU] 
+-s : K-mer counting split count can be increased for large dataset [1]	 
 ```
 ### Error Rate
 
