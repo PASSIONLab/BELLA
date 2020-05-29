@@ -34,6 +34,22 @@
 #include <stdint.h>
 #include <set> 
 
+// for testing. TODO: remove
+std::vector<std::string> split (const std::string &s, char delim)
+{
+	std::vector<std::string> result;
+	std::stringstream ss (s);
+	std::string item;
+
+	while (std::getline (ss, item, delim))
+	{
+		result.push_back (item);
+	}
+
+	return result;
+}
+
+
 using namespace seqan;
 
 #ifdef __NVCC__
@@ -82,13 +98,12 @@ double safety_net = 1.5;
 	in: an input array
 	size: the length of the input array "in"
 	nthreads: number of threads used to compute the prefix sum
- 
+
  Output:
 	return an array of size "size+1"
 	the memory of the output array is allocated internallay
  
  Example:
- 
 	in = [2, 1, 3, 5]
 	out = [0, 2, 3, 6, 11]
  */
@@ -112,7 +127,7 @@ T* prefixsum(T* in, int size, int nthreads)
 			sum += in[i];
 			psum[i] = sum;
 		}
-		
+
 		tsum[ithread+1] = sum;
 #pragma omp barrier
 		T offset = 0;
@@ -120,13 +135,13 @@ T* prefixsum(T* in, int size, int nthreads)
 		{
 			offset += tsum[i];
 		}
-		
+
 #pragma omp for schedule(static)
 		for (int i=0; i<size; i++)
 		{
 			psum[i] += offset;
 		}
-	
+
 	}
 	return out;
 }
@@ -158,7 +173,7 @@ IT* estimateFLOP(const CSC<IT,NT> & A, const CSC<IT,NT> & B, bool lowtriout)
 
 	#pragma omp parallel for
 		for(IT i=0; i < B.cols; ++i)
-		{
+			{
 			// size_t nnzcolB = B.colptr[i+1] - B.colptr[i]; // nnz in the current column of B
 			int myThread = omp_get_thread_num();
 			for (IT j = B.colptr[i]; j < B.colptr[i+1]; ++j)	// all nonzeros in that column of B
@@ -195,9 +210,9 @@ IT* estimateNNZ_Hash(const CSC<IT,NT>& A, const CSC<IT,NT>& B, const IT* flopC, 
 	{
 		return NULL;
 	}
-			
+
 	IT* colnnzC = new IT[B.cols]; // nnz in every  column of C
-	
+
 #pragma omp parallel for
 	for(IT i=0; i< B.cols; ++i)
 	{
@@ -226,7 +241,7 @@ IT* estimateNNZ_Hash(const CSC<IT,NT>& A, const CSC<IT,NT>& B, const IT* flopC, 
 		{
 			globalHashVec[j] = -1;
 		}
-			
+
 		for (IT j = B.colptr[i]; j < B.colptr[i+1]; ++j)	// all nonzeros in that column of B
 		{
 			IT col2fetch = B.rowids[j];	// find the row index of that nonzero in B, which is the column to fetch in A
@@ -265,7 +280,7 @@ IT* estimateNNZ_Hash(const CSC<IT,NT>& A, const CSC<IT,NT>& B, const IT* flopC, 
 //! If lowtriout= true, then only creates the lower triangular part: no diagonal and no upper triangular
 //! input matrices do not need to have sorted rowids within each column
 template <typename IT, typename NT, typename MultiplyOperation, typename AddOperation, typename FT>
-void LocalSpGEMM(IT & start, IT & end, const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, 
+void LocalSpGEMM(IT & start, IT & end, const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop,
 		vector<IT> * RowIdsofC, vector<FT> * ValuesofC, IT* colptrC, bool lowtriout)
 {
 
@@ -346,7 +361,6 @@ void LocalSpGEMM(IT & start, IT & end, const CSC<IT,NT> & A, const CSC<IT,NT> & 
 			ValuesofC[i-start][j] = globalHashVec[j].second;
 		}
 	}
-
 }
 
 double estimateMemory(const BELLApars & b_pars)
@@ -358,8 +372,10 @@ double estimateMemory(const BELLApars & b_pars)
 	}
 	else
 	{
+
 #if defined (OSX) // OSX-based memory consumption implementation 
 	vm_unsigned int page_size;
+
 	mach_port_t mach_port;
 	mach_msg_type_number_t count;
 	vm_statistics64_data_t vm_stats;
@@ -446,6 +462,7 @@ void PostAlignDecision(const seqAnResult& maxExtScore,
 	}
 	else if(maxExtScore.score >= b_pars.fixedThreshold)	// GG: this is only useful for debugging
 	{
+
 		passed = true;
 	}
 
@@ -1077,6 +1094,7 @@ void HashSpGEMMGPU(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation
 
 
 	uint64_t required_memory = safety_net * nnzc * (sizeof(FT)+sizeof(IT));	// required memory to form the output
+
 	int stages = std::ceil((double) required_memory/ free_memory); 	// form output in stages 
 	uint64_t nnzcperstage = free_memory / (safety_net * (sizeof(FT)+sizeof(IT)));
 

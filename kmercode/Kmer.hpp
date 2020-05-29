@@ -127,7 +127,6 @@ class Kmer {
 	//  tItem.theItem = 0xBEAD;
 	//  tItem.portions.lo = 0xEF; // The item now equals 0xBEEF
 
-
  // void shiftForward(int shift);
  // void shiftBackward(int shift);
 };
@@ -168,6 +167,7 @@ inline std::ostream& operator<<(std::ostream& out, const Kmer& k){
 };
 
 inline std::string toHOPC(std::string original) {
+
 	std::string hopc = "";
 
 	char last = '\n';
@@ -180,5 +180,4 @@ inline std::string toHOPC(std::string original) {
 
 	return hopc;
 }
-
 #endif

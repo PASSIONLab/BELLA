@@ -63,15 +63,17 @@ int main (int argc, char *argv[]) {
 	// Program name and purpose
 	//
 	cout << "\nBELLA: Long Read to Long Read Aligner and Overlapper\n" << endl;
+
 	//
 	// Setup the input files
 	//
 	option_t *optList, *thisOpt;
+
 	// Get list of command line options and their arguments 
 	// Follow an option with a colon to indicate that it requires an argument.
 
 	optList = NULL;
-	optList = GetOptList(argc, argv, (char*)"f:o:c:d:hk:a:ze:x:c:m:r:ps:qg:u:w:l:i:");
+	optList = GetOptList(argc, argv, (char*)"f:o:c:d:hk:a:ze:x:c:m:r:ps:qg:u:w:l:i:b");
 
 	char	*all_inputs_fofn 	= NULL;	// List of fastqs (i)
 	char	*OutputFile 		= NULL;	// output filename (o)
@@ -81,7 +83,7 @@ int main (int argc, char *argv[]) {
 
 	if(optList == NULL)
 	{
-        std::string ErrorMessage("BELLA execution terminated: not enough parameters or invalid option. Run with -h to print out the command line options.\n");
+		std::string ErrorMessage("BELLA execution terminated: not enough parameters or invalid option. Run with -h to print out the command line options.\n");
 		printLog(ErrorMessage);
 		return 0;
 	}
@@ -123,10 +125,10 @@ int main (int argc, char *argv[]) {
 				OutputFile[len1 + len2] = '\0';
 
 				delete line1;
-                delete line2;
-                
-                // Delete file to avoid errors in output
-                remove(OutputFile);
+				delete line2;
+				
+				// Delete file to avoid errors in output
+				remove(OutputFile);
 
 				break;
 			}
@@ -178,7 +180,7 @@ int main (int argc, char *argv[]) {
 				b_parameters.binSize = atoi(thisOpt->argument);
 				break;
 			}
-            case 'g': {
+			case 'g': {
 				b_parameters.numGPU = atoi(thisOpt->argument);
 				break;
 			}
@@ -203,6 +205,10 @@ int main (int argc, char *argv[]) {
 				b_parameters.deltaChernoff = stod(thisOpt->argument);
 				break;
 			}
+			case 'b': {
+				b_parameters.useHOPC = true;
+				break;
+			}
 			case 'h': {
 				cout << "Usage:\n" << endl;
 				cout << "	-f : List of fastq(s)	(required)" 	<< endl;
@@ -220,8 +226,9 @@ int main (int argc, char *argv[]) {
 				cout << "	-w : Bin size binning algorithm [500]" 	<< endl;
 				cout << "	-p : Output in PAF format [FALSE]" 		<< endl;
 				cout << "	-r : Probability threshold for reliable range [0.002]"  << endl;
-                cout << "	-g : GPUs available [1, only works when BELLA is compiled for GPU]" 	<< endl;
+				cout << "	-g : GPUs available [1, only works when BELLA is compiled for GPU]" 	<< endl;
 				cout << "	-s : K-mer counting split count can be increased for large dataset [1]\n" 	<< endl;
+				cout << "	-b : Use HOPC representation with HOPC erate [false | 0.035]\n" << endl;
 
 				FreeOptList(thisOpt); // Done with this list, free it
 				return 0;
@@ -235,8 +242,8 @@ int main (int argc, char *argv[]) {
 		printLog(ErrorMessage);
 
 		return 0;
-    }
-    
+	}
+
 	if(b_parameters.errorRate == 0.00 && b_parameters.skipEstimate == true)
 	{
 		std::string str1 = "BELLA execution terminated. The user should either:\n\n";
@@ -251,12 +258,12 @@ int main (int argc, char *argv[]) {
 	}
 
 	free(optList);
-    free(thisOpt);
-    
+	free(thisOpt);
+
 	// ================ //
 	// 	 Declarations   //
 	// ================ //
-    
+
 	vector<filedata> allfiles = GetFiles(all_inputs_fofn);
 	std::string all_inputs_gerbil = std::string(all_inputs_fofn); 
 	int reliableLowerBound, reliableUpperBound; // reliable range reliableLowerBound and reliableUpperBound bound
@@ -271,8 +278,8 @@ int main (int argc, char *argv[]) {
 	Kmers kmersfromreads;
 
 	// vector<tuple<unsigned int, unsigned int, unsigned short int>> occurrences;	// 32 bit, 32 bit, 16 bit (read, kmer, position)
-    vector<tuple<KMERINDEX, KMERINDEX, unsigned short int>> transtuples;	// 32 bit, 32 bit, 16 bit (kmer, read, position)
-    
+	vector<tuple<KMERINDEX, KMERINDEX, unsigned short int>> transtuples;	// 32 bit, 32 bit, 16 bit (kmer, read, position)
+
 	// ================== //
 	// Parameters Summary //
 	// ================== //
@@ -298,6 +305,19 @@ int main (int argc, char *argv[]) {
 
     std::string RunPairwiseAlignment = std::to_string(!b_parameters.skipAlignment);
     printLog(RunPairwiseAlignment);
+
+	if(b_parameters.useHOPC)
+	{
+		std::string HOPC = "ENABLED";
+		std::string erHOPC = std::to_string(b_parameters.HOPCerate);
+		printLog(HOPC);
+		printLog(erHOPC);
+	}
+	else 
+	{
+		std::string HOPC = "DISABLED";
+		printLog(HOPC);
+	}
 
 	if(b_parameters.fixedThreshold == -1)
 	{
@@ -351,7 +371,17 @@ int main (int argc, char *argv[]) {
 	SplitCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound, 
 		InputCoverage, upperlimit, b_parameters);
 
-	double errorRate  = b_parameters.errorRate;
+	double errorRate;
+
+	if(b_parameters.useHOPC)
+	{
+		errorRate = b_parameters.HOPCerate;
+	}
+	else
+	{
+		errorRate = b_parameters.errorRate;
+	}
+
 	printLog(errorRate);
 	printLog(reliableLowerBound);
 	printLog(reliableUpperBound);
@@ -403,7 +433,17 @@ int main (int argc, char *argv[]) {
 					std::string kmerstrfromfastq = seqs[i].substr(j, b_parameters.kmerSize);
 					Kmer mykmer(kmerstrfromfastq.c_str(), kmerstrfromfastq.length());
 					// remember to use only ::rep() when building kmerdict as well
-					Kmer lexsmall = mykmer.rep();
+					Kmer lexsmall;
+
+					if (b_parameters.useHOPC)
+					{
+						lexsmall = mykmer.hopc();
+					}
+					else
+					{
+						// remember to use only ::rep() when building kmerdict as well
+						lexsmall = mykmer.rep();
+					}
 
 					KMERINDEX idx; // kmer_id
 					auto found = countsreliable.find(lexsmall,idx);
@@ -434,7 +474,7 @@ int main (int argc, char *argv[]) {
 #ifdef WRITEDATAMATRIX
     WriteToDisk(alltranstuples, countsreliable, readcount, tuplecount);
 #endif
-    
+
 	reads.resize(readcount);
 	//occurrences.resize(tuplecount);
 	transtuples.resize(tuplecount);
@@ -520,6 +560,5 @@ int main (int argc, char *argv[]) {
 
     std::string TotalRuntime = std::to_string(omp_get_wtime()-all) + " seconds";   
     printLog(TotalRuntime);
-
 	return 0;
 }

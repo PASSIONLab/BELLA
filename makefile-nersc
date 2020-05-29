@@ -2,8 +2,9 @@ RMATPATH = mtspgemm2017/GTgraph/R-MAT
 SPRNPATH = mtspgemm2017/GTgraph/sprng2.0-lite
 SEQANPATH = seqan
 LOGANPATH = loganGPU
+XAVIER_DIR=xavier
 include mtspgemm2017/GTgraph/Makefile.var
-INCLUDE = -I$(SPRNPATH)/include -I$(LOGANPATH) -I$(SEQANPATH)
+INCLUDE = -I$(SPRNPATH)/include -I$(LOGANPATH) -I$(SEQANPATH) # -I${XAVIER_DIR}/include
 MLKINCLUDE = -I/opt/intel/composer_xe_2015.0.039/mkl/include
 LIBPATH = -L/opt/intel/composer_xe_2015.0.039/mkl/lib 
 
@@ -19,7 +20,7 @@ sprng:
 rmat:	sprng
 	(cd $(RMATPATH); $(MAKE); cd ../..)
 
-LIBS = -L$(CURDIR)/libbloom/build -lbloom -lpthread -lbz2 -lz
+LIBS = -L$(CURDIR)/libbloom/build -lbloom -lpthread -lbz2 -lz #${XAVIER_DIR}/lib/libxavier.a
 
 Buffer.o: kmercode/Buffer.c
 	$(CC) -O3 -fopenmp -c -o Buffer.o kmercode/Buffer.c
@@ -34,6 +35,9 @@ hash_funcs.o: kmercode/hash_funcs.c
 	$(CC) -O3 -fopenmp -c -o hash_funcs.o kmercode/hash_funcs.c
 
 bloomlib:
+	$(MAKE) -C libbloom all
+
+xavierlib:
 	$(MAKE) -C libbloom all
 
 optlist.o:	optlist/optlist.c optlist/optlist.h
