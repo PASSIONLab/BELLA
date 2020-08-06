@@ -34,6 +34,8 @@
 #include "chain.h"
 #include "bellaio.h"
 
+#include "minimap/sketch.h"
+
 #include "kmercode/hash_funcs.h"
 #include "kmercode/Kmer.hpp"
 #include "kmercode/Buffer.h"
@@ -420,6 +422,11 @@ int main (int argc, char *argv[]) {
 			{
 				// remember that the last valid position is length()-1
 				int len = seqs[i].length();
+                
+//                mm128_v a;
+//                mm_idx_t * mi; // need to allocate memory?
+//                mm_sketch(0, seqs[i].c_str(), len, b_parameters.w,
+//                          b_parameters.kmerSize, temp.readid, b_parameters.useHOPC, &a, mi);
 
 				readType_ temp;
 				nametags[i].erase(nametags[i].begin());	// removing "@"
