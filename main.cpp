@@ -370,8 +370,16 @@ int main (int argc, char *argv[]) {
 
 	CuckooDict<KMERINDEX> countsreliable;
 
-	SplitCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound, 
-		InputCoverage, upperlimit, b_parameters);
+    if(b_parameters.useMinimizer)
+    {
+        MinimizerCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound,
+        InputCoverage, upperlimit, b_parameters);
+    }
+    else
+    {
+        SplitCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound,
+                   InputCoverage, upperlimit, b_parameters);
+    }
 
 	double errorRate;
 
@@ -422,11 +430,6 @@ int main (int argc, char *argv[]) {
 			{
 				// remember that the last valid position is length()-1
 				int len = seqs[i].length();
-                
-//                mm128_v a;
-//                mm_idx_t * mi; // need to allocate memory?
-//                mm_sketch(0, seqs[i].c_str(), len, b_parameters.w,
-//                          b_parameters.kmerSize, temp.readid, b_parameters.useHOPC, &a, mi);
 
 				readType_ temp;
 				nametags[i].erase(nametags[i].begin());	// removing "@"
@@ -434,32 +437,54 @@ int main (int argc, char *argv[]) {
 				temp.seq = seqs[i];    					// save reads for seeded alignment
 				temp.readid = numReads+i;
 				allreads[MYTHREAD].push_back(temp);
+                
+                if(b_parameters.useMinimizer)
+                {
+                    vector<Kmer> seqkmers, seqminimizers;
+                    for(int j = 0; j <= len - b_parameters.kmerSize; j++)   // AB: optimize this sliding-window parsing ala HipMer
+                    {
+                        std::string kmerstrfromfastq = seqs[i].substr(j, b_parameters.kmerSize);
+                        Kmer mykmer(kmerstrfromfastq.c_str(), kmerstrfromfastq.length());
+                        seqkmers.emplace_back(mykmer);
+                    }
+                    GetMinimizers(b_parameters.windowlen, seqkmers, seqminimizers, b_parameters.useHOPC);
+                    for(auto minkmer: seqminimizers)
+                    {
+                        KMERINDEX idx; // kmer_id
+                        auto found = countsreliable.find(minkmer,idx);
+                        if(found)
+                        {
+                            alltranstuples[MYTHREAD].emplace_back(std::make_tuple(idx, numReads+i, j));
+                        }
+                    }
+                }
+                else
+                {
+                    for(int j = 0; j <= len - b_parameters.kmerSize; j++)
+                    {
+                        std::string kmerstrfromfastq = seqs[i].substr(j, b_parameters.kmerSize);
+                        Kmer mykmer(kmerstrfromfastq.c_str(), kmerstrfromfastq.length());
+                        // remember to use only ::rep() when building kmerdict as well
+                        Kmer lexsmall;
+                        if (b_parameters.useHOPC)
+                        {
+                            lexsmall = mykmer.hopc();
+                        }
+                        else
+                        {
+                            // remember to use only ::rep() when building kmerdict as well
+                            lexsmall = mykmer.rep();
+                        }
 
-				for(int j = 0; j <= len - b_parameters.kmerSize; j++)  
-				{
-					std::string kmerstrfromfastq = seqs[i].substr(j, b_parameters.kmerSize);
-					Kmer mykmer(kmerstrfromfastq.c_str(), kmerstrfromfastq.length());
-					// remember to use only ::rep() when building kmerdict as well
-					Kmer lexsmall;
-
-					if (b_parameters.useHOPC)
-					{
-						lexsmall = mykmer.hopc();
-					}
-					else
-					{
-						// remember to use only ::rep() when building kmerdict as well
-						lexsmall = mykmer.rep();
-					}
-
-					KMERINDEX idx; // kmer_id
-					auto found = countsreliable.find(lexsmall,idx);
-					if(found)
-					{
-						//alloccurrences[MYTHREAD].emplace_back(std::make_tuple(numReads+i, idx, j)); // vector<tuple<numReads,kmer_id,kmerpos>>
-						alltranstuples[MYTHREAD].emplace_back(std::make_tuple(idx, numReads+i, j)); // transtuples.push_back(col_id,row_id,kmerpos)
-					}
-				}
+                        KMERINDEX idx; // kmer_id
+                        auto found = countsreliable.find(lexsmall,idx);
+                        if(found)
+                        {
+                            //alloccurrences[MYTHREAD].emplace_back(std::make_tuple(numReads+i, idx, j)); // vector<tuple<numReads,kmer_id,kmerpos>>
+                            alltranstuples[MYTHREAD].emplace_back(std::make_tuple(idx, numReads+i, j)); // transtuples.push_back(col_id,row_id,kmerpos)
+                        }
+                    }
+                }
 			} // for(int i=0; i<nreads; i++)
 			numReads += nreads;
 		} //while(fillstatus) 
