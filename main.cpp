@@ -34,7 +34,6 @@
 #include "chain.h"
 #include "bellaio.h"
 
-#include "minimap/sketch.h"
 
 #include "kmercode/hash_funcs.h"
 #include "kmercode/Kmer.hpp"
