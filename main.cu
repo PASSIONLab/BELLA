@@ -8,8 +8,8 @@
 #include <stdlib.h>
 #include <algorithm>
 #include <utility>
-#include <Python.h>
 #include <array>
+#include <typeinfo>
 #include <tuple>
 #include <queue>
 #include <memory>
@@ -29,10 +29,10 @@
 #include <unordered_map>
 #include <omp.h>
 
-#include "myMarkov.h"
 #include "libcuckoo/cuckoohash_map.hh"
 #include "kmercount.h"
 #include "chain.h"
+#include "bellaio.h"
 
 #include "kmercode/hash_funcs.h"
 #include "kmercode/Kmer.hpp"
@@ -52,6 +52,9 @@
 
 #define LSIZE 16000
 #define ITERS 10
+
+#define KMERINDEX uint32_t		
+// #define KMERINDEX uint64_t 	// Uncomment to for large genomes and comment out line 56
   
 using namespace std;
 
@@ -68,7 +71,7 @@ int main (int argc, char *argv[]) {
 	// Follow an option with a colon to indicate that it requires an argument.
 
 	optList = NULL;
-	optList = GetOptList(argc, argv, (char*)"f:o:c:d:hk:a:ze:x:c:m:r:pbs:q:g:u:w:");
+	optList = GetOptList(argc, argv, (char*)"f:o:c:d:hk:a:ze:x:c:m:r:ps:qg:u:w:l:i:");
 
 	char	*all_inputs_fofn 	= NULL;	// List of fastqs (i)
 	char	*OutputFile 		= NULL;	// output filename (o)
@@ -163,10 +166,6 @@ int main (int argc, char *argv[]) {
 				b_parameters.errorRate = 0.15;	// Default value
 				break;
 			}
-			case 'b': { // K-mer buckets to reduce memory footprint
-				b_parameters.myMarkovOverlap = 0;
-				break;
-			}
 			case 'a': {
 				b_parameters.fixedThreshold = atoi(thisOpt->argument);
 				break;
@@ -190,6 +189,10 @@ int main (int argc, char *argv[]) {
 				printLog(UserDefinedMemory);
 				break;
 			}
+			case 's': {
+				b_parameters.SplitCount = atoi(thisOpt->argument);
+				break;
+			}
 			case 'd': {
 				if(stod(thisOpt->argument) > 1.0 || stod(thisOpt->argument) < 0.0)
 				{
@@ -211,14 +214,14 @@ int main (int argc, char *argv[]) {
 				cout << "	-e : Error rate [0.15]" 				<< endl;
 				cout << "	-q : Estimare error rate from the dataset [FALSE]" 	<< endl;
 				cout << "	-u : Use default error rate setting [FALSE]"		<< endl;
-				cout << "	-b : Discard pairs with less than <MarkovThreshold> shared k-mers [FALSE]"   	<< endl;
 				cout << "	-m : Total RAM of the system in MB [auto estimated if possible or 8,000 if not]"	<< endl;
 				cout << "	-z : Do not run pairwise alignment [FALSE]" 			<< endl;
 				cout << "	-d : Deviation from the mean alignment score [0.10]"	<< endl;
 				cout << "	-w : Bin size binning algorithm [500]" 	<< endl;
 				cout << "	-p : Output in PAF format [FALSE]" 		<< endl;
 				cout << "	-r : Probability threshold for reliable range [0.002]"  << endl;
-                cout << "	-g : GPUs available [1, only works when BELLA is compiled for GPU]\n" 	<< endl;
+                cout << "	-g : GPUs available [1, only works when BELLA is compiled for GPU]" 	<< endl;
+				cout << "	-s : K-mer counting split count can be increased for large dataset [1]\n" 	<< endl;
 
 				FreeOptList(thisOpt); // Done with this list, free it
 				return 0;
@@ -266,8 +269,9 @@ int main (int argc, char *argv[]) {
 	vector<string> nametags;
 	readVector_ reads;
 	Kmers kmersfromreads;
+
 	// vector<tuple<unsigned int, unsigned int, unsigned short int>> occurrences;	// 32 bit, 32 bit, 16 bit (read, kmer, position)
-    vector<tuple<unsigned int, unsigned int, unsigned short int>> transtuples;	// 32 bit, 32 bit, 16 bit (kmer, read, position)
+    vector<tuple<KMERINDEX, KMERINDEX, unsigned short int>> transtuples;	// 32 bit, 32 bit, 16 bit (kmer, read, position)
     
 	// ================== //
 	// Parameters Summary //
@@ -280,7 +284,7 @@ int main (int argc, char *argv[]) {
     std::string kmerSize = std::to_string(b_parameters.kmerSize);
     printLog(kmerSize);
 
-	std::string GPUs = std::to_string(b_parameters.numGPU);
+	std::string GPUs = "DISABLED";
     printLog(GPUs);
 
     std::string OutputPAF = std::to_string(b_parameters.outputPaf);
@@ -314,6 +318,9 @@ int main (int argc, char *argv[]) {
     std::string ReliableCutoffProbability = std::to_string(b_parameters.minProbability);
     printLog(ReliableCutoffProbability);
 
+ 	std::string KmerSplitCount = std::to_string(b_parameters.SplitCount);
+    printLog(KmerSplitCount);
+
 #endif
 
 	double all;
@@ -339,22 +346,13 @@ int main (int argc, char *argv[]) {
 	//  K-mer Counting  //
 	// ================ //
 
-	CuckooDict<uint32_t> countsreliable;
+	CuckooDict<KMERINDEX> countsreliable;
 
 	SplitCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound, 
-		InputCoverage, upperlimit, b_parameters, 4);
-	
-	// ==================== //
-	//  Markov Computation  //
-	// ==================== //
+		InputCoverage, upperlimit, b_parameters);
 
-	if(b_parameters.myMarkovOverlap != -1)
-		b_parameters.myMarkovOverlap = myMarkovFunc(b_parameters);
-
-	double errorRate = b_parameters.errorRate;
-	int markovOverlap = b_parameters.myMarkovOverlap;
+	double errorRate  = b_parameters.errorRate;
 	printLog(errorRate);
-	printLog(markovOverlap);
 	printLog(reliableLowerBound);
 	printLog(reliableUpperBound);
 
@@ -365,7 +363,6 @@ int main (int argc, char *argv[]) {
 		printLog(AdaptiveThresholdConstant); 
 	}
 
-
 	// ================ //
 	// Fastq(s) Parsing //
 	// ================ //
@@ -373,7 +370,7 @@ int main (int argc, char *argv[]) {
 	double parsefastq = omp_get_wtime();
 
 	// vector<vector<tuple<unsigned int, unsigned int, unsigned short int>>> alloccurrences(MAXTHREADS);
-	vector<vector<tuple<unsigned int, unsigned int, unsigned short int>>> alltranstuples(MAXTHREADS);
+	vector<vector<tuple<KMERINDEX, KMERINDEX, unsigned short int>>> alltranstuples(MAXTHREADS);
 
 	unsigned int numReads = 0; // numReads needs to be global (not just per file)
 
@@ -384,11 +381,11 @@ int main (int argc, char *argv[]) {
 
 		unsigned int fillstatus = 1;
 		while(fillstatus)
-		{ 
+		{
 			fillstatus = pfq->fill_block(nametags, seqs, quals, upperlimit);
 			unsigned int nreads = seqs.size();
 
-			#pragma omp parallel for
+		#pragma omp parallel for
 			for(int i=0; i<nreads; i++) 
 			{
 				// remember that the last valid position is length()-1
@@ -408,7 +405,7 @@ int main (int argc, char *argv[]) {
 					// remember to use only ::rep() when building kmerdict as well
 					Kmer lexsmall = mykmer.rep();
 
-					unsigned int idx; // kmer_id
+					KMERINDEX idx; // kmer_id
 					auto found = countsreliable.find(lexsmall,idx);
 					if(found)
 					{
@@ -420,11 +417,12 @@ int main (int argc, char *argv[]) {
 			numReads += nreads;
 		} //while(fillstatus) 
 		delete pfq;
+
 	} // for all files
 
 
-	unsigned int readcount = 0;
-	unsigned int tuplecount = 0;
+	KMERINDEX readcount = 0;
+	KMERINDEX tuplecount = 0;
 
 	for(int t=0; t<MAXTHREADS; ++t)
 	{
@@ -432,6 +430,11 @@ int main (int argc, char *argv[]) {
 		tuplecount += alltranstuples[t].size();
 	}
 
+// #define WRITEDATAMATRIX
+#ifdef WRITEDATAMATRIX
+    WriteToDisk(alltranstuples, countsreliable, readcount, tuplecount);
+#endif
+    
 	reads.resize(readcount);
 	//occurrences.resize(tuplecount);
 	transtuples.resize(tuplecount);
@@ -464,20 +467,20 @@ int main (int argc, char *argv[]) {
 
 	unsigned int nkmer = countsreliable.size();
 	double matcreat = omp_get_wtime();
-	CSC<unsigned int, unsigned short int> transpmat(transtuples, nkmer, numReads, 
+	CSC<KMERINDEX, unsigned short int> transpmat(transtuples, nkmer, numReads,
 							[] (unsigned short int& p1, unsigned short int& p2) 
 							{
 								return p1;
 							}, false);	// hashspgemm doesn't require sorted rowids within each column
 	// remove memory of transtuples
-	std::vector<tuple<unsigned int, unsigned int, unsigned short int>>().swap(transtuples);
+	std::vector<tuple<KMERINDEX, KMERINDEX, unsigned short int>>().swap(transtuples);
 
 	std::string TransposeSparseMatrixCreationTime = std::to_string(omp_get_wtime() - matcreat) + " seconds";
 	printLog(TransposeSparseMatrixCreationTime);
 
 
 	double transbeg = omp_get_wtime();	
-	CSC<unsigned int, unsigned short int> spmat = transpmat.Transpose();
+	CSC<KMERINDEX, unsigned short int> spmat = transpmat.Transpose();
 	std::string ReTransposeTime = std::to_string(omp_get_wtime() - transbeg) + " seconds";
 	printLog(ReTransposeTime);
 
