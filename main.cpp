@@ -33,6 +33,7 @@
 #include "kmercount.h"
 #include "chain.h"
 #include "bellaio.h"
+#include "minimizer.h"
 
 
 #include "kmercode/hash_funcs.h"
@@ -177,7 +178,7 @@ int main (int argc, char *argv[]) {
 				b_parameters.xDrop = atoi(thisOpt->argument);
 				break;
 			}
-			case 'w': {
+			case 'b': {
 				b_parameters.binSize = atoi(thisOpt->argument);
 				break;
 			}
@@ -206,11 +207,16 @@ int main (int argc, char *argv[]) {
 				b_parameters.deltaChernoff = stod(thisOpt->argument);
 				break;
 			}
-			case 'b': {
+			case 'h': {
 				b_parameters.useHOPC = true;
 				break;
 			}
-			case 'h': {
+            case 'w': {
+                    b_parameters.useMinimizer = true;
+                    b_parameters.windowlen = atoi(thisOpt->argument);
+                    break;
+                }
+			case 'i': {
 				cout << "Usage:\n" << endl;
 				cout << "	-f : List of fastq(s)	(required)" 	<< endl;
 				cout << "	-o : Output filename	(required)" 	<< endl;
@@ -224,12 +230,14 @@ int main (int argc, char *argv[]) {
 				cout << "	-m : Total RAM of the system in MB [auto estimated if possible or 8,000 if not]"	<< endl;
 				cout << "	-z : Do not run pairwise alignment [FALSE]" 			<< endl;
 				cout << "	-d : Deviation from the mean alignment score [0.10]"	<< endl;
-				cout << "	-w : Bin size binning algorithm [500]" 	<< endl;
+				cout << "	-b : Bin size binning algorithm [500]" 	<< endl;
 				cout << "	-p : Output in PAF format [FALSE]" 		<< endl;
 				cout << "	-r : Probability threshold for reliable range [0.002]"  << endl;
 				cout << "	-g : GPUs available [1, only works when BELLA is compiled for GPU]" 	<< endl;
-				cout << "	-s : K-mer counting split count can be increased for large dataset [1]\n" 	<< endl;
-				cout << "	-b : Use HOPC representation with HOPC erate [false | 0.035]\n" << endl;
+				cout << "	-s : K-mer counting split count can be increased for large dataset [1]" 	<< endl;
+				cout << "	-h : Use HOPC representation with HOPC erate [false | 0.035]" << endl;
+                cout << "   -w : Window length for minimizer selection [none | if provided, enables minimizers]" << endl;
+
 
 				FreeOptList(thisOpt); // Done with this list, free it
 				return 0;
@@ -239,7 +247,7 @@ int main (int argc, char *argv[]) {
 
 	if(all_inputs_fofn == NULL || OutputFile == NULL || InputCoverage == 0)
 	{
-		std::string ErrorMessage = "BELLA execution terminated: missing arguments. Run with -h to print out the command line options.\n";
+		std::string ErrorMessage = "BELLA execution terminated: missing arguments. Run with -i to print out the command line options.\n";
 		printLog(ErrorMessage);
 
 		return 0;
@@ -341,6 +349,9 @@ int main (int argc, char *argv[]) {
 
  	std::string KmerSplitCount = std::to_string(b_parameters.SplitCount);
     printLog(KmerSplitCount);
+    
+    std::string minimizerwindow = std::to_string(b_parameters.windowlen);
+    printLog(minimizerwindow);
 
 #endif
 
@@ -439,21 +450,26 @@ int main (int argc, char *argv[]) {
                 
                 if(b_parameters.useMinimizer)
                 {
-                    vector<Kmer> seqkmers, seqminimizers;
+                    vector<Kmer> seqkmers;
+                    std::vector< std::pair<int, uint64_t> > seqminimizers;    // <position_in_read, hash>
                     for(int j = 0; j <= len - b_parameters.kmerSize; j++)   // AB: optimize this sliding-window parsing ala HipMer
                     {
                         std::string kmerstrfromfastq = seqs[i].substr(j, b_parameters.kmerSize);
                         Kmer mykmer(kmerstrfromfastq.c_str(), kmerstrfromfastq.length());
                         seqkmers.emplace_back(mykmer);
                     }
-                    GetMinimizers(b_parameters.windowlen, seqkmers, seqminimizers, b_parameters.useHOPC);
-                    for(auto minkmer: seqminimizers)
+                    getMinimizers(b_parameters.windowlen, seqkmers, seqminimizers, b_parameters.useHOPC);
+                    cout << seqkmers.size() << " k-mers generated " << seqminimizers.size() << " minimizers" << endl;
+                    for(auto minpos: seqminimizers)
                     {
+                        std::string strminkmer = seqs[i].substr(minpos.first, b_parameters.kmerSize);
+                        Kmer myminkmer(strminkmer.c_str(), strminkmer.length());
+                        
                         KMERINDEX idx; // kmer_id
-                        auto found = countsreliable.find(minkmer,idx);
+                        auto found = countsreliable.find(myminkmer,idx);
                         if(found)
                         {
-                            alltranstuples[MYTHREAD].emplace_back(std::make_tuple(idx, numReads+i, j));
+                            alltranstuples[MYTHREAD].emplace_back(std::make_tuple(idx, numReads+i, minpos.first));
                         }
                     }
                 }

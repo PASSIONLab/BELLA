@@ -45,7 +45,7 @@ extern "C" {
 struct BELLApars
 {
 	unsigned short int		kmerSize;			// KmerSize
-	unsigned short int		binSize;			// Bin size chaining algorithm 			(w)
+	unsigned short int		binSize;			// Bin size chaining algorithm 			(b)
 	short int		        fixedThreshold;		// Default alignment score threshold 	(a)
 	unsigned short int		xDrop;				// SeqAn xDrop value 					(x)
 	unsigned short int		numGPU;				// Number GPUs available/to be used  	(g)
@@ -62,11 +62,14 @@ struct BELLApars
 	double	errorRate;			// default error rate if estimation is disable 			(e)
 	double	minProbability;		// reliable range probability threshold 				(r)
 
-	double	HOPCerate;			// error rate to use for HOPC kmers
+	double	HOPCerate;			// error rate to use for HOPC kmers                     (h)
+    
+    bool useMinimizer;
+    size_t windowlen;          //                                                       (w)
 
 	BELLApars(): kmerSize(17), binSize(500), fixedThreshold(-1), xDrop(7), numGPU(1), SplitCount(1),
 					skipEstimate(true), skipAlignment(false), outputPaf(false), userDefMem(false), useHOPC(false), deltaChernoff(0.10), 
-						totalMemory(8000.0), errorRate(0.00), minProbability(0.10), HOPCerate(0.035) {};
+						totalMemory(8000.0), errorRate(0.00), minProbability(0.10), HOPCerate(0.035), useMinimizer(0), windowlen(0)  {};
 };
 
 template <typename T>

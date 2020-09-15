@@ -707,7 +707,7 @@ void SplitCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_den
 
 
 
-**
+/**
  * @brief MinimizerCount
  * @param allfiles
  * @param countsreliable_denovo
@@ -757,7 +757,9 @@ void MinimizerCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable
                     int len = seqs[i].length();
                     double rerror = 0.0;
 
-                    vector<Kmer> seqkmers, seqminimizers;
+                    vector<Kmer> seqkmers;
+                    std::vector< std::pair<int, uint64_t> > seqminimizers;   // <position_in_read, hash>
+
                     for(int j = 0; j<= len - b_pars.kmerSize; j++)
                     {
                         std::string kmerstrfromfastq = seqs[i].substr(j, b_pars.kmerSize);
@@ -772,10 +774,14 @@ void MinimizerCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable
                                 rerror += berror;
                         }
                     }
-                    GetMinimizers(b_parameters.windowlen, seqkmers, seqminimizers, b_parameters.useHOPC);
-                    for(auto minkmer: seqminimizers)
+                    getMinimizers(b_pars.windowlen, seqkmers, seqminimizers, b_pars.useHOPC);
+                    cout << seqkmers.size() << " k-mers generated " << seqminimizers.size() << " minimizers" << endl;
+
+                    for(auto minpos: seqminimizers)
                     {
-                        countsdenovo.upsert(minkmer, updatefn, 1);
+                        std::string strminkmer = seqs[i].substr(minpos.first, b_pars.kmerSize);
+                        Kmer myminkmer(strminkmer.c_str(), strminkmer.length());
+                        countsdenovo.upsert(myminkmer, updatefn, 1);
                     }
 
                     if(b_pars.skipEstimate == false)
