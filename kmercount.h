@@ -775,7 +775,7 @@ void MinimizerCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable
                         }
                     }
                     getMinimizers(b_pars.windowlen, seqkmers, seqminimizers, b_pars.useHOPC);
-                    cout << seqkmers.size() << " k-mers generated " << seqminimizers.size() << " minimizers" << endl;
+                    //cout << seqkmers.size() << " k-mers generated " << seqminimizers.size() << " minimizers, read id is " << nametags[i];
 
                     for(auto minpos: seqminimizers)
                     {

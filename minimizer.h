@@ -9,13 +9,13 @@
 
 
 
-int robustwinnow = 0;
+int robustwinnow = 1;
 
 void furtherPop(std::deque< std::pair<int, uint64_t> > & deq)
 {
     if(robustwinnow)
     {
-         while (deq.front().second == deq[1].second)
+         while (deq.size() > 1 && deq.front().second == deq[1].second)
          {
              deq.pop_front();
          }
@@ -40,10 +40,10 @@ void furtherSample(std::deque< std::pair<int, uint64_t> > & deq, std::vector< st
 {
     if(!robustwinnow)
     {
-        while (deq.front().second == deq[1].second)
+        while (deq.size() > 1 && deq.front().second == deq[1].second)
         {
-            sample(deq.front(), output);
             deq.pop_front();
+            sample(deq.front(), output);
         }
     }
 }
@@ -75,6 +75,12 @@ void getMinimizers(int window, const std::vector<Kmer> & input, std::vector< std
 
         furtherSample(deq, output);
     }
+    //cout << "the minimizers are : " << endl;
+    //for(auto minmer:output)
+    //{
+    //    cout << input[minmer.first] << " ";
+    //}
+    //cout << endl;
 }
 
 
