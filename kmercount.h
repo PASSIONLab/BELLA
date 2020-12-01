@@ -758,7 +758,7 @@ void MinimizerCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable
                     double rerror = 0.0;
 
                     vector<Kmer> seqkmers;
-                    std::vector< std::pair<int, uint64_t> > seqminimizers;   // <position_in_read, hash>
+                    std::vector< int > seqminimizers;   // <position_in_read>
 
                     for(int j = 0; j<= len - b_pars.kmerSize; j++)
                     {
@@ -779,7 +779,7 @@ void MinimizerCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable
 
                     for(auto minpos: seqminimizers)
                     {
-                        std::string strminkmer = seqs[i].substr(minpos.first, b_pars.kmerSize);
+                        std::string strminkmer = seqs[i].substr(minpos, b_pars.kmerSize);
                         Kmer myminkmer(strminkmer.c_str(), strminkmer.length());
                         countsdenovo.upsert(myminkmer, updatefn, 1);
                     }

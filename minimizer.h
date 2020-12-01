@@ -27,16 +27,14 @@ uint64_t getOrder(const Kmer & mer)
     return mer.rep().hash();
 }
 
-void sample(std::pair<int, uint64_t> min, std::vector< std::pair<int, uint64_t> > & output)
+void sample(std::pair<int, uint64_t> min, std::vector< int > & output)
 {
-    if(output.empty() || output.back() != min)
-    {
-        output.push_back(min);
-    }
+    if(output.empty() || min.first != output.back())
+        output.push_back(min.first);
 }
 
 
-void furtherSample(std::deque< std::pair<int, uint64_t> > & deq, std::vector< std::pair<int, uint64_t> > & output)
+void furtherSample(std::deque< std::pair<int, uint64_t> > & deq, std::vector< int > & output)
 {
     if(!robustwinnow)
     {
@@ -50,7 +48,7 @@ void furtherSample(std::deque< std::pair<int, uint64_t> > & deq, std::vector< st
 
 // this is a canonical strand minimizer
 // to avoid strand ambiguity, we advise choosing an odd number for kmer length
-void getMinimizers(int window, const std::vector<Kmer> & input, std::vector< std::pair<int, uint64_t> > & output, int ishopc)
+void getMinimizers(int window, const std::vector<Kmer> & input, std::vector< int> & output, int ishopc)
 {
     std::deque< std::pair<int, uint64_t> > deq; // this double-ended queue will naturally be sorted by construction
 

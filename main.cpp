@@ -451,7 +451,7 @@ int main (int argc, char *argv[]) {
                 if(b_parameters.useMinimizer)
                 {
                     vector<Kmer> seqkmers;
-                    std::vector< std::pair<int, uint64_t> > seqminimizers;    // <position_in_read, hash>
+                    std::vector< int > seqminimizers;    // <position_in_read>
                     for(int j = 0; j <= len - b_parameters.kmerSize; j++)   // AB: optimize this sliding-window parsing ala HipMer
                     {
                         std::string kmerstrfromfastq = seqs[i].substr(j, b_parameters.kmerSize);
@@ -462,14 +462,14 @@ int main (int argc, char *argv[]) {
                     //cout << seqkmers.size() << " k-mers generated " << seqminimizers.size() << " minimizers" << endl;
                     for(auto minpos: seqminimizers)
                     {
-                        std::string strminkmer = seqs[i].substr(minpos.first, b_parameters.kmerSize);
+                        std::string strminkmer = seqs[i].substr(minpos, b_parameters.kmerSize);
                         Kmer myminkmer(strminkmer.c_str(), strminkmer.length());
                         
                         KMERINDEX idx; // kmer_id
                         auto found = countsreliable.find(myminkmer,idx);
                         if(found)
                         {
-                            alltranstuples[MYTHREAD].emplace_back(std::make_tuple(idx, numReads+i, minpos.first));
+                            alltranstuples[MYTHREAD].emplace_back(std::make_tuple(idx, numReads+i, minpos));
                         }
                     }
                 }
