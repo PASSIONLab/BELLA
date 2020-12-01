@@ -839,6 +839,9 @@ void MinimizerCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable
         UpperBound = computeUpper(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
     }
 
+    size_t totalKmers = countsdenovo.size();
+    printLog(totalKmers);
+    
     // Reliable k-mer filter on countsdenovo
     IT kmer_id_denovo = 0;
     auto lt = countsdenovo.lock_table(); // our counting
