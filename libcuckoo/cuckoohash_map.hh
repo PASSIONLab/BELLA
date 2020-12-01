@@ -27,6 +27,8 @@
 #include "cuckoohash_util.hh"
 #include "libcuckoo_bucket_container.hh"
 
+#define __LIBCUCKOO_SERIAL
+
 /**
  * A concurrent hash table
  *

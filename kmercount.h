@@ -168,7 +168,7 @@ void SimpleCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_de
 						Kmer mykmer(kmerstrfromfastq.c_str(), kmerstrfromfastq.length());
 						Kmer lexsmall = mykmer.rep();
 
-                        			countsdenovo.upsert(lexsmall, updatefn, 1);
+                        countsdenovo.upsert(lexsmall, updatefn, 1);
 						
 						if(b_pars.skipEstimate == false) 
 						{
@@ -309,7 +309,17 @@ void DeNovoCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_de
 					{
 						std::string kmerstrfromfastq = seqs[i].substr(j, b_pars.kmerSize);
 						Kmer mykmer(kmerstrfromfastq.c_str(), kmerstrfromfastq.length());
-						Kmer lexsmall = mykmer.rep();
+
+						Kmer lexsmall;
+
+						if (b_pars.useHOPC)
+						{
+							lexsmall = mykmer.hopc();
+						}
+						else
+						{
+							lexsmall = mykmer.rep();
+						}
 
 						allkmers[MYTHREAD].push_back(lexsmall);
 						hlls[MYTHREAD].add((const char*) lexsmall.getBytes(), lexsmall.getNumBytes());
@@ -415,8 +425,17 @@ void DeNovoCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_de
 	printLog(SecondKmerPassTime);
 
 	// Reliable bounds computation using estimated error rate from phred quality score
-	LowerBound = computeLower(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
-	UpperBound = computeUpper(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
+
+	if(b_pars.useHOPC)
+	{
+		LowerBound = computeLower(coverage, b_pars.HOPCerate, b_pars.kmerSize, b_pars.minProbability);
+		UpperBound = computeUpper(coverage, b_pars.HOPCerate, b_pars.kmerSize, b_pars.minProbability);
+	}
+	else
+	{
+		LowerBound = computeLower(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
+		UpperBound = computeUpper(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
+	}
 
 	// Reliable k-mer filter on countsdenovo
 	IT kmer_id_denovo = 0;
@@ -447,9 +466,9 @@ void DeNovoCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_de
 
 // Returns the new average after including x 
 double getAvg(double prev_avg, double x, int64_t n) 
-{ 
+{
 	return (prev_avg * n + x) / (n + 1); 
-} 
+}
 
 /**
  * @brief Split4Count
@@ -515,7 +534,17 @@ void SplitCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_den
 						{
 							std::string kmerstrfromfastq = seqs[i].substr(j, b_pars.kmerSize);
 							Kmer mykmer(kmerstrfromfastq.c_str(), kmerstrfromfastq.length());
-							Kmer lexsmall = mykmer.rep();
+
+							Kmer lexsmall;
+
+							if (b_pars.useHOPC)
+							{
+								lexsmall = mykmer.hopc();
+							}
+							else
+							{
+								lexsmall = mykmer.rep();
+							}
 
 							if(lexsmall.hash() % b_pars.SplitCount == CurrSplitCount)	// mod b_pars.SplitCount
 							{
@@ -570,8 +599,16 @@ void SplitCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_den
 			}
 
 			// Reliable bounds computation using estimated error rate from phred quality score
-			LowerBound = computeLower(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
-			UpperBound = computeUpper(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
+			if(b_pars.useHOPC)
+			{
+				LowerBound = computeLower(coverage, b_pars.HOPCerate, b_pars.kmerSize, b_pars.minProbability);
+				UpperBound = computeUpper(coverage, b_pars.HOPCerate, b_pars.kmerSize, b_pars.minProbability);
+			}
+			else
+			{
+				LowerBound = computeLower(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
+				UpperBound = computeUpper(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
+			}
 			printLog(LowerBound);
 			printLog(UpperBound);
 		}
@@ -667,5 +704,172 @@ void SplitCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_den
 		
 	} // for all b_pars.SplitCount
 }
+
+
+
+/**
+ * @brief MinimizerCount
+ * @param allfiles
+ * @param countsreliable_denovo
+ * @param LowerBound
+ * @param UpperBound
+ * @param b_pars.kmerSize
+ * @param upperlimit
+ */
+template <typename IT>
+void MinimizerCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_denovo, int& LowerBound, int& UpperBound,
+    int coverage, size_t upperlimit, BELLApars & b_pars)
+{
+    vector < vector<double> > allquals(MAXTHREADS);
+
+    double minimizercount = omp_get_wtime();
+    size_t totreads = 0;
+    dictionary_t_16bit countsdenovo;
+    auto updatefn = [](unsigned short int &count) { if (count < std::numeric_limits<unsigned short int>::max()) ++count; };
+
+    for(auto itr=allfiles.begin(); itr!=allfiles.end(); itr++)
+    {
+        #pragma omp parallel
+        {
+            ParallelFASTQ *pfq = new ParallelFASTQ();
+            pfq->open(itr->filename, false, itr->filesize);
+
+            if(MYTHREAD == 0)
+            {
+                const char* ReadingFASTQ = itr->filename;
+                printLog(ReadingFASTQ);
+            }
+
+            vector<string> seqs;
+            vector<string> quals;
+            vector<string> nametags;
+            size_t tlreads = 0; // thread local reads
+
+            size_t fillstatus = 1;
+            while(fillstatus)
+            {
+                fillstatus = pfq->fill_block(nametags, seqs, quals, upperlimit);
+                size_t nreads = seqs.size();
+
+                for(int i=0; i<nreads; i++)
+                {
+                    // remember that the last valid position is length()-1
+                    int len = seqs[i].length();
+                    double rerror = 0.0;
+
+                    vector<Kmer> seqkmers;
+                    std::vector< std::pair<int, uint64_t> > seqminimizers;   // <position_in_read, hash>
+
+                    for(int j = 0; j<= len - b_pars.kmerSize; j++)
+                    {
+                        std::string kmerstrfromfastq = seqs[i].substr(j, b_pars.kmerSize);
+                        Kmer mykmer(kmerstrfromfastq.c_str(), kmerstrfromfastq.length());
+                        seqkmers.emplace_back(mykmer);
+                        
+                        if(b_pars.skipEstimate == false)
+                        {
+                                // accuracy
+                                int bqual = (int)quals[i][j] - ASCIIBASE;
+                                double berror = pow(10,-(double)bqual/10);
+                                rerror += berror;
+                        }
+                    }
+                    getMinimizers(b_pars.windowlen, seqkmers, seqminimizers, b_pars.useHOPC);
+                    //cout << seqkmers.size() << " k-mers generated " << seqminimizers.size() << " minimizers, read id is " << nametags[i];
+
+                    for(auto minpos: seqminimizers)
+                    {
+                        std::string strminkmer = seqs[i].substr(minpos.first, b_pars.kmerSize);
+                        Kmer myminkmer(strminkmer.c_str(), strminkmer.length());
+                        countsdenovo.upsert(myminkmer, updatefn, 1);
+                    }
+
+                    if(b_pars.skipEstimate == false)
+                    {
+                        // remaining k qual position accuracy
+                        for(int j = len - b_pars.kmerSize + 1; j < len; j++)
+                        {
+                            int bqual = (int)quals[i][j] - ASCIIBASE;
+                            double berror = pow(10,-(double)bqual/10);
+                            rerror += berror;
+                        }
+                        rerror = rerror / len;
+                        allquals[MYTHREAD].push_back(rerror);
+                    }
+                } // for(int i=0; i<nreads; i++)
+                tlreads += nreads;
+            } //while(fillstatus)
+            delete pfq;
+
+            #pragma omp critical
+            {
+                totreads += tlreads;
+            }
+        }
+    }
+
+    // Error estimation
+    double& errorRate = b_pars.errorRate;
+    if(b_pars.skipEstimate == false)
+    {
+        errorRate = 0.0; // reset to 0 here, otherwise it cointains default or user-defined values
+        #pragma omp for reduction(+:errorRate)
+        for (int i = 0; i < MAXTHREADS; i++)
+            {
+                double temp = std::accumulate(allquals[i].begin(), allquals[i].end(), 0.0);
+                errorRate += temp / (double)allquals[i].size();
+            }
+        b_pars.errorRate = errorRate / (double)MAXTHREADS;
+    }
+
+
+    double load2kmers = omp_get_wtime();
+    std::string kmerCountingTime = std::to_string(load2kmers - minimizercount) + " seconds";
+    printLog(kmerCountingTime);
+
+    // Reliable bounds computation using estimated error rate from phred quality score
+    if(b_pars.useHOPC)
+    {
+        LowerBound = computeLower(coverage, b_pars.HOPCerate, b_pars.kmerSize, b_pars.minProbability);
+        UpperBound = computeUpper(coverage, b_pars.HOPCerate, b_pars.kmerSize, b_pars.minProbability);
+    }
+    else
+    {
+        LowerBound = computeLower(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
+        UpperBound = computeUpper(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
+    }
+
+    size_t totalKmers = countsdenovo.size();
+    printLog(totalKmers);
+    
+    // Reliable k-mer filter on countsdenovo
+    IT kmer_id_denovo = 0;
+    auto lt = countsdenovo.lock_table(); // our counting
+    for (const auto &it : lt)
+    {
+        if (it.second >= LowerBound && it.second <= UpperBound)
+        {
+            countsreliable_denovo.insert(it.first, kmer_id_denovo);
+            ++kmer_id_denovo;
+        }
+    }
+    lt.unlock(); // unlock the table
+
+    // Print some information about the table
+    if (countsreliable_denovo.size() == 0)
+    {
+        std::string ErrorMessage = "BELLA terminated: 0 entries within reliable range. You may want to reduce the k-mer length.";
+        printLog(ErrorMessage);
+        exit(1);
+    }
+    else
+    {
+        size_t numReliableKmers = countsreliable_denovo.size();
+        printLog(numReliableKmers);
+    }
+
+    countsdenovo.clear(); // free
+}
+
 
 #endif

@@ -45,7 +45,7 @@ extern "C" {
 struct BELLApars
 {
 	unsigned short int		kmerSize;			// KmerSize
-	unsigned short int		binSize;			// Bin size chaining algorithm 			(w)
+	unsigned short int		binSize;			// Bin size chaining algorithm 			(b)
 	short int		        fixedThreshold;		// Default alignment score threshold 	(a)
 	unsigned short int		xDrop;				// SeqAn xDrop value 					(x)
 	unsigned short int		numGPU;				// Number GPUs available/to be used  	(g)
@@ -54,14 +54,22 @@ struct BELLApars
 	bool	skipAlignment;		// Do not align 										(z)
 	bool	outputPaf;			// Output in paf format 								(p)
 	bool	userDefMem;			// RAM available 										(m)
+
+	bool 	useHOPC; 						// use HOPC representation
+
 	double	deltaChernoff;		// delta computed via Chernoff bound 					(d)
 	double	totalMemory;		// In MB, default is ~ 8GB
 	double	errorRate;			// default error rate if estimation is disable 			(e)
 	double	minProbability;		// reliable range probability threshold 				(r)
 
+	double	HOPCerate;			// error rate to use for HOPC kmers                     (h)
+    
+    bool useMinimizer;
+    size_t windowlen;          //                                                       (w)
+
 	BELLApars(): kmerSize(17), binSize(500), fixedThreshold(-1), xDrop(7), numGPU(1), SplitCount(1),
-					skipEstimate(true), skipAlignment(false), outputPaf(false), userDefMem(false), deltaChernoff(0.10), 
-						totalMemory(8000.0), errorRate(0.00), minProbability(0.10) {};
+					skipEstimate(true), skipAlignment(false), outputPaf(false), userDefMem(false), useHOPC(false), deltaChernoff(0.10), 
+						totalMemory(8000.0), errorRate(0.00), minProbability(0.10), HOPCerate(0.035), useMinimizer(0), windowlen(0)  {};
 };
 
 template <typename T>
@@ -88,7 +96,7 @@ struct seqAnResult {
 
 struct readType_ {
 	std::string nametag;
-	std::string seq; 
+	std::string seq;
 	int readid;
 
 	bool operator < (readType_ & str)
@@ -109,6 +117,7 @@ struct SortBy:std::binary_function<unsigned short int, unsigned short int, bool>
 
 struct spmatType_ {
 
+// <<<<<<< HEAD
 	unsigned short int count = 0;		// number of shared k-mers
 	std::vector<std::vector<pair<unsigned short int, unsigned short int>>> pos;	// std::vector of k-mer positions <read-i, read-j> (if !K, use at most 2 kmers, otherwise all) per bin
 	std::vector<unsigned short int> support;	// number of k-mers supporting a given overlap
@@ -158,15 +167,24 @@ struct spmatType_ {
 		pos[ids[0]].resize(1);	// GG: same for the number of kmers in the choosen bin, we need only one
 
 		return pos[ids[0]][0];	// GG: returning choosen seed // It might be better choose the kmer randomly and find an x-drop/binsize ratio to justify
-	}
+// ======= // HOPC
+	// int count = 0;              // number of shared k-mers
+	// vector<vector<pair<pair<int,bool>,pair<int,bool>>>> pos;  // vector of k-mer positions <read-i, read-j> (if !K, use at most 2 kmers, otherwise all)
+	// vector<int> support;	        // supports of the k-mer overlaps above
+	// vector<int> overlap; 	// to avoid recomputing overlap
+	// vector<int> sorted_idx; // indices cooresponded to sorting of support
 
+	// void sort() {
+	// 	sorted_idx = vector<int>(support.size());
+	// 	std::iota(sorted_idx.begin(), sorted_idx.end(), 0);
+	// 	std::sort(sorted_idx.begin(), sorted_idx.end(), SortBy(support));
+	}
 };
 
 typedef shared_ptr<spmatType_> spmatPtr_; // pointer to spmatType_ datastruct
 typedef std::vector<Kmer> Kmers;
 
 struct alignmentInfo {
-
 	int score;	//	score
 	unsigned short int apos, bpos;	// (8)	pos in the sections
 	unsigned short int alen, blen;	// (8)	lengths of the segments

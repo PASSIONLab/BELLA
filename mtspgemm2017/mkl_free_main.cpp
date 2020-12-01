@@ -10,7 +10,6 @@
 #include <cmath>
 #include <string>
 
-#include "overridenew.h"
 #include "utility.h"
 #include "CSC.h"
 #include "CSR.h"
