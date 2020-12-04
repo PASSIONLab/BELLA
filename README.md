@@ -81,6 +81,7 @@ Optional flag description:
 -g : GPUs available [1, only works when BELLA is compiled for GPU]
 -s : K-mer counting split count can be increased for large dataset [1]
 -b : Use HOPC representation with HOPC erate [false | 0.035] 
+-w : Window length for minimizer selection [none | if provided, enables minimizers]
 ```
 ### Error Rate
 

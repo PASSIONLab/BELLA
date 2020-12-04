@@ -599,7 +599,7 @@ void SplitCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_den
 			}
 
 			// Reliable bounds computation using estimated error rate from phred quality score
-			if(b_pars.useHOPC)
+/*			if(b_pars.useHOPC)
 			{
 				LowerBound = computeLower(coverage, b_pars.HOPCerate, b_pars.kmerSize, b_pars.minProbability);
 				UpperBound = computeUpper(coverage, b_pars.HOPCerate, b_pars.kmerSize, b_pars.minProbability);
@@ -609,9 +609,11 @@ void SplitCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_den
 				LowerBound = computeLower(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
 				UpperBound = computeUpper(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
 			}
+
 			printLog(LowerBound);
 			printLog(UpperBound);
-		}
+*/
+			}
 	
 		// HLL reduction (serial for now) to avoid double iteration
 		for (int i = 1; i < MAXTHREADS; i++) 
@@ -651,7 +653,7 @@ void SplitCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_den
 			tot_kmers+= allkmers[i].size();
 
 		printLog(CurrSplitCount);
-    	std::string TotalKmers = std::to_string(tot_kmers);
+	    	std::string TotalKmers = std::to_string(tot_kmers);
 		printLog(TotalKmers);	
 	
 

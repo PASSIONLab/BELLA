@@ -35,7 +35,6 @@
 #include "bellaio.h"
 #include "minimizer.h"
 
-
 #include "kmercode/hash_funcs.h"
 #include "kmercode/Kmer.hpp"
 #include "kmercode/Buffer.h"
@@ -75,11 +74,12 @@ int main (int argc, char *argv[]) {
 	// Follow an option with a colon to indicate that it requires an argument.
 
 	optList = NULL;
-	optList = GetOptList(argc, argv, (char*)"f:o:c:d:hk:a:ze:x:c:m:r:ps:qg:u:w:l:i:b");
+	optList = GetOptList(argc, argv, (char*)"f:o:c:d:hk:a:ze:x:c:m:r:ps:qg:tw:l:i:bl:u:");
 
 	char	*all_inputs_fofn 	= NULL;	// List of fastqs (i)
 	char	*OutputFile 		= NULL;	// output filename (o)
-	int		InputCoverage 		= 0;	// Coverage required (d)
+	int	InputCoverage 		= 0;	// Coverage required (d)
+	int reliableLowerBound, reliableUpperBound; // reliable range reliableLowerBound and reliableUpperBound bound
 
 	BELLApars b_parameters;
 
@@ -166,8 +166,9 @@ int main (int argc, char *argv[]) {
 				b_parameters.skipEstimate = false;
 				break;
 			}
-			case 'u': {	// Default: skipEstimate and errorRate = 0.15
+			case 't': { // Default: skipEstimate and errorRate = 0.15
 				b_parameters.errorRate = 0.15;	// Default value
+				b_parameters.skipEstimate = true;
 				break;
 			}
 			case 'a': {
@@ -211,11 +212,19 @@ int main (int argc, char *argv[]) {
 				b_parameters.useHOPC = true;
 				break;
 			}
-            case 'w': {
-                    b_parameters.useMinimizer = true;
-                    b_parameters.windowlen = atoi(thisOpt->argument);
-                    break;
-                }
+            		case 'w': {
+                    		b_parameters.useMinimizer = true;
+                    		b_parameters.windowlen = atoi(thisOpt->argument);
+                    		break;
+               		}
+			case 'l': {
+				reliableLowerBound = atoi(thisOpt->argument);
+			  	break;
+			}
+			case 'u': {
+				reliableUpperBound = atoi(thisOpt->argument);
+				break;
+			}	  
 			case 'i': {
 				cout << "Usage:\n" << endl;
 				cout << "	-f : List of fastq(s)	(required)" 	<< endl;
@@ -226,7 +235,7 @@ int main (int argc, char *argv[]) {
 				cout << "	-x : SeqAn xDrop [7]" 									<< endl;
 				cout << "	-e : Error rate [0.15]" 				<< endl;
 				cout << "	-q : Estimare error rate from the dataset [FALSE]" 	<< endl;
-				cout << "	-u : Use default error rate setting [FALSE]"		<< endl;
+				cout << "	-t : Use default error rate setting [FALSE]"		<< endl;
 				cout << "	-m : Total RAM of the system in MB [auto estimated if possible or 8,000 if not]"	<< endl;
 				cout << "	-z : Do not run pairwise alignment [FALSE]" 			<< endl;
 				cout << "	-d : Deviation from the mean alignment score [0.10]"	<< endl;
@@ -236,7 +245,9 @@ int main (int argc, char *argv[]) {
 				cout << "	-g : GPUs available [1, only works when BELLA is compiled for GPU]" 	<< endl;
 				cout << "	-s : K-mer counting split count can be increased for large dataset [1]" 	<< endl;
 				cout << "	-h : Use HOPC representation with HOPC erate [false | 0.035]" << endl;
-                cout << "   -w : Window length for minimizer selection [none | if provided, enables minimizers]" << endl;
+				cout << "	-w : Window length for minimizer selection [none | if provided, enables minimizers]" << endl;
+				cout << "       -l : Reliable lower bound [2]" << endl;
+				cout << "       -u : Reliable upper bound [8]" << endl;
 
 
 				FreeOptList(thisOpt); // Done with this list, free it
@@ -270,12 +281,11 @@ int main (int argc, char *argv[]) {
 	free(thisOpt);
 
 	// ================ //
-	// 	 Declarations   //
+	//   Declarations   //
 	// ================ //
 
 	vector<filedata> allfiles = GetFiles(all_inputs_fofn);
 	std::string all_inputs_gerbil = std::string(all_inputs_fofn); 
-	int reliableLowerBound, reliableUpperBound; // reliable range reliableLowerBound and reliableUpperBound bound
 	double ratiophi;
 	Kmer::set_k(b_parameters.kmerSize);
 	unsigned int upperlimit = 10000000; // in bytes
@@ -300,7 +310,7 @@ int main (int argc, char *argv[]) {
     std::string kmerSize = std::to_string(b_parameters.kmerSize);
     printLog(kmerSize);
 
-	std::string GPUs = "DISABLED";
+    std::string GPUs = "DISABLED";
     printLog(GPUs);
 
     std::string OutputPAF = std::to_string(b_parameters.outputPaf);
@@ -347,7 +357,7 @@ int main (int argc, char *argv[]) {
     std::string ReliableCutoffProbability = std::to_string(b_parameters.minProbability);
     printLog(ReliableCutoffProbability);
 
- 	std::string KmerSplitCount = std::to_string(b_parameters.SplitCount);
+    std::string KmerSplitCount = std::to_string(b_parameters.SplitCount);
     printLog(KmerSplitCount);
     
     std::string minimizerwindow = std::to_string(b_parameters.windowlen);
@@ -380,16 +390,16 @@ int main (int argc, char *argv[]) {
 
 	CuckooDict<KMERINDEX> countsreliable;
 
-    if(b_parameters.useMinimizer)
-    {
-        MinimizerCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound,
-        InputCoverage, upperlimit, b_parameters);
-    }
-    else
-    {
-        SplitCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound,
+    	if(b_parameters.useMinimizer)
+    	{
+        	MinimizerCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound,
+        		InputCoverage, upperlimit, b_parameters);
+    	}
+    	else
+    	{
+        	SplitCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound,
                    InputCoverage, upperlimit, b_parameters);
-    }
+    	}
 
 	double errorRate;
 
@@ -403,6 +413,7 @@ int main (int argc, char *argv[]) {
 	}
 
 	printLog(errorRate);
+	
 	printLog(reliableLowerBound);
 	printLog(reliableUpperBound);
 
