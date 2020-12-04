@@ -21,10 +21,11 @@ UPPER=
 
 # if window is defined and greater than 0, BELLA activates the minimizer counter
 WINDOW=0
-if [ $WINDOW > 0]; then
+if [ ${WINDOW} != "0" ]; then
 	MMER=true
 else
 	MMER=false
+fi
 
 # syncmer is always false for now, modify the script once syncmer is implemented
 SMER=false
@@ -58,8 +59,7 @@ echo "  minimizer: ${MINIMIZER}"
 echo "	synchmer: ${SYNCMER}"
 
 # creating file for summary result if doesn't exist already
-if [ -s ${SUMMARY} ]
-then
+if [ -s ${SUMMARY} ];then
 	echo "${SUMMARY} is not empty"
 else
 	NOW=$(date +"%m-%d-%Y")
@@ -67,7 +67,7 @@ else
 	echo "input	ksize	window	minimizer	syncmer	runtime	recall	precision	nalignment" >> ${SUMMARY}
 fi
 
-MYTEMP=${SCRATCH}/israt-kmer/BELLA/pipeline-tmp-summary.txt
+MYTEMP="${SCRATCH}/israt-kmer/BELLA/pipeline-tmp-summary.txt"
 touch ${MYTEMP}
 
 # run bella (need input for minimizer and synchmer)
@@ -75,10 +75,9 @@ ${BELLA} -f ${INPUT} -o ${NAME} -c ${DEPTH} -q >> ${MYTEMP}
 
 echo "BELLA run completed"
 
-# GGGG: modify main.cpp to make the time retrival easy
-# todo extract runtime and nalignment
-MYTIME=
-NALIGN=
+# runtime is on the 4th line of the temp file while nalignment is on the 5th line
+MYTIME=$(awk 'NR==5 {print; exit}' ${MYTEMP})
+NALIGN=$(awk 'NR==4 {print; exit}' ${MYTEMP})
 
 echo "BELLA evaluation is starting"
 
@@ -90,10 +89,10 @@ echo "BELLA evaluation completed"
 RECALL=
 PRECIISON=
 
-echo "ecsample	${KSIZE}	${WINDOW}	${MINIMIZER}	${SYNCMER}	${MYTIME}	${RECALL}	${PRECISION}" >> ${SUMMARY}
+echo "ecsample	${KSIZE}	${WINDOW}	${MMER}	${SMER}	${MYTIME}	${RECALL}	${PRECISION}	${NALIGN}" >> ${SUMMARY}
 
 # remove tmp summary
-$rm ${MYTEMP}
+# rm ${MYTEMP}
 
 echo "BELLA pipeline completed, results so far can be found here: ${SUMMARY}"
 
