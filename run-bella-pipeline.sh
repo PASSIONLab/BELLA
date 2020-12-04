@@ -10,7 +10,7 @@ BENCH=${MYPATH}/bench/./result
 
 # input files (modify this as needed)
 INPUT=${MYPATH}/input.txt
-TRUTH=${MYPATH}/dataset/ecsample-gt.txt
+TRUTH=${MYPATH}/dataset/ecsample-truth.txt
 
 # run parameter (make this input parameter)
 DEPTH=30
@@ -72,7 +72,7 @@ if [ -s ${SUMMARY} ];then
 else
 	NOW=$(date +"%m-%d-%Y")
 	echo $NOW >> ${SUMMARY}
-	echo "input	ksize	window	minimizer	syncmer	lower	upper	colA	nnzA	nnzC	nnzR	runtime	recall	precision" >> ${SUMMARY}
+	echo "input	ksize	window	minimizer	syncmer	lower	upper	colA	nnzA	nnzC	nnzR	time	RC	PR	F1" >> ${SUMMARY}
 fi
 
 MYTEMP="${SCRATCH}/israt-kmer/BELLA/pipeline-tmp-summary.txt"
@@ -97,10 +97,11 @@ ${BENCH} -G ${TRUTH} -B ${OUTPUT} >> ${MYTEMP}
 echo "BELLA evaluation completed"
 
 # todo extract recall and precision
-RECALL=
-PRECISON=
+RC=$(awk 'NR==17 {print; exit}' ${MYTEMP})
+PR=$(awk 'NR==18 {print; exit}' ${MYTEMP})
+F1=$(awk 'NR==19 {print; exit}' ${MYTEMP})
 
-echo "ecsample	${KSIZE}	${WINDOW}	${MMER}	${SMER}	${LOWER}	${UPPER}	${TOTKMR}	${NNZA}	${NNZC}	${NNZR}	${MYTIME}	${RECALL}	${PRECISION}" >> ${SUMMARY}
+echo "ecsample	${KSIZE}	${WINDOW}	${MMER}	${SMER}	${LOWER}	${UPPER}	${TOTKMR}	${NNZA}	${NNZC}	${NNZR}	${MYTIME}	${RC}	${PR}	${F1}" >> ${SUMMARY}
 
 # remove tmp summary
 # rm ${MYTEMP}

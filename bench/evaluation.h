@@ -621,8 +621,8 @@ void evaluate(std::set<entry, classcom>& Sset, const std::set<entry, classcom>& 
 	float F1 = (2 * RC * PR) / (RC + PR);
 
 	std::cout << std::setprecision(2) 	<< std::fixed;
-	std::cout << "Recall\t\t" 	<< RC << "%"<< std::endl;
-	std::cout << "Precision\t" 	<< PR << "%"<< std::endl;
-	std::cout << "F1\t\t" 		<< F1 << "%"<< std::endl;
+	std::cout << RC << std::endl;
+	std::cout << PR << std::endl;
+	std::cout << F1 << std::endl;
 	std::cout << std::endl;
 }
