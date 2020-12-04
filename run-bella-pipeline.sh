@@ -2,22 +2,48 @@
 echo "This is a shell script to run BELLA's pipeline and compare accuracy"
 
 # executable (change this as needed)
-BELLA=$SCRATCH/israt-kmer/BELLA/./bella
-BENCH=$SCRATCH/israt-kmer/BELLA/bench/./result
+BELLA=${SCRATCH}/israt-kmer/BELLA/./bella
+BENCH=${SCRATCH}/israt-kmer/BELLA/bench/./result
 
-# input and output files
-INPUT=
-OUTPUT=
-SUMMARY=
-TRUTH=
+# input files (change this as needed)
+INPUT=${SCRATCH}/israt-kmer/BELLA/input.txt
+TRUTH=${SCRATCH}/israt-kmer/BELLA/dataset/ecsample-gt.txt
 
 # run parameter (make this input parameter)
 DEPTH=30
 XDROP=7
 KSIZE=17
 ERROR=0.15
-MINIMIZER=true
-SYNCMER=false
+
+# todo: implement lower/upper as input parameter
+LOWER=
+UPPER=
+
+# if window is defined and greater than 0, BELLA activates the minimizer counter
+WINDOW=0
+if [ $WINDOW > 0]; then
+	MMER=true
+else
+	MMER=false
+
+# syncmer is always false for now, modify the script once syncmer is implemented
+SMER=false
+
+# choose the name based on the run setting
+if   [ $MMER == true ]; then
+	NAME="${SCRATCH}/israt-kmer/BELLA/ecsample-minimizer-${KSIZE}-${WINDOW}"
+elif [ $SMER == true ]; then	
+	NAME="${SCRATCH}/israt-kmer/BELLA/ecsample-syncmer-${KSIZE}-${WINDOW}"
+else
+	NAME="${SCRATCH}/israt-kmer/BELLA/ecsample-${KSIZE}"
+fi
+
+FORMAT=".out"
+OUTPUT="${NAME}${FORMAT}"
+touch ${OUTPUT}
+
+SUMMARY="${SCRATCH}/israt-kmer/BELLA/bella-pipeline-summary.csv"
+touch ${SUMMARY}
 
 # start run bella
 echo "${now}"
@@ -32,18 +58,20 @@ echo "  minimizer: ${MINIMIZER}"
 echo "	synchmer: ${SYNCMER}"
 
 # creating file for summary result if doesn't exist already
-if [-s ${SUMMARY}]
+if [ -s ${SUMMARY} ]
 then
 	echo "${SUMMARY} is not empty"
 else
-	echo "${now}"
-	echo "input\tksize\twindow\tminimizer\tsyncmer\truntime\trecall\tprecision\tnalignment" >> ${SUMMARY}
+	NOW=$(date +"%m-%d-%Y")
+	echo $NOW >> ${SUMMARY}
+	echo "input	ksize	window	minimizer	syncmer	runtime	recall	precision	nalignment" >> ${SUMMARY}
 fi
 
 MYTEMP=${SCRATCH}/israt-kmer/BELLA/pipeline-tmp-summary.txt
+touch ${MYTEMP}
 
 # run bella (need input for minimizer and synchmer)
-${BELLA} -f ${INPUT} -o ${OUTPUT} -c ${DEPTH} -q >> ${MYTEMP}
+${BELLA} -f ${INPUT} -o ${NAME} -c ${DEPTH} -q >> ${MYTEMP}
 
 echo "BELLA run completed"
 
@@ -62,10 +90,10 @@ echo "BELLA evaluation completed"
 RECALL=
 PRECIISON=
 
-echo "${INPUT}\t${KSIZE}\t${WINDOW}\t${MINIMZER}\t${SYNCMER}\t${MYTIME}\t${RECALL}\t${PRECISION}" >> ${SUMMARY}
+echo "ecsample	${KSIZE}	${WINDOW}	${MINIMIZER}	${SYNCMER}	${MYTIME}	${RECALL}	${PRECISION}" >> ${SUMMARY}
 
 # remove tmp summary
-rm ${MYTEMP}
+$rm ${MYTEMP}
 
 echo "BELLA pipeline completed, results so far can be found here: ${SUMMARY}"
 
