@@ -1,13 +1,16 @@
 #!/bin/bash
 echo "This is a shell script to run BELLA's pipeline and compare accuracy"
 
-# executable (change this as needed)
-BELLA=${SCRATCH}/israt-kmer/BELLA/./bella
-BENCH=${SCRATCH}/israt-kmer/BELLA/bench/./result
+# modify as needed
+MYPATH=${SCRATCH}/israt-kmer/BELLA
 
-# input files (change this as needed)
-INPUT=${SCRATCH}/israt-kmer/BELLA/input.txt
-TRUTH=${SCRATCH}/israt-kmer/BELLA/dataset/ecsample-gt.txt
+# executable
+BELLA=${MYPATH}/./bella
+BENCH=${MYPATH}/bench/./result
+
+# input files (modify this as needed)
+INPUT=${MYPATH}/input.txt
+TRUTH=${MYPATH}/dataset/ecsample-gt.txt
 
 # run parameter (make this input parameter)
 DEPTH=30
@@ -16,8 +19,8 @@ KSIZE=17
 ERROR=0.15
 
 # todo: implement lower/upper as input parameter
-LOWER=
-UPPER=
+LOWER=2
+UPPER=8
 
 # if window is defined and greater than 0, BELLA activates the minimizer counter
 WINDOW=0
@@ -30,13 +33,17 @@ fi
 # syncmer is always false for now, modify the script once syncmer is implemented
 SMER=false
 
+if [ ! -d ${MYPATH}/result-$now ]; then
+  mkdir -p ${MYPATH}/result-$now;
+fi
+
 # choose the name based on the run setting
 if   [ $MMER == true ]; then
-	NAME="${SCRATCH}/israt-kmer/BELLA/ecsample-minimizer-${KSIZE}-${WINDOW}"
+	NAME="${MYPATH}/result-$now/ecsample-minimizer-${KSIZE}-${WINDOW}-${LOWER}-${UPPER}"
 elif [ $SMER == true ]; then	
-	NAME="${SCRATCH}/israt-kmer/BELLA/ecsample-syncmer-${KSIZE}-${WINDOW}"
+	NAME="${MYPATH}/result-$now/ecsample-syncmer-${KSIZE}-${WINDOW}-${LOWER}-${UPPER}"
 else
-	NAME="${SCRATCH}/israt-kmer/BELLA/ecsample-${KSIZE}"
+	NAME="${MYPATH}/result-$now/ecsample-${KSIZE}-${LOWER}-${UPPER}"
 fi
 
 FORMAT=".out"
@@ -55,8 +62,9 @@ echo "	depth: 	${DEPTH}"
 echo "	x-drop: ${XDROP}"
 echo "	k-mer:  ${KSIZE}"
 echo "	error:  ${ERROR}"
-echo "  minimizer: ${MINIMIZER}"
-echo "	synchmer: ${SYNCMER}"
+echo "	window: ${WINDOW}"
+echo "	minimizer: ${MMER}"
+echo "	synchmer: ${SMER}"
 
 # creating file for summary result if doesn't exist already
 if [ -s ${SUMMARY} ];then
@@ -64,7 +72,7 @@ if [ -s ${SUMMARY} ];then
 else
 	NOW=$(date +"%m-%d-%Y")
 	echo $NOW >> ${SUMMARY}
-	echo "input	ksize	window	minimizer	syncmer	runtime	recall	precision	nalignment" >> ${SUMMARY}
+	echo "input	ksize	window	minimizer	syncmer	lower	upper	colA	nnzA	nnzC	nnzR	runtime	recall	precision" >> ${SUMMARY}
 fi
 
 MYTEMP="${SCRATCH}/israt-kmer/BELLA/pipeline-tmp-summary.txt"
@@ -75,21 +83,24 @@ ${BELLA} -f ${INPUT} -o ${NAME} -c ${DEPTH} -q >> ${MYTEMP}
 
 echo "BELLA run completed"
 
-# runtime is on the 4th line of the temp file while nalignment is on the 5th line
-MYTIME=$(awk 'NR==5 {print; exit}' ${MYTEMP})
-NALIGN=$(awk 'NR==4 {print; exit}' ${MYTEMP})
+# collect data from temp file
+MYTIME=$(awk 'NR==8 {print; exit}' ${MYTEMP})
+TOTKMR=$(awk 'NR==4 {print; exit}' ${MYTEMP})
+
+NNZA=$(awk 'NR==5 {print; exit}' ${MYTEMP})
+NNZC=$(awk 'NR==6 {print; exit}' ${MYTEMP})
+NNZR=$(awk 'NR==7 {print; exit}' ${MYTEMP})
+echo "BELLA data collection completed"
 
 echo "BELLA evaluation is starting"
-
 ${BENCH} -G ${TRUTH} -B ${OUTPUT} >> ${MYTEMP}
-
 echo "BELLA evaluation completed"
 
 # todo extract recall and precision
 RECALL=
-PRECIISON=
+PRECISON=
 
-echo "ecsample	${KSIZE}	${WINDOW}	${MMER}	${SMER}	${MYTIME}	${RECALL}	${PRECISION}	${NALIGN}" >> ${SUMMARY}
+echo "ecsample	${KSIZE}	${WINDOW}	${MMER}	${SMER}	${LOWER}	${UPPER}	${TOTKMR}	${NNZA}	${NNZC}	${NNZR}	${MYTIME}	${RECALL}	${PRECISION}" >> ${SUMMARY}
 
 # remove tmp summary
 # rm ${MYTEMP}

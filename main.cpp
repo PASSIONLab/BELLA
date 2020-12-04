@@ -551,8 +551,12 @@ int main (int argc, char *argv[]) {
 	// ====================== //
 	// Sparse Matrix Creation //
 	// ====================== //
-
+	
 	unsigned int nkmer = countsreliable.size();
+	
+	// to help the parsing script
+        cout << nkmer << endl;
+	
 	double matcreat = omp_get_wtime();
 	CSC<KMERINDEX, unsigned short int> transpmat(transtuples, nkmer, numReads,
 							[] (unsigned short int& p1, unsigned short int& p2) 
@@ -605,7 +609,12 @@ int main (int argc, char *argv[]) {
 		},
 	    reads, getvaluetype, OutputFile, b_parameters, ratiophi);
 
-    std::string TotalRuntime = std::to_string(omp_get_wtime()-all) + " seconds";   
-    printLog(TotalRuntime);
+	double totaltime = omp_get_wtime()-all;
+
+    	std::string TotalRuntime = std::to_string(totaltime) + " seconds";   
+    	printLog(TotalRuntime);
+	
+	cout << totaltime << endl;
+
 	return 0;
 }
