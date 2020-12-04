@@ -402,6 +402,7 @@ void CSC<IT,NT>::MergeDuplicates (AddOperation addop, bool issorted)
 	printLog(nnzBeforeMerge);
 	printLog(nnzAfterMerge);
 
+	cout << nnzAfterMerge << std::endl;
 	// cout << "Old number of nonzeros before merging:	"	<< nnz << endl;
 	// nnz  = colptr[cols];
 	// cout << "New number of nonzeros after merging:	"	<< nnz << endl; 

@@ -79,7 +79,7 @@ int main (int argc, char *argv[]) {
 	char	*all_inputs_fofn 	= NULL;	// List of fastqs (i)
 	char	*OutputFile 		= NULL;	// output filename (o)
 	int	InputCoverage 		= 0;	// Coverage required (d)
-	int reliableLowerBound, reliableUpperBound; // reliable range reliableLowerBound and reliableUpperBound bound
+	int reliableLowerBound = 2, reliableUpperBound = 8; // reliable range reliableLowerBound and reliableUpperBound bound
 
 	BELLApars b_parameters;
 

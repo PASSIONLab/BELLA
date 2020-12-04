@@ -765,8 +765,6 @@ void HashSpGEMM(const CSC<IT,NT>& A, const CSC<IT,NT>& B, MultiplyOperation mult
 			std::string AverageReadLength = std::to_string((int)(static_cast<double>(get<2>(alignstats))/(2*get<0>(alignstats))));
 			printLog(AverageReadLength);
 			
-			// to help the parsing script
-			std::cout << get<0>(alignstats) << std::endl;
 			std::string PairsAligned = std::to_string(get<0>(alignstats));
 			printLog(PairsAligned);
 			

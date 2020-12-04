@@ -33,17 +33,17 @@ fi
 # syncmer is always false for now, modify the script once syncmer is implemented
 SMER=false
 
-if [ ! -d ${MYPATH}/result-$now ]; then
-  mkdir -p ${MYPATH}/result-$now;
+if [ ! -d ${MYPATH}/results ]; then
+  mkdir -p ${MYPATH}/results;
 fi
 
 # choose the name based on the run setting
 if   [ $MMER == true ]; then
-	NAME="${MYPATH}/result-$now/ecsample-minimizer-${KSIZE}-${WINDOW}-${LOWER}-${UPPER}"
+	NAME="${MYPATH}/results/ecsample-minimizer-${KSIZE}-${WINDOW}-${LOWER}-${UPPER}"
 elif [ $SMER == true ]; then	
-	NAME="${MYPATH}/result-$now/ecsample-syncmer-${KSIZE}-${WINDOW}-${LOWER}-${UPPER}"
+	NAME="${MYPATH}/results/ecsample-syncmer-${KSIZE}-${WINDOW}-${LOWER}-${UPPER}"
 else
-	NAME="${MYPATH}/result-$now/ecsample-${KSIZE}-${LOWER}-${UPPER}"
+	NAME="${MYPATH}/results/ecsample-${KSIZE}-${LOWER}-${UPPER}"
 fi
 
 FORMAT=".out"
