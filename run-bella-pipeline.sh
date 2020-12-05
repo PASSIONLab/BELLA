@@ -13,17 +13,19 @@ INPUT=${MYPATH}/input.txt
 TRUTH=${MYPATH}/dataset/ecsample-truth.txt
 
 # run parameter (make this input parameter)
-DEPTH=30
-XDROP=7
-KSIZE=17
-ERROR=0.15
+DEPTH=30 	# dataset-specific
+ERROR=0.15 	# dataset-specific
+
+XDROP=$5 # fifth arg
+
+KSIZE=$1 # first arg
 
 # todo: implement lower/upper as input parameter
-LOWER=2
-UPPER=8
+LOWER=$3 # third arg
+UPPER=$4 # fourth arg
 
 # if window is defined and greater than 0, BELLA activates the minimizer counter
-WINDOW=0
+WINDOW=$2 # second arg (need to be specific, even if 0)
 if [ ${WINDOW} != "0" ]; then
 	MMER=true
 else
@@ -50,7 +52,8 @@ FORMAT=".out"
 OUTPUT="${NAME}${FORMAT}"
 touch ${OUTPUT}
 
-SUMMARY="${SCRATCH}/israt-kmer/BELLA/bella-pipeline-summary.csv"
+# one file per dataset
+SUMMARY="${MYPATH}/bella-pipeline-ecsample-summary.csv"
 touch ${SUMMARY}
 
 # start run bella
@@ -72,14 +75,18 @@ if [ -s ${SUMMARY} ];then
 else
 	NOW=$(date +"%m-%d-%Y")
 	echo $NOW >> ${SUMMARY}
-	echo "input	ksize	window	minimizer	syncmer	lower	upper	colA	nnzA	nnzC	nnzR	time	RC	PR	F1" >> ${SUMMARY}
+	echo "input	xdrop	ksize	window	minimizer	syncmer	lower	upper	colA	nnzA	nnzC	nnzR	time	RC	PR	F1" >> ${SUMMARY}
 fi
 
 MYTEMP="${SCRATCH}/israt-kmer/BELLA/pipeline-tmp-summary.txt"
 touch ${MYTEMP}
 
-# run bella (need input for minimizer and synchmer)
-${BELLA} -f ${INPUT} -o ${NAME} -c ${DEPTH} -q >> ${MYTEMP}
+if [ ${WINDOW} == "0" ]; then
+	# run bella (need input for minimizer and synchmer)
+	${BELLA} -f ${INPUT} -k ${KSIZE} -o ${NAME} -c ${DEPTH} -x ${XDROP} -l ${LOWER} -u ${UPPER} -t >> ${MYTEMP}
+else
+	${BELLA} -f ${INPUT} -k ${KSIZE} -o ${NAME} -w ${WINDOW} -c ${DEPTH} -x ${XDROP} -l ${LOWER} -u ${UPPER} -t >> ${MYTEMP}
+fi
 
 echo "BELLA run completed"
 
@@ -101,10 +108,10 @@ RC=$(awk 'NR==17 {print; exit}' ${MYTEMP})
 PR=$(awk 'NR==18 {print; exit}' ${MYTEMP})
 F1=$(awk 'NR==19 {print; exit}' ${MYTEMP})
 
-echo "ecsample	${KSIZE}	${WINDOW}	${MMER}	${SMER}	${LOWER}	${UPPER}	${TOTKMR}	${NNZA}	${NNZC}	${NNZR}	${MYTIME}	${RC}	${PR}	${F1}" >> ${SUMMARY}
+echo "ecsample	${XDROP}	${KSIZE}	${WINDOW}	${MMER}	${SMER}	${LOWER}	${UPPER}	${TOTKMR}	${NNZA}	${NNZC}	${NNZR}	${MYTIME}	${RC}	${PR}	${F1}" >> ${SUMMARY}
 
 # remove tmp summary
-# rm ${MYTEMP}
+rm ${MYTEMP}
 
 echo "BELLA pipeline completed, results so far can be found here: ${SUMMARY}"
 
