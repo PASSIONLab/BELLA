@@ -828,7 +828,7 @@ void MinimizerCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable
     double load2kmers = omp_get_wtime();
     std::string kmerCountingTime = std::to_string(load2kmers - minimizercount) + " seconds";
     printLog(kmerCountingTime);
-
+/*
     // Reliable bounds computation using estimated error rate from phred quality score
     if(b_pars.useHOPC)
     {
@@ -840,7 +840,7 @@ void MinimizerCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable
         LowerBound = computeLower(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
         UpperBound = computeUpper(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
     }
-
+*/
     size_t totalKmers = countsdenovo.size();
     printLog(totalKmers);
     
