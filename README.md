@@ -51,7 +51,7 @@ make bella (CPU-only) OR make bella-gpu (CPU/GPU)
 
 To run with default setting:
 ```
-./bella -f <text-file-listing-all-input-fastq-files> -o <out-filename> -c <coverage> -q
+./bella -f ${INPUT} -k ${KSIZE} -o ${NAME} -c ${DEPTH} -x ${XDROP} -l ${LOWER} -u ${UPPER} -t
 ```
 BELLA requires a text file containing the path to the input fastq file(s) as the argument for the -f option.
 Example: [input-example.txt](https://github.com/giuliaguidi/bella/files/2620924/input-example.txt)
@@ -71,7 +71,7 @@ Optional flag description:
 -x : SeqAn xDrop [7]   									 
 -e : Error rate [0.15]   				 
 -q : Estimare error rate from the dataset [FALSE]   	 
--u : Use default error rate setting [FALSE]  		   	 
+-t : Use default error rate setting [FALSE]  		   	 
 -m : Total RAM of the system in MB [auto estimated if possible or 8,000 if not]  	 
 -z : Do not run pairwise alignment [FALSE]   			 
 -d : Deviation from the mean alignment score [0.10]  	 
@@ -82,6 +82,8 @@ Optional flag description:
 -s : K-mer counting split count can be increased for large dataset [1]
 -b : Use HOPC representation with HOPC erate [false | 0.035] 
 -w : Window length for minimizer selection [none | if provided, enables minimizers]
+-l : K-mer frequency lower bound (required)
+-u : K-mer frequency upper bound (required)
 ```
 ### Error Rate
 
@@ -91,7 +93,7 @@ The user should either:
 
 * **-e** = suggest an error rate
 * **-q** = confirm that the data has quality values and we can estimate the error rate from the data set
-* **-u** = confirm that we can use a default error rate (0.15)
+* **-t** = confirm that we can use a default error rate (0.15)
 
 ### Memory Usage
 
