@@ -393,8 +393,7 @@ int main (int argc, char *argv[]) {
 
     	if(b_parameters.useMinimizer)
     	{
-        	MinimizerCount(allfiles, countsreliable, 
-			       , reliableUpperBound,
+        	MinimizerCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound,
         		InputCoverage, upperlimit, b_parameters);
     	}
     	else
