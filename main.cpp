@@ -79,7 +79,8 @@ int main (int argc, char *argv[]) {
 	char	*all_inputs_fofn 	= NULL;	// List of fastqs (i)
 	char	*OutputFile 		= NULL;	// output filename (o)
 	int	InputCoverage 		= 0;	// Coverage required (d)
-	int reliableLowerBound = 2, reliableUpperBound = 8; // reliable range reliableLowerBound and reliableUpperBound bound
+	int 	reliableLowerBound	= 0;	// K-mer frequency lower bound required (l)
+	int 	reliableUpperBound	= 0; 	// K-mer frequency upper bound required (u)
 
 	BELLApars b_parameters;
 
@@ -246,8 +247,8 @@ int main (int argc, char *argv[]) {
 				cout << "	-s : K-mer counting split count can be increased for large dataset [1]" 	<< endl;
 				cout << "	-h : Use HOPC representation with HOPC erate [false | 0.035]" << endl;
 				cout << "	-w : Window length for minimizer selection [none | if provided, enables minimizers]" << endl;
-				cout << "       -l : Reliable lower bound [2]" << endl;
-				cout << "       -u : Reliable upper bound [8]" << endl;
+				cout << "       -l : K-mer frequency lower bound (required)" << endl;
+				cout << "       -u : K-mer frequency upper bound (required)" << endl;
 
 
 				FreeOptList(thisOpt); // Done with this list, free it
@@ -256,7 +257,7 @@ int main (int argc, char *argv[]) {
 		}
 	}
 
-	if(all_inputs_fofn == NULL || OutputFile == NULL || InputCoverage == 0)
+	if(all_inputs_fofn == NULL || OutputFile == NULL || InputCoverage == 0 || reliableLowerBound == 0 || reliableUpperBound == 0)
 	{
 		std::string ErrorMessage = "BELLA execution terminated: missing arguments. Run with -i to print out the command line options.\n";
 		printLog(ErrorMessage);
@@ -392,7 +393,8 @@ int main (int argc, char *argv[]) {
 
     	if(b_parameters.useMinimizer)
     	{
-        	MinimizerCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound,
+        	MinimizerCount(allfiles, countsreliable, 
+			       , reliableUpperBound,
         		InputCoverage, upperlimit, b_parameters);
     	}
     	else
