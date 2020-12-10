@@ -214,9 +214,17 @@ int main (int argc, char *argv[]) {
 				break;
 			}
             		case 'w': {
-                    		b_parameters.useMinimizer = true;
-                    		b_parameters.windowlen = atoi(thisOpt->argument);
-                    		break;
+				if(atoi(thisOpt->argument) >= b_parameters.kmerSize)
+				{
+                    			b_parameters.useMinimizer = true;
+                    			b_parameters.windowlen = atoi(thisOpt->argument);
+				}
+				else
+				{
+					std::string WARNING = "The window size " + std::to_string(atoi(thisOpt->argument)) + " is smaller than the minimizer size " + std::to_string(b_parameters.kmerSize) + ". Declare k-mer/minimizer size (-k) before window size (-w) in the command line. BELLA is going to run using regular k-mer and not minimizer.\n";
+                                        printLog(WARNING);
+				}
+				break;
                		}
 			case 'l': {
 				reliableLowerBound = atoi(thisOpt->argument);
