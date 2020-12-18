@@ -213,16 +213,16 @@ int main (int argc, char *argv[]) {
 				b_parameters.useHOPC = true;
 				break;
 			}
-            		case 'w': {
-				if(atoi(thisOpt->argument) >= b_parameters.kmerSize)
+            	case 'w': {
+				if(atoi(thisOpt->argument) > 0)
 				{
                     			b_parameters.useMinimizer = true;
                     			b_parameters.windowlen = atoi(thisOpt->argument);
 				}
 				else
 				{
-					std::string WARNING = "The window size " + std::to_string(atoi(thisOpt->argument)) + " is smaller than the minimizer size " + std::to_string(b_parameters.kmerSize) + ". Declare k-mer/minimizer size (-k) before window size (-w) in the command line. BELLA is going to run using regular k-mer and not minimizer.\n";
-                                        printLog(WARNING);
+					std::string WARNING = "The window size must be greater than 0. BELLA is going to run using regular k-mer and not minimizer.\n";
+                    printLog(WARNING);
 				}
 				break;
                		}
@@ -255,8 +255,8 @@ int main (int argc, char *argv[]) {
 				cout << "	-s : K-mer counting split count can be increased for large dataset [1]" 	<< endl;
 				cout << "	-h : Use HOPC representation with HOPC erate [false | 0.035]" << endl;
 				cout << "	-w : Window length for minimizer selection [none | if provided, enables minimizers]" << endl;
-				cout << "       -l : K-mer frequency lower bound (required)" << endl;
-				cout << "       -u : K-mer frequency upper bound (required)" << endl;
+				cout << "	-l : K-mer frequency lower bound (required)" << endl;
+				cout << "	-u : K-mer frequency upper bound (required)" << endl;
 
 
 				FreeOptList(thisOpt); // Done with this list, free it
