@@ -34,6 +34,7 @@
 #include "chain.h"
 #include "bellaio.h"
 #include "minimizer.h"
+#include "syncmer.h"
 
 #include "kmercode/hash_funcs.h"
 #include "kmercode/Kmer.hpp"
@@ -53,6 +54,7 @@
 
 #define LSIZE 16000
 #define ITERS 10
+#define useSyncmer 1
 
 #define KMERINDEX uint32_t		
 // #define KMERINDEX uint64_t 	// Uncomment to for large genomes and comment out line 56
@@ -399,16 +401,21 @@ int main (int argc, char *argv[]) {
 
 	CuckooDict<KMERINDEX> countsreliable;
 
-    	if(b_parameters.useMinimizer)
-    	{
-        	MinimizerCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound,
-        		InputCoverage, upperlimit, b_parameters);
-    	}
-    	else
-    	{
-        	SplitCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound,
-                   InputCoverage, upperlimit, b_parameters);
-    	}
+	if(b_parameters.useMinimizer)
+	{
+    	MinimizerCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound,
+    		InputCoverage, upperlimit, b_parameters);
+	}
+	else if(useSyncmer)
+	{
+		SyncmerCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound,
+    		InputCoverage, upperlimit, b_parameters);
+	}
+	else
+	{
+    	SplitCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound,
+               InputCoverage, upperlimit, b_parameters);
+	}
 
 	double errorRate;
 
