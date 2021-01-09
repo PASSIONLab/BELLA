@@ -280,7 +280,7 @@ int main (int argc, char *argv[]) {
 		std::string str1 = "BELLA execution terminated. The user should either:\n\n";
 		std::string str2 = "	* -e = suggest an error rate;\n";
 		std::string str3 = "	* -q = confirm that the data has quality values and we can estimate the error rate from the data set;\n";
-		std::string str4 = "	* -u = confirm that we can use a default error rate (0.15).\n"; // This might not be worth it for large runs (diBELLA)
+		std::string str4 = "	* -t = confirm that we can use a default error rate (0.15).\n"; // This might not be worth it for large runs (diBELLA)
 		std::string ErrorMessage = str1 + str2 + str3 + str4;
 
 		printLog(ErrorMessage);
@@ -401,16 +401,16 @@ int main (int argc, char *argv[]) {
 
 	CuckooDict<KMERINDEX> countsreliable;
 
-	if(b_parameters.useMinimizer)
-	{
-    	MinimizerCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound,
-    		InputCoverage, upperlimit, b_parameters);
-	}
-	else if(useSyncmer)
+	if(b_parameters.useSyncmer)
 	{
 		SyncmerCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound,
     		InputCoverage, upperlimit, b_parameters);
 	}
+	else if(b_parameters.useMinimizer)
+        {
+        MinimizerCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound,
+                InputCoverage, upperlimit, b_parameters);
+        }
 	else
 	{
     	SplitCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound,
