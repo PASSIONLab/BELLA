@@ -1,0 +1,8 @@
+3 June 1999: Chris S. 
+	In Makefile, line 'all'  commented  with # checksprng and timesprng.
+-------------------------------------------------------------------------------
+7 June 1999: Chris S.
+In Makefile, removed the line with 'cp' from 'checksprng' section. 
+	No file 'sprng.data'. There are such files for each generator 
+	individually.
+--------------------------------------------------------------------------------

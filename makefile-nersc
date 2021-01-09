@@ -1,9 +1,9 @@
-RMATPATH = mtspgemm2017/GTgraph/R-MAT
-SPRNPATH = mtspgemm2017/GTgraph/sprng2.0-lite
+RMATPATH = include/common/GTgraph/R-MAT
+SPRNPATH = include/common/GTgraph/sprng2.0-lite
 SEQANPATH = seqan
 LOGANPATH = loganGPU
 XAVIER_DIR=xavier
-include mtspgemm2017/GTgraph/Makefile.var
+include include/common/GTgraph/Makefile.var
 INCLUDE = -I$(SPRNPATH)/include -I$(LOGANPATH) -I$(SEQANPATH) # -I${XAVIER_DIR}/include
 MLKINCLUDE = -I/opt/intel/composer_xe_2015.0.039/mkl/include
 LIBPATH = -L/opt/intel/composer_xe_2015.0.039/mkl/lib 
@@ -27,7 +27,7 @@ sprng:
 rmat:	sprng
 	(cd $(RMATPATH); $(MAKE); cd ../..)
 
-LIBS = -L$(CURDIR)/libbloom/build -lbloom -lpthread -lbz2 -lz #${XAVIER_DIR}/lib/libxavier.a
+LIBS = -L$(CURDIR)/libbloom/build -lbloom -lpthread -lbz2 -lz
 
 Buffer.o: kmercode/Buffer.c
 	$(CC) $(PARCFLAGS) -o Buffer.o kmercode/Buffer.c
@@ -53,20 +53,20 @@ optlist.o:	optlist/optlist.c optlist/optlist.h
 Kmer.o:	kmercode/Kmer.cpp
 	$(COMPILER) $(PARCFLAGS) -std=c++11 -o Kmer.o kmercode/Kmer.cpp
 
-# flags defined in mtspgemm2017/GTgraph/Makefile.var
-bella: main.cpp hash_funcs.o fq_reader.o Buffer.o Kmer.o bound.o optlist.o rmat bloomlib
-	$(COMPILER) -std=c++14 -w -O3 $(ASFLAGS) $(INCLUDE) -mavx2 -fopenmp -fpermissive -o bella hash_funcs.o Kmer.o Buffer.o fq_reader.o bound.o optlist.o main.cpp ${LIBS} 
+# flags defined in include/common/GTgraph/Makefile.var
+bella: src/main.cpp hash_funcs.o fq_reader.o Buffer.o Kmer.o bound.o optlist.o rmat bloomlib
+	$(COMPILER) -std=c++14 -w -O3 $(ASFLAGS) $(INCLUDE) -mavx2 -fopenmp -fpermissive -o bella hash_funcs.o Kmer.o Buffer.o fq_reader.o bound.o optlist.o src/main.cpp ${LIBS} 
 
 # GPU build
-bella-gpu: main.cu hash_funcs.o fq_reader.o Buffer.o Kmer.o bound.o optlist.o rmat bloomlib
-	$(COMPILER_GPU) $(CUDAFLAGS) $(INCLUDE) -o bella hash_funcs.o Kmer.o Buffer.o fq_reader.o bound.o optlist.o main.cu ${LIBS} -D__NVCC__
+bella-gpu: src/main.cu hash_funcs.o fq_reader.o Buffer.o Kmer.o bound.o optlist.o rmat bloomlib
+	$(COMPILER_GPU) $(CUDAFLAGS) $(INCLUDE) -o bella hash_funcs.o Kmer.o Buffer.o fq_reader.o bound.o optlist.o src/main.cu ${LIBS} -D__NVCC__
 
 # makes evaluation
 result:
-	(cd bench; make result; cd ..)
+	(cd benchmark; make result; cd ..)
 # add -D__LIBCUCKOO_SERIAL to run lubcuckoo in a single thread
 clean:
-	(cd mtspgemm2017/GTgraph; make clean; cd ../..)
+	(cd include/common/GTgraph; make clean; cd ../..)
 	rm -f *.o
 	rm -f bella
 	$(MAKE) -C libbloom clean
