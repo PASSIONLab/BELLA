@@ -1,8 +1,8 @@
-#include "CSC.h"
-#include "utility.h"
-#include "BitMap.h"
-#include "common.h"
-#include "transpose.h"
+#include "../include/common/"
+#include "../include/common/utility.h"
+#include "../include/common/BitMap.h"
+#include "../include/common/common.h"
+#include "../include/common/transpose.h"
 #include <algorithm>
 #include <numeric>
 #include <vector>
