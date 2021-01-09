@@ -1,5 +1,5 @@
-#include "CSR.h"
-#include "utility.h"
+#include "../include/common/"
+#include "../include/common/utility.h"
 
 // copy constructor
 template <class IT, class NT>
