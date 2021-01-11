@@ -78,9 +78,9 @@ Optional flag description:
 -p : Output in PAF format [FALSE]
 -g : GPUs available [1, only works when BELLA is compiled for GPU]
 -s : K-mer counting split count can be increased for large dataset [1]
--h : Use HOPC representation with HOPC erate [false | 0.035] 
+-h : Use HOPC representation with HOPC erate [FALSE | 0.035] 
 -w : Window length for minimizer selection [none | if provided, enables minimizers]
--c : Enable syncmer [false]
+-c : Enable syncmer [FALSE]
 -l : K-mer frequency lower bound (required)
 -u : K-mer frequency upper bound (required)
 ```
