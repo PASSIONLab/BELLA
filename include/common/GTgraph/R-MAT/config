@@ -1,0 +1,17 @@
+n 10000000
+m 100000000
+a 0.45
+b 0.15
+c 0.15
+d 0.25
+
+MAX_WEIGHT 100
+MIN_WEIGHT 0
+SELF_LOOPS 0
+
+STORE_IN_MEMORY 1
+SORT_EDGELISTS 0
+# Sorting alg. to use: 0 for counting sort (works only if n is 
+# less than 2^31 - 1), 1 for heap sort
+SORT_TYPE 1
+WRITE_TO_FILE 0

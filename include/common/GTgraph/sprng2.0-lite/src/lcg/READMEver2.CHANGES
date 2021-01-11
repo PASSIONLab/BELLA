@@ -1,0 +1,5 @@
+7 June 1999; Chris S.
+Makefile: 
+	1. in 'all ;' added 'checksprng'
+	2. added section 'checksprng'.
+----------------------------------------------------------------------------

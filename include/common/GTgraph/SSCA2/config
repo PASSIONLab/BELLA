@@ -1,0 +1,22 @@
+SCALE 21
+# By default, TotVertices = 2^SCALE, MaxCliqueSize = floor (2^(SCALE/3.0)) and MaxWeight = 2^SCALE
+
+# These parameters can also be set separately
+# MaxCliqueSize 10
+
+MaxParallelEdges 3
+
+ProbIntercliqueEdges 0.5
+
+ProbUnidirectional 0.2
+
+MinWeight 0
+
+# Other parameters
+SORT_EDGELISTS 0
+
+# Sorting alg. to use: 0 for counting sort (works only if TOT_VERTICES is
+# less than 2^31 - 1, i.e SCALE <= 31), 1 for heap sort
+SORT_TYPE 0
+
+WRITE_TO_FILE 0

@@ -1,0 +1,45 @@
+####################
+# Common variables
+#################### 
+#CC = icc
+CC = gcc
+#CC = cc
+MAKE = make
+#MAKE = gmake
+
+# Compiling in 64-bit by default
+OPT = -O2
+DEB = -g #-DDEBUG
+FLAGS = $(OPT) #-gcc-name=gcc-4.8 
+LDFLAGS = $(OPT)
+
+TOP := $(dir $(lastword $(MAKEFILE_LIST)))
+
+SSCADIR = SSCA2
+SPRNGDIR = $(TOP)/sprng2.0-lite
+RANDDIR = random
+RMATDIR = R-MAT
+
+LIBS = -L$(SPRNGDIR)/lib -lsprng -lm
+INCS = -I$(SPRNGDIR)/include
+
+
+###########################
+# SPRNG-specific variables
+###########################
+
+F77 = g77
+FFLAGS = $(FLAGS)
+F77LDFLAGS = $(LDFLAGS)
+CFLAGS = $(FLAGS)
+CLDFLAGS = $(LDFLAGS)
+AR = ar
+ARFLAGS = cr
+SHELL = /bin/sh
+RANLIB = ranlib
+CLD = $(CC)
+F77LD = $(F77)
+FFXN =  -DAdd_
+FSUFFIX = F
+MPIF77 = $(F77)
+MPICC = $(CC)

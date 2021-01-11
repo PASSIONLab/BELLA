@@ -1,0 +1,65 @@
+This directory contains an example dataset to test the CA PacBio RS correction pipeline. The files are:
+  - reference.fasta - the reference for the E. coli sequence used for PacBio RS validation
+  - pacbio.spec  - the spec file used for correction of PacBio RS sequences. The spec is set to limit memory usage to 32GB. If you have more you can adjust it to your machine size or just remove the options and PBcR will auto-detect your cores and RAM. If you need to run on the grid, see the wiki page for information on parameters to set
+  - pacbio_filtered.fastq - A random subset of 30X from a PacBio RS II P5-C3 single SMRTcell
+
+The example pacbio.spec specifies memory parameters:
+ovlMemory = 32
+ovlStoreMemory= 32000
+merylMemory = 32000
+Which will ensure the above steps in the pipeline will not use more than 32GB of ram. By default, PBcR will try to use all available memory on a system so if you would like to limit computation, specify a limit. Otherwise, you can run with an empty spec file on a single machine. If you need to run on the grid, see the wiki page for information on parameters to set.
+
+To run the correction pipeline:
+wgs/Linux-amd64/bin/PBcR -pbCNS -length 500 -partitions 200 -l K12 -s pacbio.spec -fastq pacbio_filtered.fastq genomeSize=4650000 > run.out 2>&1
+
+The pipeline will automatically correct and assemble the data. This should require approximately 30 minutes on a 16-core machine. The corrected sequences are in K12.fastq (the longest 25X subset is K12.longest25.fastq). We can see the assembled ecoli in:
+head -n 40 K12/9-terminator/asm.qc
+[Scaffolds]
+TotalScaffolds=1
+TotalContigsInScaffolds=1
+MeanContigsPerScaffold=1.00
+MinContigsPerScaffold=1
+MaxContigsPerScaffold=1
+
+TotalBasesInScaffolds=4635585
+MeanBasesInScaffolds=4635585
+MinBasesInScaffolds=4635585
+MaxBasesInScaffolds=4635585
+N25ScaffoldBases=4635585
+N50ScaffoldBases=4635585
+N75ScaffoldBases=4635585
+ScaffoldAt1000000=4635585
+
+TotalSpanOfScaffolds=4635585
+MeanSpanOfScaffolds=4635585
+MinScaffoldSpan=4635585
+MaxScaffoldSpan=4635585
+IntraScaffoldGaps=0
+2KbScaffolds=1
+2KbScaffoldSpan=4635585
+MeanSequenceGapLength=0
+
+[Top5Scaffolds=contigs,size,span,avgContig,avgGap,EUID]
+0=1,4635585,4635585,4635585,0,7180000000002
+total=1,4635585,4635585,4635585,0
+
+[Contigs]
+TotalContigsInScaffolds=1
+TotalBasesInScaffolds=4635585
+TotalVarRecords=0
+MeanContigLength=4635585
+MinContigLength=4635585
+MaxContigLength=4635585
+N25ContigBases=4635585
+N50ContigBases=4635585
+N75ContigBases=4635585
+ContigAt1000000=4635585
+
+The longest contig comprises the full chromosome. We can check how many reads are in each contig:
+cat K12/9-terminator/asm.posmap.frgctg |awk '{print $2}'|sort |uniq -c
+  11748 7180000000001
+
+Generally, contigs with very few reads (<10) can be ignored in downstream analysis. Repetitive genetic elements, such as plasmids, end up in what CA calls degenerates. We can check if any were assembled here:
+cat K12/9-terminator/asm.posmap.frgdeg |awk '{print $2}'|sort |uniq -c
+
+There were no degenerate (repetitive) elements here. If you are looking for plasmids, make sure to check the asm.deg.fasta file.

@@ -51,37 +51,36 @@ make bella (CPU-only) OR make bella-gpu (CPU/GPU)
 
 To run with default setting:
 ```
-./bella -f ${INPUT} -k ${KSIZE} -o ${NAME} -c ${DEPTH} -x ${XDROP} -l ${LOWER} -u ${UPPER} -t
+./bella -f ${INPUT} -k ${KSIZE} -o ${NAME} -x ${XDROP} -l ${LOWER} -u ${UPPER} -t
 ```
 BELLA requires a text file containing the path to the input fastq file(s) as the argument for the -f option.
 Example: [input-example.txt](https://github.com/giuliaguidi/bella/files/2620924/input-example.txt)
 
 To show the usage:
 ```
-./bella -h
+./bella -i
 ```
 
 Optional flag description: 
 ```
 -f : List of fastq(s)	(required)
 -o : Output filename	(required)
--c : Dataset coverage	(required)
 -k : KmerSize [17]			
 -a : User-defined alignment threshold [FALSE, -1]   		
 -x : SeqAn xDrop [7]   									 
--e : Error rate [0.15]   				 
+-e : Error rate [0.15]   	
 -q : Estimare error rate from the dataset [FALSE]   	 
--t : Use default error rate setting [FALSE]  		   	 
+-t : Use default error rate setting [FALSE]  
 -m : Total RAM of the system in MB [auto estimated if possible or 8,000 if not]  	 
--z : Do not run pairwise alignment [FALSE]   			 
--d : Deviation from the mean alignment score [0.10]  	 
--w : Bin size binning algorithm [500]   	 
--p : Output in PAF format [FALSE]   		 
--r : Probability threshold for reliable range [0.002]     
+-z : Do not run pairwise alignment [FALSE]   
+-d : Deviation from the mean alignment score [0.10]
+-b : Bin size binning algorithm [500]
+-p : Output in PAF format [FALSE]
 -g : GPUs available [1, only works when BELLA is compiled for GPU]
 -s : K-mer counting split count can be increased for large dataset [1]
--b : Use HOPC representation with HOPC erate [false | 0.035] 
+-h : Use HOPC representation with HOPC erate [FALSE | 0.035] 
 -w : Window length for minimizer selection [none | if provided, enables minimizers]
+-c : Enable syncmer [FALSE]
 -l : K-mer frequency lower bound (required)
 -u : K-mer frequency upper bound (required)
 ```
@@ -132,12 +131,12 @@ python3 SAMparser.py <bwamem/minimap2-output>
 * **Ground truth generation for synthetic data set**: mafconvert.py allows to transform the .MAF file from PBSIM (Pacbio read simulator) in a simpler format usable as input to the evaluation code when using synthetic data set.
 
 ```
-python mafconvert.py axt <maf-file> > <ground-truth.txt>
+python scripr/mafconvert.py axt <maf-file> > <ground-truth.txt>
 ```
 
 To run the evaluation program:
 ```
-cd bench
+cd benchmark
 make result
 ```
 ```
