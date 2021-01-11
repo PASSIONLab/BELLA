@@ -468,6 +468,7 @@ int main (int argc, char *argv[]) {
                         Kmer mykmer(kmerstrfromfastq.c_str(), kmerstrfromfastq.length());
                         seqkmers.emplace_back(mykmer);
                     }
+
                     getMinimizers(b_parameters.windowlen, seqkmers, seqminimizers, b_parameters.useHOPC);
                     //cout << seqkmers.size() << " k-mers generated " << seqminimizers.size() << " minimizers" << endl;
                     for(auto minpos: seqminimizers)
@@ -565,7 +566,7 @@ int main (int argc, char *argv[]) {
 	unsigned int nkmer = countsreliable.size();
 	
 	// to help the parsing script
-        cout << nkmer << endl;
+    cout << nkmer << endl;
 	
 	double matcreat = omp_get_wtime();
 	CSC<KMERINDEX, unsigned short int> transpmat(transtuples, nkmer, numReads,
