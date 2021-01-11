@@ -353,9 +353,28 @@ int main (int argc, char *argv[]) {
 
     std::string KmerSplitCount = std::to_string(b_parameters.SplitCount);
     printLog(KmerSplitCount);
-    
-    std::string minimizerwindow = std::to_string(b_parameters.windowlen);
-    printLog(minimizerwindow);
+
+	if(b_parameters.useMinimizer)
+	{
+		std::string useMinimizer = "ENABLED";
+		printLog(useMinimizer);
+		std::string minimizerWindow = std::to_string(b_parameters.windowlen);
+    	printLog(minimizerWindow);
+	}
+ 	else if(b_parameters.useSyncmer)
+	{
+		std::string useSyncmer = "ENABLED";
+		printLog(useSyncmer);
+		std::string minimizerWindow = "0";
+    	printLog(minimizerWindow);
+	}
+	else
+	{
+		std::string useKmer = "ENABLED";
+		printLog(useKmer);
+		std::string minimizerWindow = "0";
+    	printLog(minimizerWindow);
+	}
 
 #endif
 
