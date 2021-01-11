@@ -54,8 +54,6 @@
 
 #define LSIZE 16000
 #define ITERS 10
-// todo: this will be input parameter 
-#define useSyncmer 1
 
 #define KMERINDEX uint32_t		
 // #define KMERINDEX uint64_t 	// Uncomment to for large genomes and comment out line 56
@@ -77,11 +75,10 @@ int main (int argc, char *argv[]) {
 	// Follow an option with a colon to indicate that it requires an argument.
 
 	optList = NULL;
-	optList = GetOptList(argc, argv, (char*)"f:o:c:d:hk:a:ze:x:c:m:r:ps:qg:tw:l:i:bl:u:");
+	optList = GetOptList(argc, argv, (char*)"f:o:cd:hk:a:ze:x:m:ps:qg:tw:l:ibl:u:");
 
-	char	*all_inputs_fofn 	= NULL;	// List of fastqs (i)
+	char	*all_inputs_fofn 	= NULL;	// List of fastqs  (f)
 	char	*OutputFile 		= NULL;	// output filename (o)
-	int	InputCoverage 		= 0;	// Coverage required (d)
 	int 	reliableLowerBound	= 0;	// K-mer frequency lower bound required (l)
 	int 	reliableUpperBound	= 0; 	// K-mer frequency upper bound required (u)
 
@@ -89,7 +86,7 @@ int main (int argc, char *argv[]) {
 
 	if(optList == NULL)
 	{
-		std::string ErrorMessage("BELLA execution terminated: not enough parameters or invalid option. Run with -h to print out the command line options.\n");
+		std::string ErrorMessage("BELLA execution terminated: not enough parameters or invalid option. Run with -i to print out the command line options.\n");
 		printLog(ErrorMessage);
 		return 0;
 	}
@@ -101,7 +98,7 @@ int main (int argc, char *argv[]) {
 			case 'f': {
 				if(thisOpt->argument == NULL)
 				{
-					std::string ErrorMessage = "BELLA execution terminated: -f requires an argument. Run with -h to print out the command line options.\n";
+					std::string ErrorMessage = "BELLA execution terminated: -f requires an argument. Run with -i to print out the command line options.\n";
 					printLog(ErrorMessage);
 					return 0;
 				}
@@ -112,7 +109,7 @@ int main (int argc, char *argv[]) {
 			case 'o': {
 				if(thisOpt->argument == NULL)
 				{
-					std::string ErrorMessage = "BELLA execution terminated: -o requires an argument. Run with -h to print out the command line options.\n";
+					std::string ErrorMessage = "BELLA execution terminated: -o requires an argument. Run with -i to print out the command line options.\n";
 					printLog(ErrorMessage);
 					return 0;
 				}
@@ -138,29 +135,15 @@ int main (int argc, char *argv[]) {
 
 				break;
 			}
-			case 'c': {
-				if(thisOpt->argument == NULL)
-				{
-					std::string ErrorMessage = "BELLA execution terminated: -c requires an argument. Run with -h to print out the command line options.\n";
-					printLog(ErrorMessage);
-					return 0;
-				}
-				InputCoverage = atoi(thisOpt->argument);  
-				break;
-			}
 			case 'z': b_parameters.skipAlignment = true; break;
 			case 'k': {
 				b_parameters.kmerSize = atoi(thisOpt->argument);
 				break;
 			}
-			case 'r': {
-				b_parameters.minProbability = stod(thisOpt->argument);
-				break;
-			}
 			case 'e': { // User suggests error rate
 				if(thisOpt->argument == NULL)
 				{
-					std::string ErrorMessage = "BELLA execution terminated: -e requires an argument. Run with -h to print out the command line options.\n";
+					std::string ErrorMessage = "BELLA execution terminated: -e requires an argument. Run with -i to print out the command line options.\n";
 					printLog(ErrorMessage);
 				}	
 				b_parameters.errorRate = strtod(thisOpt->argument, NULL);
@@ -205,7 +188,7 @@ int main (int argc, char *argv[]) {
 			case 'd': {
 				if(stod(thisOpt->argument) > 1.0 || stod(thisOpt->argument) < 0.0)
 				{
-					std::string ErrorMessage = "BELLA execution terminated: -d requires a value in [0, 1]. Run with -h to print out the command line options.\n";
+					std::string ErrorMessage = "BELLA execution terminated: -d requires a value in [0, 1]. Run with -i to print out the command line options.\n";
 					printLog(ErrorMessage);
 					return 0;
 				}
@@ -216,19 +199,19 @@ int main (int argc, char *argv[]) {
 				b_parameters.useHOPC = true;
 				break;
 			}
-            	case 'w': {
+            case 'w': {
 				if(atoi(thisOpt->argument) > 0)
 				{
-                    			b_parameters.useMinimizer = true;
-                    			b_parameters.windowlen = atoi(thisOpt->argument);
+					b_parameters.useMinimizer = true;
+					b_parameters.windowlen = atoi(thisOpt->argument);
 				}
 				else
 				{
 					std::string WARNING = "The window size must be greater than 0. BELLA is going to run using regular k-mer and not minimizer.\n";
-                    printLog(WARNING);
+					printLog(WARNING);
 				}
 				break;
-               		}
+            }
 			case 'l': {
 				reliableLowerBound = atoi(thisOpt->argument);
 			  	break;
@@ -236,12 +219,16 @@ int main (int argc, char *argv[]) {
 			case 'u': {
 				reliableUpperBound = atoi(thisOpt->argument);
 				break;
+			}
+			case 'c': {
+				b_parameters.useMinimizer = false;
+				b_parameters.useSyncmer   = true;
+				break;
 			}	  
 			case 'i': {
 				cout << "Usage:\n" << endl;
 				cout << "	-f : List of fastq(s)	(required)" 	<< endl;
 				cout << "	-o : Output filename	(required)" 	<< endl;
-				cout << "	-c : Dataset InputCoverage	(required)" << endl;
 				cout << "	-k : KmerSize [17]" 					<< endl;
 				cout << "	-a : User-defined alignment threshold [FALSE, -1]" 		<< endl;
 				cout << "	-x : SeqAn xDrop [7]" 									<< endl;
@@ -253,14 +240,13 @@ int main (int argc, char *argv[]) {
 				cout << "	-d : Deviation from the mean alignment score [0.10]"	<< endl;
 				cout << "	-b : Bin size binning algorithm [500]" 	<< endl;
 				cout << "	-p : Output in PAF format [FALSE]" 		<< endl;
-				cout << "	-r : Probability threshold for reliable range [0.002]"  << endl;
 				cout << "	-g : GPUs available [1, only works when BELLA is compiled for GPU]" 	<< endl;
 				cout << "	-s : K-mer counting split count can be increased for large dataset [1]" 	<< endl;
 				cout << "	-h : Use HOPC representation with HOPC erate [false | 0.035]" << endl;
 				cout << "	-w : Window length for minimizer selection [none | if provided, enables minimizers]" << endl;
+				cout << "	-c : Enable syncmer [false]" << endl;
 				cout << "	-l : K-mer frequency lower bound (required)" << endl;
 				cout << "	-u : K-mer frequency upper bound (required)" << endl;
-
 
 				FreeOptList(thisOpt); // Done with this list, free it
 				return 0;
@@ -268,7 +254,7 @@ int main (int argc, char *argv[]) {
 		}
 	}
 
-	if(all_inputs_fofn == NULL || OutputFile == NULL || InputCoverage == 0 || reliableLowerBound == 0 || reliableUpperBound == 0)
+	if(all_inputs_fofn == NULL || OutputFile == NULL || reliableLowerBound == 0 || reliableUpperBound == 0)
 	{
 		std::string ErrorMessage = "BELLA execution terminated: missing arguments. Run with -i to print out the command line options.\n";
 		printLog(ErrorMessage);
@@ -317,7 +303,6 @@ int main (int argc, char *argv[]) {
     
 #ifdef PRINT
     printLog(OutputFile);
-    printLog(InputCoverage);
 
     std::string kmerSize = std::to_string(b_parameters.kmerSize);
     printLog(kmerSize);
@@ -366,9 +351,6 @@ int main (int argc, char *argv[]) {
     std::string xDrop = std::to_string(b_parameters.xDrop);
     printLog(xDrop);
 
-    std::string ReliableCutoffProbability = std::to_string(b_parameters.minProbability);
-    printLog(ReliableCutoffProbability);
-
     std::string KmerSplitCount = std::to_string(b_parameters.SplitCount);
     printLog(KmerSplitCount);
     
@@ -405,17 +387,17 @@ int main (int argc, char *argv[]) {
 	if(b_parameters.useSyncmer)
 	{
 		SyncmerCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound,
-    		InputCoverage, upperlimit, b_parameters);
+    		upperlimit, b_parameters);
 	}
 	else if(b_parameters.useMinimizer)
-        {
-        MinimizerCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound,
-                InputCoverage, upperlimit, b_parameters);
-        }
+    {
+    	MinimizerCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound,
+            upperlimit, b_parameters);
+    }
 	else
 	{
     	SplitCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound,
-               InputCoverage, upperlimit, b_parameters);
+               upperlimit, b_parameters);
 	}
 
 	double errorRate;

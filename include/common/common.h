@@ -56,21 +56,21 @@ struct BELLApars
 	bool	outputPaf;			// Output in paf format 								(p)
 	bool	userDefMem;			// RAM available 										(m)
 
-	bool 	useHOPC; 						// use HOPC representation
+	bool 	useHOPC; 			// use HOPC representation
 
 	double	deltaChernoff;		// delta computed via Chernoff bound 					(d)
 	double	totalMemory;		// In MB, default is ~ 8GB
 	double	errorRate;			// default error rate if estimation is disable 			(e)
-	double	minProbability;		// reliable range probability threshold 				(r)
 
 	double	HOPCerate;			// error rate to use for HOPC kmers                     (h)
-    
-    bool useMinimizer;
-    size_t windowlen;          //                                                       (w)
+
+	bool useSyncmer; 			// use HOPC representation
+    bool useMinimizer;			// use HOPC representation
+    size_t windowlen;           // window length								        (w)
 
 	BELLApars(): kmerSize(17), binSize(500), fixedThreshold(-1), xDrop(7), numGPU(1), SplitCount(1),
 					skipEstimate(true), skipAlignment(false), outputPaf(false), userDefMem(false), useHOPC(false), deltaChernoff(0.10), 
-						totalMemory(8000.0), errorRate(0.00), minProbability(0.10), HOPCerate(0.035), useMinimizer(0), windowlen(0)  {};
+						totalMemory(8000.0), errorRate(0.00), HOPCerate(0.035), useSyncmer(0), useMinimizer(0), windowlen(0)  {};
 };
 
 template <typename T>

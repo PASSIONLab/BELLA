@@ -122,7 +122,7 @@ vector<filedata>  GetFiles(char *filename) {
  */
 template <typename IT>
 void SimpleCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_denovo, int& LowerBound, int& UpperBound,
-	int coverage, size_t upperlimit, BELLApars & b_pars)
+	size_t upperlimit, BELLApars & b_pars)
 {
 	vector < vector<double> > allquals(MAXTHREADS);
 
@@ -221,12 +221,6 @@ void SimpleCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_de
 	std::string kmerCountingTime = std::to_string(load2kmers - denovocount) + " seconds";
 	printLog(kmerCountingTime);
 
-
-	
-	// Reliable bounds computation using estimated error rate from phred quality score
-	LowerBound = computeLower(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
-	UpperBound = computeUpper(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
-
 	// Reliable k-mer filter on countsdenovo
 	IT kmer_id_denovo = 0;
 	auto lt = countsdenovo.lock_table(); // our counting
@@ -265,7 +259,7 @@ void SimpleCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_de
  */
 template <typename IT>
 void DeNovoCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_denovo, int& LowerBound, int& UpperBound,
-	int coverage, size_t upperlimit, BELLApars & b_pars)
+	size_t upperlimit, BELLApars & b_pars)
 {
 	vector < vector<Kmer> >   allkmers(MAXTHREADS);
 	vector < vector<double> > allquals(MAXTHREADS);
@@ -424,19 +418,6 @@ void DeNovoCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_de
 	std::string SecondKmerPassTime = std::to_string(omp_get_wtime() - firstpass) + " seconds";
 	printLog(SecondKmerPassTime);
 
-	// Reliable bounds computation using estimated error rate from phred quality score
-
-	if(b_pars.useHOPC)
-	{
-		LowerBound = computeLower(coverage, b_pars.HOPCerate, b_pars.kmerSize, b_pars.minProbability);
-		UpperBound = computeUpper(coverage, b_pars.HOPCerate, b_pars.kmerSize, b_pars.minProbability);
-	}
-	else
-	{
-		LowerBound = computeLower(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
-		UpperBound = computeUpper(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
-	}
-
 	// Reliable k-mer filter on countsdenovo
 	IT kmer_id_denovo = 0;
 	auto lt = countsdenovo.lock_table(); // our counting
@@ -480,7 +461,8 @@ double getAvg(double prev_avg, double x, int64_t n)
  * @param upperlimit
  */
 template <typename IT>
-void SplitCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_denovo, int& LowerBound, int& UpperBound, int coverage, size_t upperlimit, BELLApars & b_pars)
+void SplitCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_denovo, int& LowerBound, int& UpperBound, 
+	size_t upperlimit, BELLApars & b_pars)
 {
 	size_t totreads = 0;
 	size_t totbases = 0;
@@ -597,23 +579,7 @@ void SplitCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_den
 				b_pars.errorRate = avesofar;	
 				printLog(b_pars.errorRate);
 			}
-
-			// Reliable bounds computation using estimated error rate from phred quality score
-/*			if(b_pars.useHOPC)
-			{
-				LowerBound = computeLower(coverage, b_pars.HOPCerate, b_pars.kmerSize, b_pars.minProbability);
-				UpperBound = computeUpper(coverage, b_pars.HOPCerate, b_pars.kmerSize, b_pars.minProbability);
-			}
-			else
-			{
-				LowerBound = computeLower(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
-				UpperBound = computeUpper(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
-			}
-
-			printLog(LowerBound);
-			printLog(UpperBound);
-*/
-			}
+		}
 	
 		// HLL reduction (serial for now) to avoid double iteration
 		for (int i = 1; i < MAXTHREADS; i++) 
@@ -720,7 +686,7 @@ void SplitCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_den
  */
 template <typename IT>
 void MinimizerCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_denovo, int& LowerBound, int& UpperBound,
-    int coverage, size_t upperlimit, BELLApars & b_pars)
+    size_t upperlimit, BELLApars & b_pars)
 {
     vector < vector<double> > allquals(MAXTHREADS);
 
@@ -829,19 +795,7 @@ void MinimizerCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable
     double load2kmers = omp_get_wtime();
     std::string kmerCountingTime = std::to_string(load2kmers - minimizercount) + " seconds";
     printLog(kmerCountingTime);
-/*
-    // Reliable bounds computation using estimated error rate from phred quality score
-    if(b_pars.useHOPC)
-    {
-        LowerBound = computeLower(coverage, b_pars.HOPCerate, b_pars.kmerSize, b_pars.minProbability);
-        UpperBound = computeUpper(coverage, b_pars.HOPCerate, b_pars.kmerSize, b_pars.minProbability);
-    }
-    else
-    {
-        LowerBound = computeLower(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
-        UpperBound = computeUpper(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
-    }
-*/
+
     size_t totalKmers = countsdenovo.size();
     printLog(totalKmers);
     
@@ -887,7 +841,7 @@ void MinimizerCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable
  */
 template <typename IT>
 void SyncmerCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_denovo, int& LowerBound, int& UpperBound,
-    int coverage, size_t upperlimit, BELLApars & b_pars)
+    size_t upperlimit, BELLApars & b_pars)
 {
     vector < vector<double> > allquals(MAXTHREADS);
 
@@ -997,19 +951,7 @@ void SyncmerCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_d
     double load2kmers = omp_get_wtime();
     std::string kmerCountingTime = std::to_string(load2kmers - minimizercount) + " seconds";
     printLog(kmerCountingTime);
-/*
-    // Reliable bounds computation using estimated error rate from phred quality score
-    if(b_pars.useHOPC)
-    {
-        LowerBound = computeLower(coverage, b_pars.HOPCerate, b_pars.kmerSize, b_pars.minProbability);
-        UpperBound = computeUpper(coverage, b_pars.HOPCerate, b_pars.kmerSize, b_pars.minProbability);
-    }
-    else
-    {
-        LowerBound = computeLower(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
-        UpperBound = computeUpper(coverage, b_pars.errorRate, b_pars.kmerSize, b_pars.minProbability);
-    }
-*/
+
     size_t totalKmers = countsdenovo.size();
     printLog(totalKmers);
     

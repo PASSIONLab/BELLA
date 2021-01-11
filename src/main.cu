@@ -77,7 +77,6 @@ int main (int argc, char *argv[]) {
 
 	char	*all_inputs_fofn 	= NULL;	// List of fastqs (i)
 	char	*OutputFile 		= NULL;	// output filename (o)
-	int		InputCoverage 		= 0;	// Coverage required (d)
 
 	BELLApars b_parameters;
 
@@ -95,7 +94,7 @@ int main (int argc, char *argv[]) {
 			case 'f': {
 				if(thisOpt->argument == NULL)
 				{
-					std::string ErrorMessage = "BELLA execution terminated: -f requires an argument. Run with -h to print out the command line options.\n";
+					std::string ErrorMessage = "BELLA execution terminated: -f requires an argument. Run with -i to print out the command line options.\n";
 					printLog(ErrorMessage);
 					return 0;
 				}
@@ -106,7 +105,7 @@ int main (int argc, char *argv[]) {
 			case 'o': {
 				if(thisOpt->argument == NULL)
 				{
-					std::string ErrorMessage = "BELLA execution terminated: -o requires an argument. Run with -h to print out the command line options.\n";
+					std::string ErrorMessage = "BELLA execution terminated: -o requires an argument. Run with -i to print out the command line options.\n";
 					printLog(ErrorMessage);
 					return 0;
 				}
@@ -132,29 +131,15 @@ int main (int argc, char *argv[]) {
 
 				break;
 			}
-			case 'c': {
-				if(thisOpt->argument == NULL)
-				{
-					std::string ErrorMessage = "BELLA execution terminated: -c requires an argument. Run with -h to print out the command line options.\n";
-					printLog(ErrorMessage);
-					return 0;
-				}
-				InputCoverage = atoi(thisOpt->argument);  
-				break;
-			}
 			case 'z': b_parameters.skipAlignment = true; break;
 			case 'k': {
 				b_parameters.kmerSize = atoi(thisOpt->argument);
 				break;
 			}
-			case 'r': {
-				b_parameters.minProbability = stod(thisOpt->argument);
-				break;
-			}
 			case 'e': { // User suggests error rate
 				if(thisOpt->argument == NULL)
 				{
-					std::string ErrorMessage = "BELLA execution terminated: -e requires an argument. Run with -h to print out the command line options.\n";
+					std::string ErrorMessage = "BELLA execution terminated: -e requires an argument. Run with -i to print out the command line options.\n";
 					printLog(ErrorMessage);
 				}	
 				b_parameters.errorRate = strtod(thisOpt->argument, NULL);
@@ -198,7 +183,7 @@ int main (int argc, char *argv[]) {
 			case 'd': {
 				if(stod(thisOpt->argument) > 1.0 || stod(thisOpt->argument) < 0.0)
 				{
-					std::string ErrorMessage = "BELLA execution terminated: -d requires a value in [0, 1]. Run with -h to print out the command line options.\n";
+					std::string ErrorMessage = "BELLA execution terminated: -d requires a value in [0, 1]. Run with -i to print out the command line options.\n";
 					printLog(ErrorMessage);
 					return 0;
 				}
@@ -209,7 +194,6 @@ int main (int argc, char *argv[]) {
 				cout << "Usage:\n" << endl;
 				cout << "	-f : List of fastq(s)	(required)" 	<< endl;
 				cout << "	-o : Output filename	(required)" 	<< endl;
-				cout << "	-c : Dataset InputCoverage	(required)" << endl;
 				cout << "	-k : KmerSize [17]" 					<< endl;
 				cout << "	-a : User-defined alignment threshold [FALSE, -1]" 		<< endl;
 				cout << "	-x : SeqAn xDrop [7]" 									<< endl;
@@ -231,9 +215,9 @@ int main (int argc, char *argv[]) {
 		}
 	}
 
-	if(all_inputs_fofn == NULL || OutputFile == NULL || InputCoverage == 0)
+	if(all_inputs_fofn == NULL || OutputFile == NULL)
 	{
-		std::string ErrorMessage = "BELLA execution terminated: missing arguments. Run with -h to print out the command line options.\n";
+		std::string ErrorMessage = "BELLA execution terminated: missing arguments. Run with -i to print out the command line options.\n";
 		printLog(ErrorMessage);
 
 		return 0;
@@ -281,7 +265,6 @@ int main (int argc, char *argv[]) {
     
 #ifdef PRINT
     printLog(OutputFile);
-    printLog(InputCoverage);
 
     std::string kmerSize = std::to_string(b_parameters.kmerSize);
     printLog(kmerSize);
@@ -317,9 +300,6 @@ int main (int argc, char *argv[]) {
     std::string xDrop = std::to_string(b_parameters.xDrop);
     printLog(xDrop);
 
-    std::string ReliableCutoffProbability = std::to_string(b_parameters.minProbability);
-    printLog(ReliableCutoffProbability);
-
  	std::string KmerSplitCount = std::to_string(b_parameters.SplitCount);
     printLog(KmerSplitCount);
 
@@ -351,7 +331,7 @@ int main (int argc, char *argv[]) {
 	CuckooDict<KMERINDEX> countsreliable;
 
 	SplitCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound, 
-		InputCoverage, upperlimit, b_parameters);
+		upperlimit, b_parameters);
 
 	double errorRate  = b_parameters.errorRate;
 	printLog(errorRate);
