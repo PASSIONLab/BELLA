@@ -6,6 +6,7 @@
 #include <seqan/score.h>
 #include <seqan/modifier.h>
 #include <seqan/seeds.h>
+
 #ifndef __NVCC__
 	#include "../xavier/xavier.h"
 #endif
@@ -14,13 +15,13 @@
 #define PRINT
 #endif
 
-#include "../kmercode/hash_funcs.h"
-#include "../kmercode/Kmer.hpp"
-#include "../kmercode/Buffer.h"
-#include "../kmercode/common.h"
-#include "../kmercode/fq_reader.h"
-#include "../kmercode/ParallelFASTQ.h"
-#include "../kmercode/bound.hpp"
+#include "../../kmercode/hash_funcs.h"
+#include "../../kmercode/Kmer.hpp"
+#include "../../kmercode/Buffer.h"
+#include "../../kmercode/common.h"
+#include "../../kmercode/fq_reader.h"
+#include "../../kmercode/ParallelFASTQ.h"
+#include "../../kmercode/bound.hpp"
 
 using namespace std;
 

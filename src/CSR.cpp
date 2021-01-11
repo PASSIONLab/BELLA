@@ -1,4 +1,4 @@
-#include "../include/common/"
+#include "../include/common/CSR.h"
 #include "../include/common/utility.h"
 
 // copy constructor

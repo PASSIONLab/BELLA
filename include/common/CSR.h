@@ -65,5 +65,5 @@ public:
     bool zerobased;
 };
 
-#include "CSR.cpp"
+#include "../../src/CSR.cpp"
 #endif

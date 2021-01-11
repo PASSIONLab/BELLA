@@ -1,4 +1,4 @@
-#include "../include/common/"
+#include "../include/common/CSC.h"
 #include "../include/common/utility.h"
 #include "../include/common/BitMap.h"
 #include "../include/common/common.h"

@@ -29,26 +29,28 @@
 #include <unordered_map>
 #include <omp.h>
 
-#include "libcuckoo/cuckoohash_map.hh"
-#include "kmercount.h"
-#include "chain.h"
-#include "bellaio.h"
+#include "../libcuckoo/cuckoohash_map.hh"
+#include "../include/kmercount.hpp"
+#include "../include/chain.hpp"
+#include "../include/common/bellaio.h"
+#include "../include/minimizer.hpp"
+#include "../include/syncmer.hpp"
 
-#include "kmercode/hash_funcs.h"
-#include "kmercode/Kmer.hpp"
-#include "kmercode/Buffer.h"
-#include "kmercode/common.h"
-#include "kmercode/fq_reader.h"
-#include "kmercode/ParallelFASTQ.h"
-#include "kmercode/bound.hpp"
+#include "../kmercode/hash_funcs.h"
+#include "../kmercode/Kmer.hpp"
+#include "../kmercode/Buffer.h"
+#include "../kmercode/common.h"
+#include "../kmercode/fq_reader.h"
+#include "../kmercode/ParallelFASTQ.h"
+#include "../kmercode/bound.hpp"
 
-#include "mtspgemm2017/utility.h"
-#include "mtspgemm2017/CSC.h"
-#include "mtspgemm2017/CSR.h"
-#include "mtspgemm2017/common.h"
-#include "mtspgemm2017/IO.h"
-#include "mtspgemm2017/overlapping.h"
-#include "mtspgemm2017/align.h"
+#include "../include/common/utility.h"
+#include "../include/common/CSC.h"
+#include "../include/common/CSR.h"
+#include "../include/common/common.h"
+#include "../include/common/IO.h"
+#include "../include/overlap.hpp"
+#include "../include/align.hpp"
 
 #define LSIZE 16000
 #define ITERS 10

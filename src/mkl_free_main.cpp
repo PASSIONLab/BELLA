@@ -15,7 +15,7 @@
 #include "CSR.h"
 #include "IO.h"
 #include "multiply.h"
-#include "bloom_filter.hpp"
+#include "bloomfilter.hpp"
 using namespace std;
 
 

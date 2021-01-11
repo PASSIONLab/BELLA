@@ -95,5 +95,5 @@ public:
     NT * values;
 };
 
-#include "CSC.cpp"
+#include "../../src/CSC.cpp"
 #endif
