@@ -29,6 +29,8 @@
 #include <unordered_map>
 #include <omp.h>
 
+#include "../cxxopts/include/cxxopts.hpp"
+
 #include "../libcuckoo/cuckoohash_map.hh"
 #include "../include/kmercount.hpp"
 #include "../include/chain.hpp"
