@@ -208,7 +208,7 @@ xavierResult xavierAlign(const std::string& row, const std::string& col, int row
 // ======================================= //
 
 void alignLogan(vector<string>&	target, vector<string>&	query, vector<SeedL>& seeds, 
-	const BELLApars& b_pars, vector<loganResult>& longestExtensionScore)
+	const BELLApars& bpars, vector<loganResult>& longestExtensionScore)
 {
 
 	ScoringSchemeL sscheme(1, -1, -1, -1);
@@ -218,15 +218,15 @@ void alignLogan(vector<string>&	target, vector<string>&	query, vector<SeedL>& se
 	int AlignmentsToBePerformed = seeds.size();
 	printLog(AlignmentsToBePerformed);
 	//int* res = (int*)malloc(BATCH_SIZE*sizeof(int));
-	int numAlignmentsLocal = BATCH_SIZE * b_pars.numGPU; 
-	cout <<"///////////////////////////////////////////////" <<b_pars.numGPU << endl;
+	int numAlignmentsLocal = BATCH_SIZE * bpars.numGPU; 
+	cout <<"///////////////////////////////////////////////" <<bpars.numGPU << endl;
 	
 
 	//	Divide the alignment in batches of 100K alignments
-	for(int i = 0; i < AlignmentsToBePerformed; i += BATCH_SIZE * b_pars.numGPU)
+	for(int i = 0; i < AlignmentsToBePerformed; i += BATCH_SIZE * bpars.numGPU)
 	{
-		if(AlignmentsToBePerformed < (i + BATCH_SIZE * b_pars.numGPU))
-			numAlignmentsLocal = AlignmentsToBePerformed % (BATCH_SIZE * b_pars.numGPU);
+		if(AlignmentsToBePerformed < (i + BATCH_SIZE * bpars.numGPU))
+			numAlignmentsLocal = AlignmentsToBePerformed % (BATCH_SIZE * bpars.numGPU);
 
 		int* res = (int*)malloc(numAlignmentsLocal * sizeof(int));	
 
@@ -242,7 +242,7 @@ void alignLogan(vector<string>&	target, vector<string>&	query, vector<SeedL>& se
 		std::vector<SeedL>::const_iterator last_s  = seeds.begin() + i + numAlignmentsLocal;
 		std::vector<SeedL> seeds_b(first_s, last_s);
 
-		extendSeedL(seeds_b, EXTEND_BOTHL, target_b, query_b, scoring, b_pars.xDrop, b_pars.kmerSize, res, numAlignmentsLocal, b_pars.numGPU);
+		extendSeedL(seeds_b, EXTEND_BOTHL, target_b, query_b, scoring, bpars.xDrop, bpars.kmerSize, res, numAlignmentsLocal, bpars.numGPU);
 
 		for(int j=0; j<numAlignmentsLocal; j++)
 		{

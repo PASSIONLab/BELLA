@@ -51,7 +51,7 @@ struct BELLApars
 	unsigned short int		xDrop;				// SeqAn xDrop value 					(x)
 	unsigned short int		numGPU;				// Number GPUs available/to be used  	(g)
 	unsigned short int		SplitCount;			// Number of splits counting k-mers  	(s)
-	bool	skipEstimate;		// Do not estimate error but use user-defined error 	(e)
+	bool	estimateErr;		// Do not estimate error but use user-defined error 	(e)
 	bool	skipAlignment;		// Do not align 										(z)
 	bool	outputPaf;			// Output in paf format 								(p)
 	bool	userDefMem;			// RAM available 										(m)
@@ -66,11 +66,11 @@ struct BELLApars
 
 	bool useSyncmer; 			// use HOPC representation
     bool useMinimizer;			// use HOPC representation
-    size_t windowlen;           // window length								        (w)
+    size_t windowLen;           // window length								        (w)
 
 	BELLApars(): kmerSize(17), binSize(500), fixedThreshold(-1), xDrop(7), numGPU(1), SplitCount(1),
-					skipEstimate(true), skipAlignment(false), outputPaf(false), userDefMem(false), useHOPC(false), deltaChernoff(0.10), 
-						totalMemory(8000.0), errorRate(0.00), HOPCerate(0.035), useSyncmer(0), useMinimizer(0), windowlen(0)  {};
+					estimateErr(false), skipAlignment(false), outputPaf(false), userDefMem(false), useHOPC(false), deltaChernoff(0.10), 
+						totalMemory(8000.0), errorRate(0.00), HOPCerate(0.035), useSyncmer(0), useMinimizer(0), windowLen(0)  {};
 };
 
 template <typename T>

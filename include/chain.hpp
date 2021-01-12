@@ -98,7 +98,7 @@ bool operator>(const std::pair<T,U>& l, const T& c) {
 
 //	GG: binning operation
 void
-chainop(spmatPtr_& m1, spmatPtr_& m2, BELLApars& b_pars, 
+chainop(spmatPtr_& m1, spmatPtr_& m2, BELLApars& bpars, 
 	const std::string& readname1, const std::string& readname2)
 {
 	// number of common k-mer
@@ -111,14 +111,14 @@ chainop(spmatPtr_& m1, spmatPtr_& m2, BELLApars& b_pars,
 		bool orphan = true;
 		for(int j = 0; j < m1->pos.size(); ++j)
 		{
-			if(std::abs(m2->overlap[i] - m1->overlap[j]) < b_pars.binSize)
+			if(std::abs(m2->overlap[i] - m1->overlap[j]) < bpars.binSize)
 			{
 				for(auto kmer1:m1->pos[j])
 				{
 					for(auto kmer2:m2->pos[i])
 					{
 						//	GG: kmer need to be not overlapping and at least <kmerRift> distant from each other (kmerRift = kmerSize deafult)
-						if(distance(kmer1, kmer2) > b_pars.kmerSize)
+						if(distance(kmer1, kmer2) > bpars.kmerSize)
 						{
 							kmertobeinserted[j].push_back(kmer2);
 						}

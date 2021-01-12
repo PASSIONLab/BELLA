@@ -70,7 +70,6 @@ typedef SeedSet<TSeed> TSeedSet;
 //#define MAX_NUM_THREAD 1
 //#define OSX
 //#define LINUX
-//#define RAM
 
 #ifndef __SIMD__
 #define __SIMD__
@@ -363,12 +362,12 @@ void LocalSpGEMM(IT & start, IT & end, const CSC<IT,NT> & A, const CSC<IT,NT> & 
 	}
 }
 
-double estimateMemory(const BELLApars & b_pars)
+double estimateMemory(const BELLApars & bpars)
 {
 	double free_memory;
-	if (b_pars.userDefMem)
+	if (bpars.userDefMem)
 	{
-		free_memory = b_pars.totalMemory * 1024 * 1024;
+		free_memory = bpars.totalMemory * 1024 * 1024;
 	}
 	else
 	{
@@ -398,7 +397,7 @@ double estimateMemory(const BELLApars & b_pars)
 	free_memory += info.freeswap * info.mem_unit;
 	free_memory += info.bufferram * info.mem_unit;
 #else
-	free_memory = b_pars.totalMemory * 1024 * 1024;	// memory is neither user-supplied nor can be estimated, so use BELLA's default
+	free_memory = bpars.totalMemory * 1024 * 1024;	// memory is neither user-supplied nor can be estimated, so use BELLA's default
 #endif
 	}
 	return free_memory;
@@ -416,7 +415,7 @@ void PostAlignDecision(const xavierResult& maxExtScore,
 void PostAlignDecision(const seqAnResult& maxExtScore, 
 #endif
 	const readType_& read1, const readType_& read2, 
-			const BELLApars& b_pars, double ratiophi, int count, stringstream& myBatch, size_t& outputted,
+			const BELLApars& bpars, double ratiophi, int count, stringstream& myBatch, size_t& outputted,
 					size_t& numBasesAlignedTrue, size_t& numBasesAlignedFalse, bool& passed, int const& matches)
 {
 	auto maxseed = maxExtScore.seed;	// returns a seqan:Seed object
@@ -452,15 +451,15 @@ void PostAlignDecision(const seqAnResult& maxExtScore,
 	unsigned short int normLen  = max(overlapLenV, overlapLenH);
 	unsigned short int minLen   = min(overlapLenV, overlapLenH);
 
-	if(b_pars.fixedThreshold == -1)
+	if(bpars.fixedThreshold == -1)
 	{
-		float mythreshold = (1 - b_pars.deltaChernoff) * (ratiophi * (float)ov);
+		float mythreshold = (1 - bpars.deltaChernoff) * (ratiophi * (float)ov);
 		if((float)maxExtScore.score >= mythreshold)
 		{
 			passed = true;
 		}
 	}
-	else if(maxExtScore.score >= b_pars.fixedThreshold)	// GG: this is only useful for debugging
+	else if(maxExtScore.score >= bpars.fixedThreshold)	// GG: this is only useful for debugging
 	{
 
 		passed = true;
@@ -468,7 +467,7 @@ void PostAlignDecision(const seqAnResult& maxExtScore,
 
 	if(passed)
 	{
-		if(!b_pars.outputPaf)		// BELLA output format
+		if(!bpars.outputPaf)		// BELLA output format
 		{
 			myBatch << read2.nametag << '\t' << read1.nametag << '\t' << count << '\t' << maxExtScore.score << '\t' << ov << '\t' << maxExtScore.strand << '\t' << 
 				begpV << '\t' << endpV << '\t' << read2len << '\t' << begpH << '\t' << endpH << '\t' << read1len << endl;
@@ -499,7 +498,7 @@ void PostAlignDecision(const seqAnResult& maxExtScore,
 
 template <typename IT, typename FT>
 auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowids, FT * values, const readVector_& reads, 
-	char* filename, const BELLApars& b_pars, const double& ratiophi)
+	char* filename, const BELLApars& bpars, const double& ratiophi)
 {
 	size_t alignedpairs = 0;
 	size_t alignedbases = 0;
@@ -542,7 +541,7 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 
 			spmatPtr_ val = values[i-offset];
 
-			if(!b_pars.skipAlignment) // fix -z to not print 
+			if(!bpars.skipAlignment) // fix -z to not print 
 			{
 				numAlignmentsThread++;
 				readLengthsThread = readLengthsThread + seq1len + seq2len;
@@ -563,12 +562,12 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 
 				//	GG: nucleotide alignment
 			#ifdef __SIMD__
-				maxExtScore = xavierAlign(seq1, seq2, seq1len, i, j, b_pars.xDrop, b_pars.kmerSize);
+				maxExtScore = xavierAlign(seq1, seq2, seq1len, i, j, bpars.xDrop, bpars.kmerSize);
 			#else
-				maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, b_pars.xDrop, b_pars.kmerSize);
+				maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, bpars.xDrop, bpars.kmerSize);
 			#endif
 
-				PostAlignDecision(maxExtScore, reads[rid], reads[cid], b_pars, ratiophi, val->count, vss[ithread], 
+				PostAlignDecision(maxExtScore, reads[rid], reads[cid], bpars, ratiophi, val->count, vss[ithread], 
 					outputted, numBasesAlignedTrue, numBasesAlignedFalse, passed, matches);
 			#ifdef __SIMD__
 				numBasesAlignedThread += getEndPositionV(maxExtScore.seed)-getBeginPositionV(maxExtScore.seed);
@@ -581,7 +580,7 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 				pair<int, int> kmer = val->choose();
 				int i = kmer.first, j = kmer.second;
 
-				int overlap = overlapop(reads[rid].seq, reads[cid].seq, i, j, b_pars.kmerSize);
+				int overlap = overlapop(reads[rid].seq, reads[cid].seq, i, j, bpars.kmerSize);
 				vss[ithread] << reads[cid].nametag << '\t' << reads[rid].nametag << '\t' << val->count << '\t' <<
 						overlap << '\t' << seq2len << '\t' << seq1len << endl;
 				++outputted;
@@ -650,9 +649,9 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
  **/
 template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation>
 void HashSpGEMM(const CSC<IT,NT>& A, const CSC<IT,NT>& B, MultiplyOperation multop, AddOperation addop, const readVector_& reads, 
-	FT& getvaluetype, char* filename, const BELLApars& b_pars, const double& ratiophi)
+	FT& getvaluetype, char* filename, const BELLApars& bpars, const double& ratiophi)
 {
-	double free_memory = estimateMemory(b_pars);
+	double free_memory = estimateMemory(bpars);
 
 	std::string str1 = std::to_string(free_memory / (1024 * 1024));
 	std::string str2 = " MB";
@@ -746,9 +745,9 @@ void HashSpGEMM(const CSC<IT,NT>& A, const CSC<IT,NT>& B, MultiplyOperation mult
 
 		// GG: all paralelism moved to GPU we can do better
 		tuple<size_t, size_t, size_t, size_t, size_t, size_t, double> alignstats; // (alignedpairs, alignedbases, totalreadlen, outputted, alignedtrue, alignedfalse, timeoutputt)
-		alignstats = RunPairWiseAlignments(colStart[b], colStart[b+1], begnz, colptrC, rowids, values, reads, filename, b_pars, ratiophi);
+		alignstats = RunPairWiseAlignments(colStart[b], colStart[b+1], begnz, colptrC, rowids, values, reads, filename, bpars, ratiophi);
 
-		if(!b_pars.skipAlignment)
+		if(!bpars.skipAlignment)
 		{
 			double elapsed = omp_get_wtime()-alnlen2;
 			double aligntime = elapsed-get<6>(alignstats); // substracting outputting time
@@ -796,7 +795,7 @@ void HashSpGEMM(const CSC<IT,NT>& A, const CSC<IT,NT>& B, MultiplyOperation mult
 // ======================================= //
 
 void PostAlignDecisionGPU(const loganResult& maxExtScore, const readType_& read1, const readType_& read2, 
-					const BELLApars& b_pars, double ratiophi, int count, stringstream& myBatch, size_t& outputted,
+					const BELLApars& bpars, double ratiophi, int count, stringstream& myBatch, size_t& outputted,
 					size_t& numBasesAlignedTrue, size_t& numBasesAlignedFalse, bool& passed)
 {
 	// returns a Logan::Seed object
@@ -827,22 +826,22 @@ void PostAlignDecisionGPU(const loganResult& maxExtScore, const readType_& read1
 	unsigned short int normLen  = max(overlapLenV, overlapLenH);
 	unsigned short int minLen   = min(overlapLenV, overlapLenH);
 
-	if(b_pars.fixedThreshold == -1)
+	if(bpars.fixedThreshold == -1)
 	{
-		double mythreshold = (1 - b_pars.deltaChernoff) * (ratiophi * (double)ov);
+		double mythreshold = (1 - bpars.deltaChernoff) * (ratiophi * (double)ov);
 		if((double)maxExtScore.score >= mythreshold)
 		{
 			passed = true;
 		}
 	}
-	else if(maxExtScore.score >= b_pars.fixedThreshold)	// GG: this is only useful for debugging
+	else if(maxExtScore.score >= bpars.fixedThreshold)	// GG: this is only useful for debugging
 	{
 		passed = true;
 	}
 
 	if(passed)
 	{
-		if(!b_pars.outputPaf)		// BELLA output format
+		if(!bpars.outputPaf)		// BELLA output format
 		{
 			myBatch << read2.nametag << '\t' << read1.nametag << '\t' << count << '\t' << maxExtScore.score << '\t' << ov << '\t' << maxExtScore.strand << '\t' << 
 				begpV << '\t' << endpV << '\t' << read2len << '\t' << begpH << '\t' << endpH << '\t' << read1len << endl;
@@ -876,7 +875,7 @@ void PostAlignDecisionGPU(const loganResult& maxExtScore, const readType_& read1
 template <typename IT, typename FT>
 std::tuple<uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, double>
 RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * rowids, FT * values, const readVector_& reads, 
-	const BELLApars& b_pars, char* filename, double ratiophi)
+	const BELLApars& bpars, char* filename, double ratiophi)
 {
 	stringstream ss;
 
@@ -904,7 +903,7 @@ RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * rowids,
 
 			spmatPtr_ val = values[i-offset];
 
-			if(!b_pars.skipAlignment) // fix -z to not print 
+			if(!bpars.skipAlignment) // fix -z to not print 
 			{
 				loganResult localRes;
 
@@ -915,10 +914,10 @@ RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * rowids,
 				int i = kmer.first, j = kmer.second;
 
 				std::string strand = "n";
-				SeedL seed(i, j, i + b_pars.kmerSize, j + b_pars.kmerSize);
+				SeedL seed(i, j, i + bpars.kmerSize, j + bpars.kmerSize);
 
-				std::string seedH = seq1.substr(getBeginPositionH(seed), b_pars.kmerSize);
-				std::string seedV = seq2.substr(getBeginPositionV(seed), b_pars.kmerSize);
+				std::string seedH = seq1.substr(getBeginPositionH(seed), bpars.kmerSize);
+				std::string seedV = seq2.substr(getBeginPositionV(seed), bpars.kmerSize);
 
 				std::string seedHcpy = reversecomplement(seedH);
 				std::string cpyseq1(seq1);
@@ -930,11 +929,11 @@ RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * rowids,
 					std::reverse(std::begin(cpyseq1), std::end(cpyseq1));
 					std::transform(std::begin(cpyseq1), std::end(cpyseq1), std::begin(cpyseq1), complementbase);
 
-					setBeginPositionH(seed, seq1len - i - b_pars.kmerSize);
+					setBeginPositionH(seed, seq1len - i - bpars.kmerSize);
 					setBeginPositionV(seed, j);
 
 					setEndPositionH(seed, seq1len - i);
-					setEndPositionV(seed, j + b_pars.kmerSize);
+					setEndPositionV(seed, j + bpars.kmerSize);
 				}
 
 				localRes.strand = strand;
@@ -949,7 +948,7 @@ RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * rowids,
 				pair<int, int> kmer = val->choose();
 				int i = kmer.first, j = kmer.second;
 
-				int overlap = overlapop(reads[rid].seq, reads[cid].seq, i, j, b_pars.kmerSize);
+				int overlap = overlapop(reads[rid].seq, reads[cid].seq, i, j, bpars.kmerSize);
 				// vss[ithread] << reads[cid].nametag << '\t' << reads[rid].nametag << '\t' << val->count << '\t' << 
 				// 		seq2len << '\t' << seq1len << endl;
 				ss << reads[cid].nametag << '\t' << reads[rid].nametag << '\t' << val->count << '\t' <<
@@ -966,11 +965,11 @@ RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * rowids,
 	uint64_t totsuccbases = 0;
 	uint64_t totfailbases = 0;
 
-	if(!b_pars.skipAlignment) // fix -z to not print 
+	if(!bpars.skipAlignment) // fix -z to not print 
 	{
 		std::string AlignmentGPU = "Started";
 		printLog(AlignmentGPU);
-		alignLogan(seq1s, seq2s, seeds, b_pars, maxExtScoreL);
+		alignLogan(seq1s, seq2s, seeds, bpars, maxExtScoreL);
 		AlignmentGPU  = "Completed";
 		printLog(AlignmentGPU);
 
@@ -1004,7 +1003,7 @@ RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * rowids,
 				bool passed = false;
 				loganResult maxExtScore = maxExtScoreL[idx];
 
-				PostAlignDecisionGPU(maxExtScore, reads[rid], reads[cid], b_pars, ratiophi, val->count, 
+				PostAlignDecisionGPU(maxExtScore, reads[rid], reads[cid], bpars, ratiophi, val->count, 
 					ss, totaloutputt, totsuccbases, totfailbases, passed);
 
 				idx++;	// pairs aligned
@@ -1066,9 +1065,9 @@ RunPairWiseAlignmentsGPU(IT start, IT end, IT offset, IT * colptrC, IT * rowids,
  **/
 template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation>
 void HashSpGEMMGPU(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation multop, AddOperation addop, const readVector_& reads, 
-	FT& getvaluetype, char* filename, const BELLApars& b_pars, const double& ratiophi)
+	FT& getvaluetype, char* filename, const BELLApars& bpars, const double& ratiophi)
 {
-	double free_memory = estimateMemory(b_pars);
+	double free_memory = estimateMemory(bpars);
 
 	std::string str1 = std::to_string(free_memory / (1024 * 1024));
 	std::string str2 = " MB";
@@ -1162,9 +1161,9 @@ void HashSpGEMMGPU(const CSC<IT,NT> & A, const CSC<IT,NT> & B, MultiplyOperation
 
 		// GG: all paralelism moved to GPU we can do better
 		std::tuple<uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, double> alignstats; // (alignedpairs, alignedbases, totalreadlen, outputted, alignedtrue, alignedfalse, timeoutputt)
-		alignstats = RunPairWiseAlignmentsGPU(colStart[b], colStart[b+1], begnz, colptrC, rowids, values, reads, b_pars, filename, ratiophi);
+		alignstats = RunPairWiseAlignmentsGPU(colStart[b], colStart[b+1], begnz, colptrC, rowids, values, reads, bpars, filename, ratiophi);
 
-		if(!b_pars.skipAlignment)
+		if(!bpars.skipAlignment)
 		{
 			double elapsed = omp_get_wtime()-alnlen2;
 			double aligntime = elapsed-get<6>(alignstats); // substracting outputting time
