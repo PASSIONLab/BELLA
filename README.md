@@ -51,7 +51,7 @@ make bella (CPU-only) OR make bella-gpu (CPU/GPU)
 
 To run with default setting:
 ```
-./bella -f ${INPUT} -k ${KSIZE} -o ${NAME} -x ${XDROP} -l ${LOWER} -u ${UPPER}
+./bella -f <list-of-fastq> -o <output-name>
 ```
 BELLA requires a text file containing the path to the input fastq file(s) as the argument for the -f option.
 Example: [input-example.txt](https://github.com/giuliaguidi/bella/files/2620924/input-example.txt)
