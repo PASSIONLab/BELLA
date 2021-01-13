@@ -29,6 +29,8 @@
 #include <unordered_map>
 #include <omp.h>
 
+#include "../include/cxxopts.hpp"
+
 #include "../libcuckoo/cuckoohash_map.hh"
 #include "../include/kmercount.hpp"
 #include "../include/chain.hpp"
@@ -56,7 +58,7 @@
 #define ITERS 10
 
 #define KMERINDEX uint32_t		
-// #define KMERINDEX uint64_t 	// Uncomment to for large genomes and comment out line 56
+// #define KMERINDEX uint64_t 	// Uncomment to for large genomes and comment out line 60
   
 using namespace std;
 
@@ -64,228 +66,121 @@ int main (int argc, char *argv[]) {
 	//
 	// Program name and purpose
 	//
-	cout << "\nBELLA: Long Read to Long Read Aligner and Overlapper\n" << endl;
+	cxxopts::Options options("BELLA", "Long Read to Long Read Aligner and Overlapper");
 
 	//
 	// Setup the input files
 	//
-	option_t *optList, *thisOpt;
+	options.add_options()
+	("f, fastq", "List of Fastq(s) (required)", 	cxxopts::value<std::string>())
+	("o, output", "Output Filename (required)", 	cxxopts::value<std::string>())
+	("k, kmer", "K-mer Length", 	 	cxxopts::value<int>()->default_value("17"))
+	("x, xdrop", "SeqAn X-Drop", 		cxxopts::value<int>()->default_value("7"))
+	("e, error", "Error Rate", 			cxxopts::value<double>()->default_value("0.15"))
+	("estimate", "Estimate Error Rate from Data", 			cxxopts::value<bool>()->default_value("false"))
+	("skip-alignment", "Overlap Only", 	cxxopts::value<bool>()->default_value("false"))
+	("m, memory", "Total RAM of the System in MB", 			cxxopts::value<int>()->default_value("8000"))
+	("score-deviation", "Deviation from the Mean Alignment Score [0,1]", 	cxxopts::value<double>()->default_value("0.1"))
+	("b, bin-size", "Bin Size for Binning Algorithm", 		cxxopts::value<int>()->default_value("500"))
+	("paf", "Output in PAF format", 	cxxopts::value<bool>()->default_value("false"))
+	("g, gpus", "GPUs Available", 		cxxopts::value<int>()->default_value("1")) // this must work only if compiled with bella-gpu
+	("split-count", "K-mer Counting Split Count", 			cxxopts::value<int>()->default_value("1"))
+	("hopc", "Use HOPC representation", cxxopts::value<bool>()->default_value("false"))
+	("w, window", "Window Size for Minimizer Selection", 	cxxopts::value<int>()->default_value("0"))
+	("s, syncmer", "Enable Syncmer Selection", 				cxxopts::value<bool>()->default_value("false"))
+	("u, upper-freq", "K-mer Frequency Upper Bound", 		cxxopts::value<int>()->default_value("8"))
+	("l, lower-freq", "K-mer Frequency Lower Bound", 		cxxopts::value<int>()->default_value("2"))
+	("h, help", "Usage")
+	;
 
-	// Get list of command line options and their arguments 
-	// Follow an option with a colon to indicate that it requires an argument.
+	auto result = options.parse(argc, argv);
 
-	optList = NULL;
-	optList = GetOptList(argc, argv, (char*)"f:o:cd:hk:a:ze:x:m:ps:qg:tw:l:ibl:u:");
+    if (result.count("help"))
+    {
+      std::cout << options.help() << std::endl;
+      exit(0);
+    }
 
-	char	*all_inputs_fofn 	= NULL;	// List of fastqs  (f)
-	char	*OutputFile 		= NULL;	// output filename (o)
-	int 	reliableLowerBound	= 0;	// K-mer frequency lower bound required (l)
-	int 	reliableUpperBound	= 0; 	// K-mer frequency upper bound required (u)
-
-	BELLApars b_parameters;
-
-	if(optList == NULL)
+	char *inputfofn = NULL;	
+	if(result.count("fastq")) inputfofn = strdup(result["fastq"].as<std::string>().c_str());
+	else
 	{
-		std::string ErrorMessage("BELLA execution terminated: not enough parameters or invalid option. Run with -i to print out the command line options.\n");
-		printLog(ErrorMessage);
-		return 0;
+      std::cout << options.help() << std::endl;
+      exit(0);		
 	}
 
-	while (optList!=NULL) {
-		thisOpt = optList;
-		optList = optList->next;
-		switch (thisOpt->option) {
-			case 'f': {
-				if(thisOpt->argument == NULL)
-				{
-					std::string ErrorMessage = "BELLA execution terminated: -f requires an argument. Run with -i to print out the command line options.\n";
-					printLog(ErrorMessage);
-					return 0;
-				}
-				all_inputs_fofn = strdup(thisOpt->argument);
-				break;
-			}
-			case 'p': b_parameters.outputPaf = true; break; // PAF format
-			case 'o': {
-				if(thisOpt->argument == NULL)
-				{
-					std::string ErrorMessage = "BELLA execution terminated: -o requires an argument. Run with -i to print out the command line options.\n";
-					printLog(ErrorMessage);
-					return 0;
-				}
-
-				char* line1 = strdup(thisOpt->argument);
-				char* line2 = strdup(".out");
-
-				unsigned int len1 = strlen(line1);
-				unsigned int len2 = strlen(line2);
-
-				OutputFile = (char*)malloc(len1 + len2 + 1);
-				if (!OutputFile) abort();
-
-				memcpy(OutputFile, line1, len1);
-				memcpy(OutputFile + len1, line2, len2);
-				OutputFile[len1 + len2] = '\0';
-
-				delete line1;
-				delete line2;
-				
-				// Delete file to avoid errors in output
-				remove(OutputFile);
-
-				break;
-			}
-			case 'z': b_parameters.skipAlignment = true; break;
-			case 'k': {
-				b_parameters.kmerSize = atoi(thisOpt->argument);
-				break;
-			}
-			case 'e': { // User suggests error rate
-				if(thisOpt->argument == NULL)
-				{
-					std::string ErrorMessage = "BELLA execution terminated: -e requires an argument. Run with -i to print out the command line options.\n";
-					printLog(ErrorMessage);
-				}	
-				b_parameters.errorRate = strtod(thisOpt->argument, NULL);
-				break;
-			}
-			case 'q': { // Read set has quality values and BELLA can use it to estimate the error rate
-				b_parameters.skipEstimate = false;
-				break;
-			}
-			case 't': { // Default: skipEstimate and errorRate = 0.15
-				b_parameters.errorRate = 0.15;	// Default value
-				b_parameters.skipEstimate = true;
-				break;
-			}
-			case 'a': {
-				b_parameters.fixedThreshold = atoi(thisOpt->argument);
-				break;
-			}
-			case 'x': {
-				b_parameters.xDrop = atoi(thisOpt->argument);
-				break;
-			}
-			case 'b': {
-				b_parameters.binSize = atoi(thisOpt->argument);
-				break;
-			}
-			case 'g': {
-				b_parameters.numGPU = atoi(thisOpt->argument);
-				break;
-			}
-			case 'm': {
-				b_parameters.totalMemory = stod(thisOpt->argument);
-				b_parameters.userDefMem = true;
-				std::string UserDefinedMemory = std::to_string(b_parameters.totalMemory) + " MB";
-				printLog(UserDefinedMemory);
-				break;
-			}
-			case 's': {
-				b_parameters.SplitCount = atoi(thisOpt->argument);
-				break;
-			}
-			case 'd': {
-				if(stod(thisOpt->argument) > 1.0 || stod(thisOpt->argument) < 0.0)
-				{
-					std::string ErrorMessage = "BELLA execution terminated: -d requires a value in [0, 1]. Run with -i to print out the command line options.\n";
-					printLog(ErrorMessage);
-					return 0;
-				}
-				b_parameters.deltaChernoff = stod(thisOpt->argument);
-				break;
-			}
-			case 'h': {
-				b_parameters.useHOPC = true;
-				break;
-			}
-            case 'w': {
-				if(atoi(thisOpt->argument) > 0)
-				{
-					b_parameters.useMinimizer = true;
-					b_parameters.windowlen = atoi(thisOpt->argument);
-				}
-				else
-				{
-					std::string WARNING = "The window size must be greater than 0. BELLA is going to run using regular k-mer and not minimizer.\n";
-					printLog(WARNING);
-				}
-				break;
-            }
-			case 'l': {
-				reliableLowerBound = atoi(thisOpt->argument);
-			  	break;
-			}
-			case 'u': {
-				reliableUpperBound = atoi(thisOpt->argument);
-				break;
-			}
-			case 'c': {
-				b_parameters.useMinimizer = false;
-				b_parameters.useSyncmer   = true;
-				break;
-			}	  
-			case 'i': {
-				cout << "Usage:\n" << endl;
-				cout << "	-f : List of fastq(s)	(required)" 	<< endl;
-				cout << "	-o : Output filename	(required)" 	<< endl;
-				cout << "	-k : KmerSize [17]" 					<< endl;
-				cout << "	-a : User-defined alignment threshold [FALSE, -1]" 		<< endl;
-				cout << "	-x : SeqAn xDrop [7]" 									<< endl;
-				cout << "	-e : Error rate [0.15]" 				<< endl;
-				cout << "	-q : Estimare error rate from the dataset [FALSE]" 	<< endl;
-				cout << "	-t : Use default error rate setting [FALSE]"		<< endl;
-				cout << "	-m : Total RAM of the system in MB [auto estimated if possible or 8,000 if not]"	<< endl;
-				cout << "	-z : Do not run pairwise alignment [FALSE]" 			<< endl;
-				cout << "	-d : Deviation from the mean alignment score [0.10]"	<< endl;
-				cout << "	-b : Bin size binning algorithm [500]" 	<< endl;
-				cout << "	-p : Output in PAF format [FALSE]" 		<< endl;
-				cout << "	-g : GPUs available [1, only works when BELLA is compiled for GPU]" 	<< endl;
-				cout << "	-s : K-mer counting split count can be increased for large dataset [1]" 	<< endl;
-				cout << "	-h : Use HOPC representation with HOPC erate [false | 0.035]" << endl;
-				cout << "	-w : Window length for minimizer selection [none | if provided, enables minimizers]" << endl;
-				cout << "	-c : Enable syncmer [false]" << endl;
-				cout << "	-l : K-mer frequency lower bound (required)" << endl;
-				cout << "	-u : K-mer frequency upper bound (required)" << endl;
-
-				FreeOptList(thisOpt); // Done with this list, free it
-				return 0;
-			}
-		}
-	}
-
-	if(all_inputs_fofn == NULL || OutputFile == NULL || reliableLowerBound == 0 || reliableUpperBound == 0)
+	char *OutputFile = NULL;	
+	if(result.count("output"))
 	{
-		std::string ErrorMessage = "BELLA execution terminated: missing arguments. Run with -i to print out the command line options.\n";
-		printLog(ErrorMessage);
+		char* line1 = strdup(result["fastq"].as<std::string>().c_str());
+		char* line2 = strdup(".out");
 
-		return 0;
+		unsigned int len1 = strlen(line1);
+		unsigned int len2 = strlen(line2);
+
+		OutputFile = (char*)malloc(len1 + len2 + 1);
+		if (!OutputFile) abort();
+
+		memcpy(OutputFile,  line1, len1);
+		memcpy(OutputFile + len1,  line2, len2);
+		OutputFile[len1 + len2] = '\0';
+
+		delete line1, line2;
+		
+		remove(OutputFile);
 	}
-
-	if(b_parameters.errorRate == 0.00 && b_parameters.skipEstimate == true)
+	else
 	{
-		std::string str1 = "BELLA execution terminated. The user should either:\n\n";
-		std::string str2 = "	* -e = suggest an error rate;\n";
-		std::string str3 = "	* -q = confirm that the data has quality values and we can estimate the error rate from the data set;\n";
-		std::string str4 = "	* -t = confirm that we can use a default error rate (0.15).\n"; // This might not be worth it for large runs (diBELLA)
-		std::string ErrorMessage = str1 + str2 + str3 + str4;
-
-		printLog(ErrorMessage);
-
-		return 0;
+      std::cout << options.help() << std::endl;
+      exit(0);		
 	}
 
-	free(optList);
-	free(thisOpt);
+	BELLApars bpars;	
+
+	bpars.kmerSize 	= result["kmer"].as<int>();
+	bpars.xDrop 	= result["xdrop"].as<int>();
+	bpars.errorRate = result["error"].as<double>();
+
+	bpars.estimateErr 	= result["estimate"].as<bool>();
+	bpars.skipAlignment = result["skip-alignment"].as<bool>();
+	bpars.totalMemory 	= result["memory"].as<int>();
+
+	#ifdef LINUX || OSX // in include/overlap.hpp
+		bpars.userDefMem = false;
+	#endif
+
+	bpars.deltaChernoff = result["score-deviation"].as<double>();
+	if(bpars.deltaChernoff > 1.0 || bpars.deltaChernoff < 0.0)
+	{
+      std::cout << options.help() << std::endl;
+      exit(0);		
+	}
+
+	bpars.binSize 	 = result["bin-size"].as<int>();
+	bpars.outputPaf	 = result["paf"].as<bool>();
+	bpars.numGPU 	 = result["gpus"].as<int>();
+	bpars.SplitCount = result["split-count"].as<int>();
+	bpars.useHOPC	 = result["hopc"].as<bool>();
+
+	bpars.windowLen  = result["window"].as<int>();
+	if(bpars.windowLen != 0)
+		bpars.useMinimizer = true;
+
+	bpars.useSyncmer = result["syncmer"].as<bool>();
+	if(bpars.useSyncmer)
+		bpars.useMinimizer = false;
+
+	int reliableUpperBound	= result["upper-freq"].as<int>();	
+	int reliableLowerBound	= result["lower-freq"].as<int>(); 
 
 	// ================ //
 	//   Declarations   //
 	// ================ //
 
-	vector<filedata> allfiles = GetFiles(all_inputs_fofn);
-	std::string all_inputs_gerbil = std::string(all_inputs_fofn); 
+	vector<filedata> allfiles = GetFiles(inputfofn);
+	std::string all_inputs_gerbil = std::string(inputfofn); 
 	double ratiophi;
-	Kmer::set_k(b_parameters.kmerSize);
+	Kmer::set_k(bpars.kmerSize);
 	unsigned int upperlimit = 10000000; // in bytes
 	Kmers kmervect;
 	vector<string> seqs;
@@ -304,30 +199,31 @@ int main (int argc, char *argv[]) {
 #ifdef PRINT
     printLog(OutputFile);
 
-    std::string kmerSize = std::to_string(b_parameters.kmerSize);
+    std::string kmerSize = std::to_string(bpars.kmerSize);
     printLog(kmerSize);
 
     std::string GPUs = "ENABLED";
     printLog(GPUs);
 
-    std::string OutputPAF = std::to_string(b_parameters.outputPaf);
+	std::string UserDefinedMemory = std::to_string(bpars.totalMemory) + " MB";
+	printLog(UserDefinedMemory);
+
+    std::string OutputPAF = std::to_string(bpars.outputPaf);
     printLog(OutputPAF);
 
-    std::string BinSize = std::to_string(b_parameters.binSize);
+    std::string BinSize = std::to_string(bpars.binSize);
     printLog(BinSize);
     
-    std::string DeltaChernoff = std::to_string(b_parameters.deltaChernoff);
+    std::string DeltaChernoff = std::to_string(bpars.deltaChernoff);
     printLog(DeltaChernoff);
 
-    std::string RunPairwiseAlignment = std::to_string(!b_parameters.skipAlignment);
+    std::string RunPairwiseAlignment = std::to_string(!bpars.skipAlignment);
     printLog(RunPairwiseAlignment);
 
-	if(b_parameters.useHOPC)
+	if(bpars.useHOPC)
 	{
 		std::string HOPC = "ENABLED";
-		std::string erHOPC = std::to_string(b_parameters.HOPCerate);
 		printLog(HOPC);
-		printLog(erHOPC);
 	}
 	else 
 	{
@@ -335,27 +231,33 @@ int main (int argc, char *argv[]) {
 		printLog(HOPC);
 	}
 
-	if(b_parameters.fixedThreshold == -1)
-	{
-		std::string AdaptiveAlignmentThreshold = "ENABLED";
-		printLog(AdaptiveAlignmentThreshold);
-	}
-	else 
-	{
-		std::string AdaptiveAlignmentThreshold = "DISABLE";
-		std::string FixedAlignmentThreshold = std::to_string(b_parameters.fixedThreshold);
-    	printLog(AdaptiveAlignmentThreshold);
-		printLog(FixedAlignmentThreshold);
-	}
-
-    std::string xDrop = std::to_string(b_parameters.xDrop);
+    std::string xDrop = std::to_string(bpars.xDrop);
     printLog(xDrop);
 
-    std::string KmerSplitCount = std::to_string(b_parameters.SplitCount);
+    std::string KmerSplitCount = std::to_string(bpars.SplitCount);
     printLog(KmerSplitCount);
-    
-    std::string minimizerwindow = std::to_string(b_parameters.windowlen);
-    printLog(minimizerwindow);
+
+	if(bpars.useMinimizer)
+	{
+		std::string useMinimizer = "ENABLED";
+		printLog(useMinimizer);
+		std::string minimizerWindow = std::to_string(bpars.windowLen);
+    	printLog(minimizerWindow);
+	}
+ 	else if(bpars.useSyncmer)
+	{
+		std::string useSyncmer = "ENABLED";
+		printLog(useSyncmer);
+		std::string minimizerWindow = "0";
+    	printLog(minimizerWindow);
+	}
+	else
+	{
+		std::string useKmer = "ENABLED";
+		printLog(useKmer);
+		std::string minimizerWindow = "0";
+    	printLog(minimizerWindow);
+	}
 
 #endif
 
@@ -384,31 +286,31 @@ int main (int argc, char *argv[]) {
 
 	CuckooDict<KMERINDEX> countsreliable;
 
-	if(b_parameters.useSyncmer)
+	if(bpars.useSyncmer)
 	{
 		SyncmerCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound,
-    		upperlimit, b_parameters);
+    		upperlimit, bpars);
 	}
-	else if(b_parameters.useMinimizer)
+	else if(bpars.useMinimizer)
     {
     	MinimizerCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound,
-            upperlimit, b_parameters);
+            upperlimit, bpars);
     }
 	else
 	{
     	SplitCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound,
-               upperlimit, b_parameters);
+               upperlimit, bpars);
 	}
 
 	double errorRate;
 
-	if(b_parameters.useHOPC)
+	if(bpars.useHOPC)
 	{
-		errorRate = b_parameters.HOPCerate;
+		errorRate = bpars.HOPCerate;
 	}
 	else
 	{
-		errorRate = b_parameters.errorRate;
+		errorRate = bpars.errorRate;
 	}
 
 	printLog(errorRate);
@@ -416,10 +318,10 @@ int main (int argc, char *argv[]) {
 	printLog(reliableLowerBound);
 	printLog(reliableUpperBound);
 
-	if(b_parameters.fixedThreshold == -1)
+	if(bpars.fixedThreshold == -1)
 	{
-	    ratiophi = slope(b_parameters.errorRate);
-	    float AdaptiveThresholdConstant = ratiophi * (1 - b_parameters.deltaChernoff);
+	    ratiophi = slope(bpars.errorRate);
+	    float AdaptiveThresholdConstant = ratiophi * (1 - bpars.deltaChernoff);
 		printLog(AdaptiveThresholdConstant); 
 	}
 
@@ -458,22 +360,22 @@ int main (int argc, char *argv[]) {
 				temp.readid = numReads+i;
 				allreads[MYTHREAD].push_back(temp);
                 
-                if(b_parameters.useMinimizer)
+                if(bpars.useMinimizer)
                 {
                     vector<Kmer> seqkmers;
                     std::vector< int > seqminimizers;    // <position_in_read>
-                    for(int j = 0; j <= len - b_parameters.kmerSize; j++)   // AB: optimize this sliding-window parsing ala HipMer
+                    for(int j = 0; j <= len - bpars.kmerSize; j++)   // AB: optimize this sliding-window parsing ala HipMer
                     {
-                        std::string kmerstrfromfastq = seqs[i].substr(j, b_parameters.kmerSize);
+                        std::string kmerstrfromfastq = seqs[i].substr(j, bpars.kmerSize);
                         Kmer mykmer(kmerstrfromfastq.c_str(), kmerstrfromfastq.length());
                         seqkmers.emplace_back(mykmer);
                     }
 
-                    getMinimizers(b_parameters.windowlen, seqkmers, seqminimizers, b_parameters.useHOPC);
+                    getMinimizers(bpars.windowLen, seqkmers, seqminimizers, bpars.useHOPC);
                     //cout << seqkmers.size() << " k-mers generated " << seqminimizers.size() << " minimizers" << endl;
                     for(auto minpos: seqminimizers)
                     {
-                        std::string strminkmer = seqs[i].substr(minpos, b_parameters.kmerSize);
+                        std::string strminkmer = seqs[i].substr(minpos, bpars.kmerSize);
                         Kmer myminkmer(strminkmer.c_str(), strminkmer.length());
                         
                         KMERINDEX idx; // kmer_id
@@ -486,13 +388,13 @@ int main (int argc, char *argv[]) {
                 }
                 else
                 {
-                    for(int j = 0; j <= len - b_parameters.kmerSize; j++)
+                    for(int j = 0; j <= len - bpars.kmerSize; j++)
                     {
-                        std::string kmerstrfromfastq = seqs[i].substr(j, b_parameters.kmerSize);
+                        std::string kmerstrfromfastq = seqs[i].substr(j, bpars.kmerSize);
                         Kmer mykmer(kmerstrfromfastq.c_str(), kmerstrfromfastq.length());
                         // remember to use only ::rep() when building kmerdict as well
                         Kmer lexsmall;
-                        if (b_parameters.useHOPC)
+                        if (bpars.useHOPC)
                         {
                             lexsmall = mykmer.hopc();
                         }
@@ -595,7 +497,7 @@ int main (int argc, char *argv[]) {
 	HashSpGEMMGPU(
 		spmat, transpmat, 
 		// n-th k-mer positions on read i and on read j
-	    [&b_parameters, &reads] (const unsigned short int& begpH, const unsigned short int& begpV, 
+	    [&bpars, &reads] (const unsigned short int& begpH, const unsigned short int& begpV, 
 	        const unsigned int& id1, const unsigned int& id2)
 		{
 			spmatPtr_ value(make_shared<spmatType_>());
@@ -604,10 +506,10 @@ int main (int argc, char *argv[]) {
 			std::string& read2 = reads[id2].seq;
 
 			// GG: function in chain.h
-			multiop(value, read1, read2, begpH, begpV, b_parameters.kmerSize);
+			multiop(value, read1, read2, begpH, begpV, bpars.kmerSize);
 			return value;
 		},
-	    [&b_parameters, &reads] (spmatPtr_& m1, spmatPtr_& m2, const unsigned int& id1, 
+	    [&bpars, &reads] (spmatPtr_& m1, spmatPtr_& m2, const unsigned int& id1, 
 	        const unsigned int& id2)
 		{
 			// GG: after testing correctness, these variables can be removed
@@ -615,15 +517,15 @@ int main (int argc, char *argv[]) {
 			std::string& readname2 = reads[id2].nametag;
 
 			// GG: function in chain.h
-			chainop(m1, m2, b_parameters, readname1, readname2);
+			chainop(m1, m2, bpars, readname1, readname2);
 			return m1;
 		},
-	    reads, getvaluetype, OutputFile, b_parameters, ratiophi);
+	    reads, getvaluetype, OutputFile, bpars, ratiophi);
 
 	double totaltime = omp_get_wtime()-all;
 
-    	std::string TotalRuntime = std::to_string(totaltime) + " seconds";   
-    	printLog(TotalRuntime);
+    std::string TotalRuntime = std::to_string(totaltime) + " seconds";   
+    printLog(TotalRuntime);
 	
 	cout << totaltime << endl;
 

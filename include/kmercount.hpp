@@ -117,12 +117,12 @@ vector<filedata>  GetFiles(char *filename) {
  * @param countsreliable_denovo
  * @param LowerBound
  * @param UpperBound
- * @param b_pars.kmerSize
+ * @param bpars.kmerSize
  * @param upperlimit
  */
 template <typename IT>
 void SimpleCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_denovo, int& LowerBound, int& UpperBound,
-	size_t upperlimit, BELLApars & b_pars)
+	size_t upperlimit, BELLApars & bpars)
 {
 	vector < vector<double> > allquals(MAXTHREADS);
 
@@ -162,15 +162,15 @@ void SimpleCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_de
 					int len = seqs[i].length();
 					double rerror = 0.0;
 
-					for(int j = 0; j<= len - b_pars.kmerSize; j++)  
+					for(int j = 0; j<= len - bpars.kmerSize; j++)  
 					{
-						std::string kmerstrfromfastq = seqs[i].substr(j, b_pars.kmerSize);
+						std::string kmerstrfromfastq = seqs[i].substr(j, bpars.kmerSize);
 						Kmer mykmer(kmerstrfromfastq.c_str(), kmerstrfromfastq.length());
 						Kmer lexsmall = mykmer.rep();
 
                         countsdenovo.upsert(lexsmall, updatefn, 1);
 						
-						if(b_pars.skipEstimate == false) 
+						if(bpars.estimateErr == true) 
 						{
 								// accuracy
 								int bqual = (int)quals[i][j] - ASCIIBASE;
@@ -179,10 +179,10 @@ void SimpleCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_de
 						}
 					}
 
-					if(b_pars.skipEstimate == false) 
+					if(bpars.estimateErr == true) 
 					{
 						// remaining k qual position accuracy
-						for(int j = len - b_pars.kmerSize + 1; j < len; j++)
+						for(int j = len - bpars.kmerSize + 1; j < len; j++)
 						{
 							int bqual = (int)quals[i][j] - ASCIIBASE;
 							double berror = pow(10,-(double)bqual/10);
@@ -204,8 +204,8 @@ void SimpleCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_de
 	}
 
 	// Error estimation
-	double& errorRate = b_pars.errorRate;
-	if(b_pars.skipEstimate == false)
+	double& errorRate = bpars.errorRate;
+	if(bpars.estimateErr == true)
 	{
 		errorRate = 0.0; // reset to 0 here, otherwise it cointains default or user-defined values
 		#pragma omp for reduction(+:errorRate)
@@ -214,7 +214,7 @@ void SimpleCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_de
 				double temp = std::accumulate(allquals[i].begin(), allquals[i].end(), 0.0);
 				errorRate += temp / (double)allquals[i].size();
 			}
-		b_pars.errorRate = errorRate / (double)MAXTHREADS;
+		bpars.errorRate = errorRate / (double)MAXTHREADS;
 	}
 
 	double load2kmers = omp_get_wtime(); 
@@ -254,12 +254,12 @@ void SimpleCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_de
  * @param countsreliable_denovo
  * @param LowerBound
  * @param UpperBound
- * @param b_pars.kmerSize
+ * @param bpars.kmerSize
  * @param upperlimit
  */
 template <typename IT>
 void DeNovoCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_denovo, int& LowerBound, int& UpperBound,
-	size_t upperlimit, BELLApars & b_pars)
+	size_t upperlimit, BELLApars & bpars)
 {
 	vector < vector<Kmer> >   allkmers(MAXTHREADS);
 	vector < vector<double> > allquals(MAXTHREADS);
@@ -299,14 +299,14 @@ void DeNovoCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_de
 					int len = seqs[i].length();
 					double rerror = 0.0;
 
-					for(int j = 0; j<= len - b_pars.kmerSize; j++)  
+					for(int j = 0; j<= len - bpars.kmerSize; j++)  
 					{
-						std::string kmerstrfromfastq = seqs[i].substr(j, b_pars.kmerSize);
+						std::string kmerstrfromfastq = seqs[i].substr(j, bpars.kmerSize);
 						Kmer mykmer(kmerstrfromfastq.c_str(), kmerstrfromfastq.length());
 
 						Kmer lexsmall;
 
-						if (b_pars.useHOPC)
+						if (bpars.useHOPC)
 						{
 							lexsmall = mykmer.hopc();
 						}
@@ -318,7 +318,7 @@ void DeNovoCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_de
 						allkmers[MYTHREAD].push_back(lexsmall);
 						hlls[MYTHREAD].add((const char*) lexsmall.getBytes(), lexsmall.getNumBytes());
 
-						if(b_pars.skipEstimate == false) 
+						if(bpars.estimateErr == true) 
 						{
 								// accuracy
 								int bqual = (int)quals[i][j] - ASCIIBASE;
@@ -327,10 +327,10 @@ void DeNovoCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_de
 						}
 					}
 
-					if(b_pars.skipEstimate == false) 
+					if(bpars.estimateErr == true) 
 					{
 						// remaining k qual position accuracy
-						for(int j = len - b_pars.kmerSize + 1; j < len; j++)
+						for(int j = len - bpars.kmerSize + 1; j < len; j++)
 						{
 							int bqual = (int)quals[i][j] - ASCIIBASE;
 							double berror = pow(10,-(double)bqual/10);
@@ -352,8 +352,8 @@ void DeNovoCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_de
 	}
 
 	// Error estimation
-	double& errorRate = b_pars.errorRate;
-	if(b_pars.skipEstimate == false)
+	double& errorRate = bpars.errorRate;
+	if(bpars.estimateErr == true)
 	{
 		errorRate = 0.0; // reset to 0 here, otherwise it cointains default or user-defined values
 		#pragma omp for reduction(+:errorRate)
@@ -362,7 +362,7 @@ void DeNovoCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_de
 				double temp = std::accumulate(allquals[i].begin(), allquals[i].end(), 0.0);
 				errorRate += temp / (double)allquals[i].size();
 			}
-		b_pars.errorRate = errorRate / (double)MAXTHREADS;
+		bpars.errorRate = errorRate / (double)MAXTHREADS;
 	}
 
 	// HLL reduction (serial for now) to avoid double iteration
@@ -457,12 +457,12 @@ double getAvg(double prev_avg, double x, int64_t n)
  * @param countsreliable_denovo
  * @param LowerBound
  * @param UpperBound
- * @param b_pars.kmerSize
+ * @param bpars.kmerSize
  * @param upperlimit
  */
 template <typename IT>
 void SplitCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_denovo, int& LowerBound, int& UpperBound, 
-	size_t upperlimit, BELLApars & b_pars)
+	size_t upperlimit, BELLApars & bpars)
 {
 	size_t totreads = 0;
 	size_t totbases = 0;
@@ -472,7 +472,7 @@ void SplitCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_den
 	// Reliable k-mer filter on countsdenovo
 	IT kmer_id_denovo = 0;
 
-	for(int CurrSplitCount = 0; CurrSplitCount < b_pars.SplitCount; ++CurrSplitCount)	// b_pars.SplitCount
+	for(int CurrSplitCount = 0; CurrSplitCount < bpars.SplitCount; ++CurrSplitCount)	// bpars.SplitCount
 	{
 		double denovocount = omp_get_wtime();
 		
@@ -512,14 +512,14 @@ void SplitCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_den
 						int len = seqs[i].length();
 						double rerror = 0.0;
 
-						for(int j = 0; j<= len - b_pars.kmerSize; j++)  
+						for(int j = 0; j<= len - bpars.kmerSize; j++)  
 						{
-							std::string kmerstrfromfastq = seqs[i].substr(j, b_pars.kmerSize);
+							std::string kmerstrfromfastq = seqs[i].substr(j, bpars.kmerSize);
 							Kmer mykmer(kmerstrfromfastq.c_str(), kmerstrfromfastq.length());
 
 							Kmer lexsmall;
 
-							if (b_pars.useHOPC)
+							if (bpars.useHOPC)
 							{
 								lexsmall = mykmer.hopc();
 							}
@@ -528,12 +528,12 @@ void SplitCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_den
 								lexsmall = mykmer.rep();
 							}
 
-							if(lexsmall.hash() % b_pars.SplitCount == CurrSplitCount)	// mod b_pars.SplitCount
+							if(lexsmall.hash() % bpars.SplitCount == CurrSplitCount)	// mod bpars.SplitCount
 							{
 								allkmers[MYTHREAD].push_back(lexsmall);
 								hlls[MYTHREAD].add((const char*) lexsmall.getBytes(), lexsmall.getNumBytes());
 							}
-							if(CurrSplitCount == 0 && b_pars.skipEstimate == false) 
+							if(CurrSplitCount == 0 && bpars.estimateErr == true) 
 							{
 								// accuracy
 								int bqual = (int)quals[i][j] - ASCIIBASE;
@@ -543,10 +543,10 @@ void SplitCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_den
 
 						}
 
-						if(CurrSplitCount == 0 && b_pars.skipEstimate == false) 
+						if(CurrSplitCount == 0 && bpars.estimateErr == true) 
 						{
 							// remaining k qual position accuracy
-							for(int j = len - b_pars.kmerSize + 1; j < len; j++)
+							for(int j = len - bpars.kmerSize + 1; j < len; j++)
 							{
 								int bqual = (int)quals[i][j] - ASCIIBASE;
 								double berror = pow(10,-(double)bqual/10);
@@ -558,7 +558,7 @@ void SplitCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_den
 				} //while(fillstatus) 
 				delete pfq;
 
-				if(CurrSplitCount == 0)	// don't overcount by a factor of b_pars.SplitCount 
+				if(CurrSplitCount == 0)	// don't overcount by a factor of bpars.SplitCount 
 				{
 					#pragma omp critical
 					{
@@ -574,10 +574,10 @@ void SplitCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_den
 
 		if(CurrSplitCount == 0)
 		{
-			if(b_pars.skipEstimate == false)
+			if(bpars.estimateErr == true)
 			{
-				b_pars.errorRate = avesofar;	
-				printLog(b_pars.errorRate);
+				bpars.errorRate = avesofar;	
+				printLog(bpars.errorRate);
 			}
 		}
 	
@@ -670,7 +670,7 @@ void SplitCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_den
 
 		countsdenovo.clear(); // free
 		
-	} // for all b_pars.SplitCount
+	} // for all bpars.SplitCount
 }
 
 
@@ -681,12 +681,12 @@ void SplitCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_den
  * @param countsreliable_denovo
  * @param LowerBound
  * @param UpperBound
- * @param b_pars.kmerSize
+ * @param bpars.kmerSize
  * @param upperlimit
  */
 template <typename IT>
 void MinimizerCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_denovo, int& LowerBound, int& UpperBound,
-    size_t upperlimit, BELLApars & b_pars)
+    size_t upperlimit, BELLApars & bpars)
 {
     vector < vector<double> > allquals(MAXTHREADS);
 
@@ -728,13 +728,13 @@ void MinimizerCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable
                     vector<Kmer> seqkmers;
                     std::vector< int > seqminimizers;   // <position_in_read>
 
-                    for(int j = 0; j<= len - b_pars.kmerSize; j++)
+                    for(int j = 0; j<= len - bpars.kmerSize; j++)
                     {
-                        std::string kmerstrfromfastq = seqs[i].substr(j, b_pars.kmerSize);
+                        std::string kmerstrfromfastq = seqs[i].substr(j, bpars.kmerSize);
                         Kmer mykmer(kmerstrfromfastq.c_str(), kmerstrfromfastq.length());
                         seqkmers.emplace_back(mykmer);
                         
-                        if(b_pars.skipEstimate == false)
+                        if(bpars.estimateErr == true)
                         {
                                 // accuracy
                                 int bqual = (int)quals[i][j] - ASCIIBASE;
@@ -742,21 +742,21 @@ void MinimizerCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable
                                 rerror += berror;
                         }
                     }
-                    getMinimizers(b_pars.windowlen, seqkmers, seqminimizers, b_pars.useHOPC);
+                    getMinimizers(bpars.windowLen, seqkmers, seqminimizers, bpars.useHOPC);
                     
                     //cout << seqkmers.size() << " k-mers generated " << seqminimizers.size() << " minimizers, read id is " << nametags[i];
 
                     for(auto minpos: seqminimizers)
                     {
-                        std::string strminkmer = seqs[i].substr(minpos, b_pars.kmerSize);
+                        std::string strminkmer = seqs[i].substr(minpos, bpars.kmerSize);
                         Kmer myminkmer(strminkmer.c_str(), strminkmer.length());
                         countsdenovo.upsert(myminkmer, updatefn, 1);
                     }
 
-                    if(b_pars.skipEstimate == false)
+                    if(bpars.estimateErr == true)
                     {
                         // remaining k qual position accuracy
-                        for(int j = len - b_pars.kmerSize + 1; j < len; j++)
+                        for(int j = len - bpars.kmerSize + 1; j < len; j++)
                         {
                             int bqual = (int)quals[i][j] - ASCIIBASE;
                             double berror = pow(10,-(double)bqual/10);
@@ -778,8 +778,8 @@ void MinimizerCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable
     }
 
     // Error estimation
-    double& errorRate = b_pars.errorRate;
-    if(b_pars.skipEstimate == false)
+    double& errorRate = bpars.errorRate;
+    if(bpars.estimateErr == true)
     {
         errorRate = 0.0; // reset to 0 here, otherwise it cointains default or user-defined values
         #pragma omp for reduction(+:errorRate)
@@ -788,7 +788,7 @@ void MinimizerCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable
                 double temp = std::accumulate(allquals[i].begin(), allquals[i].end(), 0.0);
                 errorRate += temp / (double)allquals[i].size();
             }
-        b_pars.errorRate = errorRate / (double)MAXTHREADS;
+        bpars.errorRate = errorRate / (double)MAXTHREADS;
     }
 
 
@@ -836,12 +836,12 @@ void MinimizerCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable
  * @param countsreliable_denovo
  * @param LowerBound
  * @param UpperBound
- * @param b_pars.kmerSize
+ * @param bpars.kmerSize
  * @param upperlimit
  */
 template <typename IT>
 void SyncmerCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_denovo, int& LowerBound, int& UpperBound,
-    size_t upperlimit, BELLApars & b_pars)
+    size_t upperlimit, BELLApars & bpars)
 {
     vector < vector<double> > allquals(MAXTHREADS);
 
@@ -883,13 +883,13 @@ void SyncmerCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_d
                     vector<Kmer> seqkmers;
                     std::vector< int > seqminimizers;   // <position_in_read>
 
-                    for(int j = 0; j<= len - b_pars.kmerSize; j++)
+                    for(int j = 0; j<= len - bpars.kmerSize; j++)
                     {
-                        std::string kmerstrfromfastq = seqs[i].substr(j, b_pars.kmerSize);
+                        std::string kmerstrfromfastq = seqs[i].substr(j, bpars.kmerSize);
                         Kmer mykmer(kmerstrfromfastq.c_str(), kmerstrfromfastq.length());
                         seqkmers.emplace_back(mykmer);
                         
-                        if(b_pars.skipEstimate == false)
+                        if(bpars.estimateErr == true)
                         {
                                 // accuracy
                                 int bqual = (int)quals[i][j] - ASCIIBASE;
@@ -897,22 +897,22 @@ void SyncmerCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_d
                                 rerror += berror;
                         }
                     }
-                    // getMinimizers(b_pars.windowlen, seqkmers, seqminimizers, b_pars.useHOPC);
-                    getSyncmers(b_pars.kmerSize, seqkmers, seqminimizers, b_pars.useHOPC);
+                    // getMinimizers(bpars.windowLen, seqkmers, seqminimizers, bpars.useHOPC);
+                    getSyncmers(bpars.kmerSize, seqkmers, seqminimizers, bpars.useHOPC);
                    
                     // cout << seqkmers.size() << " k-mers generated " << seqminimizers.size() << " syncmers, read id is " << nametags[i] << endl;
 
                     for(auto minpos: seqminimizers)
                     {
-                        std::string strminkmer = seqs[i].substr(minpos, b_pars.kmerSize);
+                        std::string strminkmer = seqs[i].substr(minpos, bpars.kmerSize);
                         Kmer myminkmer(strminkmer.c_str(), strminkmer.length());
                         countsdenovo.upsert(myminkmer, updatefn, 1);
                     }
 
-                    if(b_pars.skipEstimate == false)
+                    if(bpars.estimateErr == true)
                     {
                         // remaining k qual position accuracy
-                        for(int j = len - b_pars.kmerSize + 1; j < len; j++)
+                        for(int j = len - bpars.kmerSize + 1; j < len; j++)
                         {
                             int bqual = (int)quals[i][j] - ASCIIBASE;
                             double berror = pow(10,-(double)bqual/10);
@@ -934,8 +934,8 @@ void SyncmerCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_d
     }
 
     // Error estimation
-    double& errorRate = b_pars.errorRate;
-    if(b_pars.skipEstimate == false)
+    double& errorRate = bpars.errorRate;
+    if(bpars.estimateErr == true)
     {
         errorRate = 0.0; // reset to 0 here, otherwise it cointains default or user-defined values
         #pragma omp for reduction(+:errorRate)
@@ -944,7 +944,7 @@ void SyncmerCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_d
                 double temp = std::accumulate(allquals[i].begin(), allquals[i].end(), 0.0);
                 errorRate += temp / (double)allquals[i].size();
             }
-        b_pars.errorRate = errorRate / (double)MAXTHREADS;
+        bpars.errorRate = errorRate / (double)MAXTHREADS;
     }
 
 
