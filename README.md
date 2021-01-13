@@ -51,48 +51,39 @@ make bella (CPU-only) OR make bella-gpu (CPU/GPU)
 
 To run with default setting:
 ```
-./bella -f ${INPUT} -k ${KSIZE} -o ${NAME} -x ${XDROP} -l ${LOWER} -u ${UPPER} -t
+./bella -f ${INPUT} -k ${KSIZE} -o ${NAME} -x ${XDROP} -l ${LOWER} -u ${UPPER}
 ```
 BELLA requires a text file containing the path to the input fastq file(s) as the argument for the -f option.
 Example: [input-example.txt](https://github.com/giuliaguidi/bella/files/2620924/input-example.txt)
 
 To show the usage:
 ```
-./bella -i
+./bella -h
 ```
 
 Optional flag description: 
 ```
--f : List of fastq(s)	(required)
--o : Output filename	(required)
--k : KmerSize [17]			
--a : User-defined alignment threshold [FALSE, -1]   		
--x : SeqAn xDrop [7]   									 
--e : Error rate [0.15]   	
--q : Estimare error rate from the dataset [FALSE]   	 
--t : Use default error rate setting [FALSE]  
--m : Total RAM of the system in MB [auto estimated if possible or 8,000 if not]  	 
--z : Do not run pairwise alignment [FALSE]   
--d : Deviation from the mean alignment score [0.10]
--b : Bin size binning algorithm [500]
--p : Output in PAF format [FALSE]
--g : GPUs available [1, only works when BELLA is compiled for GPU]
--s : K-mer counting split count can be increased for large dataset [1]
--h : Use HOPC representation with HOPC erate [FALSE | 0.035] 
--w : Window length for minimizer selection [none | if provided, enables minimizers]
--c : Enable syncmer [FALSE]
--l : K-mer frequency lower bound (required)
--u : K-mer frequency upper bound (required)
+  -f, --fastq arg            List of Fastq(s) (required)
+  -o, --output arg           Output Filename (required)
+  -k, --kmer arg             K-mer Length (default: 17)
+  -x, --xdrop arg            SeqAn X-Drop (default: 7)
+  -e, --error arg            Error Rate (default: 0.15)
+      --estimate             Estimate Error Rate from Data
+      --skip-alignment       Overlap Only
+  -m, --memory arg           Total RAM of the System in MB (default: 8000)
+      --score-deviation arg  Deviation from the Mean Alignment Score [0,1]
+                             (default: 0.1)
+  -b, --bin-size arg         Bin Size for Binning Algorithm (default: 500)
+      --paf                  Output in PAF format
+  -g, --gpus arg             GPUs Available (default: 1)
+      --split-count arg      K-mer Counting Split Count (default: 1)
+      --hopc                 Use HOPC representation
+  -w, --window arg           Window Size for Minimizer Selection (default: 0)
+  -s, --syncmer              Enable Syncmer Selection
+  -u, --upper-freq arg       K-mer Frequency Upper Bound (default: 8)
+  -l, --lower-freq arg       K-mer Frequency Lower Bound (default: 2)
+  -h, --help                 Usage
 ```
-### Error Rate
-
-The error rate is an important parameter in BELLA as it is used to choose which k-mers contribute to the overlap detection.
-
-The user should either:
-
-* **-e** = suggest an error rate
-* **-q** = confirm that the data has quality values and we can estimate the error rate from the data set
-* **-t** = confirm that we can use a default error rate (0.15)
 
 ### Memory Usage
 
