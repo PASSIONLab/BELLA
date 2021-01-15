@@ -112,7 +112,7 @@ int main (int argc, char *argv[]) {
 	char *OutputFile = NULL;	
 	if(result.count("output"))
 	{
-		char* line1 = strdup(result["fastq"].as<std::string>().c_str());
+		char* line1 = strdup(result["output"].as<std::string>().c_str());
 		char* line2 = strdup(".out");
 
 		unsigned int len1 = strlen(line1);
