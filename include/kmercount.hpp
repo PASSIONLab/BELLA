@@ -751,15 +751,7 @@ void MinimizerCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable
                         std::string strminkmer = seqs[i].substr(minpos, bpars.kmerSize);
                         Kmer myminkmer(strminkmer.c_str(), strminkmer.length());
 						
-						if (bpars.useHOPC)
-						{
-							myminkmer = myminkmer.hopc();
-						}
-						else
-						{
-							myminkmer = myminkmer.rep();
-						}
-                        // myminkmer = myminkmer.rep();
+                        myminkmer = myminkmer.rep();
                         countsdenovo.upsert(myminkmer, updatefn, 1);
                     }
 

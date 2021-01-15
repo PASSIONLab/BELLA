@@ -378,15 +378,7 @@ int main (int argc, char *argv[]) {
                         std::string strminkmer = seqs[i].substr(minpos, bpars.kmerSize);
                         Kmer myminkmer(strminkmer.c_str(), strminkmer.length());
                         
-						if (bpars.useHOPC)
-						{
-							myminkmer = myminkmer.hopc();
-						}
-						else
-						{
-							myminkmer = myminkmer.rep();
-						}
-						// myminkmer = myminkmer.rep();
+						myminkmer = myminkmer.rep();
                         
                         KMERINDEX idx; // kmer_id
                         auto found = countsreliable.find(myminkmer,idx);
