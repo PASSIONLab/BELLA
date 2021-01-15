@@ -9,10 +9,10 @@ INCLUDE = -I$(SPRNPATH)/include -I$(LOGANPATH) -I$(SEQANPATH) # -I${XAVIER_DIR}/
 MLKINCLUDE = -I/opt/intel/composer_xe_2015.0.039/mkl/include
 LIBPATH = -L/opt/intel/composer_xe_2015.0.039/mkl/lib 
 
-COMPILER = g++-10
+COMPILER = g++
 COMPILER_GPU = nvcc
 CUDAFLAGS = -arch=sm_70 -O3 -maxrregcount=32 -std=c++14 -Xcompiler -fopenmp -w 
-CC = gcc-10
+CC = gcc
 #ASFLAGS = -fsanitize=address -fsanitize-address-use-after-scope
 
 CFLAGS =-std=c++11 -fpermissive -w -O3 -I. -c

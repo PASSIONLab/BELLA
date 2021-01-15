@@ -377,6 +377,7 @@ int main (int argc, char *argv[]) {
                     {
                         std::string strminkmer = seqs[i].substr(minpos, bpars.kmerSize);
                         Kmer myminkmer(strminkmer.c_str(), strminkmer.length());
+                        myminkmer = myminkmer.rep();
                         
                         KMERINDEX idx; // kmer_id
                         auto found = countsreliable.find(myminkmer,idx);

@@ -1,1 +1,1 @@
-reversecomptest.fastq
+sanitytests/reversecomptest.fastq
