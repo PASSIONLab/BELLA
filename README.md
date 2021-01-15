@@ -85,6 +85,8 @@ Optional flag description:
   -h, --help                 Usage
 ```
 
+The error rate is used to compute the adaptive alignment threshold. If using PacBio CCS/HiFi please set ```--error 0.005```.
+
 ### Memory Usage
 
 The parallelism during the overlap detection phase depends on the available number of threads and on the available RAM [Default: 8000MB].
