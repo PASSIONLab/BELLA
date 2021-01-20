@@ -47,6 +47,21 @@ ln -s makefile-nersc Makefile
 make bella (CPU-only) OR make bella-gpu (CPU/GPU)
 ```
 
+### Test Dataset
+
+HiFi E. coli:
+```
+curl -L -o ecoli.fastq https://sra-pub-src-1.s3.amazonaws.com/SRR10971019/m54316_180808_005743.fastq.1
+```
+HiFi E. coli and reference:
+```
+wget --no-check-certificate https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/005/845/GCF_000005845.2_ASM584v2/GCF_000005845.2_ASM584v2_genomic.fna.gz
+```
+HiFi E. coli reads mapped to reference:
+```
+TBD
+```
+
 ### Run
 
 To run with default setting:
@@ -124,7 +139,7 @@ python3 SAMparser.py <bwamem/minimap2-output>
 * **Ground truth generation for synthetic data set**: mafconvert.py allows to transform the .MAF file from PBSIM (Pacbio read simulator) in a simpler format usable as input to the evaluation code when using synthetic data set.
 
 ```
-python scripr/mafconvert.py axt <maf-file> > <ground-truth.txt>
+python script/mafconvert.py axt <maf-file> > <ground-truth.txt>
 ```
 
 To run the evaluation program:
