@@ -91,12 +91,12 @@ fi
 echo "BELLA run completed"
 
 # collect data from temp file
-MYTIME=$(awk 'NR==8 {print; exit}' ${MYTEMP})
-TOTKMR=$(awk 'NR==4 {print; exit}' ${MYTEMP})
+MYTIME=$(awk 'NR==5 {print; exit}' ${MYTEMP})
+TOTKMR=$(awk 'NR==1 {print; exit}' ${MYTEMP})
 
-NNZA=$(awk 'NR==5 {print; exit}' ${MYTEMP})
-NNZC=$(awk 'NR==6 {print; exit}' ${MYTEMP})
-NNZR=$(awk 'NR==7 {print; exit}' ${MYTEMP})
+NNZA=$(awk 'NR==2 {print; exit}' ${MYTEMP})
+NNZC=$(awk 'NR==3 {print; exit}' ${MYTEMP})
+NNZR=$(awk 'NR==4 {print; exit}' ${MYTEMP})
 echo "BELLA data collection completed"
 
 echo "BELLA evaluation is starting"
@@ -104,9 +104,9 @@ ${BENCH} -G ${TRUTH} -B ${OUTPUT} >> ${MYTEMP}
 echo "BELLA evaluation completed"
 
 # todo extract recall and precision
-RC=$(awk 'NR==16 {print; exit}' ${MYTEMP})
-PR=$(awk 'NR==17 {print; exit}' ${MYTEMP})
-F1=$(awk 'NR==18 {print; exit}' ${MYTEMP})
+RC=$(awk 'NR==14 {print; exit}' ${MYTEMP})
+PR=$(awk 'NR==15 {print; exit}' ${MYTEMP})
+F1=$(awk 'NR==16 {print; exit}' ${MYTEMP})
 
 echo "ecsample	${XDROP}	${KSIZE}	${WINDOW}	${MMER}	${SMER}	${LOWER}	${UPPER}	${TOTKMR}	${NNZA}	${NNZC}	${NNZR}	${MYTIME}	${RC}	${PR}	${F1}" >> ${SUMMARY}
 
