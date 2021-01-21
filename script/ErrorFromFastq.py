@@ -1,3 +1,5 @@
+# https://www.biostars.org/p/13224/
+
 import sys
 from Bio import SeqIO
 from Bio.Seq import Seq
