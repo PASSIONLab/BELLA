@@ -37,6 +37,7 @@
 #include "../include/common/bellaio.h"
 #include "../include/minimizer.hpp"
 #include "../include/syncmer.hpp"
+#include "../include/sequence.hpp"
 
 #include "../kmercode/hash_funcs.h"
 #include "../kmercode/Kmer.hpp"
@@ -90,6 +91,7 @@ int main (int argc, char *argv[]) {
 	("s, syncmer", "Enable Syncmer Selection", 				cxxopts::value<bool>()->default_value("false"))
 	("u, upper-freq", "K-mer Frequency Upper Bound", 		cxxopts::value<int>()->default_value("8"))
 	("l, lower-freq", "K-mer Frequency Lower Bound", 		cxxopts::value<int>()->default_value("2"))
+	("pacbio-hifi", "Use Homopolymer Compressed Reads for PacBio HiFi", 	cxxopts::value<bool>()->default_value("false"))
 	("h, help", "Usage")
 	;
 
@@ -173,6 +175,8 @@ int main (int argc, char *argv[]) {
 	int reliableUpperBound	= result["upper-freq"].as<int>();	
 	int reliableLowerBound	= result["lower-freq"].as<int>(); 
 
+	bool hifi = result["pacbio-hifi"].as<bool>();
+
 	// ================ //
 	//   Declarations   //
 	// ================ //
@@ -229,6 +233,17 @@ int main (int argc, char *argv[]) {
 	{
 		std::string HOPC = "DISABLED";
 		printLog(HOPC);
+	}
+
+	if(hifi)
+	{
+		std::string HomopolyCompressRead = "ENABLED";
+		printLog(HomopolyCompressRead);
+	}
+	else 
+	{
+		std::string HomopolyCompressRead = "DISABLED";
+		printLog(HomopolyCompressRead);
 	}
 
     std::string xDrop = std::to_string(bpars.xDrop);
@@ -299,7 +314,7 @@ int main (int argc, char *argv[]) {
 	else
 	{
     	SplitCount(allfiles, countsreliable, reliableLowerBound, reliableUpperBound,
-               upperlimit, bpars);
+               upperlimit, bpars, hifi);
 	}
 
 	double errorRate;
@@ -359,6 +374,21 @@ int main (int argc, char *argv[]) {
 				temp.seq = seqs[i];    					// save reads for seeded alignment
 				temp.readid = numReads+i;
 				allreads[MYTHREAD].push_back(temp);
+
+				uint32_t* ntoc = new uint32_t [len + 1];
+
+				char* cseq = new char [len + 1];
+				strcpy(cseq, seqs[i].c_str());
+			
+				// homopoly compress read
+				if(hifi)
+				{
+					// return compressed length
+					uint32_t clen = homopolyCompress(cseq, len, cseq, ntoc, NULL);
+					len = clen;
+				}
+
+				std::string myseq(cseq);
                 
                 if(bpars.useMinimizer)
                 {
@@ -392,10 +422,12 @@ int main (int argc, char *argv[]) {
                 {
                     for(int j = 0; j <= len - bpars.kmerSize; j++)
                     {
-                        std::string kmerstrfromfastq = seqs[i].substr(j, bpars.kmerSize);
+                        std::string kmerstrfromfastq = myseq.substr(j, bpars.kmerSize);
                         Kmer mykmer(kmerstrfromfastq.c_str(), kmerstrfromfastq.length());
+
                         // remember to use only ::rep() when building kmerdict as well
                         Kmer lexsmall;
+
                         if (bpars.useHOPC)
                         {
                             lexsmall = mykmer.hopc();
@@ -407,14 +439,25 @@ int main (int argc, char *argv[]) {
                         }
 
                         KMERINDEX idx; // kmer_id
-                        auto found = countsreliable.find(lexsmall,idx);
-                        if(found)
+                        auto found = countsreliable.find(lexsmall, idx);
+
+                        if(found) // if hifi we need to convert back to the original position for alignment 
                         {
-                            //alloccurrences[MYTHREAD].emplace_back(std::make_tuple(numReads+i, idx, j)); // vector<tuple<numReads,kmer_id,kmerpos>>
-                            alltranstuples[MYTHREAD].emplace_back(std::make_tuple(idx, numReads+i, j)); // transtuples.push_back(col_id,row_id,kmerpos)
+                            if(hifi)
+							{
+								int pos = std::distance(ntoc, std::find(ntoc, ntoc + len, j)); // j here is the compressed position so we need to find the index of ntoc which is the original position in the read
+                        		alltranstuples[MYTHREAD].emplace_back(std::make_tuple(idx, numReads+i, pos)); // transtuples.push_back(col_id,row_id,kmerpos)
+							}
+							else
+							{
+                        		alltranstuples[MYTHREAD].emplace_back(std::make_tuple(idx, numReads+i, j)); // transtuples.push_back(col_id,row_id,kmerpos)
+							}
+
                         }
                     }
                 }
+				delete [] ntoc;
+				delete [] cseq;
 			} // for(int i=0; i<nreads; i++)
 			numReads += nreads;
 		} //while(fillstatus) 

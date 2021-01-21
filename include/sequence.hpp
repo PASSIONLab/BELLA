@@ -73,12 +73,12 @@ reversecomplement(const std::string& seq) {
 //  chunks; compress the first 1000 bases, the the next 1000, and so on.
 //  Each pass sets skip to the last base of the previous chunk.
 //
-uint32
-homopolyCompress(char *bases, uint32 basesLen, char *compr, uint32 *ntoc, char skip)
+uint32_t
+homopolyCompress(char *bases, uint32_t basesLen, char *compr, uint32_t *ntoc, char skip)
 {
-  uint32  cc = 0;  //  position of the start of the run
-  uint32  rr = 1;  //  position of the scan head
-  uint32  sl = 0;  //  length of the compressed sequence
+  uint32_t  cc = 0;  //  position of the start of the run
+  uint32_t  rr = 1;  //  position of the scan head
+  uint32_t  sl = 0;  //  length of the compressed sequence
 
   while ((bases[cc] == skip) &&   //  If 'skip' is set, ignore these bases
          (cc < basesLen)) {        //  at the start of 'bases'.

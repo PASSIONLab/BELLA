@@ -48,7 +48,7 @@
 #include "../kmercode/bound.hpp"
 #include "../kmercode/hyperloglog.hpp"
 #include "common/common.h"
-
+#include "sequence.hpp"
 using namespace std;
 
 #define ASCIIBASE 33 // Pacbio quality score ASCII BASE
@@ -462,7 +462,7 @@ double getAvg(double prev_avg, double x, int64_t n)
  */
 template <typename IT>
 void SplitCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_denovo, int& LowerBound, int& UpperBound, 
-	size_t upperlimit, BELLApars & bpars)
+	size_t upperlimit, BELLApars & bpars, bool& hifi)
 {
 	size_t totreads = 0;
 	size_t totbases = 0;
@@ -510,11 +510,27 @@ void SplitCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_den
 					{
 						// remember that the last valid position is length()-1
 						int len = seqs[i].length();
+						// uint32_t* ntoc = new uint32_t [nlen + 1];
+
+						char* cseq = new char [len + 1];
+						strcpy(cseq, seqs[i].c_str());
+				
 						double rerror = 0.0;
 
-						for(int j = 0; j<= len - bpars.kmerSize; j++)  
+						// homopoly compress read
+						if(hifi)
 						{
-							std::string kmerstrfromfastq = seqs[i].substr(j, bpars.kmerSize);
+							// return compressed length
+							uint32_t clen = homopolyCompress(cseq, len, cseq, NULL, NULL);
+							len = clen;
+						}
+
+						std::string myseq(cseq);
+
+						for(int j = 0; j <= len - bpars.kmerSize; j++)  
+						{
+	
+							std::string kmerstrfromfastq = myseq.substr(j, bpars.kmerSize);
 							Kmer mykmer(kmerstrfromfastq.c_str(), kmerstrfromfastq.length());
 
 							Kmer lexsmall;
@@ -533,6 +549,7 @@ void SplitCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_den
 								allkmers[MYTHREAD].push_back(lexsmall);
 								hlls[MYTHREAD].add((const char*) lexsmall.getBytes(), lexsmall.getNumBytes());
 							}
+
 							if(CurrSplitCount == 0 && bpars.estimateErr == true) 
 							{
 								// accuracy
@@ -553,6 +570,8 @@ void SplitCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_den
         							tlave = getAvg(tlave, berror, tlbases++); 									
 							}
 						}
+
+						delete [] cseq;
 					} // for(int i=0; i<nreads; i++)
 					tlreads += nreads;
 				} //while(fillstatus) 
@@ -744,8 +763,6 @@ void MinimizerCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable
                     }
                     getMinimizers(bpars.windowLen, seqkmers, seqminimizers, bpars.useHOPC);
                     
-                    //cout << seqkmers.size() << " k-mers generated " << seqminimizers.size() << " minimizers, read id is " << nametags[i];
-
                     for(auto minpos: seqminimizers)
                     {
                         std::string strminkmer = seqs[i].substr(minpos, bpars.kmerSize);
