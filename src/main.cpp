@@ -445,8 +445,9 @@ int main (int argc, char *argv[]) {
                         {
                             if(hifi)
 							{
-								int pos = std::distance(ntoc, std::find(ntoc, ntoc + len, j)); // j here is the compressed position so we need to find the index of ntoc which is the original position in the read
-                        		alltranstuples[MYTHREAD].emplace_back(std::make_tuple(idx, numReads+i, pos)); // transtuples.push_back(col_id,row_id,kmerpos)
+								int nlen = seqs[i].length();
+								int pos = std::distance(ntoc, std::find(ntoc, ntoc + nlen, j)); // j here is the compressed position so we need to find the index of ntoc which is the original position in the read
+								alltranstuples[MYTHREAD].emplace_back(std::make_tuple(idx, numReads+i, pos)); // transtuples.push_back(col_id,row_id,kmerpos)
 							}
 							else
 							{
