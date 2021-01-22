@@ -117,9 +117,15 @@ seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rle
  * @param xDrop
  * @return alignment score and extended seed
  */
+#ifdef HIFI
 xavierResult xavierAlign(const std::string& row, const std::string& col, int rowlen, 
 	PosType_ i, PosType_ j, int xDrop, int kmerSize, bool& hifi)
 {
+#else
+xavierResult xavierAlign(const std::string& row, const std::string& col, int rowlen, 
+	int i, int j, int xDrop, int kmerSize, bool& hifi)
+{
+#endif
 	// result.first = best score, result.second = exit score when (if) x-drop termination is satified
 	std::pair<int, int> tmp;
 	xavierResult result;

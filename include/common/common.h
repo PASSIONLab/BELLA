@@ -11,7 +11,7 @@
 	#include "../xavier/xavier.h"
 #endif
 
-#define HIFI
+// #define HIFI
 
 #ifndef PRINT
 #define PRINT

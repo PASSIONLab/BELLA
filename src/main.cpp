@@ -388,6 +388,8 @@ int main (int argc, char *argv[]) {
 				len = clen;
 
 				std::string myseq(cseq);
+			#else
+				std::string myseq = seqs[i];    	
 			#endif
                 
                 if(bpars.useMinimizer)
