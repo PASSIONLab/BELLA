@@ -193,8 +193,13 @@ int main (int argc, char *argv[]) {
 	readVector_ reads;
 	Kmers kmersfromreads;
 
-	// vector<tuple<unsigned int, unsigned int, unsigned short int>> occurrences;	// 32 bit, 32 bit, 16 bit (read, kmer, position)
-	vector<tuple<KMERINDEX, KMERINDEX, unsigned short int>> transtuples;	// 32 bit, 32 bit, 16 bit (kmer, read, position)
+#ifdef HIFI
+	vector<tuple< KMERINDEX, KMERINDEX, PosType_ >> transtuples;	// 32 bit, 32 bit, 16 bit (kmer, read, position)
+	vector<vector<tuple< KMERINDEX, KMERINDEX, PosType_ >>> alltranstuples(MAXTHREADS);
+#else
+	vector<tuple< KMERINDEX, KMERINDEX, unsigned short int >> transtuples;	// 32 bit, 32 bit, 16 bit (kmer, read, position)
+	vector<vector< tuple<KMERINDEX, KMERINDEX, unsigned short int >>> alltranstuples(MAXTHREADS);
+#endif
 
 	// ================== //
 	// Parameters Summary //
@@ -290,7 +295,7 @@ int main (int argc, char *argv[]) {
 
 	printLog(numThreads);
 
-	// GG: reads global
+	// GGGG: reads global
 	vector<readVector_> allreads(MAXTHREADS);
 
 	all = omp_get_wtime();
@@ -346,9 +351,6 @@ int main (int argc, char *argv[]) {
 
 	double parsefastq = omp_get_wtime();
 
-	// vector<vector<tuple<unsigned int, unsigned int, unsigned short int>>> alloccurrences(MAXTHREADS);
-	vector<vector<tuple<KMERINDEX, KMERINDEX, PosType_>>> alltranstuples(MAXTHREADS);
-
 	unsigned int numReads = 0; // numReads needs to be global (not just per file)
 
 	for(auto itr=allfiles.begin(); itr!=allfiles.end(); itr++)
@@ -375,26 +377,24 @@ int main (int argc, char *argv[]) {
 				temp.readid = numReads+i;
 				allreads[MYTHREAD].push_back(temp);
 
+			#ifdef HIFI
 				uint32_t* ntoc = new uint32_t [len + 1];
 
 				char* cseq = new char [len + 1];
 				strcpy(cseq, seqs[i].c_str());
 			
-				// homopoly compress read
-				if(hifi)
-				{
-					// return compressed length
-					uint32_t clen = homopolyCompress(cseq, len, cseq, ntoc, NULL);
-					len = clen;
-				}
+				// homopoly compress read return compress len
+				uint32_t clen = homopolyCompress(cseq, len, cseq, ntoc, NULL);
+				len = clen;
 
 				std::string myseq(cseq);
+			#endif
                 
                 if(bpars.useMinimizer)
                 {
                     vector<Kmer> seqkmers;
-                    std::vector< int > seqminimizers;    // <position_in_read>
-                    for(int j = 0; j <= len - bpars.kmerSize; j++)   // AB: optimize this sliding-window parsing ala HipMer
+                    std::vector< int > seqminimizers;    			// <position_in_read>
+                    for(int j = 0; j <= len - bpars.kmerSize; j++)  // AB: optimize this sliding-window parsing ala HipMer
                     {
                         std::string kmerstrfromfastq = seqs[i].substr(j, bpars.kmerSize);
                         Kmer mykmer(kmerstrfromfastq.c_str(), kmerstrfromfastq.length());
@@ -402,9 +402,10 @@ int main (int argc, char *argv[]) {
                     }
 
                     getMinimizers(bpars.windowLen, seqkmers, seqminimizers, bpars.useHOPC);
-                    //cout << seqkmers.size() << " k-mers generated " << seqminimizers.size() << " minimizers" << endl;
+
                     for(auto minpos: seqminimizers)
                     {
+						// Check seqs[i] when using HIFI in minimizer
                         std::string strminkmer = seqs[i].substr(minpos, bpars.kmerSize);
                         Kmer myminkmer(strminkmer.c_str(), strminkmer.length());
                         
@@ -414,7 +415,12 @@ int main (int argc, char *argv[]) {
                         auto found = countsreliable.find(myminkmer,idx);
                         if(found)
                         {
-                            alltranstuples[MYTHREAD].emplace_back(std::make_tuple(idx, numReads+i, minpos));
+						#ifdef HIFI
+							PosType_ pos = std::make_pair(minpos, minpos);
+                            alltranstuples[MYTHREAD].emplace_back(std::make_tuple(idx, numReads+i, pos));
+						#else
+							alltranstuples[MYTHREAD].emplace_back(std::make_tuple(idx, numReads+i, minpos));
+						#endif
                         }
                     }
                 }
@@ -425,11 +431,11 @@ int main (int argc, char *argv[]) {
                         std::string kmerstrfromfastq = myseq.substr(j, bpars.kmerSize);
                         Kmer mykmer(kmerstrfromfastq.c_str(), kmerstrfromfastq.length());
 
-                        // remember to use only ::rep() when building kmerdict as well
                         Kmer lexsmall;
 
                         if (bpars.useHOPC)
                         {
+							// GGGG: this does hopc on k-mer not read
                             lexsmall = mykmer.hopc();
                         }
                         else
@@ -443,37 +449,34 @@ int main (int argc, char *argv[]) {
 
                         if(found) // if hifi we need to convert back to the original position for alignment 
                         {
-                            if(hifi)
-							{
-								int nlen = seqs[i].length();
+                            #ifdef HIFI
+								int nlen = seqs[i].length(); // use original sequence length
 								int npos = std::distance(ntoc, std::find(ntoc, ntoc + nlen, j)); // j here is the compressed position so we need to find the index of ntoc which is the original position in the read
 								
 								PosType_ pos = std::make_pair(npos, j);
-								
-								alltranstuples[MYTHREAD].emplace_back(std::make_tuple(idx, numReads+i, pos)); // transtuples.push_back(col_id,row_id,kmerpos)
-							}
-							else
-							{
-                        		alltranstuples[MYTHREAD].emplace_back(std::make_tuple(idx, numReads+i, j)); // transtuples.push_back(col_id,row_id,kmerpos)
-							}
+								alltranstuples[MYTHREAD].emplace_back(std::make_tuple(idx, numReads+i, pos)); 	// transtuples.push_back(col_id,row_id,kmerpos)
+							#else
+                        		alltranstuples[MYTHREAD].emplace_back(std::make_tuple(idx, numReads+i, j)); 	// transtuples.push_back(col_id,row_id,kmerpos)
+							#endif
 
                         }
                     }
                 }
+			#ifdef HIFI
 				delete [] ntoc;
 				delete [] cseq;
+			#endif
 			} // for(int i=0; i<nreads; i++)
 			numReads += nreads;
 		} //while(fillstatus) 
 		delete pfq;
-
 	} // for all files
 
 
 	KMERINDEX readcount = 0;
 	KMERINDEX tuplecount = 0;
 
-	for(int t=0; t<MAXTHREADS; ++t)
+	for(int t = 0; t < MAXTHREADS; ++t)
 	{
 		readcount  += allreads[t].size();
 		tuplecount += alltranstuples[t].size();
@@ -485,18 +488,16 @@ int main (int argc, char *argv[]) {
 #endif
 
 	reads.resize(readcount);
-	//occurrences.resize(tuplecount);
 	transtuples.resize(tuplecount);
 
 	unsigned int readssofar = 0;
 	unsigned int tuplesofar = 0;
 
-	for(int t=0; t<MAXTHREADS; ++t)
+	for(int t = 0; t < MAXTHREADS; ++t)
 	{
 		copy(allreads[t].begin(), allreads[t].end(), reads.begin()+readssofar);
 		readssofar += allreads[t].size();
 
-		//copy(alloccurrences[t].begin(), alloccurrences[t].end(), occurrences.begin() + tuplesofar);
 		copy(alltranstuples[t].begin(), alltranstuples[t].end(), transtuples.begin() + tuplesofar);
 		tuplesofar += alltranstuples[t].size();
 	}
@@ -516,10 +517,19 @@ int main (int argc, char *argv[]) {
 	
 	unsigned int nkmer = countsreliable.size();
 	
-	// to help the parsing script
+	// GGGG: to help the parsing script
     cout << nkmer << endl;
 	
 	double matcreat = omp_get_wtime();
+#ifdef HIFI
+	CSC<KMERINDEX, PosType_> transpmat(transtuples, nkmer, numReads,
+							[] (PosType_& p1, PosType_& p2) 
+							{
+								return p1;
+							}, false);	// hashspgemm doesn't require sorted rowids within each column
+	// remove memory of transtuples
+	std::vector<tuple<KMERINDEX, KMERINDEX, PosType_>>().swap(transtuples);
+#else
 	CSC<KMERINDEX, unsigned short int> transpmat(transtuples, nkmer, numReads,
 							[] (unsigned short int& p1, unsigned short int& p2) 
 							{
@@ -527,13 +537,18 @@ int main (int argc, char *argv[]) {
 							}, false);	// hashspgemm doesn't require sorted rowids within each column
 	// remove memory of transtuples
 	std::vector<tuple<KMERINDEX, KMERINDEX, unsigned short int>>().swap(transtuples);
+#endif
 
 	std::string TransposeSparseMatrixCreationTime = std::to_string(omp_get_wtime() - matcreat) + " seconds";
 	printLog(TransposeSparseMatrixCreationTime);
 
 
-	double transbeg = omp_get_wtime();	
+	double transbeg = omp_get_wtime();
+#ifdef HIFI
+	CSC<KMERINDEX, PosType_> spmat = transpmat.Transpose();
+#else
 	CSC<KMERINDEX, unsigned short int> spmat = transpmat.Transpose();
+#endif
 	std::string ReTransposeTime = std::to_string(omp_get_wtime() - transbeg) + " seconds";
 	printLog(ReTransposeTime);
 
@@ -541,7 +556,37 @@ int main (int argc, char *argv[]) {
 	// ==================================================== //
 	// Sparse Matrix Multiplication (aka Overlap Detection) //
 	// ==================================================== //
-		
+
+#ifdef HIFI
+	spmatPtr_ getvaluetype(make_shared<spmatType_>());
+	HashSpGEMM(
+		spmat, transpmat, 
+		// n-th k-mer positions on read i and on read j
+	    [&bpars, &reads] (PosType_& begpH, PosType_& begpV, 
+	        const unsigned int& id1, const unsigned int& id2)
+		{
+			spmatPtr_ value(make_shared<spmatType_>());
+
+			std::string& read1 = reads[id1].seq;
+			std::string& read2 = reads[id2].seq;
+
+			// GGGG: function in chain.h
+			multiop(value, read1, read2, begpH, begpV, bpars.kmerSize);
+			return value;
+		},
+	    [&bpars, &reads] (spmatPtr_& m1, spmatPtr_& m2, const unsigned int& id1, 
+	        const unsigned int& id2)
+		{
+			// GGGG: after testing correctness, these variables can be removed
+			std::string& readname1 = reads[id1].nametag;
+			std::string& readname2 = reads[id2].nametag;
+
+			// GGGG: function in chain.h
+			chainop(m1, m2, bpars, readname1, readname2);
+			return m1;
+		},
+	    reads, getvaluetype, OutputFile, bpars, ratiophi, hifi);
+#else
 	spmatPtr_ getvaluetype(make_shared<spmatType_>());
 	HashSpGEMM(
 		spmat, transpmat, 
@@ -554,23 +599,23 @@ int main (int argc, char *argv[]) {
 			std::string& read1 = reads[id1].seq;
 			std::string& read2 = reads[id2].seq;
 
-			// GG: function in chain.h
+			// GGGG: function in chain.h
 			multiop(value, read1, read2, begpH, begpV, bpars.kmerSize);
 			return value;
 		},
 	    [&bpars, &reads] (spmatPtr_& m1, spmatPtr_& m2, const unsigned int& id1, 
 	        const unsigned int& id2)
 		{
-			// GG: after testing correctness, these variables can be removed
+			// GGGG: after testing correctness, these variables can be removed
 			std::string& readname1 = reads[id1].nametag;
 			std::string& readname2 = reads[id2].nametag;
 
-			// GG: function in chain.h
+			// GGGG: function in chain.h
 			chainop(m1, m2, bpars, readname1, readname2);
 			return m1;
 		},
 	    reads, getvaluetype, OutputFile, bpars, ratiophi, hifi);
-
+#endif
 	double totaltime = omp_get_wtime()-all;
 
     std::string TotalRuntime = std::to_string(totaltime) + " seconds";   
