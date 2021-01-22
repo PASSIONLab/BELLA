@@ -139,6 +139,10 @@ xavierResult xavierAlign(const std::string& row, const std::string& col, int row
 	std::string rep = reversecomplement(seedH);
 	std::string cpyrow(row);
 
+	std::cout << seedH << " " << seedV << " " << rep << std::endl;
+
+
+	// homopolymer compression of reads messed up with the rc choice here figure out a solution
 	if(rep == seedV)
 	{
 		std::reverse(std::begin(cpyrow), std::end(cpyrow));
