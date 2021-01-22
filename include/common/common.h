@@ -11,6 +11,8 @@
 	#include "../xavier/xavier.h"
 #endif
 
+#define HIFI
+
 #ifndef PRINT
 #define PRINT
 #endif
@@ -107,7 +109,6 @@ struct readType_ {
 };
 
 typedef std::vector<readType_> readVector_;
-typedef shared_ptr<spmatType_> spmatPtr_; // pointer to spmatType_ datastruct
 typedef std::vector<Kmer> Kmers;
 typedef std::pair<unsigned short int, unsigned short int> PosType_;
 
@@ -121,9 +122,14 @@ struct SortBy:std::binary_function<unsigned short int, unsigned short int, bool>
 
 struct spmatType_ {
 
-	// <<<<<<< HEAD
 	unsigned short int count = 0;		// number of shared k-mers
+
+#ifdef HIFI
 	std::vector<std::vector<pair<PosType_, PosType_>>> pos;	// std::vector of k-mer positions <read-i, read-j> (if !K, use at most 2 kmers, otherwise all) per bin
+#else
+	std::vector<std::vector<pair<unsigned short int, unsigned short int>>> pos;	// std::vector of k-mer positions <read-i, read-j> (if !K, use at most 2 kmers, otherwise all) per bin
+#endif
+
 	std::vector<unsigned short int> support;	// number of k-mers supporting a given overlap
 	std::vector<unsigned short int> overlap;	// overlap values
 	std::vector<unsigned short int> ids;		// indices corresponded to sorting of support
@@ -161,6 +167,7 @@ struct spmatType_ {
 		return overlap[ids[0]];		// number of kmer in the most voted bin
 	}
 
+#ifdef HIFI
 	//	GG: choose does also sorting and return the position of the first k-mer in each bin
 	pair<PosType_, PosType_> choose()
 	{
@@ -171,13 +178,30 @@ struct spmatType_ {
 		// GG: we don't care about other support, we want only the majority voted one
 		ids.resize(1);			
 
-		// GGGG: check syntax =
+		// GGGG: check syntax
 		pos[ids[0]].resize(1);	// GG: same for the number of kmers in the choosen bin, we need only one
 
 		// it might be better choose the kmer randomly and find an x-drop/binsize ratio to justify
 		return pos[ids[0]][0];	// GG: returning choosen seed
 
 	}
+#else
+	//	GG: choose does also sorting and return the position of the first k-mer in each bin
+	pair<unsigned short int, unsigned short int> choose()
+	{
+		ids = std::vector<unsigned short int>(support.size());	// number of support
+		std::iota(ids.begin(), ids.end(), 0);					// assign an id
+		std::sort(ids.begin(), ids.end(), SortBy(support));		// sort support by supporting k-mers
+
+		// GG: we don't care about other support, we want only the majority voted one
+		ids.resize(1);
+		// GG: same for the number of kmers in the choosen bin, we need only one			
+		pos[ids[0]].resize(1);	
+
+		// it might be better choose the kmer randomly and find an x-drop/binsize ratio to justify
+		return pos[ids[0]][0];	// GG: returning choosen seed
+	}
+#endif
 };
 
 struct alignmentInfo {
@@ -185,5 +209,7 @@ struct alignmentInfo {
 	unsigned short int apos, bpos;	// (8)	pos in the sections
 	unsigned short int alen, blen;	// (8)	lengths of the segments
 };
+
+typedef shared_ptr<spmatType_> spmatPtr_; // pointer to spmatType_ datastruct
 
 #endif

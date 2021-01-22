@@ -39,12 +39,13 @@ checkstrand(const std::string& read1, const std::string& read2, const int begpH,
 	std::string seedH = read1.substr(begpH, kmerSize);
 	std::string seedV = read2.substr(begpV, kmerSize);
 
-	std::cout << seedH << " " << seedV << std::endl;
+	// std::cout << seedH << " " << seedV << std::endl;
 
 	if(seedH != seedV) return false;
 	else return true;
 }
 
+#ifdef HIFI
 //	GG: check strand and compute overlap length
 int
 overlapop(const std::string& read1, const std::string& read2, PosType_ begpH, 
@@ -67,8 +68,41 @@ overlapop(const std::string& read1, const std::string& read2, PosType_ begpH,
 	int cbegpH = begpH.second;
 	int cbegpV = begpV.second;
 
+	// GGGG: compressed start match
+	int nbegpH = begpH.first;
+	int nbegpV = begpV.first;
+
 	// GGGG: checking strand on compressed version 
 	bool oriented = checkstrand(std::string(cseq1), std::string(cseq2), cbegpH, cbegpV, kmerSize);
+
+	if(!oriented)
+	{
+		nbegpH = read1len - nbegpH - kmerSize;
+	}
+
+	// GG: computing overlap length
+	unsigned short int nendpH = nbegpH + kmerSize;
+	unsigned short int nendpV = nbegpV + kmerSize;
+
+	int margin1 = std::min(nbegpH, nbegpV);
+	int margin2 = std::min(read1len - nendpH, read2len - nendpV);
+	int overlap = margin1 + margin2 + kmerSize;
+
+	delete [] cseq1;
+	delete [] cseq2;
+
+	return overlap;
+}
+#else
+int 
+overlapop(const std::string& read1, const std::string& read2, unsigned short int begpH, 
+	unsigned short int begpV, const unsigned short int kmerSize) {
+
+	int read1len = read1.length();
+	int read2len = read2.length();
+
+	// GGGG: checking strand on compressed version 
+	bool oriented = checkstrand(read1, read2, begpH, begpV, kmerSize);
 
 	if(!oriented)
 	{
@@ -83,13 +117,26 @@ overlapop(const std::string& read1, const std::string& read2, PosType_ begpH,
 	int margin2 = std::min(read1len - endpH, read2len - endpV);
 	int overlap = margin1 + margin2 + kmerSize;
 
-	delete [] cseq1;
-	delete [] cseq2;
-
 	return overlap;
 }
+#endif
 
+#ifdef HIFI
 //	GG: multiply operation
+void
+multiop(spmatPtr_& value, const std::string& read1, const std::string& read2, 
+	PosType_ begpH, PosType_ begpV, const int kmerSize) {
+
+	value->count = 1;
+	vector<pair<PosType_, PosType_>> vec{std::make_pair(begpH, begpV)};	// GG: to facilitate bin division
+	value->pos.push_back(vec);
+	value->support.push_back(1);	// initial k-mer has support 1
+
+	// GG: check strand and compute overlap length
+	int overlap = overlapop(read1, read2, begpH, begpV, kmerSize);
+	value->overlap.push_back(overlap);
+}
+#else
 void
 multiop(spmatPtr_& value, const std::string& read1, const std::string& read2, 
 	unsigned short int begpH, unsigned short int begpV, const int kmerSize) {
@@ -103,6 +150,7 @@ multiop(spmatPtr_& value, const std::string& read1, const std::string& read2,
 	int overlap = overlapop(read1, read2, begpH, begpV, kmerSize);
 	value->overlap.push_back(overlap);
 }
+#endif
 
 template <typename T,typename U>
 std::pair<T,U> distance(const std::pair<T,U>& l, const std::pair<T,U>& r) {
@@ -115,7 +163,60 @@ bool operator>(const std::pair<T,U>& l, const T& c) {
 	else return false;
 }
 
+#ifdef HIFI
 //	GG: binning operation
+void
+chainop(spmatPtr_& m1, spmatPtr_& m2, BELLApars& bpars, 
+	const std::string& readname1, const std::string& readname2)
+{
+	// number of common k-mer
+	m1->count = m1->count + m2->count;
+	vector<unsigned short int> tobeinserted;
+	vector<vector<pair<PosType_, PosType_>>> kmertobeinserted(m1->pos.size());
+
+	for(int i = 0; i < m2->pos.size(); ++i)	
+	{
+		bool orphan = true;
+		for(int j = 0; j < m1->pos.size(); ++j)
+		{
+			if(std::abs(m2->overlap[i] - m1->overlap[j]) < bpars.binSize)
+			{
+				for(auto kmer1:m1->pos[j]) // using normal version position
+				{
+					for(auto kmer2:m2->pos[i]) // using normal version position
+					{
+						//	GG: kmer need to be not overlapping and at least <kmerRift> distant from each other (kmerRift = kmerSize deafult)
+						if(distance(kmer1.first, kmer2.first) > bpars.kmerSize)
+						{
+							kmertobeinserted[j].push_back(kmer2);
+						}
+					}
+				}
+				orphan = false;	// we can be within b length of multiple overlap estimations, so we can't break
+			}
+
+			if(orphan)
+			{
+				tobeinserted.push_back(i);	// we don't want to immediately insert to m1 and increase computational complexity
+			}
+		}
+	}
+
+	for (int j = 0; j < kmertobeinserted.size(); j++)
+	{
+		m1->support[j] += kmertobeinserted[j].size();
+		m1->count	   += kmertobeinserted[j].size();
+		m1->pos[j].insert(m1->pos[j].end(), kmertobeinserted[j].begin(), kmertobeinserted[j].end());
+	}
+
+	for (auto i:tobeinserted)
+	{
+		m1->pos.push_back(m2->pos[i]);
+		m1->overlap.push_back(m2->overlap[i]);
+		m1->support.push_back(m2->support[i]);
+	}
+}
+#else
 void
 chainop(spmatPtr_& m1, spmatPtr_& m2, BELLApars& bpars, 
 	const std::string& readname1, const std::string& readname2)
@@ -167,5 +268,6 @@ chainop(spmatPtr_& m1, spmatPtr_& m2, BELLApars& bpars,
 		m1->support.push_back(m2->support[i]);
 	}
 }
+#endif
 
 #endif

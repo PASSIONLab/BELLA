@@ -132,8 +132,7 @@ xavierResult xavierAlign(const std::string& row, const std::string& col, int row
 	// initialize scoring scheme
 	ScoringSchemeX scoringScheme(match, mismatch, gap);	// enalties (LOGAN currently supports only linear gap penalty and penalty within +/- 3)
 
-	if(hifi)
-	{
+	#ifdef HIFI
 		// GGGG: TODO create a function for this hopc computation
 		int collen = col.length();
 
@@ -191,9 +190,7 @@ xavierResult xavierAlign(const std::string& row, const std::string& col, int row
 
 		delete [] cseq1;
 		delete [] cseq2;	
-	}
-	else
-	{
+	#else
 		int nbegpH = i;
 		int nbegpV = j;
 
@@ -225,7 +222,7 @@ xavierResult xavierAlign(const std::string& row, const std::string& col, int row
 			tmp = XavierXDrop(seed, XAVIER_EXTEND_BOTH, row, col, scoringScheme, xDrop);
 			result.strand = "n";
 		}	
-	}
+	#endif
 
 	// best score
 	result.score = tmp.first; 

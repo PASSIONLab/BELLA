@@ -557,8 +557,13 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 				unsigned short int matches = val->chain();
 				unsigned short int overlap;
 
+			#ifdef HIFI
+				pair<PosType_, PosType_> kmer = val->choose();
+				PosType_ i = kmer.first, j = kmer.second; 	// begpH, begpV
+			#else
 				pair<int, int> kmer = val->choose();
-				int i = kmer.first, j = kmer.second;
+				int i = kmer.first, j = kmer.second; 					// begpH, begpV
+			#endif
 
 				//	GG: nucleotide alignment
 			#ifdef __SIMD__
@@ -577,16 +582,21 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 			}
 			else // if skipAlignment == false do alignment, else save just some info on the pair to file
 			{
+
+			#ifdef HIFI
+				pair<PosType_, PosType_> kmer = val->choose();
+				PosType_ i = kmer.first, j = kmer.second; 	// begpH, begpV
+			#else
 				pair<int, int> kmer = val->choose();
-				int i = kmer.first, j = kmer.second;
+				int i = kmer.first, j = kmer.second; 		// begpH, begpV
+			#endif
 
 				int overlap = overlapop(reads[rid].seq, reads[cid].seq, i, j, bpars.kmerSize);
+
 				vss[ithread] << reads[cid].nametag << '\t' << reads[rid].nametag << '\t' << val->count << '\t' <<
 						overlap << '\t' << seq2len << '\t' << seq1len << endl;
+
 				++outputted;
-				// vss[ithread] << reads[cid].nametag << '\t' << reads[rid].nametag << '\t' << val->count << '\t' << 
-				// 		seq2len << '\t' << seq1len << std::endl;
-				// ++outputted;
 			}
 		} // all nonzeros in that column of A^T A
 	#pragma omp critical
