@@ -498,7 +498,7 @@ void PostAlignDecision(const seqAnResult& maxExtScore,
 
 template <typename IT, typename FT>
 auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowids, FT * values, const readVector_& reads, 
-	char* filename, const BELLApars& bpars, const double& ratiophi)
+	char* filename, const BELLApars& bpars, const double& ratiophi, bool& hifi)
 {
 	size_t alignedpairs = 0;
 	size_t alignedbases = 0;
@@ -562,7 +562,7 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
 
 				//	GG: nucleotide alignment
 			#ifdef __SIMD__
-				maxExtScore = xavierAlign(seq1, seq2, seq1len, i, j, bpars.xDrop, bpars.kmerSize);
+				maxExtScore = xavierAlign(seq1, seq2, seq1len, i, j, bpars.xDrop, bpars.kmerSize, hifi);
 			#else
 				maxExtScore = alignSeqAn(seq1, seq2, seq1len, i, j, bpars.xDrop, bpars.kmerSize);
 			#endif
@@ -649,7 +649,7 @@ auto RunPairWiseAlignments(IT start, IT end, IT offset, IT * colptrC, IT * rowid
  **/
 template <typename IT, typename NT, typename FT, typename MultiplyOperation, typename AddOperation>
 void HashSpGEMM(const CSC<IT,NT>& A, const CSC<IT,NT>& B, MultiplyOperation multop, AddOperation addop, const readVector_& reads, 
-	FT& getvaluetype, char* filename, const BELLApars& bpars, const double& ratiophi)
+	FT& getvaluetype, char* filename, const BELLApars& bpars, const double& ratiophi, bool& hifi)
 {
 	double free_memory = estimateMemory(bpars);
 
@@ -745,7 +745,7 @@ void HashSpGEMM(const CSC<IT,NT>& A, const CSC<IT,NT>& B, MultiplyOperation mult
 
 		// GG: all paralelism moved to GPU we can do better
 		tuple<size_t, size_t, size_t, size_t, size_t, size_t, double> alignstats; // (alignedpairs, alignedbases, totalreadlen, outputted, alignedtrue, alignedfalse, timeoutputt)
-		alignstats = RunPairWiseAlignments(colStart[b], colStart[b+1], begnz, colptrC, rowids, values, reads, filename, bpars, ratiophi);
+		alignstats = RunPairWiseAlignments(colStart[b], colStart[b+1], begnz, colptrC, rowids, values, reads, filename, bpars, ratiophi, hifi);
 
 		if(!bpars.skipAlignment)
 		{

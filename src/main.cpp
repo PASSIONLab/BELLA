@@ -347,7 +347,7 @@ int main (int argc, char *argv[]) {
 	double parsefastq = omp_get_wtime();
 
 	// vector<vector<tuple<unsigned int, unsigned int, unsigned short int>>> alloccurrences(MAXTHREADS);
-	vector<vector<tuple<KMERINDEX, KMERINDEX, unsigned short int>>> alltranstuples(MAXTHREADS);
+	vector<vector<tuple<KMERINDEX, KMERINDEX, PosType_>>> alltranstuples(MAXTHREADS);
 
 	unsigned int numReads = 0; // numReads needs to be global (not just per file)
 
@@ -446,7 +446,10 @@ int main (int argc, char *argv[]) {
                             if(hifi)
 							{
 								int nlen = seqs[i].length();
-								int pos = std::distance(ntoc, std::find(ntoc, ntoc + nlen, j)); // j here is the compressed position so we need to find the index of ntoc which is the original position in the read
+								int npos = std::distance(ntoc, std::find(ntoc, ntoc + nlen, j)); // j here is the compressed position so we need to find the index of ntoc which is the original position in the read
+								
+								PosType_ pos = std::make_pair(npos, j);
+								
 								alltranstuples[MYTHREAD].emplace_back(std::make_tuple(idx, numReads+i, pos)); // transtuples.push_back(col_id,row_id,kmerpos)
 							}
 							else
@@ -566,7 +569,7 @@ int main (int argc, char *argv[]) {
 			chainop(m1, m2, bpars, readname1, readname2);
 			return m1;
 		},
-	    reads, getvaluetype, OutputFile, bpars, ratiophi);
+	    reads, getvaluetype, OutputFile, bpars, ratiophi, hifi);
 
 	double totaltime = omp_get_wtime()-all;
 

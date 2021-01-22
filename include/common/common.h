@@ -107,6 +107,9 @@ struct readType_ {
 };
 
 typedef std::vector<readType_> readVector_;
+typedef shared_ptr<spmatType_> spmatPtr_; // pointer to spmatType_ datastruct
+typedef std::vector<Kmer> Kmers;
+typedef std::pair<unsigned short int, unsigned short int> PosType_;
 
 // EK: sort function for sorting a std::vector of indices by the values in a std::vector of int
 struct SortBy:std::binary_function<unsigned short int, unsigned short int, bool>
@@ -118,18 +121,18 @@ struct SortBy:std::binary_function<unsigned short int, unsigned short int, bool>
 
 struct spmatType_ {
 
-// <<<<<<< HEAD
+	// <<<<<<< HEAD
 	unsigned short int count = 0;		// number of shared k-mers
-	std::vector<std::vector<pair<unsigned short int, unsigned short int>>> pos;	// std::vector of k-mer positions <read-i, read-j> (if !K, use at most 2 kmers, otherwise all) per bin
+	std::vector<std::vector<pair<PosType_, PosType_>>> pos;	// std::vector of k-mer positions <read-i, read-j> (if !K, use at most 2 kmers, otherwise all) per bin
 	std::vector<unsigned short int> support;	// number of k-mers supporting a given overlap
 	std::vector<unsigned short int> overlap;	// overlap values
 	std::vector<unsigned short int> ids;		// indices corresponded to sorting of support
 
 	//	GG: sort according to support number
 	void sort() {
-		ids = std::vector<unsigned short int>(support.size());					// number of support
-		std::iota(ids.begin(), ids.end(), 0);				// assign an id
-		std::sort(ids.begin(), ids.end(), SortBy(support));	// sort support by supporting k-mers
+		ids = std::vector<unsigned short int>(support.size());	// number of support
+		std::iota(ids.begin(), ids.end(), 0);					// assign an id
+		std::sort(ids.begin(), ids.end(), SortBy(support));		// sort support by supporting k-mers
 	}
 
 	//	GG: print overlap estimate and support number
@@ -151,39 +154,31 @@ struct spmatType_ {
 	//	GG: overlap len in the most voted bin
 	int overlaplength() {
 		ids = std::vector<unsigned short int>(support.size());	// number of support
-		std::iota(ids.begin(), ids.end(), 0);				// assign an id
-		std::sort(ids.begin(), ids.end(), SortBy(support));	// sort support by supporting k-mers
+		std::iota(ids.begin(), ids.end(), 0);					// assign an id
+		std::sort(ids.begin(), ids.end(), SortBy(support));		// sort support by supporting k-mers
 
 		ids.resize(1);				// GG: we don't care about other support, we want only the majority voted one
 		return overlap[ids[0]];		// number of kmer in the most voted bin
 	}
 
 	//	GG: choose does also sorting and return the position of the first k-mer in each bin
-	pair<unsigned short int, unsigned short int> choose() {
+	pair<PosType_, PosType_> choose()
+	{
 		ids = std::vector<unsigned short int>(support.size());	// number of support
-		std::iota(ids.begin(), ids.end(), 0);				// assign an id
-		std::sort(ids.begin(), ids.end(), SortBy(support));	// sort support by supporting k-mers
+		std::iota(ids.begin(), ids.end(), 0);					// assign an id
+		std::sort(ids.begin(), ids.end(), SortBy(support));		// sort support by supporting k-mers
 
-		ids.resize(1);			// GG: we don't care about other support, we want only the majority voted one
+		// GG: we don't care about other support, we want only the majority voted one
+		ids.resize(1);			
+
+		// GGGG: check syntax =
 		pos[ids[0]].resize(1);	// GG: same for the number of kmers in the choosen bin, we need only one
 
-		return pos[ids[0]][0];	// GG: returning choosen seed // It might be better choose the kmer randomly and find an x-drop/binsize ratio to justify
-// ======= // HOPC
-	// int count = 0;              // number of shared k-mers
-	// vector<vector<pair<pair<int,bool>,pair<int,bool>>>> pos;  // vector of k-mer positions <read-i, read-j> (if !K, use at most 2 kmers, otherwise all)
-	// vector<int> support;	        // supports of the k-mer overlaps above
-	// vector<int> overlap; 	// to avoid recomputing overlap
-	// vector<int> sorted_idx; // indices cooresponded to sorting of support
+		// it might be better choose the kmer randomly and find an x-drop/binsize ratio to justify
+		return pos[ids[0]][0];	// GG: returning choosen seed
 
-	// void sort() {
-	// 	sorted_idx = vector<int>(support.size());
-	// 	std::iota(sorted_idx.begin(), sorted_idx.end(), 0);
-	// 	std::sort(sorted_idx.begin(), sorted_idx.end(), SortBy(support));
 	}
 };
-
-typedef shared_ptr<spmatType_> spmatPtr_; // pointer to spmatType_ datastruct
-typedef std::vector<Kmer> Kmers;
 
 struct alignmentInfo {
 	int score;	//	score

@@ -39,20 +39,36 @@ checkstrand(const std::string& read1, const std::string& read2, const int begpH,
 	std::string seedH = read1.substr(begpH, kmerSize);
 	std::string seedV = read2.substr(begpV, kmerSize);
 
+	std::cout << seedH << " " << seedV << std::endl;
+
 	if(seedH != seedV) return false;
 	else return true;
 }
 
 //	GG: check strand and compute overlap length
 int
-overlapop(const std::string& read1, const std::string& read2, unsigned short int begpH, 
-	unsigned short int begpV, const unsigned short int kmerSize) {
+overlapop(const std::string& read1, const std::string& read2, PosType_ begpH, 
+	PosType_ begpV, const unsigned short int kmerSize) {
 
 	int read1len = read1.length();
 	int read2len = read2.length();
 
-	// GG: checking strand
-	bool oriented = checkstrand(read1, read2, begpH, begpV, kmerSize);
+	char* cseq1 = new char [read1len + 1];
+	char* cseq2 = new char [read2len + 1];
+
+	strcpy(cseq1, read1.c_str());
+	strcpy(cseq2, read2.c_str());
+
+	// GGGG: compute compressed read (no need for pos, we already have it)
+	int read1clen = homopolyCompress(cseq1, read1len, cseq1, NULL, NULL);
+	int read2clen = homopolyCompress(cseq2, read1len, cseq2, NULL, NULL);
+
+	// GGGG: compressed start match
+	int cbegpH = begpH.second;
+	int cbegpV = begpV.second;
+
+	// GGGG: checking strand on compressed version 
+	bool oriented = checkstrand(std::string(cseq1), std::string(cseq2), cbegpH, cbegpV, kmerSize);
 
 	if(!oriented)
 	{
@@ -66,6 +82,9 @@ overlapop(const std::string& read1, const std::string& read2, unsigned short int
 	int margin1 = std::min(begpH, begpV);
 	int margin2 = std::min(read1len - endpH, read2len - endpV);
 	int overlap = margin1 + margin2 + kmerSize;
+
+	delete [] cseq1;
+	delete [] cseq2;
 
 	return overlap;
 }

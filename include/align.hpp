@@ -111,13 +111,14 @@ seqAnResult alignSeqAn(const std::string & row, const std::string & col, int rle
  * @brief alignLogan does the seed-and-extend alignment
  * @param row
  * @param col
- * @param rowLen is the length of the row sequence
+ * @param rowlen is the length of the row sequence
  * @param i is the starting position of the k-mer on the first read
  * @param j is the starting position of the k-mer on the second read
  * @param xDrop
  * @return alignment score and extended seed
  */
-xavierResult xavierAlign(const std::string& row, const std::string& col, int rowLen, int i, int j, int xDrop, int kmerSize)
+xavierResult xavierAlign(const std::string& row, const std::string& col, int rowlen, 
+	PosType_ i, PosType_ j, int xDrop, int kmerSize, bool& hifi)
 {
 	// result.first = best score, result.second = exit score when (if) x-drop termination is satified
 	std::pair<int, int> tmp;
@@ -131,38 +132,103 @@ xavierResult xavierAlign(const std::string& row, const std::string& col, int row
 	// initialize scoring scheme
 	ScoringSchemeX scoringScheme(match, mismatch, gap);	// enalties (LOGAN currently supports only linear gap penalty and penalty within +/- 3)
 
-	SeedX seed(i, j, kmerSize);
-
-	std::string seedH = row.substr(getBeginPositionH(seed), kmerSize);
-	std::string seedV = col.substr(getBeginPositionV(seed), kmerSize);
-
-	std::string rep = reversecomplement(seedH);
-	std::string cpyrow(row);
-
-	std::cout << seedH << " " << seedV << " " << rep << std::endl;
-
-
-	// homopolymer compression of reads messed up with the rc choice here figure out a solution
-	if(rep == seedV)
+	if(hifi)
 	{
-		std::reverse(std::begin(cpyrow), std::end(cpyrow));
-		std::transform(std::begin(cpyrow), std::end(cpyrow), std::begin(cpyrow), complementbase);
+		// GGGG: TODO create a function for this hopc computation
+		int collen = col.length();
 
-		setBeginPositionH(seed, rowLen - i - kmerSize);
-		setEndPositionH(seed, rowLen - i);
+		char* cseq1 = new char [rowlen + 1];
+		char* cseq2 = new char [collen + 1];
 
-		// perform match extension reverse string
- 		tmp = XavierXDrop(seed, XAVIER_EXTEND_BOTH, cpyrow, col, scoringScheme, xDrop);
-		result.strand = "c";
+		strcpy(cseq1, row.c_str());
+		strcpy(cseq2, col.c_str());
+
+		// GGGG: compute compressed read (no need for pos, we already have it)
+		int read1clen = homopolyCompress(cseq1, rowlen, cseq1, NULL, NULL);
+		int read2clen = homopolyCompress(cseq2, collen, cseq2, NULL, NULL);
+
+		// GGGG: compressed pos
+		int cbegpH = i.second;
+		int cbegpV = j.second;
+
+		// GGGG: normal pos
+		int nbegpH = i.first;
+		int nbegpV = j.first;
+
+		// GGGG: alignment seed
+		SeedX seed(nbegpH, nbegpV, kmerSize);
+
+		std::string mycseq1(cseq1);
+		std::string mycseq2(cseq2);
+
+		std::string seedH = mycseq1.substr(cbegpH, kmerSize);
+		std::string seedV = mycseq2.substr(cbegpV, kmerSize);
+
+		// std::cout << seedH << " " << seedV << std::endl;
+
+		std::string rep = reversecomplement(seedH);
+		std::string cpyrow(row);
+
+		// homopolymer compression of reads messed up with the rc choice here figure out a solution
+		if(rep == seedV)
+		{
+			std::reverse(std::begin(cpyrow), std::end(cpyrow));
+			std::transform(std::begin(cpyrow), std::end(cpyrow), std::begin(cpyrow), complementbase);
+
+			setBeginPositionH(seed, rowlen - nbegpH - kmerSize);
+			setEndPositionH(seed, rowlen - nbegpH);
+
+			// perform match extension reverse string
+			tmp = XavierXDrop(seed, XAVIER_EXTEND_BOTH, cpyrow, col, scoringScheme, xDrop);
+			result.strand = "c";
+		}
+		else
+		{
+			// perform match extension forward string
+			tmp = XavierXDrop(seed, XAVIER_EXTEND_BOTH, row, col, scoringScheme, xDrop);
+			result.strand = "n";
+		}	
+
+		delete [] cseq1;
+		delete [] cseq2;	
 	}
 	else
 	{
-		// perform match extension forward string
-	 	tmp = XavierXDrop(seed, XAVIER_EXTEND_BOTH, row, col, scoringScheme, xDrop);
-		result.strand = "n";
+		int nbegpH = i;
+		int nbegpV = j;
+
+		SeedX seed(nbegpH, nbegpV, kmerSize);
+
+		std::string seedH = row.substr(nbegpH, kmerSize);
+		std::string seedV = col.substr(nbegpV, kmerSize);
+
+		// std::cout << seedH << " " << seedV << std::endl;
+
+		std::string rep = reversecomplement(seedH);
+		std::string cpyrow(row);
+
+		if(rep == seedV)
+		{
+			std::reverse(std::begin(cpyrow), std::end(cpyrow));
+			std::transform(std::begin(cpyrow), std::end(cpyrow), std::begin(cpyrow), complementbase);
+
+			setBeginPositionH(seed, rowlen - nbegpH - kmerSize);
+			setEndPositionH(seed, rowlen - nbegpH);
+
+			// perform match extension reverse string
+			tmp = XavierXDrop(seed, XAVIER_EXTEND_BOTH, cpyrow, col, scoringScheme, xDrop);
+			result.strand = "c";
+		}
+		else
+		{
+			// perform match extension forward string
+			tmp = XavierXDrop(seed, XAVIER_EXTEND_BOTH, row, col, scoringScheme, xDrop);
+			result.strand = "n";
+		}	
 	}
 
-	result.score = tmp.first; 	// best score
+	// best score
+	result.score = tmp.first; 
 
 	setBeginPositionH(result.seed, getBeginPositionH(seed));	// updated extension
 	setBeginPositionV(result.seed, getBeginPositionV(seed));	// updated extension
