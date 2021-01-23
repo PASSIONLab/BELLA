@@ -295,7 +295,8 @@ void LocalSpGEMM(IT & start, IT & end, const CSC<IT,NT> & A, const CSC<IT,NT> & 
 		{
 			ht_size <<= 1;
 		}
-		std::vector< std::pair<IT,FT>> globalHashVec(ht_size);
+		std::vector< std::pair<IT,FT> > globalHashVec(ht_size);
+
 
 		//	Initialize hash tables
 		for(IT j=0; j < ht_size; ++j)
@@ -306,7 +307,8 @@ void LocalSpGEMM(IT & start, IT & end, const CSC<IT,NT> & A, const CSC<IT,NT> & 
 		for (IT j = B.colptr[i]; j < B.colptr[i+1]; ++j)	// all nonzeros in that column of B
 		{
 			IT col2fetch = B.rowids[j];	// find the row index of that nonzero in B, which is the column to fetch in A
-			NT valueofB = B.values[j];
+			NT valueofB  = B.values[j];
+
 			for(IT k = A.colptr[col2fetch]; k < A.colptr[col2fetch+1]; ++k) // all nonzeros in this column of A
 			{
 				IT key = A.rowids[k];
@@ -339,6 +341,7 @@ void LocalSpGEMM(IT & start, IT & end, const CSC<IT,NT> & A, const CSC<IT,NT> & 
 				}
 			}
 		}
+
 		// gather non-zero elements from hash table (and then sort them by row indices if needed)
 		IT index = 0;
 		for (IT j=0; j < ht_size; ++j)
@@ -714,7 +717,7 @@ void HashSpGEMM(const CSC<IT,NT>& A, const CSC<IT,NT>& B, MultiplyOperation mult
 	{
 		// std::upper_bound returns an iterator pointing to the first element 
 		// in the range [first, last) that is greater than value, or last if no such element is found
-		auto upper = std::upper_bound(colptrC, colptrC+B.cols+1, i*nnzcperstage ); 
+		auto upper = std::upper_bound(colptrC, colptrC+B.cols+1, i*nnzcperstage); 
 		colStart[i]  = upper - colptrC - 1;	// we don't want the element that exceeds our budget, we want the one just before that
 	}
 	colStart[stages] = B.cols;

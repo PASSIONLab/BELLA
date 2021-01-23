@@ -62,7 +62,7 @@ overlapop(const std::string& read1, const std::string& read2, PosType_ begpH,
 
 	// GGGG: compute compressed read (no need for pos, we already have it)
 	int read1clen = homopolyCompress(cseq1, read1len, cseq1, NULL, NULL);
-	int read2clen = homopolyCompress(cseq2, read1len, cseq2, NULL, NULL);
+	int read2clen = homopolyCompress(cseq2, read2len, cseq2, NULL, NULL);
 
 	// GGGG: compressed start match
 	int cbegpH = begpH.second;

@@ -521,7 +521,7 @@ int main (int argc, char *argv[]) {
 	
 	// GGGG: to help the parsing script
     cout << nkmer << endl;
-	
+
 	double matcreat = omp_get_wtime();
 #ifdef HIFI
 	CSC<KMERINDEX, PosType_> transpmat(transtuples, nkmer, numReads,
@@ -544,7 +544,6 @@ int main (int argc, char *argv[]) {
 	std::string TransposeSparseMatrixCreationTime = std::to_string(omp_get_wtime() - matcreat) + " seconds";
 	printLog(TransposeSparseMatrixCreationTime);
 
-
 	double transbeg = omp_get_wtime();
 #ifdef HIFI
 	CSC<KMERINDEX, PosType_> spmat = transpmat.Transpose();
@@ -553,7 +552,6 @@ int main (int argc, char *argv[]) {
 #endif
 	std::string ReTransposeTime = std::to_string(omp_get_wtime() - transbeg) + " seconds";
 	printLog(ReTransposeTime);
-
 
 	// ==================================================== //
 	// Sparse Matrix Multiplication (aka Overlap Detection) //
