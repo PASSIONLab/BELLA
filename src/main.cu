@@ -363,7 +363,7 @@ int main (int argc, char *argv[]) {
                 if(bpars.useMinimizer)
                 {
                     vector<Kmer> seqkmers;
-                    std::vector< int > seqminimizers;    // <position_in_read>
+                    std::vector<int> seqminimizers;    // <position_in_read>
                     for(int j = 0; j <= len - bpars.kmerSize; j++)   // AB: optimize this sliding-window parsing ala HipMer
                     {
                         std::string kmerstrfromfastq = seqs[i].substr(j, bpars.kmerSize);
@@ -371,8 +371,8 @@ int main (int argc, char *argv[]) {
                         seqkmers.emplace_back(mykmer);
                     }
 
-                    getMinimizers(bpars.windowLen, seqkmers, seqminimizers, bpars.useHOPC);
-                    //cout << seqkmers.size() << " k-mers generated " << seqminimizers.size() << " minimizers" << endl;
+                    getMinimizers(bpars.windowLen, seqkmers, seqminimizers);
+
                     for(auto minpos: seqminimizers)
                     {
                         std::string strminkmer = seqs[i].substr(minpos, bpars.kmerSize);

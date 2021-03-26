@@ -46,12 +46,12 @@ void furtherSample(std::deque< std::pair<int, uint64_t> > & deq, std::vector< in
 
 // this is a canonical strand minimizer
 // to avoid strand ambiguity, we advise choosing an odd number for kmer length
-void getMinimizers(int window, const std::vector<Kmer> & input, std::vector< int> & output, int ishopc)
+void getMinimizers(size_t window, const std::vector<Kmer>& input, std::vector<int>& output)
 {
-    std::deque< std::pair<int, uint64_t> > deq; // this double-ended queue will naturally be sorted by construction
+    std::deque<std::pair<int, uint64_t>> deq; // this double-ended queue will naturally be sorted by construction
 
     size_t total = input.size();
-    for (size_t i=0; i< total; ++i)
+    for (size_t i = 0; i < total; ++i)
     {
         std::pair<int, uint64_t> qentry = std::make_pair(i, getOrder(input[i]));
         while (!deq.empty() && deq.back().second > qentry.second)
@@ -71,12 +71,6 @@ void getMinimizers(int window, const std::vector<Kmer> & input, std::vector< int
 
         furtherSample(deq, output);
     }
-    //cout << "the minimizers are : " << endl;
-    //for(auto minmer:output)
-    //{
-    //    cout << input[minmer.first] << " ";
-    //}
-    //cout << endl;
 }
 
 

@@ -49,6 +49,9 @@
 #include "../kmercode/hyperloglog.hpp"
 #include "common/common.h"
 
+#include "minimizer.hpp"
+#include "syncmer.hpp"
+
 using namespace std;
 
 #define ASCIIBASE 33 // Pacbio quality score ASCII BASE
@@ -742,9 +745,7 @@ void MinimizerCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable
                                 rerror += berror;
                         }
                     }
-                    getMinimizers(bpars.windowLen, seqkmers, seqminimizers, bpars.useHOPC);
-                    
-                    //cout << seqkmers.size() << " k-mers generated " << seqminimizers.size() << " minimizers, read id is " << nametags[i];
+                    getMinimizers(bpars.windowLen, seqkmers, seqminimizers);
 
                     for(auto minpos: seqminimizers)
                     {
@@ -899,10 +900,8 @@ void SyncmerCount(vector<filedata> & allfiles, CuckooDict<IT> & countsreliable_d
                                 rerror += berror;
                         }
                     }
-                    // getMinimizers(bpars.windowLen, seqkmers, seqminimizers, bpars.useHOPC);
-                    getSyncmers(bpars.kmerSize, seqkmers, seqminimizers, bpars.useHOPC);
-                   
-                    // cout << seqkmers.size() << " k-mers generated " << seqminimizers.size() << " syncmers, read id is " << nametags[i] << endl;
+
+                    getSyncmers((int)bpars.kmerSize, seqkmers, seqminimizers);
 
                     for(auto minpos: seqminimizers)
                     {

@@ -371,8 +371,8 @@ int main (int argc, char *argv[]) {
                         seqkmers.emplace_back(mykmer);
                     }
 
-                    getMinimizers(bpars.windowLen, seqkmers, seqminimizers, bpars.useHOPC);
-                    //cout << seqkmers.size() << " k-mers generated " << seqminimizers.size() << " minimizers" << endl;
+                    getMinimizers(bpars.windowLen, seqkmers, seqminimizers);
+
                     for(auto minpos: seqminimizers)
                     {
                         std::string strminkmer = seqs[i].substr(minpos, bpars.kmerSize);

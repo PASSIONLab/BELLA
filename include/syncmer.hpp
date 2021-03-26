@@ -46,7 +46,7 @@
 
 const int smerlen = 5; //make it input param
 
-bool isSyncmer(const Kmer & mer, int &kmerlen)
+bool isSyncmer(const Kmer& mer, int& kmerlen)
 {
     string kmer = mer.toString();
     Kmer stKmer(kmer.substr(0, smerlen).c_str(), smerlen); // first s-mer of the k-mer
@@ -69,21 +69,14 @@ bool isSyncmer(const Kmer & mer, int &kmerlen)
 
 // this is a canonical strand minimizer
 // to avoid strand ambiguity, we advise choosing an odd number for kmer length
-void getSyncmers(int klen, const std::vector<Kmer> & input, std::vector< int> & output, int ishopc)
+void getSyncmers(int klen, const std::vector<Kmer>& input, std::vector<int>& output)
 { 
-    for (size_t i=0; i< input.size(); ++i)
+    for (size_t i = 0; i < input.size(); ++i)
     {
         if(isSyncmer(input[i], klen))
             output.push_back(i);
     }
-    // cout << "#kmer" << total << "#syncmers: " << output.size() << endl;
-    // for(auto minmer:output)
-    // {
-    //    cout << input[minmer] << " ";
-    // }
-    // cout << endl;
 }
-
 
 #endif
 
