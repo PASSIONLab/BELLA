@@ -53,26 +53,28 @@ void getMinimizers(size_t window, const std::vector<Kmer>& input, std::vector<in
     size_t total = input.size();
     for (size_t i = 0; i < total; ++i)
     {
+
         std::pair<int, uint64_t> qentry = std::make_pair(i, getOrder(input[i]));
         while (!deq.empty() && deq.back().second > qentry.second)
         {
             deq.pop_back();
         }
         deq.push_back(qentry);
-        if(deq.front().first <= static_cast<int>(i)-window)
+	
+	while(!deq.empty() && deq.front().first <= static_cast<int>(i)-window)
         {
-            while(deq.front().first <= static_cast<int>(i)-window)
-            {
-                deq.pop_front();  // discard out-of-range k-mer
-            }
-            furtherPop(deq);
+            furtherPop(deq);  // discard all identical kmers to first
+            deq.pop_front();  // discard first out-of-range k-mer
         }
-        sample(deq.front(), output);
+
+        if (!deq.empty())
+        {
+            sample(deq.front(), output);
+        }
 
         furtherSample(deq, output);
     }
 }
-
 
 #endif
 
