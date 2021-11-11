@@ -24,7 +24,7 @@
 #include <thread>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/sysctl.h>
+//#include <sys/sysctl.h>
 #include <map>
 #include <unordered_map>
 #include <omp.h>

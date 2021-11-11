@@ -20,7 +20,7 @@
 #include <ios>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/sysctl.h>
+//#include <sys/sysctl.h>
 #include <math.h>
 #include <map>
 #include <omp.h>
