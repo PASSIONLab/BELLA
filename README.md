@@ -165,7 +165,7 @@ To cite our work or to know more about our methods, please refer to:
 
 ## Authors
 
-* [**Giulia Guidi**](https://sites.google.com/berkeley.edu/gguidi/)
+* [**Giulia Guidi**](http://gguidi.com/)
 * [**Aydın Buluç**](https://people.eecs.berkeley.edu/~aydin/)
 * [**Marquita Ellis**](https://sites.google.com/view/about-mme)
 
